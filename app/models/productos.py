@@ -14,3 +14,4 @@ class Producto(Base):
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
     disponible_hoy: Mapped[bool] = mapped_column(Boolean, default=True)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    imagen_url: Mapped[str | None] = mapped_column(Text, nullable=True)

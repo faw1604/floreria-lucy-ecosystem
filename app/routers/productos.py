@@ -21,7 +21,7 @@ async def listar_productos(
     query = query.order_by(Producto.categoria, Producto.nombre)
     result = await db.execute(query)
     productos = result.scalars().all()
-    return [{"id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria, "precio": p.precio, "disponible_hoy": p.disponible_hoy} for p in productos]
+    return [{"id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria, "precio": p.precio, "disponible_hoy": p.disponible_hoy, "imagen_url": p.imagen_url} for p in productos]
 
 @router.get("/{producto_id}")
 async def obtener_producto(producto_id: int, db: AsyncSession = Depends(get_db)):
@@ -29,7 +29,7 @@ async def obtener_producto(producto_id: int, db: AsyncSession = Depends(get_db))
     producto = result.scalar_one_or_none()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return {"id": producto.id, "codigo": producto.codigo, "nombre": producto.nombre, "categoria": producto.categoria, "precio": producto.precio, "costo": producto.costo, "disponible_hoy": producto.disponible_hoy, "descripcion": producto.descripcion}
+    return {"id": producto.id, "codigo": producto.codigo, "nombre": producto.nombre, "categoria": producto.categoria, "precio": producto.precio, "costo": producto.costo, "disponible_hoy": producto.disponible_hoy, "descripcion": producto.descripcion, "imagen_url": producto.imagen_url}
 
 @router.post("/")
 async def crear_producto(
@@ -72,6 +72,23 @@ async def actualizar_producto(
             setattr(producto, campo, request[campo])
     await db.commit()
     return {"id": producto.id, "nombre": producto.nombre, "precio": producto.precio}
+
+@router.patch("/{producto_id}/imagen")
+async def actualizar_imagen(
+    producto_id: int,
+    request: dict,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db)
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Producto).where(Producto.id == producto_id))
+    producto = result.scalar_one_or_none()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    producto.imagen_url = request.get("imagen_url")
+    await db.commit()
+    return {"id": producto.id, "nombre": producto.nombre, "imagen_url": producto.imagen_url}
 
 @router.delete("/{producto_id}")
 async def desactivar_producto(
