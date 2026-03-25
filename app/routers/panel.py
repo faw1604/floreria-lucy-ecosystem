@@ -33,11 +33,16 @@ async def estado_horario(panel_session: str | None = Cookie(default=None)):
     dia = ahora.weekday()
     nombres_dia = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     en_horario = esta_en_horario(ahora)
+    temporada_nombre = os.getenv("TEMPORADA_NOMBRE", "")
+    temporada_categoria = os.getenv("TEMPORADA_CATEGORIA", "")
     return {
         "abierto": en_horario,
         "dia": nombres_dia[dia],
         "hora_chihuahua": ahora.strftime("%H:%M"),
         "horario_hoy": HORARIO_FLORERIA.get(dia, (0, 0)),
+        "temporada_activa": bool(temporada_nombre),
+        "temporada_nombre": temporada_nombre or None,
+        "temporada_categoria": temporada_categoria or None,
     }
 
 @router.get("/horario/entregas")
