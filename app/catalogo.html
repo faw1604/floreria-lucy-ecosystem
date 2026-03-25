@@ -34,19 +34,20 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .cat-header-btn:hover{border-color:var(--verde);color:var(--verde)}
 
 /* ====== LANDING ====== */
-.landing{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;text-align:center;background:var(--crema);position:relative;overflow:hidden}
-.landing-bg{position:absolute;inset:0;opacity:.04;pointer-events:none}
-.landing-bg svg{width:100%;height:100%}
-.landing h1{font-family:'Playfair Display',serif;font-size:38px;color:var(--verde);font-weight:700;margin-bottom:4px;letter-spacing:-.02em}
-.landing .sub{font-family:'Playfair Display',serif;font-size:16px;color:var(--texto2);margin-bottom:48px;font-weight:400;font-style:italic}
+.landing{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;text-align:center;position:relative;overflow:hidden;background:url('https://res.cloudinary.com/ddku2wmpk/image/upload/v1774476982/floreria-lucy/hero.jpg') center/cover no-repeat}
+.landing::before{content:'';position:absolute;inset:0;background:rgba(25,58,44,.5);z-index:0}
+.landing>*{position:relative;z-index:1}
+.landing-bg{display:none}
+.landing h1{font-family:'Playfair Display',serif;font-size:38px;color:var(--blanco);font-weight:700;margin-bottom:4px;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.2)}
+.landing .sub{font-family:'Playfair Display',serif;font-size:16px;color:rgba(255,255,255,.85);margin-bottom:48px;font-weight:400;font-style:italic}
 .landing-btns{display:flex;flex-direction:column;gap:14px;width:100%;max-width:300px}
 .landing-btn{padding:16px 24px;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;letter-spacing:-.01em}
 .landing-btn:active{transform:scale(.97)}
-.landing-btn.primary{background:var(--verde);color:var(--blanco);border:2px solid var(--verde)}
-.landing-btn.primary:hover{background:var(--verde-m)}
-.landing-btn.secondary{background:transparent;color:var(--verde);border:2px solid var(--verde)}
-.landing-btn.secondary:hover{background:var(--verde);color:var(--blanco)}
-.landing-deco{width:60px;height:2px;background:var(--dorado);margin:0 auto 24px;border-radius:2px}
+.landing-btn.primary{background:var(--blanco);color:var(--verde);border:2px solid var(--blanco)}
+.landing-btn.primary:hover{background:rgba(255,255,255,.9)}
+.landing-btn.secondary{background:transparent;color:var(--blanco);border:2px solid rgba(255,255,255,.6)}
+.landing-btn.secondary:hover{background:rgba(255,255,255,.15)}
+.landing-deco{width:60px;height:2px;background:var(--dorado);margin:0 auto 24px;border-radius:2px;position:relative;z-index:1}
 
 /* ====== VIEWS ====== */
 .view{display:none;padding-top:52px;min-height:100vh}
