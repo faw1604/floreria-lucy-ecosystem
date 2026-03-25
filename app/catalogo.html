@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Florería Lucy — Catálogo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --verde: #193a2c;
+  --verde2: #0f6e56;
+  --cobre: #c9956a;
+  --cobre-claro: #e8b89a;
+  --crema: #faf8f5;
+  --fondo: #f5f2ee;
+  --blanco: #fff;
+  --texto: #1a1a1a;
+  --texto2: #777;
+  --borde: #e8e3dc;
+  --sombra: 0 2px 16px rgba(25,58,44,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--crema);color:var(--texto);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* HEADER */
+.cat-header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--verde);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.cat-header-logo{font-family:'Cormorant Garamond',serif;font-size:17px;color:#fff;font-weight:400}
+.cat-header-logo span{color:var(--cobre)}
+.cat-header-btn{font-size:11px;color:rgba(255,255,255,.6);background:rgba(255,255,255,.1);border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* LANDING */
+.landing{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;background:linear-gradient(160deg,var(--verde) 0%,#1a4a35 100%)}
+.landing-emoji{font-size:48px;margin-bottom:16px}
+.landing h1{font-family:'Cormorant Garamond',serif;font-size:32px;color:#fff;font-weight:400;margin-bottom:4px}
+.landing .sub{font-size:14px;color:var(--cobre-claro);margin-bottom:40px;font-weight:300;letter-spacing:.05em}
+.landing-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px}
+.landing-btn{padding:16px 24px;border-radius:12px;border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s}
+.landing-btn:active{transform:scale(.97)}
+.landing-btn.primary{background:var(--cobre);color:#1a0f08}
+.landing-btn.secondary{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2)}
+
+/* VIEWS */
+.view{display:none;padding-top:52px;min-height:100vh}
+.view.active{display:block}
+
+/* ====== DYNAMIC MODE ====== */
+.dyn-container{display:flex;flex-direction:column;align-items:center;padding:16px;max-width:420px;margin:0 auto}
+.dyn-counter{font-size:12px;color:var(--texto2);margin-bottom:10px}
+.dyn-card-wrapper{position:relative;width:100%;aspect-ratio:3/4;max-height:60vh;margin-bottom:16px;perspective:1000px}
+.dyn-card{position:absolute;inset:0;background:var(--blanco);border-radius:16px;box-shadow:var(--sombra);overflow:hidden;cursor:grab;transition:transform .3s,opacity .3s;touch-action:none;user-select:none}
+.dyn-card.swiping{transition:none}
+.dyn-card.exit-left{transform:translateX(-120%) rotate(-15deg);opacity:0}
+.dyn-card.exit-right{transform:translateX(120%) rotate(15deg);opacity:0}
+.dyn-card.exit-up{transform:translateY(-120%) scale(.9);opacity:0}
+.dyn-card img{width:100%;height:80%;object-fit:cover}
+.dyn-card-info{padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.dyn-card-price{font-size:20px;font-weight:600;color:var(--verde)}
+.dyn-card-name{font-size:12px;color:var(--texto2);max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dyn-card-cat{position:absolute;top:12px;left:12px;background:rgba(25,58,44,.8);color:#fff;font-size:10px;padding:4px 10px;border-radius:20px;backdrop-filter:blur(4px)}
+.dyn-card-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:60px;opacity:0;transition:opacity .15s;pointer-events:none}
+.dyn-actions{display:flex;gap:16px;align-items:center}
+.dyn-btn{width:56px;height:56px;border-radius:50%;border:2px solid var(--borde);background:var(--blanco);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.dyn-btn:active{transform:scale(.9)}
+.dyn-btn.pass{color:#e74c3c}
+.dyn-btn.like{color:#e74c3c;font-size:24px}
+.dyn-btn.want{background:var(--verde);color:#fff;border-color:var(--verde);width:64px;height:64px;font-size:24px}
+.dyn-favs-btn{margin-top:14px;font-size:13px;color:var(--cobre);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500}
+
+/* SKELETON */
+.skeleton{background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* FAVORITES */
+.favs-screen{padding:16px;max-width:500px;margin:0 auto}
+.favs-title{font-family:'Cormorant Garamond',serif;font-size:22px;text-align:center;margin-bottom:16px;color:var(--verde)}
+.favs-grid{display:flex;flex-direction:column;gap:10px}
+.fav-card{background:var(--blanco);border-radius:12px;box-shadow:var(--sombra);display:flex;overflow:hidden;gap:12px}
+.fav-card img{width:100px;height:100px;object-fit:cover}
+.fav-card-info{padding:10px;display:flex;flex-direction:column;justify-content:center;flex:1}
+.fav-card-name{font-size:14px;font-weight:500;color:var(--texto);margin-bottom:4px}
+.fav-card-price{font-size:16px;font-weight:600;color:var(--verde);margin-bottom:8px}
+.fav-card-btn{background:var(--verde);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;align-self:flex-start}
+
+/* ====== CLASSIC MODE ====== */
+.classic-container{padding:12px;max-width:900px;margin:0 auto}
+.cat-filters{display:flex;gap:8px;overflow-x:auto;padding:8px 0 14px;-webkit-overflow-scrolling:touch}
+.cat-filters::-webkit-scrollbar{display:none}
+.cat-pill{white-space:nowrap;padding:7px 14px;border-radius:20px;border:1px solid var(--borde);background:var(--blanco);font-size:12px;font-weight:500;color:var(--texto2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.cat-pill.active{background:var(--verde);color:#fff;border-color:var(--verde)}
+.classic-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:640px){.classic-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.classic-grid{grid-template-columns:repeat(4,1fr)}}
+.prod-card{background:var(--blanco);border-radius:12px;box-shadow:var(--sombra);overflow:hidden;transition:transform .15s}
+.prod-card:active{transform:scale(.98)}
+.prod-card img{width:100%;aspect-ratio:1;object-fit:cover}
+.prod-card-body{padding:10px}
+.prod-card-name{font-size:13px;font-weight:500;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.prod-card-price{font-size:16px;font-weight:600;color:var(--verde);margin-bottom:8px}
+.prod-card-btn{width:100%;padding:8px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* EMPTY */
+.empty-msg{text-align:center;padding:60px 20px;color:var(--texto2);font-size:14px}
+.empty-msg .icon{font-size:40px;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div class="landing" id="landing">
+  <div class="landing-emoji">🌸</div>
+  <h1>Florería Lucy</h1>
+  <div class="sub">La expresión del amor</div>
+  <div class="landing-btns">
+    <button class="landing-btn primary" onclick="startMode('dynamic')">🃏 Catálogo dinámico</button>
+    <button class="landing-btn secondary" onclick="startMode('classic')">🔲 Ver catálogo</button>
+  </div>
+</div>
+
+<!-- HEADER (visible in modes) -->
+<div class="cat-header" id="cat-header" style="display:none">
+  <div class="cat-header-logo">Florería <span>Lucy</span></div>
+  <button class="cat-header-btn" id="mode-toggle" onclick="toggleMode()">Cambiar vista</button>
+</div>
+
+<!-- DYNAMIC VIEW -->
+<div class="view" id="view-dynamic">
+  <div class="dyn-container">
+    <div class="dyn-counter" id="dyn-counter"></div>
+    <div class="dyn-card-wrapper" id="dyn-card-wrapper">
+      <div class="skeleton" style="width:100%;height:100%"></div>
+    </div>
+    <div class="dyn-actions">
+      <button class="dyn-btn pass" onclick="dynAction('pass')">✕</button>
+      <button class="dyn-btn want" onclick="dynAction('want')">★</button>
+      <button class="dyn-btn like" onclick="dynAction('like')">♥</button>
+    </div>
+    <button class="dyn-favs-btn" id="dyn-favs-btn" style="display:none" onclick="showFavorites()">Ver mis favoritos (<span id="fav-count">0</span>)</button>
+  </div>
+</div>
+
+<!-- FAVORITES VIEW -->
+<div class="view" id="view-favs">
+  <div class="favs-screen">
+    <div class="favs-title">Tus favoritos</div>
+    <div class="favs-grid" id="favs-grid"></div>
+    <button class="dyn-favs-btn" style="margin-top:20px;display:block;text-align:center;width:100%" onclick="backFromFavs()">← Volver</button>
+  </div>
+</div>
+
+<!-- CLASSIC VIEW -->
+<div class="view" id="view-classic">
+  <div class="classic-container">
+    <div class="cat-filters" id="cat-filters"></div>
+    <div class="classic-grid" id="classic-grid">
+      <div class="skeleton" style="height:200px"></div>
+      <div class="skeleton" style="height:200px"></div>
+      <div class="skeleton" style="height:200px"></div>
+      <div class="skeleton" style="height:200px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WA_NUMBER = '5216141234567';
+const API = '';
+let allProducts = [];
+let currentMode = null;
+
+// ====== DYNAMIC STATE ======
+let dynQueue = [];
+let dynIndex = 0;
+let favorites = [];
+let likedCategories = {};
+let likedPriceSum = 0;
+let likedCount = 0;
+let touchStartX = 0, touchStartY = 0, touchDX = 0, touchDY = 0, isDragging = false;
+
+// ====== INIT ======
+async function loadProducts() {
+  const r = await fetch(`${API}/catalogo/productos`);
+  allProducts = await r.json();
+  return allProducts;
+}
+
+function startMode(mode) {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('cat-header').style.display = 'flex';
+  currentMode = mode;
+  if (mode === 'dynamic') {
+    showView('dynamic');
+    initDynamic();
+  } else {
+    showView('classic');
+    initClassic();
+  }
+}
+
+function toggleMode() {
+  if (currentMode === 'dynamic') {
+    currentMode = 'classic';
+    showView('classic');
+    initClassic();
+  } else {
+    currentMode = 'dynamic';
+    showView('dynamic');
+    initDynamic();
+  }
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-${name}`).classList.add('active');
+}
+
+function openWhatsApp(productName, price) {
+  const msg = `Hola, me interesa el ${productName} que vi en su catálogo 🌸`;
+  window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ====== DYNAMIC MODE ======
+async function initDynamic() {
+  if (!allProducts.length) await loadProducts();
+  if (!allProducts.length) {
+    document.getElementById('dyn-card-wrapper').innerHTML = '<div class="empty-msg"><div class="icon">🌷</div>Catálogo actualizándose, regresa pronto</div>';
+    return;
+  }
+  dynQueue = buildQueue();
+  dynIndex = 0;
+  renderDynCard();
+}
+
+function buildQueue() {
+  let items = [...allProducts];
+  // Shuffle with preference for liked categories and price range
+  if (likedCount > 0) {
+    const avgPrice = likedPriceSum / likedCount;
+    items.sort((a, b) => {
+      let sa = 0, sb = 0;
+      // Category boost
+      if (likedCategories[a.categoria]) sa += likedCategories[a.categoria] * 2;
+      if (likedCategories[b.categoria]) sb += likedCategories[b.categoria] * 2;
+      // Price proximity boost
+      sa -= Math.abs(a.precio - avgPrice) / 10000;
+      sb -= Math.abs(b.precio - avgPrice) / 10000;
+      // Random factor for discovery
+      sa += Math.random() * 3;
+      sb += Math.random() * 3;
+      return sb - sa;
+    });
+  } else {
+    // Initial shuffle
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+  }
+  return items;
+}
+
+function renderDynCard() {
+  const wrapper = document.getElementById('dyn-card-wrapper');
+  if (dynIndex >= dynQueue.length) {
+    showFavorites();
+    return;
+  }
+  const p = dynQueue[dynIndex];
+  document.getElementById('dyn-counter').textContent = `${dynIndex + 1} / ${dynQueue.length}`;
+  updateFavsBtn();
+
+  wrapper.innerHTML = `
+    <div class="dyn-card" id="dyn-current-card">
+      <div class="dyn-card-cat">${p.categoria}</div>
+      <img src="${p.imagen_url}" alt="${p.nombre}" draggable="false">
+      <div class="dyn-card-info">
+        <span class="dyn-card-name">${p.nombre}</span>
+        <span class="dyn-card-price">${p.precio_display}</span>
+      </div>
+      <div class="dyn-card-overlay" id="dyn-overlay"></div>
+    </div>`;
+
+  // Touch events
+  const card = document.getElementById('dyn-current-card');
+  card.addEventListener('touchstart', onTouchStart, {passive: true});
+  card.addEventListener('touchmove', onTouchMove, {passive: false});
+  card.addEventListener('touchend', onTouchEnd);
+  card.addEventListener('mousedown', onMouseDown);
+}
+
+function onTouchStart(e) {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchDX = 0; touchDY = 0; isDragging = true;
+  document.getElementById('dyn-current-card').classList.add('swiping');
+}
+function onTouchMove(e) {
+  if (!isDragging) return;
+  touchDX = e.touches[0].clientX - touchStartX;
+  touchDY = e.touches[0].clientY - touchStartY;
+  applySwipeTransform();
+  e.preventDefault();
+}
+function onTouchEnd() {
+  if (!isDragging) return;
+  isDragging = false;
+  const card = document.getElementById('dyn-current-card');
+  if (card) card.classList.remove('swiping');
+  resolveSwipe();
+}
+function onMouseDown(e) {
+  touchStartX = e.clientX; touchStartY = e.clientY;
+  touchDX = 0; touchDY = 0; isDragging = true;
+  document.getElementById('dyn-current-card').classList.add('swiping');
+  const onMove = (ev) => { touchDX = ev.clientX - touchStartX; touchDY = ev.clientY - touchStartY; applySwipeTransform(); };
+  const onUp = () => {
+    isDragging = false;
+    const card = document.getElementById('dyn-current-card');
+    if (card) card.classList.remove('swiping');
+    resolveSwipe();
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function applySwipeTransform() {
+  const card = document.getElementById('dyn-current-card');
+  const overlay = document.getElementById('dyn-overlay');
+  if (!card) return;
+  const rot = touchDX * 0.08;
+  card.style.transform = `translate(${touchDX}px, ${touchDY}px) rotate(${rot}deg)`;
+  if (touchDX > 50) { overlay.textContent = '♥'; overlay.style.opacity = Math.min((touchDX-50)/80, 1); overlay.style.color = '#e74c3c'; }
+  else if (touchDX < -50) { overlay.textContent = '✕'; overlay.style.opacity = Math.min((-touchDX-50)/80, 1); overlay.style.color = '#999'; }
+  else if (touchDY < -50) { overlay.textContent = '★'; overlay.style.opacity = Math.min((-touchDY-50)/80, 1); overlay.style.color = var('--verde'); }
+  else { overlay.style.opacity = 0; }
+}
+
+function resolveSwipe() {
+  if (touchDX > 80) dynAction('like');
+  else if (touchDX < -80) dynAction('pass');
+  else if (touchDY < -80) dynAction('want');
+  else {
+    const card = document.getElementById('dyn-current-card');
+    if (card) { card.style.transform = ''; const ov = document.getElementById('dyn-overlay'); if(ov) ov.style.opacity = 0; }
+  }
+}
+
+function dynAction(action) {
+  const card = document.getElementById('dyn-current-card');
+  const p = dynQueue[dynIndex];
+  if (!card || !p) return;
+
+  if (action === 'like') {
+    card.classList.remove('swiping');
+    card.classList.add('exit-right');
+    favorites.push(p);
+    trackLike(p);
+  } else if (action === 'pass') {
+    card.classList.remove('swiping');
+    card.classList.add('exit-left');
+  } else if (action === 'want') {
+    card.classList.remove('swiping');
+    card.classList.add('exit-up');
+    favorites.push(p);
+    trackLike(p);
+    openWhatsApp(p.nombre, p.precio_display);
+  }
+
+  dynIndex++;
+  setTimeout(renderDynCard, 300);
+}
+
+function trackLike(p) {
+  likedCategories[p.categoria] = (likedCategories[p.categoria] || 0) + 1;
+  likedPriceSum += p.precio;
+  likedCount++;
+}
+
+function updateFavsBtn() {
+  const btn = document.getElementById('dyn-favs-btn');
+  const count = document.getElementById('fav-count');
+  if (favorites.length > 0) {
+    btn.style.display = 'block';
+    count.textContent = favorites.length;
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function showFavorites() {
+  showView('favs');
+  const grid = document.getElementById('favs-grid');
+  if (!favorites.length) {
+    grid.innerHTML = '<div class="empty-msg"><div class="icon">🌷</div>No tienes favoritos todavía</div>';
+    return;
+  }
+  grid.innerHTML = favorites.map(p => `
+    <div class="fav-card">
+      <img src="${p.imagen_url}" alt="${p.nombre}">
+      <div class="fav-card-info">
+        <div class="fav-card-name">${p.nombre}</div>
+        <div class="fav-card-price">${p.precio_display}</div>
+        <button class="fav-card-btn" onclick="openWhatsApp('${p.nombre.replace(/'/g,"\\'")}','${p.precio_display}')">Pedir por WhatsApp</button>
+      </div>
+    </div>`).join('');
+}
+
+function backFromFavs() {
+  if (dynIndex < dynQueue.length) {
+    showView('dynamic');
+  } else {
+    // Deck finished, stay on favs but offer restart
+    showView('dynamic');
+    document.getElementById('dyn-card-wrapper').innerHTML = `
+      <div class="empty-msg">
+        <div class="icon">✨</div>
+        Ya viste todos los productos<br><br>
+        <button class="landing-btn primary" style="display:inline-block;padding:12px 24px;font-size:14px" onclick="dynIndex=0;dynQueue=buildQueue();renderDynCard()">Volver a empezar</button>
+      </div>`;
+  }
+}
+
+// ====== CLASSIC MODE ======
+let classicFilter = null;
+
+async function initClassic() {
+  if (!allProducts.length) await loadProducts();
+  if (!allProducts.length) {
+    document.getElementById('classic-grid').innerHTML = '<div class="empty-msg" style="grid-column:1/-1"><div class="icon">🌷</div>Catálogo actualizándose, regresa pronto</div>';
+    return;
+  }
+  renderFilters();
+  renderClassicGrid();
+}
+
+function renderFilters() {
+  const cats = [...new Set(allProducts.map(p => p.categoria))].sort();
+  const el = document.getElementById('cat-filters');
+  el.innerHTML = `<button class="cat-pill ${!classicFilter ? 'active' : ''}" onclick="setFilter(null)">Todos</button>` +
+    cats.map(c => `<button class="cat-pill ${classicFilter === c ? 'active' : ''}" onclick="setFilter('${c.replace(/'/g,"\\'")}');">${c}</button>`).join('');
+}
+
+function setFilter(cat) {
+  classicFilter = cat;
+  renderFilters();
+  renderClassicGrid();
+}
+
+function renderClassicGrid() {
+  const filtered = classicFilter ? allProducts.filter(p => p.categoria === classicFilter) : allProducts;
+  document.getElementById('classic-grid').innerHTML = filtered.map(p => `
+    <div class="prod-card">
+      <img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
+      <div class="prod-card-body">
+        <div class="prod-card-name">${p.nombre}</div>
+        <div class="prod-card-price">${p.precio_display}</div>
+        <button class="prod-card-btn" onclick="openWhatsApp('${p.nombre.replace(/'/g,"\\'")}','${p.precio_display}')">Pedir</button>
+      </div>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>
