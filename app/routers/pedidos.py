@@ -1,9 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Cookie
+from fastapi import APIRouter, Depends, HTTPException, Cookie, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
+import os
 from app.database import get_db
 from app.models.pedidos import Pedido, ItemPedido
+from app.models.clientes import Cliente
+from app.models.productos import Producto
 from app.core.config import TZ
 from app.routers.auth import verificar_sesion
 
@@ -47,6 +50,126 @@ async def pedidos_del_dia(
     )
     pedidos = result.scalars().all()
     return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta, "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono, "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria, "notas_internas": p.notas_internas, "requiere_humano": p.requiere_humano, "tipo_especial": p.tipo_especial} for p in pedidos]
+
+@router.get("/desde-claudia/test")
+async def claudia_test():
+    return {"ok": True, "api": "floreria-lucy-ecosystem"}
+
+@router.post("/desde-claudia")
+async def crear_pedido_desde_claudia(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_claudia_key: str | None = Header(default=None),
+):
+    # Verificar API key
+    expected_key = os.getenv("CLAUDIA_API_KEY", "")
+    if not expected_key or x_claudia_key != expected_key:
+        raise HTTPException(status_code=401, detail="API key inválida")
+
+    data = await request.json()
+
+    # 1. Buscar o crear cliente
+    telefono_raw = data.get("telefono_cliente", "")
+    digitos = "".join(c for c in telefono_raw if c.isdigit())
+    if len(digitos) > 10 and digitos.startswith("52"):
+        digitos = digitos[2:]
+
+    cliente = None
+    if digitos:
+        result = await db.execute(select(Cliente).where(Cliente.telefono == digitos))
+        cliente = result.scalar_one_or_none()
+
+    if not cliente:
+        cliente = Cliente(
+            nombre=data.get("nombre_cliente", "Cliente WhatsApp"),
+            telefono=digitos or f"sin-{datetime.now(TZ).strftime('%Y%m%d%H%M%S')}",
+            fuente="WhatsApp",
+        )
+        db.add(cliente)
+        await db.flush()
+
+    # 2. Buscar o crear producto
+    producto = None
+    codigo = data.get("producto_codigo")
+    nombre_prod = data.get("producto_nombre", "")
+    if codigo:
+        result = await db.execute(select(Producto).where(Producto.codigo == codigo))
+        producto = result.scalar_one_or_none()
+    if not producto and nombre_prod:
+        result = await db.execute(select(Producto).where(Producto.nombre == nombre_prod))
+        producto = result.scalar_one_or_none()
+    if not producto:
+        producto = Producto(
+            codigo=codigo,
+            nombre=nombre_prod or "Producto WhatsApp",
+            categoria="WhatsApp",
+            precio=data.get("precio_producto", 0),
+            costo=0,
+            activo=True,
+            disponible_hoy=True,
+        )
+        db.add(producto)
+        await db.flush()
+
+    # 3. Calcular totales
+    modalidad = data.get("modalidad", "domicilio")
+    precio_producto = data.get("precio_producto", producto.precio)
+    if modalidad == "recoger":
+        costo_envio = 0
+        zona = None
+        direccion = data.get("direccion_entrega")
+    else:
+        costo_envio = data.get("costo_envio", 0)
+        zona = data.get("zona_entrega")
+        direccion = data.get("direccion_entrega")
+
+    total = precio_producto + costo_envio
+
+    # 4. Crear pedido
+    numero = await generar_numero_pedido(db)
+    pedido = Pedido(
+        numero=numero,
+        customer_id=cliente.id,
+        canal=data.get("canal", "WhatsApp"),
+        estado="Pendiente pago",
+        fecha_entrega=data.get("fecha_entrega"),
+        horario_entrega=data.get("horario_entrega"),
+        zona_entrega=zona,
+        direccion_entrega=direccion,
+        receptor_nombre=data.get("receptor_nombre"),
+        receptor_telefono=data.get("receptor_telefono"),
+        dedicatoria=data.get("dedicatoria"),
+        notas_internas=data.get("notas_internas"),
+        forma_pago=data.get("forma_pago"),
+        pago_confirmado=False,
+        subtotal=precio_producto,
+        envio=costo_envio,
+        total=total,
+        requiere_humano=data.get("requiere_humano", False),
+        tipo_especial=data.get("tipo_especial"),
+    )
+    db.add(pedido)
+
+    # 5. Crear item del pedido
+    await db.flush()
+    item = ItemPedido(
+        pedido_id=pedido.id,
+        producto_id=producto.id,
+        cantidad=1,
+        precio_unitario=precio_producto,
+    )
+    db.add(item)
+
+    await db.commit()
+    await db.refresh(pedido)
+
+    return {
+        "ok": True,
+        "numero_pedido": pedido.numero,
+        "id_pedido": pedido.id,
+        "cliente_id": cliente.id,
+        "mensaje": f"Pedido {pedido.numero} registrado correctamente",
+    }
 
 @router.get("/{pedido_id}")
 async def obtener_pedido(
