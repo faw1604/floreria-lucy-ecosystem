@@ -181,6 +181,24 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .season-sub{font-size:14px;color:var(--texto2);margin-bottom:32px;line-height:1.5}
 .season-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px}
 
+/* ====== OCCASION SCREEN ====== */
+.occasion-screen{position:fixed;inset:0;z-index:170;background:var(--crema);overflow-y:auto;padding:60px 20px 40px;display:none}
+.occasion-screen.active{display:block}
+.occasion-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--verde);text-align:center;margin-bottom:24px}
+.occasion-sub{font-size:14px;color:var(--texto2);text-align:center;margin-bottom:20px}
+.occasion-options{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:400px;margin:0 auto}
+.occasion-card{display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--texto);transition:all .15s;width:calc(50% - 5px);min-width:150px}
+.occasion-card:hover{border-color:var(--verde-c);background:#f0f7f2}
+.occasion-card.selected{border-color:var(--verde);background:#e8f5ec}
+.occasion-card .oc-icon{font-size:22px;flex-shrink:0}
+.occasion-who{display:flex;gap:10px;justify-content:center;max-width:400px;margin:0 auto 28px}
+.occasion-who-btn{flex:1;padding:14px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--texto);text-align:center;transition:all .15s}
+.occasion-who-btn:hover{border-color:var(--verde-c)}
+.occasion-who-btn.selected{border-color:var(--verde);background:#e8f5ec}
+.occasion-continue{display:block;margin:24px auto 0;background:var(--verde);color:var(--blanco);border:none;border-radius:12px;padding:14px 40px;font-size:15px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.occasion-continue:hover{background:var(--verde-m)}
+.occasion-continue:disabled{opacity:.4;cursor:not-allowed}
+
 /* ====== EMPTY ====== */
 .empty-msg{text-align:center;padding:60px 20px;color:var(--texto2);font-size:14px;line-height:1.6}
 .empty-msg .icon{font-size:40px;margin-bottom:12px}
@@ -202,7 +220,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   </div>
   <div class="landing-deco"></div>
   <h1>Floreria Lucy</h1>
-  <div class="sub">La expresion del amor</div>
+  <div class="sub">La expresión del amor</div>
   <div class="landing-btns">
     <button class="landing-btn primary" onclick="startMode('dynamic')">Explorar arreglos</button>
     <button class="landing-btn secondary" onclick="startMode('classic')">Ver catalogo completo</button>
@@ -287,6 +305,22 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <div class="detail-handle"></div>
   <button class="detail-close" onclick="closeDetail()">&times;</button>
   <div class="detail-body" id="detail-body"></div>
+</div>
+
+<!-- OCCASION SCREEN -->
+<div class="occasion-screen" id="occasion-screen">
+  <div class="occasion-title" id="occasion-q">¿Para quién es el arreglo?</div>
+  <div id="occasion-step-1">
+    <div class="occasion-who" id="occasion-who">
+      <button class="occasion-who-btn" onclick="selectWho('self')">Para mí</button>
+      <button class="occasion-who-btn" onclick="selectWho('other')">Para alguien más</button>
+    </div>
+  </div>
+  <div id="occasion-step-2" style="display:none">
+    <div class="occasion-sub">Selecciona la ocasión</div>
+    <div class="occasion-options" id="occasion-options"></div>
+    <button class="occasion-continue" id="occasion-continue" onclick="confirmOccasion()" disabled>Continuar</button>
+  </div>
 </div>
 
 <!-- TUTORIAL OVERLAY -->
@@ -441,20 +475,28 @@ function orderAll() {
 let seasonCategory = null;
 let seasonChecked = false;
 
+let occasionChecked = false;
+
 async function checkSeasonThenDynamic() {
-  if (seasonChecked) {
-    initDynamic();
+  // First check season
+  if (!seasonChecked) {
+    seasonChecked = true;
+    try {
+      const r = await fetch(`${API}/panel/horario/estado`);
+      const data = await r.json();
+      if (data.temporada_activa && data.temporada_nombre) {
+        showSeasonScreen(data.temporada_nombre, data.temporada_categoria);
+        return;
+      }
+    } catch (e) {}
+  }
+  // Then show occasion screen (only first time)
+  if (!occasionChecked) {
+    occasionChecked = true;
+    if (!allProducts.length) await loadProducts();
+    showOccasionScreen();
     return;
   }
-  seasonChecked = true;
-  try {
-    const r = await fetch(`${API}/panel/horario/estado`);
-    const data = await r.json();
-    if (data.temporada_activa && data.temporada_nombre) {
-      showSeasonScreen(data.temporada_nombre, data.temporada_categoria);
-      return;
-    }
-  } catch (e) {}
   initDynamic();
 }
 
@@ -463,10 +505,16 @@ function showSeasonScreen(nombre, categoria) {
   document.getElementById('season-icon').textContent = '🌺';
   document.getElementById('season-title').textContent = `¿Tu pedido es para ${nombre}?`;
   document.getElementById('season-sub').textContent = 'Tenemos arreglos especiales para esta temporada';
-  document.getElementById('season-yes-btn').onclick = () => {
+  document.getElementById('season-yes-btn').onclick = async () => {
     document.getElementById('season-screen').style.display = 'none';
     dynFilterCategory = seasonCategory;
-    initDynamic();
+    if (!occasionChecked) {
+      occasionChecked = true;
+      if (!allProducts.length) await loadProducts();
+      showOccasionScreen();
+    } else {
+      initDynamic();
+    }
   };
   document.getElementById('season-screen').style.display = 'flex';
 }
@@ -474,7 +522,12 @@ function showSeasonScreen(nombre, categoria) {
 function startDynamicNormal() {
   document.getElementById('season-screen').style.display = 'none';
   dynFilterCategory = null;
-  initDynamic();
+  if (!occasionChecked) {
+    occasionChecked = true;
+    showOccasionScreen();
+  } else {
+    initDynamic();
+  }
 }
 
 // ====== DYNAMIC MODE ======
@@ -502,6 +555,13 @@ function buildQueue() {
   let items = dynFilterCategory
     ? allProducts.filter(p => p.categoria === dynFilterCategory)
     : [...allProducts];
+  // Occasion-based filtering
+  const funeralCatsLower = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
+  if (dynOccasionFuneral) {
+    items = items.filter(p => funeralCatsLower.some(f => p.categoria.toLowerCase().includes(f)));
+  } else if (selectedOccasion && selectedOccasion !== 'sin_ocasion') {
+    items = items.filter(p => !funeralCatsLower.some(f => p.categoria.toLowerCase().includes(f)));
+  }
   if (likedCount > 0) {
     const avgPrice = likedPriceSum / likedCount;
     items.sort((a, b) => {
@@ -764,9 +824,9 @@ const TYPE_MAP = {
   'Jarrones': ['jarron', 'jarrón', 'violetero'],
   'Peceras': ['pecera'],
   'Bases': ['base', 'arreglo en base', 'arreglos en base'],
-  'Peluches': ['peluche'],
-  'Chocolates': ['chocolate', 'barra', 'dulce', 'regalo'],
+  'Detalles y regalos': [],
 };
+const DETALLES_CATS = ['chocolates gourmet', 'peluches', 'globos', 'dulces y regalos', 'extras'];
 const FLOWER_MAP = {
   'Rosas': ['rosa'],
   'Gerberas': ['gerbera'],
@@ -785,6 +845,9 @@ function classifyProduct(p) {
 
 function matchesType(p, type) {
   if (!type) return true;
+  if (type === 'Detalles y regalos') {
+    return DETALLES_CATS.some(c => p.categoria.toLowerCase() === c);
+  }
   const { text } = classifyProduct(p);
   const keywords = TYPE_MAP[type] || [];
   return keywords.some(k => text.includes(k));
@@ -852,18 +915,28 @@ function setType(t) { typeFilter = t; renderTypePills(); renderClassicGrid(); }
 function setFlower(f) { flowerFilter = f; renderFlowerPills(); renderClassicGrid(); }
 function onSearch() { searchQuery = document.getElementById('search-input').value; renderClassicGrid(); }
 
-function renderClassicGrid() {
-  let filtered = allProducts.filter(p =>
-    matchesSection(p, sectionFilter) &&
-    matchesType(p, typeFilter) &&
-    matchesFlower(p, flowerFilter) &&
-    matchesSearch(p, searchQuery)
-  );
+function isDetallesProduct(p) {
+  return DETALLES_CATS.some(c => p.categoria.toLowerCase() === c);
+}
 
-  // "Otros" type: exclude all known types
+function renderClassicGrid() {
+  let filtered = allProducts.filter(p => {
+    if (!matchesSection(p, sectionFilter)) return false;
+    if (!matchesType(p, typeFilter)) return false;
+    if (!matchesSearch(p, searchQuery)) return false;
+    // When a specific flower is selected, hide non-floral products automatically
+    if (flowerFilter && isDetallesProduct(p)) return false;
+    if (!matchesFlower(p, flowerFilter)) return false;
+    return true;
+  });
+
+  // "Otros" type: exclude all known types and detalles
   if (typeFilter === 'Otros') {
     filtered = allProducts.filter(p => {
-      if (!matchesSection(p, sectionFilter) || !matchesFlower(p, flowerFilter) || !matchesSearch(p, searchQuery)) return false;
+      if (!matchesSection(p, sectionFilter) || !matchesSearch(p, searchQuery)) return false;
+      if (flowerFilter && isDetallesProduct(p)) return false;
+      if (!matchesFlower(p, flowerFilter)) return false;
+      if (isDetallesProduct(p)) return false;
       const { text } = classifyProduct(p);
       return !Object.values(TYPE_MAP).flat().some(k => text.includes(k));
     });
@@ -896,6 +969,79 @@ function renderClassicGrid() {
     </div>`;
   }).join('');
 }
+
+// ====== OCCASION SCREEN (T2) ======
+let selectedWho = null;
+let selectedOccasion = null;
+
+const OCCASIONS = [
+  {id: 'cumpleanos', icon: '💐', label: 'Cumpleaños'},
+  {id: 'amor', icon: '❤️', label: 'Amor / Romántico'},
+  {id: 'aniversario', icon: '💍', label: 'Aniversario'},
+  {id: 'sin_ocasion', icon: '🌸', label: 'Sin ocasión especial'},
+  {id: 'condolencias', icon: '🙏', label: 'Condolencias / Funeral'},
+  {id: 'maternidad', icon: '🍼', label: 'Maternidad / Bebé'},
+  {id: 'felicitaciones', icon: '🌟', label: 'Felicitaciones'},
+  {id: 'recuperacion', icon: '🏥', label: 'Recuperación'},
+  {id: 'graduacion', icon: '🎓', label: 'Graduación'},
+  {id: 'corporativo', icon: '💼', label: 'Corporativo'},
+  {id: 'celebracion', icon: '🎉', label: 'Celebración'},
+];
+
+function showOccasionScreen() {
+  document.getElementById('occasion-screen').classList.add('active');
+  selectedWho = null;
+  selectedOccasion = null;
+  document.getElementById('occasion-step-1').style.display = '';
+  document.getElementById('occasion-step-2').style.display = 'none';
+  document.getElementById('occasion-q').textContent = '¿Para quién es el arreglo?';
+  document.querySelectorAll('.occasion-who-btn').forEach(b => b.classList.remove('selected'));
+}
+
+function selectWho(who) {
+  selectedWho = who;
+  document.querySelectorAll('.occasion-who-btn').forEach(b => b.classList.remove('selected'));
+  event.target.classList.add('selected');
+  setTimeout(() => {
+    document.getElementById('occasion-step-1').style.display = 'none';
+    document.getElementById('occasion-step-2').style.display = '';
+    document.getElementById('occasion-q').textContent = '¿Cuál es la ocasión?';
+    renderOccasionOptions();
+  }, 200);
+}
+
+function renderOccasionOptions() {
+  document.getElementById('occasion-options').innerHTML = OCCASIONS.map(o =>
+    `<div class="occasion-card" onclick="selectOccasion('${o.id}', this)">
+      <span class="oc-icon">${o.icon}</span>${o.label}
+    </div>`
+  ).join('');
+}
+
+function selectOccasion(id, el) {
+  selectedOccasion = id;
+  document.querySelectorAll('.occasion-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('occasion-continue').disabled = false;
+}
+
+function confirmOccasion() {
+  document.getElementById('occasion-screen').classList.remove('active');
+  // Apply filter based on occasion
+  if (selectedOccasion === 'condolencias') {
+    dynFilterCategory = null;
+    dynOccasionFuneral = true;
+  } else if (selectedOccasion === 'sin_ocasion') {
+    dynFilterCategory = null;
+    dynOccasionFuneral = false;
+  } else {
+    dynFilterCategory = null;
+    dynOccasionFuneral = false;
+  }
+  initDynamic();
+}
+
+let dynOccasionFuneral = false;
 
 // ====== TUTORIAL ======
 let tutorialStep = 0;
