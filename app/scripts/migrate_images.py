@@ -45,14 +45,11 @@ def scrape_kyte() -> list[dict]:
                 pid = p.get("id", p.get("_id"))
                 if pid and pid not in seen_ids:
                     seen_ids.add(pid)
-                    img = (
-                        p.get("imageLarge")
-                        or p.get("imageMedium")
-                        or p.get("image", "")
-                    )
-                    # Ensure full URL
+                    # Use original image (not large_) for Firebase direct access
+                    img = p.get("image") or p.get("imageLarge") or p.get("imageMedium", "")
+                    # Build Firebase Storage URL (publicly accessible, unlike images-cdn.kyte.site)
                     if img and not img.startswith("http"):
-                        img = "https://images-cdn.kyte.site/v0/b/kyte-7c484.appspot.com/o" + img
+                        img = "https://firebasestorage.googleapis.com/v0/b/kyte-7c484.appspot.com/o" + img
                     all_products.append({
                         "name": p.get("name", ""),
                         "code": p.get("code", ""),
