@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nuestra Historia — Florería Lucy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --verde: #193a2c;
+      --verde-m: #2d5a3d;
+      --crema: #faf8f5;
+      --dorado: #d4a843;
+      --blanco: #fff;
+      --texto: #1a1a1a;
+      --texto2: #5a5a5a;
+      --borde: #e5e0d8;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--texto);
+      background: var(--crema);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--blanco);
+      border-bottom: 1px solid var(--borde);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 1.25rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 1.35rem;
+      color: var(--verde);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Nav ── */
+    .nav-links {
+      display: none;
+      list-style: none;
+      gap: 2rem;
+    }
+
+    .nav-links a {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--texto2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--verde);
+    }
+
+    .nav-links a.active {
+      border-bottom: 2px solid var(--dorado);
+      padding-bottom: 2px;
+    }
+
+    /* Hamburger */
+    .hamburger {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--verde);
+      border-radius: 2px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* Mobile menu */
+    .mobile-menu {
+      display: none;
+      background: var(--blanco);
+      border-bottom: 1px solid var(--borde);
+      padding: 1rem 1.25rem 1.25rem;
+    }
+
+    .mobile-menu.open { display: block; }
+
+    .mobile-menu a {
+      display: block;
+      padding: 0.6rem 0;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--texto2);
+      text-decoration: none;
+      border-bottom: 1px solid var(--borde);
+    }
+
+    .mobile-menu a:last-child { border-bottom: none; }
+    .mobile-menu a:hover,
+    .mobile-menu a.active { color: var(--verde); }
+
+    /* ── Hero ── */
+    .hero {
+      background: var(--verde);
+      color: var(--blanco);
+      text-align: center;
+      padding: 3.5rem 1.25rem 3rem;
+    }
+
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero p {
+      font-size: 0.95rem;
+      color: rgba(255,255,255,0.75);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .hero .accent-line {
+      width: 48px;
+      height: 3px;
+      background: var(--dorado);
+      border-radius: 3px;
+      margin: 1.25rem auto 0;
+    }
+
+    /* ── Timeline ── */
+    .timeline-section {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 3rem 1.25rem 4rem;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 2rem;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--borde);
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 2.75rem;
+    }
+
+    .timeline-item:last-child { margin-bottom: 0; }
+
+    .timeline-dot {
+      position: absolute;
+      left: -2rem;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      background: var(--dorado);
+      border: 3px solid var(--crema);
+      border-radius: 50%;
+      z-index: 1;
+    }
+
+    .timeline-year {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 1.35rem;
+      color: var(--verde);
+      margin-bottom: 0.5rem;
+    }
+
+    .timeline-text {
+      font-size: 0.95rem;
+      color: var(--texto2);
+      line-height: 1.75;
+    }
+
+    /* Photo placeholder */
+    .photo-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--blanco);
+      border: 2px dashed var(--borde);
+      border-radius: 12px;
+      color: var(--texto2);
+      font-size: 0.85rem;
+      font-style: italic;
+      height: 180px;
+      margin-top: 1rem;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    /* ── Quote ── */
+    .quote-block {
+      background: var(--blanco);
+      border-left: 4px solid var(--dorado);
+      border-radius: 0 12px 12px 0;
+      padding: 1.5rem 1.75rem;
+      margin: 2.5rem 0;
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.1rem;
+      color: var(--verde);
+      line-height: 1.65;
+    }
+
+    /* ── CTA ── */
+    .cta-section {
+      text-align: center;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: var(--verde);
+      color: var(--blanco);
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 0.85rem 2.25rem;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .cta-btn:hover { background: var(--verde-m); }
+
+    /* ── Desktop ── */
+    @media (min-width: 768px) {
+      .hamburger { display: none; }
+      .nav-links { display: flex; }
+
+      .hero { padding: 5rem 2rem 4.5rem; }
+      .hero h1 { font-size: 2.75rem; }
+      .hero p { font-size: 1.05rem; }
+
+      .timeline-section { padding: 4rem 2rem 5rem; }
+
+      .timeline {
+        padding-left: 3rem;
+      }
+
+      .timeline::before { left: 8px; }
+
+      .timeline-dot {
+        left: -3rem;
+        top: 5px;
+        width: 18px;
+        height: 18px;
+      }
+
+      .timeline-year { font-size: 1.5rem; }
+      .timeline-text { font-size: 1rem; }
+
+      .photo-placeholder { height: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <a href="/catalogo/" class="logo">Florería Lucy</a>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="/catalogo/">Inicio</a></li>
+          <li><a href="#" class="active">Nuestra historia</a></li>
+          <li><a href="/catalogo/contacto">Contacto</a></li>
+          <li><a href="/catalogo/facturacion">Facturación</a></li>
+          <li><a href="/catalogo/legal">Aviso legal</a></li>
+        </ul>
+      </nav>
+      <button class="hamburger" id="hamburger" aria-label="Menú">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="/catalogo/">Inicio</a>
+      <a href="#" class="active">Nuestra historia</a>
+      <a href="/catalogo/contacto">Contacto</a>
+      <a href="/catalogo/facturacion">Facturación</a>
+      <a href="/catalogo/legal">Aviso legal</a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Nuestra Historia</h1>
+    <p>Más de tres décadas entregando flores y calidez humana en Chihuahua.</p>
+    <div class="accent-line"></div>
+  </section>
+
+  <!-- Timeline -->
+  <section class="timeline-section">
+    <div class="timeline">
+
+      <!-- 1988 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">1988</div>
+        <p class="timeline-text">
+          Florería Lucy nació un 14 de febrero de 1988, cuando Luz María Parra Loustaunau — comerciante chihuahuense de corazón — abrió las puertas de un pequeño local en la esquina de su casa. Nadie imaginaba entonces lo que ese primer ramo representaría.
+        </p>
+        <div class="photo-placeholder">[ Foto: año fundación ]</div>
+      </div>
+
+      <!-- 1990s -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">Década de los 90</div>
+        <p class="timeline-text">
+          El negocio creció rápidamente. Entrada la década de los 90, ya se construía un nuevo local para responder a una demanda que no paraba de crecer. Pero lo que realmente distinguió a Florería Lucy no fue el tamaño del local, sino algo mucho más difícil de replicar: la calidez humana con la que Luz María atendía a cada cliente.
+        </p>
+        <div class="photo-placeholder">[ Foto: local nuevo ]</div>
+        <div class="quote-block">
+          Conocida popularmente como "Lucy la del sombrerito" — porque jamás faltó su sombrero para cubrirse del sol — se convirtió en una figura querida del Chihuahua cotidiano. Su forma de tratar a la gente generó una confianza que el dinero no compra.
+        </div>
+      </div>
+
+      <!-- 2001 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2001</div>
+        <p class="timeline-text">
+          En 2001, ese trabajo fue reconocido oficialmente: Florería Lucy recibió el Primer Lugar en el ramo de florería por parte del Instituto de Calidad y Prestigio, con sede en Guadalajara, Jalisco. Un reconocimiento que marcó el cierre de una etapa y el inicio de otra.
+        </p>
+      </div>
+
+      <!-- 2022 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">2022</div>
+        <p class="timeline-text">
+          En 2022, por motivos de salud, Luz María delegó la administración operativa del negocio. Desde entonces, seguimos atendiendo con la misma calidad humana que ella construyó — porque ese es el legado que no se hereda, se honra.
+        </p>
+        <div class="photo-placeholder">[ Foto: Lucy ]</div>
+      </div>
+
+      <!-- Hoy -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">Hoy</div>
+        <div class="quote-block" style="margin-top: 0;">
+          Florería Lucy. Desde 1988, la expresión del amor.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <a href="/catalogo/" class="cta-btn">Ver nuestro catálogo</a>
+  </section>
+
+  <!-- Script: hamburger toggle -->
+  <script>
+    const hamburger = document.getElementById('hamburger');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    hamburger.addEventListener('click', () => {
+      hamburger.classList.toggle('open');
+      mobileMenu.classList.toggle('open');
+    });
+  </script>
+
+</body>
+</html>

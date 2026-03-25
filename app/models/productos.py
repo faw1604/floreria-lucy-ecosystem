@@ -16,3 +16,5 @@ class Producto(Base):
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     imagen_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     precio_descuento: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    etiquetas: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array: ["rosas","romántico"]
+    dimensiones: Mapped[str | None] = mapped_column(Text, nullable=True)  # ej: "30cm x 40cm"

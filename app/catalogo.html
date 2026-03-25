@@ -32,6 +32,23 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .cat-header-right{display:flex;align-items:center;gap:10px}
 .cat-header-btn{font-size:12px;color:var(--texto2);background:none;border:1px solid var(--borde);border-radius:8px;padding:6px 12px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:500;transition:all .15s}
 .cat-header-btn:hover{border-color:var(--verde);color:var(--verde)}
+.hamburger{display:flex;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:6px}
+.hamburger span{display:block;width:20px;height:2px;background:var(--texto);border-radius:2px;transition:all .2s}
+.nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:99;display:none}
+.nav-overlay.open{display:block}
+.nav-drawer{position:fixed;top:0;right:0;bottom:0;width:260px;background:var(--blanco);z-index:101;transform:translateX(100%);transition:transform .25s;padding:60px 24px 24px;display:flex;flex-direction:column;gap:4px}
+.nav-drawer.open{transform:translateX(0)}
+.nav-drawer a{font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:var(--texto);text-decoration:none;padding:12px 0;border-bottom:1px solid var(--borde);transition:color .15s}
+.nav-drawer a:hover{color:var(--verde)}
+.nav-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:var(--texto2);cursor:pointer}
+.nav-desktop{display:none;align-items:center;gap:20px}
+.nav-desktop a{font-family:'Inter',sans-serif;font-size:13px;font-weight:500;color:var(--texto2);text-decoration:none;transition:color .15s}
+.nav-desktop a:hover{color:var(--verde)}
+@media(min-width:768px){.hamburger{display:none}.nav-desktop{display:flex}}
+/* Tag pills in detail */
+.detail-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.detail-tag{font-size:12px;color:var(--verde-m);background:#e8f5ec;padding:4px 10px;border-radius:12px;font-weight:500}
+.detail-dims{font-size:13px;color:var(--texto2);margin-bottom:12px;display:flex;align-items:center;gap:6px}
 
 /* ====== LANDING ====== */
 .landing{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 20px;text-align:center;position:relative;overflow:hidden;background:url('https://res.cloudinary.com/ddku2wmpk/image/upload/v1774476982/floreria-lucy/hero.jpg') center/cover no-repeat}
@@ -229,10 +246,27 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
 <!-- HEADER -->
 <div class="cat-header" id="cat-header" style="display:none">
-  <div class="cat-header-logo">Floreria <span>Lucy</span></div>
+  <div class="cat-header-logo">Florería <span>Lucy</span></div>
+  <nav class="nav-desktop">
+    <a href="/catalogo/">Inicio</a>
+    <a href="/catalogo/historia">Historia</a>
+    <a href="/catalogo/contacto">Contacto</a>
+    <a href="/catalogo/facturacion">Facturación</a>
+    <a href="/catalogo/legal">Aviso legal</a>
+  </nav>
   <div class="cat-header-right">
     <button class="cat-header-btn" onclick="toggleMode()">Cambiar vista</button>
+    <button class="hamburger" onclick="openNav()"><span></span><span></span><span></span></button>
   </div>
+</div>
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()"></div>
+<div class="nav-drawer" id="nav-drawer">
+  <button class="nav-close" onclick="closeNav()">&times;</button>
+  <a href="/catalogo/" onclick="closeNav()">Inicio</a>
+  <a href="/catalogo/historia">Nuestra historia</a>
+  <a href="/catalogo/contacto">Contacto</a>
+  <a href="/catalogo/facturacion">Facturación</a>
+  <a href="/catalogo/legal">Aviso legal</a>
 </div>
 
 <!-- DYNAMIC VIEW -->
@@ -777,12 +811,23 @@ function openDetail(index, source) {
   if (!p) return;
   detailProduct = p;
   const body = document.getElementById('detail-body');
+  let tagsHtml = '';
+  if (p.etiquetas) {
+    try {
+      const tags = JSON.parse(p.etiquetas);
+      if (Array.isArray(tags) && tags.length) {
+        tagsHtml = `<div class="detail-tags">${tags.map(t => `<span class="detail-tag">#${t}</span>`).join('')}</div>`;
+      }
+    } catch(e) {}
+  }
   body.innerHTML = `
     <div class="detail-name">${p.nombre}</div>
     <div class="detail-cat">${p.categoria}</div>
     <div class="detail-price-row">${renderPrice(p, 'detail-price')}</div>
+    ${p.dimensiones ? `<div class="detail-dims">📐 Dimensiones: ${p.dimensiones}</div>` : ''}
+    ${tagsHtml}
     ${p.descripcion ? `<div class="detail-desc">${p.descripcion}</div>` : ''}
-    ${p.codigo ? `<div class="detail-code">Codigo: ${p.codigo}</div>` : ''}
+    ${p.codigo ? `<div class="detail-code">Código: ${p.codigo}</div>` : ''}
   `;
   document.getElementById('detail-overlay').classList.add('open');
   document.getElementById('detail-panel').classList.add('open');
@@ -1064,6 +1109,10 @@ document.getElementById('tutorial-next-btn').addEventListener('click', () => {
   if (tutorialStep < 2) { tutorialStep++; updateTutorialStep(); }
   else { document.getElementById('tutorial-overlay').style.display = 'none'; localStorage.setItem('lucy_tutorial_done', '1'); }
 });
+
+// ====== NAV DRAWER ======
+function openNav() { document.getElementById('nav-overlay').classList.add('open'); document.getElementById('nav-drawer').classList.add('open'); }
+function closeNav() { document.getElementById('nav-overlay').classList.remove('open'); document.getElementById('nav-drawer').classList.remove('open'); }
 
 // Init cart fab on load
 updateCartFab();

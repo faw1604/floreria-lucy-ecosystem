@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Florería Lucy — Aviso legal y políticas</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --verde: #193a2c;
+  --verde-m: #2d5a3d;
+  --crema: #faf8f5;
+  --dorado: #d4a843;
+  --blanco: #fff;
+  --texto: #1a1a1a;
+  --texto2: #5a5a5a;
+  --borde: #e5e0d8;
+  --sombra: 0 2px 20px rgba(25,58,44,.07);
+  --radius: 16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+
+/* ====== HEADER ====== */
+.header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--blanco);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 12px rgba(0,0,0,.08)}
+.header-logo{font-family:'Playfair Display',serif;font-size:18px;color:var(--verde);font-weight:600;letter-spacing:-.02em;text-decoration:none}
+.header-logo span{color:var(--dorado)}
+
+/* Desktop nav */
+.nav-desktop{display:none;align-items:center;gap:6px}
+.nav-desktop a{font-size:13px;color:var(--texto2);text-decoration:none;padding:6px 12px;border-radius:8px;font-weight:500;transition:all .15s}
+.nav-desktop a:hover{color:var(--verde);background:rgba(25,58,44,.05)}
+.nav-desktop a.active{color:var(--verde);font-weight:600}
+
+/* Hamburger */
+.hamburger{display:flex;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:8px}
+.hamburger span{display:block;width:20px;height:2px;background:var(--texto);border-radius:2px;transition:all .2s}
+.hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4px,4px)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(4px,-4px)}
+
+/* Mobile menu */
+.mobile-menu{display:none;position:fixed;top:46px;left:0;right:0;background:var(--blanco);padding:8px 16px 16px;box-shadow:0 8px 30px rgba(0,0,0,.1);z-index:99}
+.mobile-menu.open{display:block}
+.mobile-menu a{display:block;font-size:14px;color:var(--texto2);text-decoration:none;padding:12px 8px;border-bottom:1px solid var(--borde);font-weight:500;transition:color .15s}
+.mobile-menu a:last-child{border-bottom:none}
+.mobile-menu a:hover,.mobile-menu a.active{color:var(--verde)}
+
+/* ====== PAGE CONTENT ====== */
+.page{padding:72px 16px 60px;max-width:720px;margin:0 auto}
+
+.page-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--verde);text-align:center;margin-bottom:4px}
+.page-subtitle{font-family:'Playfair Display',serif;font-size:15px;color:var(--texto2);text-align:center;font-style:italic;margin-bottom:32px}
+.page-deco{width:50px;height:2px;background:var(--dorado);margin:0 auto 28px;border-radius:2px}
+
+/* ====== CARDS ====== */
+.card{background:var(--blanco);border-radius:var(--radius);box-shadow:var(--sombra);padding:28px 22px;margin-bottom:24px}
+.card-icon{width:44px;height:44px;background:rgba(25,58,44,.07);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.card-icon svg{width:22px;height:22px;color:var(--verde)}
+.card h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--verde);margin-bottom:16px}
+.card ul{list-style:none;padding:0}
+.card ul li{position:relative;padding:10px 0 10px 24px;border-bottom:1px solid var(--borde);font-size:14px;line-height:1.65;color:var(--texto)}
+.card ul li:last-child{border-bottom:none}
+.card ul li::before{content:'';position:absolute;left:0;top:16px;width:8px;height:8px;background:var(--dorado);border-radius:50%;opacity:.7}
+.card ul li strong{color:var(--verde);font-weight:600}
+
+/* Email link */
+.email-link{color:var(--verde-m);font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.email-link:hover{color:var(--dorado)}
+
+/* Back button */
+.back-btn{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:14px 28px;background:var(--verde);color:var(--blanco);border:none;border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;transition:background .2s}
+.back-btn:hover{background:var(--verde-m)}
+.back-btn svg{width:16px;height:16px}
+.back-section{text-align:center;padding:20px 0 40px}
+
+/* ====== RESPONSIVE ====== */
+@media(min-width:768px){
+  .hamburger{display:none}
+  .nav-desktop{display:flex}
+  .page{padding-top:88px}
+  .page-title{font-size:34px}
+  .card{padding:36px 32px}
+  .card h2{font-size:22px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <a href="/catalogo/" class="header-logo">Florería <span>Lucy</span></a>
+  <nav class="nav-desktop">
+    <a href="/catalogo/">Inicio</a>
+    <a href="/catalogo/historia">Nuestra historia</a>
+    <a href="/catalogo/contacto">Contacto</a>
+    <a href="/catalogo/facturacion">Facturación</a>
+    <a href="/catalogo/legal" class="active">Aviso legal</a>
+  </nav>
+  <button class="hamburger" onclick="toggleMenu()" aria-label="Menú">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<!-- MOBILE MENU -->
+<nav class="mobile-menu" id="mobileMenu">
+  <a href="/catalogo/">Inicio</a>
+  <a href="/catalogo/historia">Nuestra historia</a>
+  <a href="/catalogo/contacto">Contacto</a>
+  <a href="/catalogo/facturacion">Facturación</a>
+  <a href="/catalogo/legal" class="active">Aviso legal</a>
+</nav>
+
+<!-- PAGE -->
+<main class="page">
+  <h1 class="page-title">Aviso legal y políticas</h1>
+  <p class="page-subtitle">Transparencia y claridad en cada pedido</p>
+  <div class="page-deco"></div>
+
+  <!-- Cancelaciones y devoluciones -->
+  <section class="card">
+    <div class="card-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/>
+      </svg>
+    </div>
+    <h2>Política de cancelaciones y devoluciones</h2>
+    <ul>
+      <li><strong>No se aceptan cancelaciones ni devoluciones</strong> una vez confirmado el pago, ya que se trata de producto perecedero.</li>
+      <li><strong>Cancelación antes del pago:</strong> sin cargo alguno.</li>
+      <li><strong>Cancelación el mismo día</strong> (si la entrega no es el mismo día): se otorga un abono del 100% del monto, válido por 1 mes.</li>
+      <li>Si el cliente <strong>no acepta el abono</strong>, se procederá a la devolución del 50% del monto pagado.</li>
+      <li><strong>No se aceptan cambios de fecha</strong> cuando el arreglo floral ya ha sido elaborado.</li>
+    </ul>
+  </section>
+
+  <!-- Entregas -->
+  <section class="card">
+    <div class="card-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0H6.375m11.25-4.5V6.75a1.125 1.125 0 0 0-1.125-1.125H3.375a1.125 1.125 0 0 0-1.125 1.125v11.25"/>
+      </svg>
+    </div>
+    <h2>Política de entregas</h2>
+    <ul>
+      <li>Las entregas se realizan en <strong>horarios abiertos</strong>, no en horas específicas.</li>
+      <li><strong>Entrega a hora exacta:</strong> tiene un cargo adicional de $80 MXN, sujeto a disponibilidad.</li>
+      <li>Florería Lucy <strong>no se responsabiliza</strong> por retrasos causados por situaciones ajenas a su control (tráfico, clima, accesos restringidos, etc.).</li>
+      <li>Es <strong>responsabilidad del cliente</strong> proporcionar la dirección y el teléfono del receptor de forma correcta y completa.</li>
+    </ul>
+  </section>
+
+  <!-- Aviso de privacidad -->
+  <section class="card">
+    <div class="card-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
+      </svg>
+    </div>
+    <h2>Aviso de privacidad simplificado</h2>
+    <ul>
+      <li>Los datos personales del cliente se utilizan <strong>únicamente</strong> para procesar y entregar el pedido solicitado.</li>
+      <li>Tu información <strong>no se comparte con terceros</strong> bajo ninguna circunstancia.</li>
+      <li>Para ejercer tus <strong>derechos ARCO</strong> (Acceso, Rectificación, Cancelación u Oposición), escríbenos a: <a href="mailto:florerialucychihuahua@gmail.com" class="email-link">florerialucychihuahua@gmail.com</a></li>
+    </ul>
+  </section>
+
+  <!-- Back to catalog -->
+  <div class="back-section">
+    <a href="/catalogo/" class="back-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+      </svg>
+      Ver nuestro catálogo
+    </a>
+  </div>
+</main>
+
+<script>
+function toggleMenu(){
+  document.querySelector('.hamburger').classList.toggle('open');
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+// Close mobile menu when clicking a link
+document.querySelectorAll('.mobile-menu a').forEach(a=>{
+  a.addEventListener('click',()=>{
+    document.querySelector('.hamburger').classList.remove('open');
+    document.getElementById('mobileMenu').classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>
