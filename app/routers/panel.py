@@ -90,6 +90,88 @@ async def stats_del_dia(
         "total_ventas_display": f"${(row.total_ventas or 0) // 100:,}",
     }
 
+@router.get("/stats/semana")
+async def stats_semana(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    from sqlalchemy import select, func
+    from datetime import timedelta
+    from app.models.pedidos import Pedido, ItemPedido
+    from app.models.productos import Producto
+
+    hoy = datetime.now(TZ).date()
+    inicio_semana = hoy - timedelta(days=6)
+
+    # Ventas por día (últimos 7 días)
+    result = await db.execute(
+        select(
+            Pedido.fecha_entrega,
+            func.count(Pedido.id).label("pedidos"),
+            func.sum(Pedido.total).label("ventas"),
+        )
+        .where(Pedido.fecha_entrega >= inicio_semana, Pedido.fecha_entrega <= hoy)
+        .group_by(Pedido.fecha_entrega)
+        .order_by(Pedido.fecha_entrega)
+    )
+    rows = result.all()
+    ventas_por_dia = []
+    for r in rows:
+        ventas_por_dia.append({
+            "fecha": str(r.fecha_entrega),
+            "pedidos": r.pedidos or 0,
+            "ventas": r.ventas or 0,
+            "ventas_display": f"${(r.ventas or 0) // 100:,}",
+        })
+
+    # Ticket promedio de la semana
+    result2 = await db.execute(
+        select(func.avg(Pedido.total))
+        .where(Pedido.fecha_entrega >= inicio_semana, Pedido.fecha_entrega <= hoy, Pedido.total > 0)
+    )
+    ticket_promedio = result2.scalar() or 0
+
+    # Producto más vendido (por cantidad)
+    result3 = await db.execute(
+        select(Producto.nombre, func.sum(ItemPedido.cantidad).label("total_qty"))
+        .join(Producto, Producto.id == ItemPedido.producto_id)
+        .join(Pedido, Pedido.id == ItemPedido.pedido_id)
+        .where(Pedido.fecha_entrega >= inicio_semana, Pedido.fecha_entrega <= hoy)
+        .group_by(Producto.nombre)
+        .order_by(func.sum(ItemPedido.cantidad).desc())
+        .limit(1)
+    )
+    top_producto_row = result3.first()
+    top_producto = {
+        "nombre": top_producto_row[0] if top_producto_row else "Sin datos",
+        "cantidad": top_producto_row[1] if top_producto_row else 0,
+    }
+
+    # Canal más usado
+    result4 = await db.execute(
+        select(Pedido.canal, func.count(Pedido.id).label("total"))
+        .where(Pedido.fecha_entrega >= inicio_semana, Pedido.fecha_entrega <= hoy)
+        .group_by(Pedido.canal)
+        .order_by(func.count(Pedido.id).desc())
+        .limit(1)
+    )
+    top_canal_row = result4.first()
+    top_canal = {
+        "canal": top_canal_row[0] if top_canal_row else "Sin datos",
+        "pedidos": top_canal_row[1] if top_canal_row else 0,
+    }
+
+    return {
+        "periodo": {"inicio": str(inicio_semana), "fin": str(hoy)},
+        "ventas_por_dia": ventas_por_dia,
+        "ticket_promedio": int(ticket_promedio),
+        "ticket_promedio_display": f"${int(ticket_promedio) // 100:,}",
+        "producto_mas_vendido": top_producto,
+        "canal_mas_usado": top_canal,
+    }
+
 @router.get("/", response_class=HTMLResponse)
 async def panel_html(panel_session: str | None = Cookie(default=None)):
     try:

@@ -183,7 +183,10 @@ body { background: var(--fondo); color: var(--texto); font-family: 'DM Sans', sa
 
     <!-- FLORES -->
     <div id="tab-flores" style="display:none">
-      <div class="section-title">Disponibilidad de flores hoy</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="section-title" style="margin-bottom:0">Disponibilidad de flores hoy</div>
+        <button class="btn-sm primary" onclick="marcarTodasDisponibles()">Marcar todas disponibles</button>
+      </div>
       <div id="flores-list"></div>
     </div>
 
@@ -354,9 +357,11 @@ async function confirmarPago(id) {
 async function loadFlores() {
   const r = await fetch(`${API}/flores/`, {credentials:'include'});
   const flores = await r.json();
+  // No disponibles primero
+  flores.sort((a, b) => a.disponible_hoy === b.disponible_hoy ? 0 : a.disponible_hoy ? 1 : -1);
   document.getElementById('flores-list').innerHTML = flores.map(f => `
-    <div class="pedido-card" style="display:flex;align-items:center;justify-content:space-between">
-      <span style="font-size:14px;font-weight:500">${f.nombre}</span>
+    <div class="pedido-card" id="flor-${f.id}" style="display:flex;align-items:center;justify-content:space-between;${!f.disponible_hoy ? 'background:#fcebeb;border-color:#e8b4b4;' : ''}">
+      <span style="font-size:14px;font-weight:500;${!f.disponible_hoy ? 'color:var(--rojo);' : ''}">${f.nombre}</span>
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--texto2)">
         ${f.disponible_hoy ? 'Disponible' : 'No disponible'}
         <input type="checkbox" ${f.disponible_hoy ? 'checked' : ''} onchange="toggleFlor(${f.id}, this.checked)" style="width:16px;height:16px;cursor:pointer">
@@ -371,6 +376,39 @@ async function toggleFlor(id, disponible) {
     credentials: 'include',
     body: JSON.stringify({disponible_hoy: disponible})
   });
+  // Actualizar visualmente sin recargar
+  const card = document.getElementById(`flor-${id}`);
+  if (card) {
+    const label = card.querySelector('label');
+    const checkbox = card.querySelector('input[type="checkbox"]');
+    const nombre = card.querySelector('span');
+    if (disponible) {
+      card.style.background = '';
+      card.style.borderColor = '';
+      nombre.style.color = '';
+      label.childNodes[0].textContent = 'Disponible ';
+    } else {
+      card.style.background = '#fcebeb';
+      card.style.borderColor = '#e8b4b4';
+      nombre.style.color = 'var(--rojo)';
+      label.childNodes[0].textContent = 'No disponible ';
+    }
+  }
+}
+
+async function marcarTodasDisponibles() {
+  const r = await fetch(`${API}/flores/`, {credentials:'include'});
+  const flores = await r.json();
+  const noDisponibles = flores.filter(f => !f.disponible_hoy);
+  for (const f of noDisponibles) {
+    await fetch(`${API}/flores/${f.id}/disponibilidad`, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({disponible_hoy: true})
+    });
+  }
+  loadFlores();
 }
 
 async function loadPagos() {
