@@ -102,22 +102,110 @@ async def panel_html(panel_session: str | None = Cookie(default=None)):
 async def asistente_ia(
     request: Request,
     panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    import os
     import httpx
+    from sqlalchemy import select, func
+    from app.models.pedidos import Pedido
+    from app.models.flores import TipoFlor
+    from app.models.pagos import MetodoPago
+
     data = await request.json()
     mensaje = data.get("mensaje", "")
     historial = data.get("historial", [])
 
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
     if not ANTHROPIC_API_KEY:
-        return {"respuesta": "No hay API key de Anthropic configurada. Agrégala en las variables de Railway."}
+        return {"respuesta": "No hay API key de Anthropic configurada."}
 
-    system = """Eres el asistente de administración de Florería Lucy en Chihuahua, México.
-Tienes acceso al ecosistema del negocio: pedidos, inventario, flores, productos, finanzas y configuración.
-Responde en español, de forma directa y útil. Eres conciso — el dueño está ocupado.
-Cuando te pregunten por pendientes del día, menciona: pedidos sin confirmar pago, flores que podrían escasear, pagos recurrentes próximos."""
+    # Obtener datos reales del día
+    hoy = datetime.now(TZ).date()
+
+    # Pedidos del día
+    result = await db.execute(
+        select(Pedido).where(Pedido.fecha_entrega == hoy).order_by(Pedido.horario_entrega)
+    )
+    pedidos_hoy = result.scalars().all()
+
+    # Pedidos pendientes de pago
+    result2 = await db.execute(
+        select(Pedido).where(Pedido.pago_confirmado == False, Pedido.estado != 'Cancelado')
+    )
+    pendientes_pago = result2.scalars().all()
+
+    # Flores no disponibles
+    result3 = await db.execute(
+        select(TipoFlor).where(TipoFlor.disponible_hoy == False)
+    )
+    flores_faltantes = result3.scalars().all()
+
+    # Cuenta activa de transferencia
+    result4 = await db.execute(
+        select(MetodoPago).where(MetodoPago.tipo == "transferencia", MetodoPago.activo == True).limit(1)
+    )
+    cuenta_activa = result4.scalar_one_or_none()
+
+    # Estadísticas del día
+    result5 = await db.execute(
+        select(func.count(Pedido.id), func.sum(Pedido.total)).where(Pedido.fecha_entrega == hoy)
+    )
+    stats = result5.one()
+
+    # Construir contexto real
+    contexto_pedidos = ""
+    if pedidos_hoy:
+        contexto_pedidos = "\n".join([
+            f"- #{p.numero} | {p.estado} | {p.receptor_nombre or 'Sin receptor'} | {p.horario_entrega or 'Sin horario'} | ${(p.total or 0)//100} | Pago: {'Confirmado' if p.pago_confirmado else 'PENDIENTE'} | {p.tipo_especial or 'Normal'}"
+            for p in pedidos_hoy
+        ])
+    else:
+        contexto_pedidos = "No hay pedidos para hoy."
+
+    contexto_pendientes = ""
+    if pendientes_pago:
+        contexto_pendientes = "\n".join([
+            f"- #{p.numero} | {p.receptor_nombre or 'Sin nombre'} | ${(p.total or 0)//100} | Estado: {p.estado}"
+            for p in pendientes_pago
+        ])
+    else:
+        contexto_pendientes = "No hay pedidos pendientes de pago."
+
+    contexto_flores = ""
+    if flores_faltantes:
+        contexto_flores = ", ".join([f.nombre for f in flores_faltantes])
+    else:
+        contexto_flores = "Todas las flores están disponibles."
+
+    system = f"""Eres el asistente de administración de Florería Lucy en Chihuahua, México.
+Tienes acceso a los datos reales del negocio en este momento.
+
+FECHA Y HORA ACTUAL: {datetime.now(TZ).strftime('%A %d de %B, %H:%M')} (Chihuahua)
+
+ESTADÍSTICAS DEL DÍA:
+- Total pedidos hoy: {stats[0] or 0}
+- Ventas del día: ${(stats[1] or 0)//100:,}
+
+PEDIDOS DE HOY:
+{contexto_pedidos}
+
+PEDIDOS PENDIENTES DE PAGO:
+{contexto_pendientes}
+
+FLORES NO DISPONIBLES HOY:
+{contexto_flores}
+
+CUENTA BANCARIA ACTIVA PARA TRANSFERENCIAS:
+{f"{cuenta_activa.banco} — {cuenta_activa.titular}" if cuenta_activa else "Ninguna activa"}
+
+INSTRUCCIONES:
+- Responde en español, directo y conciso. El dueño está ocupado.
+- Usa los datos reales de arriba para responder. NUNCA inventes datos.
+- Si no tienes el dato que piden, dilo claramente.
+- Para pendientes del día menciona: pedidos sin pago confirmado, flores faltantes, cualquier pedido que requiera atención.
+- Puedes sugerir acciones concretas basadas en los datos reales."""
 
     mensajes = []
     for m in historial[-10:]:
