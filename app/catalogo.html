@@ -98,6 +98,27 @@ body{background:var(--crema);color:var(--texto);font-family:'DM Sans',sans-serif
 .prod-card-price{font-size:16px;font-weight:600;color:var(--verde);margin-bottom:8px}
 .prod-card-btn{width:100%;padding:8px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
 
+/* DISCOUNT PRICE */
+.price-old{text-decoration:line-through;color:#999;font-size:13px;font-weight:400;margin-right:6px}
+.price-discount{color:#0f6e56;font-weight:600}
+
+/* TUTORIAL OVERLAY */
+.tutorial-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px}
+.tutorial-box{background:var(--blanco);border-radius:20px;max-width:340px;width:100%;padding:32px 24px;text-align:center}
+.tutorial-step{display:none}
+.tutorial-step.active{display:block}
+.tutorial-icon{font-size:48px;margin-bottom:12px}
+.tutorial-text{font-size:15px;color:var(--texto);line-height:1.5;margin-bottom:20px;font-weight:400}
+.tutorial-dots{display:flex;gap:6px;justify-content:center;margin-bottom:20px}
+.tutorial-dot{width:8px;height:8px;border-radius:50%;background:var(--borde)}
+.tutorial-dot.active{background:var(--verde)}
+.tutorial-btn{background:var(--verde);color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* FAV REMOVE */
+.fav-card{position:relative;transition:transform .2s,opacity .2s;touch-action:pan-y}
+.fav-remove-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.fav-swipe-hint{text-align:center;font-size:12px;color:var(--texto2);margin-bottom:12px}
+
 /* EMPTY */
 .empty-msg{text-align:center;padding:60px 20px;color:var(--texto2);font-size:14px}
 .empty-msg .icon{font-size:40px;margin-bottom:12px}
@@ -142,6 +163,7 @@ body{background:var(--crema);color:var(--texto);font-family:'DM Sans',sans-serif
 <div class="view" id="view-favs">
   <div class="favs-screen">
     <div class="favs-title">Tus favoritos</div>
+    <div class="fav-swipe-hint">Desliza a la izquierda para quitar</div>
     <div class="favs-grid" id="favs-grid"></div>
     <button class="dyn-favs-btn" style="margin-top:20px;display:block;text-align:center;width:100%" onclick="backFromFavs()">← Volver</button>
   </div>
@@ -160,10 +182,41 @@ body{background:var(--crema);color:var(--texto);font-family:'DM Sans',sans-serif
   </div>
 </div>
 
+<!-- TUTORIAL OVERLAY -->
+<div class="tutorial-overlay" id="tutorial-overlay" style="display:none">
+  <div class="tutorial-box">
+    <div class="tutorial-step active" data-step="0">
+      <div class="tutorial-icon">👈</div>
+      <div class="tutorial-text">Desliza a la <strong>izquierda</strong> si no te convence</div>
+    </div>
+    <div class="tutorial-step" data-step="1">
+      <div class="tutorial-icon">👉</div>
+      <div class="tutorial-text">Desliza a la <strong>derecha</strong> si te gusta &mdash; lo guardamos en tus favoritos</div>
+    </div>
+    <div class="tutorial-step" data-step="2">
+      <div class="tutorial-icon">👆</div>
+      <div class="tutorial-text">Desliza <strong>hacia arriba</strong> cuando quieras pedir ese arreglo</div>
+    </div>
+    <div class="tutorial-dots">
+      <div class="tutorial-dot active"></div>
+      <div class="tutorial-dot"></div>
+      <div class="tutorial-dot"></div>
+    </div>
+    <button class="tutorial-btn" id="tutorial-next-btn">Siguiente</button>
+  </div>
+</div>
+
 <script>
-const WA_NUMBER = '5216141234567';
+const WHATSAPP = '5216143343932';
 const API = '';
 let allProducts = [];
+
+function renderPrice(p, sizeClass) {
+  if (p.precio_descuento_display && p.precio_descuento < p.precio) {
+    return `<span class="price-old">${p.precio_display}</span><span class="price-discount ${sizeClass}">${p.precio_descuento_display}</span>`;
+  }
+  return `<span class="${sizeClass}">${p.precio_display}</span>`;
+}
 let currentMode = null;
 
 // ====== DYNAMIC STATE ======
@@ -214,7 +267,7 @@ function showView(name) {
 
 function openWhatsApp(productName, price) {
   const msg = `Hola, me interesa el ${productName} que vi en su catálogo 🌸`;
-  window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 // ====== DYNAMIC MODE ======
@@ -227,6 +280,7 @@ async function initDynamic() {
   dynQueue = buildQueue();
   dynIndex = 0;
   renderDynCard();
+  maybeShowTutorial();
 }
 
 function buildQueue() {
@@ -273,7 +327,7 @@ function renderDynCard() {
       <img src="${p.imagen_url}" alt="${p.nombre}" draggable="false">
       <div class="dyn-card-info">
         <span class="dyn-card-name">${p.nombre}</span>
-        <span class="dyn-card-price">${p.precio_display}</span>
+        <span class="dyn-card-price">${renderPrice(p, 'dyn-card-price')}</span>
       </div>
       <div class="dyn-card-overlay" id="dyn-overlay"></div>
     </div>`;
@@ -394,15 +448,17 @@ function showFavorites() {
     grid.innerHTML = '<div class="empty-msg"><div class="icon">🌷</div>No tienes favoritos todavía</div>';
     return;
   }
-  grid.innerHTML = favorites.map(p => `
-    <div class="fav-card">
+  grid.innerHTML = favorites.map((p, idx) => `
+    <div class="fav-card" id="fav-card-${idx}" data-fav-index="${idx}">
       <img src="${p.imagen_url}" alt="${p.nombre}">
       <div class="fav-card-info">
         <div class="fav-card-name">${p.nombre}</div>
-        <div class="fav-card-price">${p.precio_display}</div>
+        <div class="fav-card-price">${renderPrice(p, 'fav-card-price')}</div>
         <button class="fav-card-btn" onclick="openWhatsApp('${p.nombre.replace(/'/g,"\\'")}','${p.precio_display}')">Pedir por WhatsApp</button>
       </div>
+      <button class="fav-remove-btn" onclick="removeFavorite(${idx})" title="Quitar">✕</button>
     </div>`).join('');
+  initFavSwipe();
 }
 
 function backFromFavs() {
@@ -453,10 +509,84 @@ function renderClassicGrid() {
       <img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
       <div class="prod-card-body">
         <div class="prod-card-name">${p.nombre}</div>
-        <div class="prod-card-price">${p.precio_display}</div>
+        <div class="prod-card-price">${renderPrice(p, 'prod-card-price')}</div>
         <button class="prod-card-btn" onclick="openWhatsApp('${p.nombre.replace(/'/g,"\\'")}','${p.precio_display}')">Pedir</button>
       </div>
     </div>`).join('');
+}
+
+// ====== TUTORIAL ONBOARDING ======
+let tutorialStep = 0;
+
+function maybeShowTutorial() {
+  if (localStorage.getItem('lucy_tutorial_done')) return;
+  tutorialStep = 0;
+  const overlay = document.getElementById('tutorial-overlay');
+  overlay.style.display = 'flex';
+  updateTutorialStep();
+}
+
+function updateTutorialStep() {
+  document.querySelectorAll('.tutorial-step').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tutorial-dot').forEach((d, i) => d.classList.toggle('active', i === tutorialStep));
+  document.querySelector(`.tutorial-step[data-step="${tutorialStep}"]`).classList.add('active');
+  document.getElementById('tutorial-next-btn').textContent = tutorialStep === 2 ? 'Entendido' : 'Siguiente';
+}
+
+document.getElementById('tutorial-next-btn').addEventListener('click', () => {
+  if (tutorialStep < 2) {
+    tutorialStep++;
+    updateTutorialStep();
+  } else {
+    document.getElementById('tutorial-overlay').style.display = 'none';
+    localStorage.setItem('lucy_tutorial_done', '1');
+  }
+});
+
+// ====== FAVORITES: REMOVE ======
+function removeFavorite(index) {
+  const card = document.getElementById(`fav-card-${index}`);
+  if (card) {
+    card.style.transform = 'translateX(-100%)';
+    card.style.opacity = '0';
+    setTimeout(() => {
+      favorites.splice(index, 1);
+      updateFavsBtn();
+      showFavorites();
+    }, 200);
+  }
+}
+
+function initFavSwipe() {
+  document.querySelectorAll('.fav-card').forEach(card => {
+    let startX = 0, dx = 0, swiping = false;
+    const idx = parseInt(card.dataset.favIndex);
+
+    card.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      dx = 0;
+      swiping = true;
+    }, {passive: true});
+
+    card.addEventListener('touchmove', e => {
+      if (!swiping) return;
+      dx = e.touches[0].clientX - startX;
+      if (dx < 0) {
+        card.style.transform = `translateX(${dx}px)`;
+        card.style.opacity = `${Math.max(1 + dx / 200, 0.3)}`;
+      }
+    }, {passive: true});
+
+    card.addEventListener('touchend', () => {
+      swiping = false;
+      if (dx < -80) {
+        removeFavorite(idx);
+      } else {
+        card.style.transform = '';
+        card.style.opacity = '';
+      }
+    });
+  });
 }
 </script>
 </body>

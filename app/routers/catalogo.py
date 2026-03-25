@@ -39,7 +39,9 @@ async def catalogo_productos(
             "nombre": p.nombre,
             "categoria": p.categoria,
             "precio": p.precio,
+            "precio_descuento": p.precio_descuento,
             "precio_display": f"${p.precio // 100:,}",
+            "precio_descuento_display": f"${p.precio_descuento // 100:,}" if p.precio_descuento else None,
             "imagen_url": p.imagen_url,
             "disponible_hoy": p.disponible_hoy,
         }
