@@ -17,6 +17,15 @@ ARCHIVO = os.environ.get(
 def leer_productos_xlsx(path: str) -> list[dict]:
     """Lee productos desde XLSX de Kyte."""
     import openpyxl
+    from openpyxl.worksheet.datavalidation import DataValidation
+    _orig_init = DataValidation.__init__
+    def _patched_init(self, *args, **kwargs):
+        try:
+            _orig_init(self, *args, **kwargs)
+        except ValueError:
+            kwargs.pop("errorStyle", None)
+            _orig_init(self, *args, errorStyle="stop", **kwargs)
+    DataValidation.__init__ = _patched_init
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
     ws = wb.active
     productos = []
