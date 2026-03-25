@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel — Florería Lucy</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --verde: #193a2c;
+  --verde2: #0f6e56;
+  --cobre: #c9956a;
+  --cobre-claro: #e8b89a;
+  --crema: #f5f0ea;
+  --fondo: #f0ede8;
+  --fondo2: #fff;
+  --texto: #1a1a1a;
+  --texto2: #666;
+  --borde: #e0dbd4;
+  --rojo: #c0392b;
+  --verde-ok: #1a7a4a;
+  --amarillo: #d4a012;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--fondo); color: var(--texto); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+/* HEADER */
+.header { background: var(--verde); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header-logo { font-family: 'Cormorant Garamond', serif; font-size: 18px; color: #fff; font-weight: 400; }
+.header-logo span { color: var(--cobre); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+.status-dot.cerrado { background: #f87171; }
+.header-time { font-size: 12px; color: rgba(255,255,255,0.6); }
+.logout-btn { font-size: 12px; color: rgba(255,255,255,0.5); background: none; border: none; cursor: pointer; }
+
+/* NAV */
+.nav { background: var(--fondo2); border-bottom: 1px solid var(--borde); display: flex; overflow-x: auto; padding: 0 16px; }
+.nav-btn { padding: 12px 16px; font-size: 13px; font-weight: 500; color: var(--texto2); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all .15s; }
+.nav-btn.active { color: var(--verde); border-bottom-color: var(--verde); }
+
+/* MAIN */
+.main { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+/* CARDS RESUMEN */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-card { background: var(--fondo2); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; }
+.stat-label { font-size: 11px; color: var(--texto2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+.stat-value { font-size: 22px; font-weight: 500; color: var(--texto); }
+.stat-sub { font-size: 11px; color: var(--texto2); margin-top: 2px; }
+
+/* ASISTENTE IA */
+.ia-card { background: var(--fondo2); border: 1px solid var(--borde); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+.ia-header { background: var(--verde); padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
+.ia-header-title { color: #fff; font-size: 14px; font-weight: 500; }
+.ia-header-sub { color: rgba(255,255,255,.5); font-size: 11px; margin-left: auto; }
+.ia-messages { padding: 12px 16px; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.ia-msg { padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 90%; }
+.ia-msg.assistant { background: #e8f0eb; color: var(--verde); align-self: flex-start; border-bottom-left-radius: 3px; }
+.ia-msg.user { background: var(--verde); color: #fff; align-self: flex-end; border-bottom-right-radius: 3px; }
+.ia-msg.loading { background: #f0ede8; color: var(--texto2); font-style: italic; }
+.ia-input-row { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--borde); }
+.ia-input { flex: 1; padding: 8px 12px; border: 1px solid var(--borde); border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; background: var(--fondo); }
+.ia-input:focus { border-color: var(--verde2); }
+.ia-send { background: var(--verde); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+
+/* PEDIDOS */
+.section-title { font-size: 13px; font-weight: 500; color: var(--texto2); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .05em; }
+.pedido-card { background: var(--fondo2); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+.pedido-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+.pedido-num { font-size: 12px; color: var(--texto2); }
+.pedido-producto { font-size: 14px; font-weight: 500; color: var(--texto); }
+.pedido-receptor { font-size: 12px; color: var(--texto2); margin-top: 2px; }
+.pedido-badge { font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 6px; }
+.badge-nuevo { background: #e6f1fb; color: #0c447c; }
+.badge-produccion { background: #faeeda; color: #633806; }
+.badge-listo { background: #e8f0eb; color: #0f6e56; }
+.badge-pendiente { background: #fcebeb; color: #a32d2d; }
+.badge-entregado { background: #f1efe8; color: #5f5e5a; }
+.pedido-meta { display: flex; gap: 12px; font-size: 12px; color: var(--texto2); margin-top: 6px; flex-wrap: wrap; }
+.pedido-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.btn-sm { font-size: 11px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); cursor: pointer; font-weight: 500; }
+.btn-sm.primary { background: var(--verde); color: #fff; border-color: var(--verde); }
+.btn-sm.danger { background: var(--rojo); color: #fff; border-color: var(--rojo); }
+
+/* EMPTY */
+.empty { text-align: center; padding: 40px 20px; color: var(--texto2); font-size: 13px; }
+
+/* LOGIN */
+.login-overlay { position: fixed; inset: 0; background: var(--verde); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.login-box { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15); border-radius: 16px; padding: 36px; width: 100%; max-width: 360px; text-align: center; }
+.login-box h1 { font-family: 'Cormorant Garamond', serif; font-size: 24px; color: #fff; font-weight: 400; margin-bottom: 4px; }
+.login-box p { font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 24px; }
+.login-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; margin-bottom: 12px; }
+.login-input::placeholder { color: rgba(255,255,255,.3); }
+.login-btn { width: 100%; padding: 11px; background: var(--cobre); color: #1a0f08; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.login-err { color: #f87171; font-size: 12px; margin-top: 8px; display: none; }
+
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .stat-card:last-child { grid-column: span 2; }
+}
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div style="font-size:32px;margin-bottom:12px">🌸</div>
+    <h1>Panel Florería Lucy</h1>
+    <p>Acceso administrativo</p>
+    <input type="password" class="login-input" id="login-pass" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-err" id="login-err">Contraseña incorrecta</div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="header">
+    <div class="header-logo">Florería <span>Lucy</span></div>
+    <div class="header-right">
+      <div class="status-dot" id="status-dot"></div>
+      <span class="header-time" id="header-time"></span>
+      <button class="logout-btn" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn active" onclick="setTab('inicio')">Inicio</button>
+    <button class="nav-btn" onclick="setTab('pedidos')">Pedidos</button>
+    <button class="nav-btn" onclick="setTab('productos')">Productos</button>
+    <button class="nav-btn" onclick="setTab('flores')">Flores</button>
+    <button class="nav-btn" onclick="setTab('pagos')">Pagos</button>
+    <button class="nav-btn" onclick="setTab('config')">Config</button>
+  </div>
+
+  <div class="main">
+
+    <!-- INICIO -->
+    <div id="tab-inicio">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Pedidos hoy</div>
+          <div class="stat-value" id="stat-pedidos">—</div>
+          <div class="stat-sub">del día</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ventas hoy</div>
+          <div class="stat-value" id="stat-ventas">—</div>
+          <div class="stat-sub">total del día</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pendientes</div>
+          <div class="stat-value" id="stat-pendientes">—</div>
+          <div class="stat-sub">sin confirmar pago</div>
+        </div>
+      </div>
+
+      <div class="ia-card">
+        <div class="ia-header">
+          <div style="width:8px;height:8px;border-radius:50%;background:#4ade80"></div>
+          <div class="ia-header-title">Asistente IA</div>
+          <div class="ia-header-sub">Claude · Florería Lucy</div>
+        </div>
+        <div class="ia-messages" id="ia-messages">
+          <div class="ia-msg assistant">Hola 👋 Soy tu asistente. Puedo ayudarte a revisar pedidos, actualizar precios, consultar estadísticas o lo que necesites. ¿En qué te ayudo hoy?</div>
+        </div>
+        <div class="ia-input-row">
+          <input type="text" class="ia-input" id="ia-input" placeholder="Escríbeme algo..." onkeydown="if(event.key==='Enter')sendIA()">
+          <button class="ia-send" onclick="sendIA()">Enviar</button>
+        </div>
+      </div>
+
+      <div class="section-title">Pedidos del día</div>
+      <div id="pedidos-hoy-list"></div>
+    </div>
+
+    <!-- PEDIDOS -->
+    <div id="tab-pedidos" style="display:none">
+      <div class="section-title">Todos los pedidos</div>
+      <div id="pedidos-list"></div>
+    </div>
+
+    <!-- FLORES -->
+    <div id="tab-flores" style="display:none">
+      <div class="section-title">Disponibilidad de flores hoy</div>
+      <div id="flores-list"></div>
+    </div>
+
+    <!-- PAGOS -->
+    <div id="tab-pagos" style="display:none">
+      <div class="section-title">Métodos de pago</div>
+      <div id="pagos-list"></div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div id="tab-productos" style="display:none">
+      <div class="section-title">Productos</div>
+      <div class="empty">Próximamente — importación desde Kyte</div>
+    </div>
+
+    <!-- CONFIG -->
+    <div id="tab-config" style="display:none">
+      <div class="section-title">Configuración</div>
+      <div class="empty">Próximamente</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = '';
+let iaHistory = [];
+
+async function doLogin() {
+  const pass = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-err');
+  err.style.display = 'none';
+  try {
+    const r = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({password: pass})
+    });
+    if (r.ok) {
+      document.getElementById('login-overlay').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      initPanel();
+    } else {
+      err.style.display = 'block';
+    }
+  } catch(e) {
+    err.textContent = 'Error de conexión';
+    err.style.display = 'block';
+  }
+}
+
+function logout() {
+  fetch(`${API}/auth/logout`, {credentials:'include'});
+  location.reload();
+}
+
+function setTab(tab) {
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  document.getElementById(`tab-${tab}`).style.display = 'block';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (tab === 'flores') loadFlores();
+  if (tab === 'pagos') loadPagos();
+  if (tab === 'pedidos') loadPedidos();
+}
+
+function initPanel() {
+  updateClock();
+  setInterval(updateClock, 30000);
+  loadStats();
+  loadPedidosHoy();
+  setInterval(loadStats, 60000);
+  setInterval(loadPedidosHoy, 60000);
+}
+
+function updateClock() {
+  const ahora = new Date();
+  const hora = ahora.toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', timeZone:'America/Chihuahua'});
+  document.getElementById('header-time').textContent = hora;
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/panel/stats`, {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('stat-pedidos').textContent = d.total_pedidos;
+    document.getElementById('stat-ventas').textContent = d.total_ventas_display;
+  } catch(e) {}
+}
+
+async function loadPedidosHoy() {
+  try {
+    const r = await fetch(`${API}/pedidos/hoy`, {credentials:'include'});
+    if (!r.ok) return;
+    const pedidos = await r.json();
+    const pendientes = pedidos.filter(p => !p.pago_confirmado && p.estado !== 'Cancelado').length;
+    document.getElementById('stat-pendientes').textContent = pendientes;
+    const el = document.getElementById('pedidos-hoy-list');
+    if (!pedidos.length) { el.innerHTML = '<div class="empty">No hay pedidos para hoy</div>'; return; }
+    el.innerHTML = pedidos.map(p => renderPedido(p)).join('');
+  } catch(e) {}
+}
+
+async function loadPedidos() {
+  try {
+    const r = await fetch(`${API}/pedidos/`, {credentials:'include'});
+    if (!r.ok) return;
+    const pedidos = await r.json();
+    const el = document.getElementById('pedidos-list');
+    if (!pedidos.length) { el.innerHTML = '<div class="empty">No hay pedidos</div>'; return; }
+    el.innerHTML = pedidos.map(p => renderPedido(p)).join('');
+  } catch(e) {}
+}
+
+function renderPedido(p) {
+  const badges = {
+    'Nuevo': 'badge-nuevo', 'En producción': 'badge-produccion',
+    'Listo': 'badge-listo', 'Pendiente pago': 'badge-pendiente',
+    'Entregado': 'badge-entregado', 'En camino': 'badge-listo'
+  };
+  const badge = badges[p.estado] || 'badge-nuevo';
+  return `<div class="pedido-card">
+    <div class="pedido-top">
+      <div>
+        <div class="pedido-num">${p.numero || 'Sin número'}</div>
+        <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
+      </div>
+      <span class="pedido-badge ${badge}">${p.estado}</span>
+    </div>
+    <div class="pedido-meta">
+      ${p.horario_entrega ? '<span>'+p.horario_entrega+'</span>' : ''}
+      ${p.direccion_entrega ? '<span>'+p.direccion_entrega.substring(0,40)+'...</span>' : ''}
+      <span>$${((p.total||0)/100).toFixed(0)}</span>
+      ${p.requiere_humano ? '<span style="color:var(--rojo);font-weight:500">Requiere atención</span>' : ''}
+    </div>
+    <div class="pedido-actions">
+      <button class="btn-sm" onclick="cambiarEstado(${p.id}, 'En producción')">Producción</button>
+      <button class="btn-sm" onclick="cambiarEstado(${p.id}, 'Listo')">Listo</button>
+      <button class="btn-sm primary" onclick="cambiarEstado(${p.id}, 'Entregado')">Entregado</button>
+      ${!p.pago_confirmado ? '<button class="btn-sm" onclick="confirmarPago('+p.id+')">Confirmar pago</button>' : ''}
+    </div>
+  </div>`;
+}
+
+async function cambiarEstado(id, estado) {
+  await fetch(`${API}/pedidos/${id}/estado`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({estado})
+  });
+  loadPedidosHoy();
+  loadStats();
+}
+
+async function confirmarPago(id) {
+  await fetch(`${API}/pedidos/${id}/estado`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({pago_confirmado: true, estado: 'En producción'})
+  });
+  loadPedidosHoy();
+}
+
+async function loadFlores() {
+  const r = await fetch(`${API}/flores/`, {credentials:'include'});
+  const flores = await r.json();
+  document.getElementById('flores-list').innerHTML = flores.map(f => `
+    <div class="pedido-card" style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:14px;font-weight:500">${f.nombre}</span>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--texto2)">
+        ${f.disponible_hoy ? 'Disponible' : 'No disponible'}
+        <input type="checkbox" ${f.disponible_hoy ? 'checked' : ''} onchange="toggleFlor(${f.id}, this.checked)" style="width:16px;height:16px;cursor:pointer">
+      </label>
+    </div>`).join('');
+}
+
+async function toggleFlor(id, disponible) {
+  await fetch(`${API}/flores/${id}/disponibilidad`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({disponible_hoy: disponible})
+  });
+}
+
+async function loadPagos() {
+  const r = await fetch(`${API}/pagos/`, {credentials:'include'});
+  const pagos = await r.json();
+  document.getElementById('pagos-list').innerHTML = pagos.map(p => `
+    <div class="pedido-card" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:14px;font-weight:500">${p.banco || p.tipo}</div>
+        <div style="font-size:12px;color:var(--texto2)">${p.tipo}${p.titular ? ' · '+p.titular : ''}</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--texto2)">
+        ${p.activo ? 'Activo' : 'Inactivo'}
+        <input type="checkbox" ${p.activo ? 'checked' : ''} onchange="togglePago(${p.id}, this.checked)" style="width:16px;height:16px;cursor:pointer">
+      </label>
+    </div>`).join('');
+}
+
+async function togglePago(id, activo) {
+  await fetch(`${API}/pagos/${id}/activar`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    credentials: 'include',
+    body: JSON.stringify({activo})
+  });
+  loadPagos();
+}
+
+async function sendIA() {
+  const input = document.getElementById('ia-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  addIAMsg(msg, 'user');
+  iaHistory.push({role: 'user', content: msg});
+  const loading = addIAMsg('Pensando...', 'loading');
+  try {
+    const r = await fetch(`${API}/panel/asistente`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({mensaje: msg, historial: iaHistory})
+    });
+    const d = await r.json();
+    loading.remove();
+    addIAMsg(d.respuesta, 'assistant');
+    iaHistory.push({role: 'assistant', content: d.respuesta});
+  } catch(e) {
+    loading.remove();
+    addIAMsg('Error de conexión. Intenta de nuevo.', 'assistant');
+  }
+}
+
+function addIAMsg(text, role) {
+  const el = document.createElement('div');
+  el.className = `ia-msg ${role}`;
+  el.textContent = text;
+  const container = document.getElementById('ia-messages');
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+  return el;
+}
+</script>
+</body>
+</html>

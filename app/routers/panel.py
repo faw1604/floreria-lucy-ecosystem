@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Cookie, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
+import os
 from app.database import get_db
 from app.core.config import TZ
 from app.routers.auth import verificar_sesion
@@ -87,3 +89,57 @@ async def stats_del_dia(
         "total_ventas": row.total_ventas or 0,
         "total_ventas_display": f"${(row.total_ventas or 0) // 100:,}",
     }
+
+@router.get("/", response_class=HTMLResponse)
+async def panel_html(panel_session: str | None = Cookie(default=None)):
+    try:
+        with open("app/panel.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="panel.html no encontrado")
+
+@router.post("/asistente")
+async def asistente_ia(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    import httpx
+    data = await request.json()
+    mensaje = data.get("mensaje", "")
+    historial = data.get("historial", [])
+
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    if not ANTHROPIC_API_KEY:
+        return {"respuesta": "No hay API key de Anthropic configurada. Agrégala en las variables de Railway."}
+
+    system = """Eres el asistente de administración de Florería Lucy en Chihuahua, México.
+Tienes acceso al ecosistema del negocio: pedidos, inventario, flores, productos, finanzas y configuración.
+Responde en español, de forma directa y útil. Eres conciso — el dueño está ocupado.
+Cuando te pregunten por pendientes del día, menciona: pedidos sin confirmar pago, flores que podrían escasear, pagos recurrentes próximos."""
+
+    mensajes = []
+    for m in historial[-10:]:
+        mensajes.append({"role": m["role"], "content": m["content"]})
+    mensajes.append({"role": "user", "content": mensaje})
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-sonnet-4-6",
+                "max_tokens": 1024,
+                "system": system,
+                "messages": mensajes,
+            },
+            timeout=30,
+        )
+        d = r.json()
+        respuesta = d["content"][0]["text"] if d.get("content") else "Sin respuesta"
+        return {"respuesta": respuesta}
