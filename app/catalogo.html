@@ -331,7 +331,7 @@ function applySwipeTransform() {
   card.style.transform = `translate(${touchDX}px, ${touchDY}px) rotate(${rot}deg)`;
   if (touchDX > 50) { overlay.textContent = '♥'; overlay.style.opacity = Math.min((touchDX-50)/80, 1); overlay.style.color = '#e74c3c'; }
   else if (touchDX < -50) { overlay.textContent = '✕'; overlay.style.opacity = Math.min((-touchDX-50)/80, 1); overlay.style.color = '#999'; }
-  else if (touchDY < -50) { overlay.textContent = '★'; overlay.style.opacity = Math.min((-touchDY-50)/80, 1); overlay.style.color = var('--verde'); }
+  else if (touchDY < -50) { overlay.textContent = '★'; overlay.style.opacity = Math.min((-touchDY-50)/80, 1); overlay.style.color = '#193a2c'; }
   else { overlay.style.opacity = 0; }
 }
 
