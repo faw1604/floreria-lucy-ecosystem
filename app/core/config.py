@@ -1,14 +1,19 @@
-# Application configuration
 from pydantic_settings import BaseSettings
-
+from zoneinfo import ZoneInfo
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Florería Lucy Ecosystem"
-    DATABASE_URL: str = "sqlite:///./floreria_lucy.db"
-    SECRET_KEY: str = "change-me-in-production"
+    APP_NAME: str = "Florería Lucy — Ecosistema"
+    ENVIRONMENT: str = "development"
+    SECRET_KEY: str = "cambiar-en-produccion"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./floreria.db"
+    TIMEZONE: str = "America/Chihuahua"
+    PANEL_PASSWORD: str = "floreria2024"
+    SESSION_SECRET: str = "ecosistema-session-2024"
+    SESION_DURACION: int = 28800  # 8 horas en segundos
 
     class Config:
         env_file = ".env"
-
+        extra = "ignore"
 
 settings = Settings()
+TZ = ZoneInfo(settings.TIMEZONE)
