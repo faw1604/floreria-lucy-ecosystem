@@ -159,13 +159,16 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 /* Print */
 #print-frame{display:none}
 @media print{
-  body *{display:none!important}
-  #print-frame,#print-frame *{display:block!important}
+  body *{visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important}
+  #print-frame{visibility:visible!important;position:static!important;height:auto!important;overflow:visible!important;display:block!important}
+  #print-frame *{visibility:visible!important;position:static!important;height:auto!important}
   @page{size:80mm auto;margin:3mm}
   #print-frame{font-family:'Courier New',monospace;font-size:10pt;width:74mm;color:#000;line-height:1.4}
   #print-frame .tline{text-align:center}
   #print-frame .sep{border-top:1px dashed #000;margin:4px 0}
   #print-frame .dsep{border-top:2px solid #000;margin:4px 0}
+  #print-frame .mini-ticket{page-break-after:always;padding:4px 0}
+  #print-frame .mini-ticket:last-child{page-break-after:avoid}
 }
 </style>
 </head>
@@ -388,7 +391,9 @@ function renderCard(p, showActions) {
     if (isAprobado && est.includes('producci')) {
       actions += `<button class="action-btn btn-listo" onclick="marcarListo(${p.id})">Listo ✓</button>`;
     }
-    actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicket(${p.id})">🖨</button>`;
+    actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Comprador</button>`;
+    actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicketRepartidor(${p.id})">🖨 Repartidor</button>`;
+    actions += `<button class="action-btn btn-imprimir" onclick="imprimirMiniTicket(${p.id})">🏷 Etiqueta</button>`;
   }
 
   const timer = funeralTimer(p);
@@ -530,8 +535,9 @@ async function loadRealizados() {
         ${p.horario_entrega ? `<div class="pedido-detail">⏰ ${p.horario_entrega}</div>` : ''}
         <div class="pedido-pago">${p.forma_pago||''} ${p.pago_confirmado?'✅':'⚠️'} — $${(p.total||0)/100}</div>
         <div class="pedido-actions">
-          <button class="action-btn btn-imprimir" onclick="imprimirTicket(${p.id})">🖨️ Reimprimir ticket</button>
-          <button class="action-btn btn-imprimir" onclick="imprimirEtiqueta(${p.id})">🏷️ Reimprimir etiqueta</button>
+          <button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Comprador</button>
+          <button class="action-btn btn-imprimir" onclick="imprimirTicketRepartidor(${p.id})">🖨 Repartidor</button>
+          <button class="action-btn btn-imprimir" onclick="imprimirMiniTicket(${p.id})">🏷 Etiqueta</button>
         </div>
       </div>`;
     }
@@ -863,7 +869,7 @@ async function marcarListo(id) {
       body: JSON.stringify({estado:'Listo'})
     });
     loadPedidos();
-    if (confirm('¿Imprimir ticket?')) imprimirTicket(id);
+    if (confirm('¿Imprimir ticket?')) imprimirTicketRepartidor(id);
   } catch(e) {}
 }
 
@@ -887,95 +893,136 @@ async function verFotos(pedidoId, numero) {
   } catch(e) { body.innerHTML = '<div class="producto-sin-foto">Error al cargar</div>'; }
 }
 
-// ─── Imprimir ticket ───
-async function imprimirTicket(id) {
-  try {
-    const r = await fetch(`${API}/pedidos/${id}`, {credentials:'include'});
-    if (!r.ok) return;
-    const p = await r.json();
-    const fecha = p.fecha_entrega ? new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX') : '';
-    const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'});
-    const total = `$${(p.total||0)/100}`;
-    const pagoStatus = p.pago_confirmado ? 'CONFIRMADO' : 'PENDIENTE';
-    const horarioMap = {manana:'Manana 9-2pm','mañana':'Manana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'};
-    const horarioLabel = horarioMap[(p.horario_entrega||'').toLowerCase()] || p.horario_entrega || '';
-    const recoger = !p.direccion_entrega && !p.zona_entrega;
+// ─── Helpers de ticket ───
+async function fetchPedidoConItems(id) {
+  const [rp, ri] = await Promise.all([
+    fetch(`${API}/pedidos/${id}`, {credentials:'include'}),
+    fetch(`${API}/pedidos/${id}/items`, {credentials:'include'})
+  ]);
+  if (!rp.ok) throw new Error('No se pudo cargar pedido');
+  const p = await rp.json();
+  p._items = ri.ok ? await ri.json() : [];
+  return p;
+}
 
-    let lines = [];
-    lines.push('<div class="dsep"></div>');
-    lines.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
-    lines.push('<div class="tline">La expresion del amor</div>');
-    lines.push('<div class="tline">Tel: 614 334 9392</div>');
-    lines.push('<div class="dsep"></div>');
-    if (p.tipo_especial === 'Funeral') {
-      lines.push('<div><strong>*** PEDIDO FUNERAL ***</strong></div>');
-      if (p.notas_internas) lines.push(`<div>${p.notas_internas}</div>`);
-      lines.push('<div class="sep"></div>');
-    }
-    lines.push(`<div>Pedido: <strong>${p.numero}</strong></div>`);
-    lines.push(`<div>Fecha:  ${fecha}</div>`);
-    lines.push(`<div>Hora:   ${hora}</div>`);
-    if (recoger) {
-      lines.push('<div class="sep"></div>');
-      lines.push('<div><strong>MODALIDAD: RECOGER EN TIENDA</strong></div>');
-      if (p.hora_exacta) lines.push(`<div>Hora aprox: ${p.hora_exacta}</div>`);
-      lines.push('<div class="sep"></div>');
-      lines.push(`<div>CLIENTE: ${p.receptor_nombre||''}</div>`);
-      if (p.receptor_telefono) lines.push(`<div>TEL: ${p.receptor_telefono}</div>`);
+function fmtPrecio(centavos) {
+  const n = (centavos||0)/100;
+  return n >= 1000 ? '$' + n.toLocaleString('es-MX') : '$' + n;
+}
+
+function horarioLabel(h) {
+  const map = {manana:'Manana 9-2pm','mañana':'Manana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'};
+  return map[(h||'').toLowerCase()] || h || '';
+}
+
+function horarioCorto(h) {
+  const map = {manana:'MANANA','mañana':'MANANA',tarde:'TARDE',noche:'NOCHE'};
+  return map[(h||'').toLowerCase()] || (h||'').toUpperCase();
+}
+
+// ─── Ticket Comprador (80mm) ───
+async function imprimirTicketComprador(id) {
+  try {
+    const p = await fetchPedidoConItems(id);
+    const fecha = p.fecha_entrega ? new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX') : '';
+    const recoger = !p.direccion_entrega && !p.zona_entrega;
+    let L = [];
+    L.push('<div class="dsep"></div>');
+    L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
+    L.push('<div class="dsep"></div>');
+    L.push(`<div>Pedido: <strong>${p.numero}</strong></div>`);
+    L.push(`<div>Fecha:  ${fecha}</div>`);
+    L.push('<div class="sep"></div>');
+    L.push('<div>PRODUCTOS:</div>');
+    if (p._items.length) {
+      for (const it of p._items) {
+        const name = it.es_personalizado ? (it.nombre_personalizado || it.nombre) : it.nombre;
+        const price = fmtPrecio(it.precio_unitario * it.cantidad);
+        const dots = '.'.repeat(Math.max(1, 30 - name.length - price.length));
+        L.push(`<div>${it.cantidad}x ${name}${dots}${price}</div>`);
+      }
     } else {
-      lines.push('<div class="sep"></div>');
-      lines.push(`<div>HORARIO ENTREGA: ${horarioLabel}</div>`);
-      if (p.hora_exacta) lines.push(`<div>HORA EXACTA: ${p.hora_exacta}</div>`);
-      if (p.zona_entrega) lines.push(`<div>ZONA: ${p.zona_entrega}</div>`);
-      lines.push('<div class="sep"></div>');
-      lines.push(`<div>RECIBE: ${p.receptor_nombre||''}</div>`);
-      if (p.receptor_telefono) lines.push(`<div>TEL:    ${p.receptor_telefono}</div>`);
-      if (p.direccion_entrega) lines.push(`<div>DIR:    ${p.direccion_entrega}</div>`);
+      L.push('<div>(sin detalle)</div>');
     }
-    if (p.dedicatoria) {
-      lines.push('<div class="sep"></div>');
-      lines.push('<div>DEDICATORIA:</div>');
-      lines.push(`<div>"${p.dedicatoria}"</div>`);
+    L.push('<div class="sep"></div>');
+    if (!recoger && p.envio > 0) {
+      L.push(`<div>Envio zona ${p.zona_entrega||''}${'.'.repeat(Math.max(1,22))}${fmtPrecio(p.envio)}</div>`);
     }
-    if (p.notas_internas && p.tipo_especial !== 'Funeral') {
-      lines.push('<div class="sep"></div>');
-      lines.push('<div>NOTAS:</div>');
-      lines.push(`<div>${p.notas_internas}</div>`);
-    }
-    lines.push('<div class="sep"></div>');
-    lines.push(`<div>PAGO: ${p.forma_pago||''} ${pagoStatus}</div>`);
-    lines.push(`<div>TOTAL: <strong>${total}</strong></div>`);
-    lines.push('<div class="dsep"></div>');
-    lines.push('<div class="tline">Gracias por su preferencia</div>');
-    lines.push('<div class="dsep"></div>');
-    document.getElementById('print-frame').innerHTML = lines.join('\n');
+    L.push(`<div>TOTAL:${'.'.repeat(20)}${fmtPrecio(p.total)}</div>`);
+    L.push('<div class="dsep"></div>');
+    L.push('<div class="tline">Gracias por su preferencia</div>');
+    L.push('<div class="dsep"></div>');
+    document.getElementById('print-frame').innerHTML = L.join('\n');
     setTimeout(() => window.print(), 100);
   } catch(e) { alert('Error al cargar pedido'); }
 }
 
-async function imprimirEtiqueta(id) {
+// ─── Ticket Repartidor (80mm) ───
+async function imprimirTicketRepartidor(id) {
   try {
-    const r = await fetch(`${API}/pedidos/${id}`, {credentials:'include'});
-    if (!r.ok) return;
-    const p = await r.json();
+    const p = await fetchPedidoConItems(id);
     const recoger = !p.direccion_entrega && !p.zona_entrega;
-    let lines = [];
-    lines.push('<div class="dsep"></div>');
-    lines.push(`<div class="tline"><strong>${p.numero}</strong></div>`);
-    lines.push('<div class="dsep"></div>');
+    const pagoOk = p.pago_confirmado ? '✓' : 'PENDIENTE';
+    let L = [];
+    L.push('<div class="dsep"></div>');
+    L.push(`<div class="tline"><strong>PEDIDO: ${p.numero}</strong></div>`);
     if (recoger) {
-      lines.push('<div><strong>RECOGER EN TIENDA</strong></div>');
-      lines.push(`<div>${p.receptor_nombre||''}</div>`);
+      L.push('<div class="tline"><strong>RECOGER EN TIENDA</strong></div>');
     } else {
-      lines.push(`<div>ZONA: ${p.zona_entrega||''}</div>`);
-      lines.push(`<div>RECIBE: ${p.receptor_nombre||''}</div>`);
-      if (p.direccion_entrega) lines.push(`<div>DIR: ${p.direccion_entrega}</div>`);
-      if (p.receptor_telefono) lines.push(`<div>TEL: ${p.receptor_telefono}</div>`);
-      const horarioMap = {manana:'Manana','mañana':'Manana',tarde:'Tarde',noche:'Noche'};
-      lines.push(`<div>HORARIO: ${horarioMap[(p.horario_entrega||'').toLowerCase()]||p.horario_entrega||''}</div>`);
+      L.push(`<div class="tline">HORARIO: ${horarioLabel(p.horario_entrega)}</div>`);
+      L.push(`<div class="tline">ZONA: ${p.zona_entrega||''}</div>`);
     }
-    lines.push('<div class="dsep"></div>');
-    document.getElementById('print-frame').innerHTML = lines.join('\n');
+    L.push('<div class="dsep"></div>');
+    if (!recoger) {
+      L.push('<div>ENTREGA A:</div>');
+      L.push(`<div>${p.receptor_nombre||''}</div>`);
+      if (p.receptor_telefono) L.push(`<div>Tel: ${p.receptor_telefono}</div>`);
+      if (p.direccion_entrega) L.push(`<div>${p.direccion_entrega}</div>`);
+    } else {
+      L.push(`<div>CLIENTE: ${p.receptor_nombre||''}</div>`);
+      if (p.receptor_telefono) L.push(`<div>Tel: ${p.receptor_telefono}</div>`);
+      if (p.hora_exacta) L.push(`<div>Hora aprox: ${p.hora_exacta}</div>`);
+    }
+    L.push('<div class="dsep"></div>');
+    if (p.dedicatoria) {
+      L.push('<div>DEDICATORIA:</div>');
+      L.push(`<div>"${p.dedicatoria}"</div>`);
+      L.push('<div class="sep"></div>');
+    }
+    if (p.notas_internas) {
+      L.push('<div>NOTAS:</div>');
+      L.push(`<div>${p.notas_internas}</div>`);
+    }
+    L.push('<div class="dsep"></div>');
+    L.push(`<div>PAGO: ${p.forma_pago||''} ${pagoOk}</div>`);
+    L.push('<div class="dsep"></div>');
+    document.getElementById('print-frame').innerHTML = L.join('\n');
+    setTimeout(() => window.print(), 100);
+  } catch(e) { alert('Error al cargar pedido'); }
+}
+
+// ─── Mini Ticket / Etiqueta (1 por item, o 1 si sin items) ───
+async function imprimirMiniTicket(id) {
+  try {
+    const p = await fetchPedidoConItems(id);
+    const recoger = !p.direccion_entrega && !p.zona_entrega;
+    const totalItems = Math.max(p._items.length, 1);
+    let html = '';
+    for (let idx = 0; idx < totalItems; idx++) {
+      const label = totalItems > 1 ? ` (${idx+1} de ${totalItems})` : '';
+      let L = [];
+      L.push('<div class="dsep"></div>');
+      L.push(`<div class="tline"><strong>${p.numero}${label}</strong></div>`);
+      if (recoger) {
+        L.push('<div class="tline">RECOGER EN TIENDA</div>');
+      } else {
+        L.push(`<div class="tline">${horarioCorto(p.horario_entrega)}  |  ${(p.zona_entrega||'').toUpperCase()}</div>`);
+      }
+      L.push(`<div class="tline">Recibe: ${p.receptor_nombre||''}</div>`);
+      L.push('<div class="dsep"></div>');
+      html += `<div class="mini-ticket">${L.join('\n')}</div>`;
+    }
+    document.getElementById('print-frame').innerHTML = html;
     setTimeout(() => window.print(), 100);
   } catch(e) { alert('Error al cargar pedido'); }
 }

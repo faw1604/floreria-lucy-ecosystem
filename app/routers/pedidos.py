@@ -280,6 +280,94 @@ async def obtener_items_pedido(
             })
     return productos
 
+@router.get("/{pedido_id}/ticket-digital")
+async def ticket_digital(
+    pedido_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    from fastapi.responses import HTMLResponse
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Get items
+    items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido_id))
+    items_db = items_result.scalars().all()
+    items_html = ""
+    for item in items_db:
+        prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+        prod = prod_result.scalar_one_or_none()
+        nombre = item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto")
+        precio = f"${item.precio_unitario * item.cantidad // 100:,}"
+        items_html += f'<tr><td style="padding:6px 0;border-bottom:1px solid #eee">{item.cantidad}x {nombre}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">{precio}</td></tr>'
+
+    if not items_html:
+        items_html = '<tr><td style="padding:6px 0" colspan="2">Sin detalle de productos</td></tr>'
+
+    fecha_pedido = pedido.fecha_pedido.strftime("%d/%m/%Y") if pedido.fecha_pedido else ""
+    fecha_entrega = ""
+    if pedido.fecha_entrega:
+        from datetime import datetime as dt
+        fecha_entrega = dt.combine(pedido.fecha_entrega, dt.min.time()).strftime("%d/%m/%Y")
+
+    recoger = not pedido.direccion_entrega and not pedido.zona_entrega
+    horario_map = {"manana": "Mañana 9-2pm", "mañana": "Mañana 9-2pm", "tarde": "Tarde 2-6pm", "noche": "Noche 6-9pm"}
+    horario = horario_map.get((pedido.horario_entrega or "").lower(), pedido.horario_entrega or "")
+
+    if recoger:
+        entrega_html = f"""
+        <p style="margin:4px 0"><strong>Modalidad:</strong> Recoger en tienda</p>
+        <p style="margin:4px 0"><strong>Cliente:</strong> {pedido.receptor_nombre or ''}</p>
+        {"<p style='margin:4px 0'><strong>Hora aprox:</strong> " + pedido.hora_exacta + "</p>" if pedido.hora_exacta else ""}
+        """
+    else:
+        entrega_html = f"""
+        <p style="margin:4px 0"><strong>Horario:</strong> {horario}</p>
+        {"<p style='margin:4px 0'><strong>Zona:</strong> " + pedido.zona_entrega + "</p>" if pedido.zona_entrega else ""}
+        <p style="margin:4px 0"><strong>Recibe:</strong> {pedido.receptor_nombre or ''}</p>
+        {"<p style='margin:4px 0'><strong>Tel:</strong> " + pedido.receptor_telefono + "</p>" if pedido.receptor_telefono else ""}
+        {"<p style='margin:4px 0'><strong>Direccion:</strong> " + pedido.direccion_entrega + "</p>" if pedido.direccion_entrega else ""}
+        """
+
+    total_display = f"${pedido.total // 100:,}" if pedido.total else "$0"
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f5f5">
+<div style="max-width:400px;margin:20px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1)">
+  <div style="background:#193a2c;color:#fff;padding:24px;text-align:center">
+    <div style="font-size:22px;font-weight:700;letter-spacing:1px">Floreria Lucy</div>
+    <div style="font-size:13px;opacity:.8;font-style:italic;margin-top:4px">La expresion del amor</div>
+  </div>
+  <div style="padding:20px">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:18px;font-weight:700;color:#193a2c">Pedido {pedido.numero}</div>
+      <div style="font-size:12px;color:#888;margin-top:4px">Fecha del pedido: {fecha_pedido}</div>
+    </div>
+    <div style="background:#f9f7f4;border-radius:8px;padding:12px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:#193a2c;margin-bottom:8px">Datos de entrega</div>
+      <div style="font-size:13px;color:#333">
+        {"<p style='margin:4px 0'><strong>Fecha entrega:</strong> " + fecha_entrega + "</p>" if fecha_entrega else ""}
+        {entrega_html}
+      </div>
+    </div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:16px">
+      <thead><tr><td style="padding:6px 0;font-weight:600;border-bottom:2px solid #193a2c">Producto</td><td style="padding:6px 0;font-weight:600;border-bottom:2px solid #193a2c;text-align:right">Precio</td></tr></thead>
+      <tbody>{items_html}</tbody>
+    </table>
+    <div style="text-align:right;font-size:18px;font-weight:700;color:#193a2c;padding:8px 0;border-top:2px solid #193a2c">
+      Total: {total_display}
+    </div>
+  </div>
+  <div style="background:#f9f7f4;padding:16px;text-align:center;font-size:12px;color:#888">
+    <div style="margin-bottom:4px">Gracias por tu compra 🌸</div>
+    <div>Tel: 614 334 9392 | C. Sabino 610, Las Granjas, Chihuahua</div>
+  </div>
+</div>
+</body></html>"""
+    return HTMLResponse(html)
+
 @router.get("/{pedido_id}")
 async def obtener_pedido(
     pedido_id: int,
