@@ -384,32 +384,52 @@ async def obtener_ruta_pedido(
         return {"ruta": None, "error": "El pedido no tiene dirección de entrega"}
 
     import httpx
+    import logging
     from app.services.rutas import obtener_ruta
+
+    logger = logging.getLogger("floreria")
+    ua = "FloreriaLucy/1.0 florerialucychihuahua@gmail.com"
     query = f"{pedido.direccion_entrega}, Chihuahua, Mexico"
-    try:
+    logger.info(f"[RUTA] Direccion original: '{pedido.direccion_entrega}'")
+    logger.info(f"[RUTA] Query Nominatim: '{query}'")
+
+    async def geocode(q: str) -> list:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {"q": q, "format": "json", "limit": 1}
+        logger.info(f"[RUTA] GET {url}?q={q}")
         async with httpx.AsyncClient() as client:
-            r = await client.get(
-                "https://nominatim.openstreetmap.org/search",
-                params={"q": query, "format": "json", "limit": 1},
-                headers={"User-Agent": "FloreriaLucy/1.0"},
-                timeout=10,
-            )
+            r = await client.get(url, params=params, headers={"User-Agent": ua}, timeout=10)
             data = r.json()
-    except Exception:
-        return {"ruta": None, "error": "Error al conectar con el geocodificador"}
+            logger.info(f"[RUTA] Nominatim response ({r.status_code}): {data}")
+            return data
+
+    try:
+        data = await geocode(query)
+
+        # Retry with simplified address if empty
+        if not data:
+            parts = pedido.direccion_entrega.split(",")
+            calle = parts[0].strip()
+            query2 = f"{calle}, Chihuahua, Mexico"
+            logger.info(f"[RUTA] Reintentando con calle: '{query2}'")
+            data = await geocode(query2)
+    except Exception as e:
+        logger.error(f"[RUTA] Error geocoding: {e}")
+        return {"ruta": None, "error": f"Error al conectar con el geocodificador: {str(e)}"}
 
     if not data:
-        return {"ruta": None, "error": "No se pudo geocodificar la dirección"}
+        return {"ruta": None, "error": "No se pudo geocodificar la dirección", "query": query}
 
     lat = float(data[0]["lat"])
     lng = float(data[0]["lon"])
+    display = data[0].get("display_name", "")
     ruta = obtener_ruta(lat, lng)
 
     if ruta and pedido.ruta != ruta:
         pedido.ruta = ruta
         await db.commit()
 
-    return {"ruta": ruta, "lat": lat, "lng": lng}
+    return {"ruta": ruta, "lat": lat, "lng": lng, "display_name": display}
 
 @router.get("/{pedido_id}")
 async def obtener_pedido(
