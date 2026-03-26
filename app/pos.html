@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POS — Floreria Lucy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#dc3545;--dorado:#d4a843}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;height:100vh;overflow:hidden}
+
+/* Header */
+.pos-header{background:var(--verde);color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;height:52px}
+.pos-logo{font-size:16px;font-weight:600}
+.pos-tabs{display:flex;gap:4px}
+.pos-tab{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:rgba(255,255,255,.15);color:#fff;font-family:inherit}
+.pos-tab.active{background:var(--dorado);color:var(--verde)}
+.pos-right{display:flex;align-items:center;gap:12px}
+.pos-cliente-btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid rgba(255,255,255,.3);background:none;color:#fff;font-family:inherit}
+.pos-cliente-btn:hover{border-color:#fff}
+.pos-link{color:rgba(255,255,255,.7);text-decoration:none;font-size:12px}
+.badge-desc{background:var(--dorado);color:var(--verde);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:6px}
+
+/* Layout */
+.pos-body{display:flex;height:calc(100vh - 52px)}
+.pos-catalog{flex:0 0 65%;padding:16px;overflow-y:auto}
+.pos-cart{flex:0 0 35%;background:var(--blanco);border-left:1px solid var(--borde);display:flex;flex-direction:column;overflow:hidden}
+
+/* Catalog */
+.cat-search{display:flex;gap:8px;margin-bottom:12px}
+.cat-search input{flex:1;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit}
+.cat-search input:focus{outline:none;border-color:var(--verde)}
+.cat-search select{padding:10px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-family:inherit;background:var(--blanco)}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:1024px){.cat-grid{grid-template-columns:repeat(2,1fr)}}
+.cat-card{background:var(--blanco);border-radius:10px;overflow:hidden;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:transform .1s}
+.cat-card:active{transform:scale(.97)}
+.cat-card.no-stock{opacity:.5;cursor:not-allowed;position:relative}
+.cat-card.no-stock::after{content:'Sin stock';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);color:#fff;font-weight:600;font-size:13px}
+.cat-img{width:100%;aspect-ratio:1;object-fit:cover}
+.cat-info{padding:8px 10px}
+.cat-name{font-size:12px;font-weight:500;line-height:1.3;height:2.6em;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cat-price{font-size:13px;font-weight:700;color:var(--verde);margin-top:4px}
+.cat-price-old{text-decoration:line-through;color:var(--texto2);font-weight:400;font-size:11px;margin-right:4px}
+
+/* Cart */
+.cart-scroll{flex:1;overflow-y:auto;padding:16px}
+.cart-section{margin-bottom:16px}
+.cart-section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--texto2);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--borde)}
+.cart-empty{text-align:center;padding:30px;color:var(--texto2);font-size:13px}
+.cart-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--borde);font-size:13px}
+.cart-item:last-child{border-bottom:none}
+.cart-item-name{flex:1;font-weight:500}
+.cart-item-qty{display:flex;align-items:center;gap:4px}
+.cart-item-qty button{width:24px;height:24px;border:1px solid var(--borde);border-radius:4px;background:var(--blanco);cursor:pointer;font-size:12px;font-weight:600}
+.cart-item-qty button:hover{border-color:var(--verde)}
+.cart-item-qty span{width:20px;text-align:center;font-weight:600;font-size:12px}
+.cart-item-price{font-weight:600;min-width:60px;text-align:right}
+.cart-item-del{background:none;border:none;color:var(--rojo);cursor:pointer;font-size:14px;padding:2px}
+
+/* Form fields */
+.f-row{margin-bottom:10px}
+.f-label{font-size:11px;font-weight:600;color:var(--texto2);margin-bottom:4px;text-transform:uppercase}
+.f-input{width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px;font-family:inherit}
+.f-input:focus{outline:none;border-color:var(--verde)}
+.f-textarea{width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:12px;font-family:inherit;min-height:50px;resize:vertical}
+.f-textarea:focus{outline:none;border-color:var(--verde)}
+.f-row-inline{display:flex;gap:6px}
+.f-btn{padding:6px 12px;border:1px solid var(--verde);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--verde)}
+.f-btn:hover{background:var(--verde);color:#fff}
+.f-btn.active{background:var(--verde);color:#fff}
+.f-chip{padding:6px 10px;border:1px solid var(--borde);border-radius:14px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--texto)}
+.f-chip.active{background:var(--verde);color:#fff;border-color:var(--verde)}
+.f-badge{display:inline-block;background:var(--verde);color:var(--dorado);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:6px}
+.f-warn{background:#fee2e2;color:#991b1b;font-size:11px;padding:6px 8px;border-radius:6px;margin:6px 0}
+
+/* Totals */
+.cart-totals{padding:0 16px;font-size:13px}
+.cart-total-row{display:flex;justify-content:space-between;padding:3px 0}
+.cart-total-row.discount{color:var(--dorado);font-weight:600}
+.cart-total-row.grand{font-size:16px;font-weight:700;color:var(--verde);padding:8px 0;border-top:2px solid var(--verde);margin-top:4px}
+
+/* Payment chips */
+.pay-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.pay-input{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px}
+.pay-input input{width:90px;padding:6px 8px;border:1px solid var(--borde);border-radius:6px;font-size:12px;font-family:inherit;text-align:right}
+.pay-status{font-size:12px;font-weight:600;padding:4px 0}
+.pay-status.ok{color:#16a34a}
+.pay-status.pending{color:var(--rojo)}
+
+/* Bottom actions */
+.cart-actions{padding:12px 16px;border-top:1px solid var(--borde);display:flex;gap:8px}
+.cart-actions button{flex:1;padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;min-height:44px}
+.btn-save{background:var(--blanco);color:var(--verde);border:1px solid var(--verde)}
+.btn-save:hover{background:var(--crema)}
+.btn-finish{background:var(--verde);color:#fff;border:none}
+.btn-finish:hover{background:var(--verde-m)}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.modal-bg.active{display:flex}
+.modal{background:var(--blanco);border-radius:14px;padding:20px;width:90%;max-width:440px;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--verde)}
+.modal-results{max-height:250px;overflow-y:auto}
+.modal-item{padding:10px;border-bottom:1px solid var(--borde);cursor:pointer;font-size:13px}
+.modal-item:hover{background:var(--crema)}
+.modal-btns{display:flex;gap:8px;margin-top:12px}
+.modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* Print */
+#print-frame{display:none}
+@media print{
+  body *{visibility:hidden!important;position:absolute!important;height:0!important;overflow:hidden!important}
+  #print-frame{visibility:visible!important;position:static!important;height:auto!important;overflow:visible!important;display:block!important}
+  #print-frame *{visibility:visible!important;position:static!important;height:auto!important}
+  @page{size:80mm auto;margin:3mm}
+  #print-frame{font-family:'Courier New',monospace;font-size:10pt;width:74mm;color:#000;line-height:1.4}
+  #print-frame .tline{text-align:center}
+  #print-frame .sep{border-top:1px dashed #000;margin:4px 0}
+  #print-frame .dsep{border-top:2px solid #000;margin:4px 0}
+}
+</style>
+</head>
+<body>
+
+<div class="pos-header">
+  <div style="display:flex;align-items:center;gap:16px">
+    <span class="pos-logo">🌸 Floreria Lucy</span>
+    <div class="pos-tabs">
+      <button class="pos-tab active" onclick="setModo('mostrador')">Mostrador</button>
+      <button class="pos-tab" onclick="setModo('domicilio')">Domicilio / Recoger</button>
+      <button class="pos-tab" onclick="setModo('funeral')">Funeral</button>
+    </div>
+  </div>
+  <div class="pos-right">
+    <button class="pos-cliente-btn" id="btn-cliente" onclick="abrirBuscarCliente()">👤 Sin cliente</button>
+    <a class="pos-link" href="/panel/">← Panel</a>
+  </div>
+</div>
+
+<div class="pos-body">
+  <!-- LEFT: Catalog -->
+  <div class="pos-catalog">
+    <div class="cat-search">
+      <input type="text" id="cat-q" placeholder="Buscar producto..." oninput="buscarProductos()">
+      <select id="cat-cat" onchange="buscarProductos()"><option value="">Todas las categorias</option></select>
+    </div>
+    <div class="cat-grid" id="cat-grid"></div>
+  </div>
+
+  <!-- RIGHT: Cart -->
+  <div class="pos-cart">
+    <div class="cart-scroll" id="cart-scroll"></div>
+    <div class="cart-totals" id="cart-totals"></div>
+    <div class="cart-actions">
+      <button class="btn-save" onclick="guardarPedido()">Guardar pedido</button>
+      <button class="btn-finish" onclick="finalizarVenta()">✓ Finalizar venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Search client -->
+<div class="modal-bg" id="modal-cliente" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <h3>Buscar cliente</h3>
+    <input class="f-input" id="cliente-q" placeholder="Nombre, telefono o codigo..." oninput="buscarClientes()">
+    <div class="modal-results" id="cliente-results"></div>
+    <div class="modal-btns">
+      <button style="background:var(--blanco);border:1px solid var(--borde);color:var(--texto)" onclick="document.getElementById('modal-cliente').classList.remove('active')">Cancelar</button>
+      <button style="background:var(--verde);border:none;color:#fff" onclick="abrirRegistrarCliente()">+ Nuevo cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Register client -->
+<div class="modal-bg" id="modal-registro" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <h3>Registrar cliente</h3>
+    <div class="f-row"><div class="f-label">Nombre</div><input class="f-input" id="reg-nombre"></div>
+    <div class="f-row"><div class="f-label">Telefono</div><input class="f-input" id="reg-tel" placeholder="614..."></div>
+    <div class="f-row"><div class="f-label">Email (opcional)</div><input class="f-input" id="reg-email" type="email"></div>
+    <div id="reg-err" style="color:var(--rojo);font-size:12px;display:none"></div>
+    <div class="modal-btns">
+      <button style="background:var(--blanco);border:1px solid var(--borde);color:var(--texto)" onclick="document.getElementById('modal-registro').classList.remove('active')">Cancelar</button>
+      <button style="background:var(--verde);border:none;color:#fff" onclick="registrarCliente()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-frame"></div>
+
+<script>
+// ─── State ───
+let modo = 'mostrador'; // mostrador | domicilio | recoger | funeral
+let carrito = []; // [{producto_id, nombre, precio, cantidad, categoria}]
+let clienteSel = null; // {id, nombre, telefono, primera_compra}
+let categorias = [];
+let direccionVerificada = false;
+let rutaAsignada = null;
+let geoLat = null, geoLng = null;
+
+// ─── Mode ───
+function setModo(m) {
+  modo = m;
+  document.querySelectorAll('.pos-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  if (m === 'mostrador') { clienteSel = null; updateClienteBtn(); }
+  renderCart();
+}
+
+// ─── Catalog ───
+async function loadCategorias() {
+  try {
+    const r = await fetch('/pos/productos/categorias', {credentials:'include'});
+    if (r.status === 401) { window.location.href = '/panel/'; return; }
+    if (!r.ok) return;
+    categorias = await r.json();
+    const sel = document.getElementById('cat-cat');
+    sel.innerHTML = '<option value="">Todas las categorias</option>' +
+      categorias.map(c => `<option value="${c.categoria}">${c.categoria} (${c.count})</option>`).join('');
+  } catch(e) {}
+}
+
+async function buscarProductos() {
+  const q = document.getElementById('cat-q').value;
+  const cat = document.getElementById('cat-cat').value;
+  try {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (cat) params.set('categoria', cat);
+    const r = await fetch(`/pos/productos?${params}`, {credentials:'include'});
+    if (!r.ok) return;
+    const prods = await r.json();
+    document.getElementById('cat-grid').innerHTML = prods.map(p => {
+      const noStock = !p.disponible_hoy;
+      const precio = p.precio_descuento && p.precio_descuento < p.precio
+        ? `<span class="cat-price-old">$${p.precio/100}</span>$${p.precio_descuento/100}`
+        : `$${p.precio/100}`;
+      return `<div class="cat-card ${noStock?'no-stock':''}" ${noStock?'':`onclick="addToCart(${p.id},'${p.nombre.replace(/'/g,"\\'")}',${p.precio_descuento||p.precio},'${(p.categoria||'').replace(/'/g,"\\''")}')"`}>
+        <img class="cat-img" src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
+        <div class="cat-info"><div class="cat-name">${p.nombre}</div><div class="cat-price">${precio}</div></div>
+      </div>`;
+    }).join('') || '<div class="cart-empty">Sin productos</div>';
+  } catch(e) {}
+}
+
+function addToCart(id, nombre, precio, categoria) {
+  const existing = carrito.find(i => i.producto_id === id);
+  if (existing) { existing.cantidad++; }
+  else { carrito.push({producto_id: id, nombre, precio, cantidad: 1, categoria}); }
+  renderCart();
+}
+
+function changeQty(idx, delta) {
+  carrito[idx].cantidad += delta;
+  if (carrito[idx].cantidad <= 0) carrito.splice(idx, 1);
+  renderCart();
+}
+
+function removeItem(idx) {
+  carrito.splice(idx, 1);
+  renderCart();
+}
+
+// ─── Cart render ───
+function renderCart() {
+  const scroll = document.getElementById('cart-scroll');
+  let html = '';
+
+  // Items
+  html += '<div class="cart-section"><div class="cart-section-title">Productos</div>';
+  if (!carrito.length) {
+    html += '<div class="cart-empty">Selecciona productos del catalogo</div>';
+  } else {
+    // Funeral validation
+    if (modo === 'funeral') {
+      const nonFuneral = carrito.filter(i => i.categoria.toLowerCase() !== 'funeral');
+      if (nonFuneral.length) html += '<div class="f-warn">⚠ Solo productos de funeral permitidos en este modo</div>';
+    }
+    carrito.forEach((item, idx) => {
+      html += `<div class="cart-item">
+        <div class="cart-item-name">${item.nombre}</div>
+        <div class="cart-item-qty">
+          <button onclick="changeQty(${idx},-1)">−</button>
+          <span>${item.cantidad}</span>
+          <button onclick="changeQty(${idx},1)">+</button>
+        </div>
+        <div class="cart-item-price">$${(item.precio * item.cantidad)/100}</div>
+        <button class="cart-item-del" onclick="removeItem(${idx})">×</button>
+      </div>`;
+    });
+  }
+  html += '</div>';
+
+  // Client section (domicilio/funeral)
+  if (modo === 'domicilio' || modo === 'funeral') {
+    html += '<div class="cart-section"><div class="cart-section-title">Cliente</div>';
+    if (clienteSel) {
+      html += `<div style="font-size:13px"><strong>${clienteSel.nombre}</strong> — ${clienteSel.telefono}`;
+      if (clienteSel.primera_compra) html += '<span class="badge-desc">10% primera compra</span>';
+      html += ` <button class="f-btn" onclick="abrirBuscarCliente()" style="margin-left:8px">Cambiar</button></div>`;
+    } else {
+      html += `<button class="f-btn" onclick="abrirBuscarCliente()" style="width:100%;border-style:dashed;padding:12px">Seleccionar o registrar cliente</button>`;
+    }
+    html += '</div>';
+  }
+
+  // Delivery section (domicilio only, non-funeral)
+  if (modo === 'domicilio') {
+    html += '<div class="cart-section"><div class="cart-section-title">Entrega</div>';
+    html += `<div class="f-row"><div class="f-label">Nombre de quien recibe</div><input class="f-input" id="f-dest-nombre" placeholder="Nombre completo"></div>`;
+    html += `<div class="f-row"><div class="f-label">Telefono</div><input class="f-input" id="f-dest-tel" placeholder="614..."></div>`;
+    html += `<div class="f-row"><div class="f-label">Direccion de entrega</div>
+      <div class="f-row-inline"><input class="f-input" id="f-dir" placeholder="Calle y numero, colonia" style="flex:1">
+      <button class="f-btn" onclick="verificarDir()">📍 Verificar</button></div></div>`;
+    html += `<div class="f-row"><label style="font-size:12px;display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="f-dir-ok" onchange="onDirVerificada()"> ✓ Direccion verificada</label>
+      ${rutaAsignada ? `<span class="f-badge">${rutaAsignada}</span>` : ''}</div>`;
+    html += `<div class="f-row"><div class="f-label">Dedicatoria</div><textarea class="f-textarea" id="f-dedi" placeholder="Opcional"></textarea></div>`;
+    html += `<div class="f-row"><div class="f-label">Notas para el repartidor</div><textarea class="f-textarea" id="f-notas" placeholder="Opcional"></textarea></div>`;
+    html += '</div>';
+
+    // Horario
+    html += '<div class="cart-section"><div class="cart-section-title">Horario de entrega</div>';
+    html += '<div class="f-row-inline" style="flex-wrap:wrap;gap:4px">';
+    for (const [val, label] of [['manana','Manana (9-2pm)'],['tarde','Tarde (2-6pm)'],['noche','Noche (6-9pm)'],['hora_especifica','Hora especifica']]) {
+      html += `<button class="f-chip" data-horario="${val}" onclick="selHorario('${val}',this)">${label}</button>`;
+    }
+    html += '</div>';
+    html += '<div id="hora-especifica-row" style="display:none;margin-top:8px"><input class="f-input" id="f-hora" type="time" style="width:120px"><span style="font-size:11px;color:var(--texto2);margin-left:8px">Min 2h anticipacion</span></div>';
+    html += '</div>';
+
+    // Zona y envio
+    html += '<div class="cart-section"><div class="cart-section-title">Zona y envio</div>';
+    html += '<div class="f-row-inline" style="flex-wrap:wrap;gap:4px">';
+    for (const [z, p] of [['Morada','$99'],['Azul','$159'],['Verde','$199']]) {
+      html += `<button class="f-chip" data-zona="${z}" onclick="selZona('${z}',this)">${z} ${p}</button>`;
+    }
+    html += '</div></div>';
+  }
+
+  // Funeral section
+  if (modo === 'funeral') {
+    html += '<div class="cart-section"><div class="cart-section-title">Datos funeral</div>';
+    html += `<div class="f-row"><div class="f-label">Funeraria</div><input class="f-input" id="f-funeraria" placeholder="Buscar funeraria..." oninput="buscarFuneraria()"><div id="f-funeraria-results"></div></div>`;
+    html += `<div class="f-row"><div class="f-label">Nombre del fallecido</div><input class="f-input" id="f-fallecido"></div>`;
+    html += `<div class="f-row"><div class="f-label">Sala</div><input class="f-input" id="f-sala" placeholder="Opcional"></div>`;
+    html += `<div class="f-row"><div class="f-label">Texto banda</div><input class="f-input" id="f-banda" placeholder="Opcional"></div>`;
+    html += `<div class="f-row"><div class="f-label">Dedicatoria</div><textarea class="f-textarea" id="f-dedi-fun" placeholder="Opcional"></textarea></div>`;
+    html += `<div class="f-row"><div class="f-label">Horario velacion</div>
+      <div class="f-row-inline"><button class="f-chip" onclick="this.classList.toggle('active')">Ya inicio</button>
+      <input class="f-input" type="time" id="f-velacion-hora" style="width:120px" placeholder="Hora"></div></div>`;
+    html += '</div>';
+  }
+
+  // Recoger section
+  if (modo === 'recoger') {
+    html += '<div class="cart-section"><div class="cart-section-title">Datos recogida</div>';
+    html += `<div class="f-row"><div class="f-label">Fecha</div><input class="f-input" id="f-rec-fecha" type="date"></div>`;
+    html += `<div class="f-row"><div class="f-label">Hora</div><input class="f-input" id="f-rec-hora" type="time"></div>`;
+    html += '</div>';
+  }
+
+  // Tax
+  html += '<div class="cart-section"><div class="cart-section-title">Impuesto</div>';
+  html += '<div class="f-row-inline" style="gap:4px">';
+  for (const [val, label] of [['IVA','IVA 16%'],['IEPS','IEPS 8%'],['NA','Sin impuesto']]) {
+    html += `<button class="f-chip" data-tax="${val}" onclick="selTax('${val}',this)">${label}</button>`;
+  }
+  html += '</div></div>';
+
+  // Payment
+  html += '<div class="cart-section"><div class="cart-section-title">Metodo de pago</div>';
+  html += '<div class="pay-chips" id="pay-chips">';
+  const metodos = ['Efectivo','Tarjeta credito','Tarjeta debito','Transferencia','Link de pago','OXXO'];
+  metodos.forEach(m => {
+    html += `<button class="f-chip" data-pay="${m}" onclick="togglePay('${m}',this)">${m}</button>`;
+  });
+  html += '</div><div id="pay-inputs"></div><div id="pay-status"></div></div>';
+
+  scroll.innerHTML = html;
+  renderTotals();
+}
+
+// ─── Selections ───
+let selHorarioVal = null, selZonaVal = null, selTaxVal = 'NA', selectedPays = {};
+let funerariaSelId = null;
+
+function selHorario(val, el) {
+  selHorarioVal = val;
+  document.querySelectorAll('[data-horario]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const hr = document.getElementById('hora-especifica-row');
+  if (hr) hr.style.display = val === 'hora_especifica' ? '' : 'none';
+}
+
+function selZona(val, el) {
+  selZonaVal = val;
+  document.querySelectorAll('[data-zona]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTotals();
+}
+
+function selTax(val, el) {
+  selTaxVal = val;
+  document.querySelectorAll('[data-tax]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTotals();
+}
+
+function togglePay(name, el) {
+  if (selectedPays[name] !== undefined) { delete selectedPays[name]; el.classList.remove('active'); }
+  else { selectedPays[name] = 0; el.classList.add('active'); }
+  renderPayInputs();
+  renderTotals();
+}
+
+function renderPayInputs() {
+  const div = document.getElementById('pay-inputs');
+  if (!div) return;
+  let html = '';
+  for (const [name, monto] of Object.entries(selectedPays)) {
+    html += `<div class="pay-input"><span>${name}:</span><input type="number" value="${monto/100||''}" placeholder="$0" onchange="updatePayMonto('${name}',this.value)">`;
+    if (name === 'Link de pago') html += '<span style="color:var(--dorado);font-size:11px">+4%</span>';
+    html += '</div>';
+  }
+  div.innerHTML = html;
+}
+
+function updatePayMonto(name, val) {
+  selectedPays[name] = Math.round((parseFloat(val) || 0) * 100);
+  renderTotals();
+}
+
+// ─── Totals ───
+function calcTotals() {
+  const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+  let impuesto = 0;
+  if (selTaxVal === 'IVA') impuesto = Math.round(subtotal * 0.16);
+  else if (selTaxVal === 'IEPS') impuesto = Math.round(subtotal * 0.08);
+  let envio = 0;
+  if (modo === 'domicilio' && selZonaVal) {
+    const tarifas = {Morada: 9900, Azul: 15900, Verde: 19900};
+    envio = tarifas[selZonaVal] || 0;
+  }
+  let descuento = 0;
+  if (clienteSel && clienteSel.primera_compra) descuento = Math.round(subtotal * 0.10);
+  let comision = 0;
+  if (selectedPays['Link de pago'] > 0) comision = Math.round(selectedPays['Link de pago'] * 0.04);
+  const total = subtotal + impuesto + envio - descuento + comision;
+  const pagado = Object.values(selectedPays).reduce((s, v) => s + v, 0);
+  return {subtotal, impuesto, envio, descuento, comision, total, pagado};
+}
+
+function renderTotals() {
+  const t = calcTotals();
+  const div = document.getElementById('cart-totals');
+  if (!div) return;
+  let html = `<div class="cart-total-row"><span>Subtotal</span><span>$${t.subtotal/100}</span></div>`;
+  if (t.impuesto) html += `<div class="cart-total-row"><span>${selTaxVal} ${selTaxVal==='IVA'?'16%':'8%'}</span><span>$${t.impuesto/100}</span></div>`;
+  if (t.envio) html += `<div class="cart-total-row"><span>Envio (${selZonaVal})</span><span>$${t.envio/100}</span></div>`;
+  if (t.descuento) html += `<div class="cart-total-row discount"><span>Descuento 10%</span><span>-$${t.descuento/100}</span></div>`;
+  if (t.comision) html += `<div class="cart-total-row"><span>Comision link +4%</span><span>$${t.comision/100}</span></div>`;
+  html += `<div class="cart-total-row grand"><span>TOTAL</span><span>$${t.total/100}</span></div>`;
+  // Pay status
+  const falta = t.total - t.pagado;
+  if (Object.keys(selectedPays).length > 0) {
+    if (falta <= 0) html += '<div class="pay-status ok">✓ Pago completo</div>';
+    else html += `<div class="pay-status pending">Falta asignar $${falta/100}</div>`;
+  }
+  div.innerHTML = html;
+}
+
+// ─── Direction ───
+function verificarDir() {
+  const dir = document.getElementById('f-dir')?.value;
+  if (dir) window.open(`https://www.google.com/maps/search/${encodeURIComponent(dir + ', Chihuahua, Mexico')}`, '_blank');
+}
+
+async function onDirVerificada() {
+  const checked = document.getElementById('f-dir-ok')?.checked;
+  if (!checked) { rutaAsignada = null; renderCart(); return; }
+  const dir = document.getElementById('f-dir')?.value;
+  if (!dir) return;
+  try {
+    const r = await fetch('/pos/geocodificar', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+      body: JSON.stringify({direccion: dir})
+    });
+    const data = await r.json();
+    if (data.ruta) { rutaAsignada = data.ruta; geoLat = data.lat; geoLng = data.lng; }
+  } catch(e) {}
+  renderCart();
+}
+
+// ─── Funeraria search ───
+async function buscarFuneraria() {
+  const q = document.getElementById('f-funeraria')?.value;
+  if (!q || q.length < 2) { document.getElementById('f-funeraria-results').innerHTML = ''; return; }
+  try {
+    const r = await fetch(`/funerarias/buscar?nombre=${encodeURIComponent(q)}`, {credentials:'include'});
+    if (!r.ok) { document.getElementById('f-funeraria-results').innerHTML = '<div style="padding:8px;font-size:12px;color:var(--texto2)">No encontrada</div>'; return; }
+    const f = await r.json();
+    document.getElementById('f-funeraria-results').innerHTML =
+      `<div class="modal-item" onclick="selFuneraria(${f.id},'${f.nombre.replace(/'/g,"\\'")}','${f.zona}',${f.costo_envio})">${f.nombre} — ${f.zona} $${f.costo_envio/100}</div>`;
+  } catch(e) {}
+}
+
+function selFuneraria(id, nombre, zona, costo) {
+  funerariaSelId = id;
+  document.getElementById('f-funeraria').value = nombre;
+  document.getElementById('f-funeraria-results').innerHTML = '';
+  selZonaVal = zona;
+  renderTotals();
+}
+
+// ─── Client ───
+function abrirBuscarCliente() {
+  document.getElementById('cliente-q').value = '';
+  document.getElementById('cliente-results').innerHTML = '';
+  document.getElementById('modal-cliente').classList.add('active');
+}
+
+async function buscarClientes() {
+  const q = document.getElementById('cliente-q').value;
+  if (q.length < 2) { document.getElementById('cliente-results').innerHTML = ''; return; }
+  try {
+    const r = await fetch(`/pos/clientes/buscar?q=${encodeURIComponent(q)}`, {credentials:'include'});
+    if (!r.ok) return;
+    const cls = await r.json();
+    document.getElementById('cliente-results').innerHTML = cls.map(c =>
+      `<div class="modal-item" onclick="seleccionarCliente(${c.id},'${c.nombre.replace(/'/g,"\\'")}','${c.telefono}',${c.primera_compra})">${c.nombre} — ${c.telefono}${c.primera_compra ? ' <span class="badge-desc">10%</span>' : ''}</div>`
+    ).join('') || '<div style="padding:10px;color:var(--texto2);font-size:13px">Sin resultados</div>';
+  } catch(e) {}
+}
+
+function seleccionarCliente(id, nombre, telefono, primera) {
+  clienteSel = {id, nombre, telefono, primera_compra: primera};
+  document.getElementById('modal-cliente').classList.remove('active');
+  updateClienteBtn();
+  renderCart();
+}
+
+function updateClienteBtn() {
+  const btn = document.getElementById('btn-cliente');
+  if (clienteSel) {
+    btn.textContent = `👤 ${clienteSel.nombre}`;
+  } else {
+    btn.textContent = '👤 Sin cliente';
+  }
+}
+
+function abrirRegistrarCliente() {
+  document.getElementById('modal-cliente').classList.remove('active');
+  document.getElementById('reg-nombre').value = '';
+  document.getElementById('reg-tel').value = '';
+  document.getElementById('reg-email').value = '';
+  document.getElementById('reg-err').style.display = 'none';
+  document.getElementById('modal-registro').classList.add('active');
+}
+
+async function registrarCliente() {
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const tel = document.getElementById('reg-tel').value.trim();
+  if (!nombre || !tel) { document.getElementById('reg-err').textContent = 'Nombre y telefono requeridos'; document.getElementById('reg-err').style.display = ''; return; }
+  try {
+    const r = await fetch('/pos/cliente', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+      body: JSON.stringify({nombre, telefono: tel, email: document.getElementById('reg-email').value.trim() || null})
+    });
+    if (!r.ok) { const d = await r.json(); document.getElementById('reg-err').textContent = d.detail || 'Error'; document.getElementById('reg-err').style.display = ''; return; }
+    const c = await r.json();
+    seleccionarCliente(c.id, c.nombre, c.telefono, true);
+    document.getElementById('modal-registro').classList.remove('active');
+  } catch(e) { document.getElementById('reg-err').textContent = 'Error de conexion'; document.getElementById('reg-err').style.display = ''; }
+}
+
+// ─── Submit order ───
+async function submitPedido(estado) {
+  if (!carrito.length) { alert('Agrega productos al carrito'); return; }
+  const t = calcTotals();
+
+  if (estado === 'pagado') {
+    if (Object.keys(selectedPays).length === 0) { alert('Selecciona un metodo de pago'); return; }
+    if (t.pagado < t.total) { alert(`Falta asignar $${(t.total - t.pagado)/100}`); return; }
+  }
+
+  const body = {
+    tipo: modo,
+    cliente_id: clienteSel?.id || null,
+    items: carrito.map(i => ({producto_id: i.producto_id, cantidad: i.cantidad, precio_unitario: i.precio})),
+    tipo_impuesto: selTaxVal,
+    pagos: Object.entries(selectedPays).map(([name, monto]) => ({metodo_pago_id: 0, monto, nombre: name})),
+    estado,
+  };
+
+  if (modo === 'domicilio') {
+    body.nombre_destinatario = document.getElementById('f-dest-nombre')?.value || '';
+    body.telefono_destinatario = document.getElementById('f-dest-tel')?.value || '';
+    body.direccion_entrega = document.getElementById('f-dir')?.value || '';
+    body.dedicatoria = document.getElementById('f-dedi')?.value || '';
+    body.notas_entrega = document.getElementById('f-notas')?.value || '';
+    body.horario_entrega = selHorarioVal;
+    body.hora_especifica = document.getElementById('f-hora')?.value || null;
+    body.zona_envio = selZonaVal;
+    body.ruta = rutaAsignada;
+    body.lat = geoLat;
+    body.lng = geoLng;
+  }
+
+  if (modo === 'funeral') {
+    body.funeraria_id = funerariaSelId;
+    body.nombre_fallecido = document.getElementById('f-fallecido')?.value || '';
+    body.sala = document.getElementById('f-sala')?.value || '';
+    body.banda = document.getElementById('f-banda')?.value || '';
+    body.dedicatoria = document.getElementById('f-dedi-fun')?.value || '';
+    body.horario_velacion = document.getElementById('f-velacion-hora')?.value || 'ya_inicio';
+  }
+
+  try {
+    const r = await fetch('/pos/pedido', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const d = await r.json(); alert(d.detail || 'Error al crear pedido'); return; }
+    const result = await r.json();
+    alert(`Pedido ${result.folio} creado — Total: $${result.total/100}`);
+
+    if (estado === 'pagado') {
+      imprimirTicketPOS(result);
+    }
+
+    // Reset
+    carrito = [];
+    clienteSel = null;
+    selHorarioVal = null;
+    selZonaVal = null;
+    selTaxVal = 'NA';
+    selectedPays = {};
+    direccionVerificada = false;
+    rutaAsignada = null;
+    funerariaSelId = null;
+    updateClienteBtn();
+    renderCart();
+  } catch(e) { alert('Error de conexion'); }
+}
+
+function guardarPedido() { submitPedido('pendiente_pago'); }
+function finalizarVenta() { submitPedido('pagado'); }
+
+// ─── Print ───
+function imprimirTicketPOS(result) {
+  let L = [];
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
+  L.push('<div class="dsep"></div>');
+  L.push(`<div>Pedido: <strong>${result.folio}</strong></div>`);
+  L.push(`<div>Fecha: ${new Date().toLocaleDateString('es-MX')}</div>`);
+  L.push('<div class="sep"></div>');
+  L.push('<div>PRODUCTOS:</div>');
+  for (const item of carrito) {
+    const price = `$${(item.precio * item.cantidad)/100}`;
+    L.push(`<div>${item.cantidad}x ${item.nombre} ${price}</div>`);
+  }
+  L.push('<div class="sep"></div>');
+  if (result.envio > 0) L.push(`<div>Envio: $${result.envio/100}</div>`);
+  if (result.impuesto > 0) L.push(`<div>Impuesto: $${result.impuesto/100}</div>`);
+  if (result.descuento > 0) L.push(`<div>Descuento: -$${result.descuento/100}</div>`);
+  L.push(`<div>TOTAL: <strong>$${result.total/100}</strong></div>`);
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline">Gracias por su preferencia</div>');
+  L.push('<div class="dsep"></div>');
+  document.getElementById('print-frame').innerHTML = L.join('\n');
+  setTimeout(() => window.print(), 200);
+}
+
+// ─── Init ───
+loadCategorias();
+buscarProductos();
+renderCart();
+</script>
+</body>
+</html>

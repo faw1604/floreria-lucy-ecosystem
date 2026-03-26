@@ -247,6 +247,14 @@ async def stats_semana(
         "canal_mas_usado": top_canal,
     }
 
+@router.get("/pos", response_class=HTMLResponse)
+async def pos_html(panel_session: str | None = Cookie(default=None)):
+    try:
+        with open("app/pos.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="pos.html no encontrado")
+
 @router.get("/repartidor", response_class=HTMLResponse)
 async def repartidor_html(panel_session: str | None = Cookie(default=None)):
     try:
