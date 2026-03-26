@@ -60,6 +60,53 @@ async def horarios_entregas(fecha: str | None = None):
 
     return {"horarios_disponibles": horarios, "hora_actual": ahora.strftime("%H:%M")}
 
+@router.get("/alertas-fechas")
+async def alertas_fechas(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db)
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    from app.models.clientes import Cliente
+    from sqlalchemy import extract
+
+    ahora = datetime.now(TZ)
+    hoy = ahora.date()
+    cumpleanos = []
+    aniversarios = []
+
+    result = await db.execute(
+        select(Cliente).where(
+            Cliente.fecha_nacimiento.isnot(None)
+        )
+    )
+    for c in result.scalars().all():
+        fn = c.fecha_nacimiento
+        try:
+            este_ano = fn.replace(year=hoy.year)
+        except ValueError:
+            continue
+        diff = (este_ano - hoy).days
+        if 0 <= diff <= 3:
+            cumpleanos.append({"nombre": c.nombre, "telefono": c.telefono, "dias_faltan": diff, "fecha": str(este_ano)})
+
+    result2 = await db.execute(
+        select(Cliente).where(
+            Cliente.fecha_aniversario.isnot(None)
+        )
+    )
+    for c in result2.scalars().all():
+        fa = c.fecha_aniversario
+        try:
+            este_ano = fa.replace(year=hoy.year)
+        except ValueError:
+            continue
+        diff = (este_ano - hoy).days
+        if 0 <= diff <= 3:
+            aniversarios.append({"nombre": c.nombre, "telefono": c.telefono, "dias_faltan": diff, "fecha": str(este_ano)})
+
+    return {"cumpleanos_proximos": cumpleanos, "aniversarios_proximos": aniversarios}
+
 @router.get("/envio/tarifa")
 async def tarifa_envio(zona: str | None = None):
     tarifas = {

@@ -43,6 +43,9 @@ body { background: var(--fondo); color: var(--texto); font-family: 'DM Sans', sa
 .main { max-width: 900px; margin: 0 auto; padding: 16px; }
 
 /* CARDS RESUMEN */
+.alerta-fecha{background:#fff8e1;border:1px solid #f0d060;border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.alerta-fecha .af-text{font-size:13px;color:#6d5600;flex:1}
+.alerta-fecha .af-btn{font-size:12px;background:#193a2c;color:#fff;border:none;border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap;font-family:inherit}
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
 .stat-card { background: var(--fondo2); border: 1px solid var(--borde); border-radius: 12px; padding: 14px; }
 .stat-label { font-size: 11px; color: var(--texto2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
@@ -131,6 +134,7 @@ body { background: var(--fondo); color: var(--texto); font-family: 'DM Sans', sa
     <button class="nav-btn" onclick="setTab('productos')">Productos</button>
     <button class="nav-btn" onclick="setTab('flores')">Flores</button>
     <button class="nav-btn" onclick="setTab('pagos')">Pagos</button>
+    <button class="nav-btn" onclick="setTab('clientes')">Clientes</button>
     <button class="nav-btn" onclick="setTab('config')">Config</button>
   </div>
 
@@ -138,6 +142,7 @@ body { background: var(--fondo); color: var(--texto); font-family: 'DM Sans', sa
 
     <!-- INICIO -->
     <div id="tab-inicio">
+      <div id="alertas-fechas"></div>
       <div class="stats-grid" id="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Pedidos hoy</div>
@@ -203,6 +208,12 @@ body { background: var(--fondo); color: var(--texto); font-family: 'DM Sans', sa
     </div>
 
     <!-- CONFIG -->
+    <!-- CLIENTES / REFERIDOS -->
+    <div id="tab-clientes" style="display:none">
+      <div style="font-weight:600;margin-bottom:12px">Clientes registrados web</div>
+      <div id="clientes-list" style="font-size:13px;color:var(--texto2)">Cargando...</div>
+    </div>
+
     <div id="tab-config" style="display:none">
       <div class="section-title">Configuración</div>
       <div class="empty">Próximamente</div>
@@ -252,6 +263,45 @@ function setTab(tab) {
   if (tab === 'flores') loadFlores();
   if (tab === 'pagos') loadPagos();
   if (tab === 'pedidos') loadPedidos();
+  if (tab === 'clientes') loadClientes();
+}
+
+async function loadClientes() {
+  try {
+    const r = await fetch(`${API}/clientes/`, {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const webClientes = data.filter(c => c.registrado_web || c.codigo_referido);
+    const el = document.getElementById('clientes-list');
+    if (!webClientes.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--texto2)">No hay clientes registrados web aún</div>'; return; }
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+      <tr style="text-align:left;border-bottom:1px solid var(--borde)"><th style="padding:8px 6px">Nombre</th><th>Tel</th><th>Código</th><th>Referidos</th><th>Desc. acum.</th><th></th></tr>
+      ${webClientes.map(c => `<tr style="border-bottom:1px solid var(--borde)">
+        <td style="padding:8px 6px">${c.nombre}</td>
+        <td>${c.telefono}</td>
+        <td><strong>${c.codigo_referido || '—'}</strong></td>
+        <td id="ref-count-${c.id}">...</td>
+        <td id="ref-desc-${c.id}">...</td>
+        <td><button style="font-size:11px;padding:4px 8px;border:1px solid var(--borde);border-radius:6px;background:var(--fondo2);cursor:pointer" onclick="loadRefInfo(${c.id})">Ver</button></td>
+      </tr>`).join('')}
+    </table>`;
+    // Load referral counts
+    for (const c of webClientes) {
+      if (c.codigo_referido) loadRefInfo(c.id);
+    }
+  } catch(e) {}
+}
+
+async function loadRefInfo(id) {
+  try {
+    const r = await fetch(`${API}/clientes/${id}/referidos`, {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    const countEl = document.getElementById(`ref-count-${id}`);
+    const descEl = document.getElementById(`ref-desc-${id}`);
+    if (countEl) countEl.textContent = d.total_referidos;
+    if (descEl) descEl.textContent = d.descuento_acumulado_display;
+  } catch(e) {}
 }
 
 function initPanel() {
@@ -259,8 +309,30 @@ function initPanel() {
   setInterval(updateClock, 30000);
   loadStats();
   loadPedidosHoy();
+  loadAlertasFechas();
   setInterval(loadStats, 60000);
   setInterval(loadPedidosHoy, 60000);
+}
+
+async function loadAlertasFechas() {
+  try {
+    const r = await fetch(`${API}/panel/alertas-fechas`, {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    const el = document.getElementById('alertas-fechas');
+    let html = '';
+    (d.cumpleanos_proximos || []).forEach(c => {
+      const dias = c.dias_faltan === 0 ? 'hoy' : `en ${c.dias_faltan} día(s)`;
+      const msg = encodeURIComponent(`Hola ${c.nombre}, en Florería Lucy te deseamos un muy feliz cumpleaños 🌸 ¿Te gustaría sorprender a alguien especial con un arreglo?`);
+      html += `<div class="alerta-fecha"><span class="af-text">🎂 Cumpleaños: <strong>${c.nombre}</strong> ${dias}</span><a class="af-btn" href="https://wa.me/52${c.telefono}?text=${msg}" target="_blank">Contactar</a></div>`;
+    });
+    (d.aniversarios_proximos || []).forEach(c => {
+      const dias = c.dias_faltan === 0 ? 'hoy' : `en ${c.dias_faltan} día(s)`;
+      const msg = encodeURIComponent(`Hola ${c.nombre}, en Florería Lucy recordamos que se acerca una fecha muy especial para ti 🌸 ¿Te ayudamos a celebrarlo con un arreglo?`);
+      html += `<div class="alerta-fecha"><span class="af-text">💍 Aniversario: <strong>${c.nombre}</strong> ${dias}</span><a class="af-btn" href="https://wa.me/52${c.telefono}?text=${msg}" target="_blank">Contactar</a></div>`;
+    });
+    el.innerHTML = html;
+  } catch(e) {}
 }
 
 function updateClock() {
