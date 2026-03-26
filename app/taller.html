@@ -560,6 +560,16 @@ async function loadFechaFuerte(nombre, categoria) {
 }
 
 // ─── Inventario ───
+const invExpanded = new Set(); // tracks expanded section keys
+
+function toggleInvSection(key) {
+  if (invExpanded.has(key)) invExpanded.delete(key);
+  else invExpanded.add(key);
+  document.querySelectorAll(`[data-inv-key="${key}"]`).forEach(el => {
+    el.classList.toggle('collapsed', !invExpanded.has(key));
+  });
+}
+
 async function loadInventario() {
   await Promise.all([loadInvFloral(), loadInvNoFloral()]);
 }
@@ -579,12 +589,10 @@ async function loadInvFloral() {
     if (!r.ok) return;
     const items = await r.json();
 
-    // Separate by category
     const principales = items.filter(i => i.categoria === 'principal');
     const otras = items.filter(i => i.categoria === 'otras_flores');
     const follajes = items.filter(i => i.categoria === 'follajes');
 
-    // Group principales by familia
     const familias = {};
     principales.forEach(i => {
       if (!familias[i.familia]) familias[i.familia] = [];
@@ -593,36 +601,36 @@ async function loadInvFloral() {
 
     let html = '';
 
-    // ── Flores Principales (expandable families) ──
+    // ── Flores Principales ──
+    const kPrinc = 'fl-principales';
     html += `<div class="inv-section">
-      <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+      <div class="inv-header" onclick="toggleInvSection('${kPrinc}')">
         Flores Principales (${Object.keys(familias).length} familias) <span>▾</span>
       </div>
-      <div class="inv-body">`;
+      <div class="inv-body ${invExpanded.has(kPrinc)?'':'collapsed'}" data-inv-key="${kPrinc}">`;
 
     for (const [familia, colors] of Object.entries(familias)) {
       const hasColors = colors.length > 1 || (colors.length === 1 && colors[0].variante);
       if (hasColors) {
-        // Expandable family row
-        html += `<div class="inv-row inv-family" onclick="this.nextElementSibling.classList.toggle('collapsed')" style="cursor:pointer;background:var(--crema)">
+        const kFam = 'fam-' + familia.replace(/[^a-zA-Z0-9]/g,'_');
+        html += `<div class="inv-row inv-family" onclick="toggleInvSection('${kFam}')" style="cursor:pointer;background:var(--crema)">
           <div class="inv-name" style="font-weight:600">${familia} <span class="auto-badge">⚡</span></div>
           <div style="font-size:12px;color:var(--texto2)">${colors.length} colores ▸</div>
         </div>
-        <div class="inv-colors">`;
+        <div class="inv-colors ${invExpanded.has(kFam)?'':'collapsed'}" data-inv-key="${kFam}">`;
         for (const c of colors) {
           html += `<div class="inv-row" style="padding-left:32px">
             <div class="inv-name">${c.variante || familia}</div>
             <div class="inv-qty">
-              <button onclick="updateInvQty(${c.id},'floral',${c.cantidad - 1})">−</button>
+              <button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad - 1})">−</button>
               <span>${c.cantidad}</span>
-              <button onclick="updateInvQty(${c.id},'floral',${c.cantidad + 1})">+</button>
+              <button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad + 1})">+</button>
             </div>
             <div class="inv-status">${renderStatusSelect(c.id, 'floral', c.stock_estado)}</div>
           </div>`;
         }
         html += '</div>';
       } else {
-        // Single item (no colors)
         const c = colors[0];
         html += `<div class="inv-row">
           <div class="inv-name">${familia} <span class="auto-badge">⚡</span></div>
@@ -637,12 +645,13 @@ async function loadInvFloral() {
     }
     html += '</div></div>';
 
-    // ── Otras Flores (name + status only) ──
+    // ── Otras Flores ──
+    const kOtras = 'fl-otras';
     html += `<div class="inv-section">
-      <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+      <div class="inv-header" onclick="toggleInvSection('${kOtras}')">
         Otras Flores (${otras.length}) <span>▾</span>
       </div>
-      <div class="inv-body">`;
+      <div class="inv-body ${invExpanded.has(kOtras)?'':'collapsed'}" data-inv-key="${kOtras}">`;
     for (const i of otras) {
       html += `<div class="inv-row">
         <div class="inv-name" style="flex:1">${i.familia}</div>
@@ -651,12 +660,13 @@ async function loadInvFloral() {
     }
     html += '</div></div>';
 
-    // ── Follajes (name + status only) ──
+    // ── Follajes ──
+    const kFoll = 'fl-follajes';
     html += `<div class="inv-section">
-      <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+      <div class="inv-header" onclick="toggleInvSection('${kFoll}')">
         Follajes (${follajes.length}) <span>▾</span>
       </div>
-      <div class="inv-body">`;
+      <div class="inv-body ${invExpanded.has(kFoll)?'':'collapsed'}" data-inv-key="${kFoll}">`;
     for (const i of follajes) {
       html += `<div class="inv-row">
         <div class="inv-name" style="flex:1">${i.familia}</div>
@@ -678,11 +688,12 @@ async function loadInvNoFloral() {
     items.forEach(i => { if (!groups[i.categoria]) groups[i.categoria] = []; groups[i.categoria].push(i); });
     let html = '';
     for (const [cat, list] of Object.entries(groups)) {
+      const kNf = 'nf-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
       html += `<div class="inv-section">
-        <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        <div class="inv-header" onclick="toggleInvSection('${kNf}')">
           ${cat} (${list.length}) <span>▾</span>
         </div>
-        <div class="inv-body">`;
+        <div class="inv-body ${invExpanded.has(kNf)?'':'collapsed'}" data-inv-key="${kNf}">`;
       for (const i of list) {
         const nombre = i.variante ? `${cat} — ${i.variante}` : cat;
         html += `<div class="inv-row">
