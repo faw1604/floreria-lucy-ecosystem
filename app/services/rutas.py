@@ -31,11 +31,22 @@ logger.info(f"[RUTAS] Primer vertice del primer poligono (lng,lat): {_first_coor
 
 
 def obtener_ruta(lat: float, lng: float) -> str | None:
-    """Retorna el nombre de la zona en la que cae el punto, o None."""
+    """Retorna el nombre de la zona. Fallback: zona más cercana por distancia al polígono."""
     punto = Point(lng, lat)  # shapely usa (x=lng, y=lat)
+
+    # Primero intentar contains
     for nombre, poligono in _ZONAS:
         if poligono.contains(punto):
-            logger.info(f"[RUTAS] Point({lng}, {lat}) -> {nombre}")
+            logger.info(f"[RUTAS] Point({lng}, {lat}) -> {nombre} (contains)")
             return nombre
-    logger.info(f"[RUTAS] Point({lng}, {lat}) -> None (fuera de todas las zonas)")
-    return None
+
+    # Fallback: zona más cercana por distancia al borde del polígono
+    min_dist = float("inf")
+    zona_cercana = None
+    for nombre, poligono in _ZONAS:
+        dist = poligono.distance(punto)
+        if dist < min_dist:
+            min_dist = dist
+            zona_cercana = nombre
+    logger.info(f"[RUTAS] Point({lng}, {lat}) -> {zona_cercana} (nearest, dist={min_dist:.6f})")
+    return zona_cercana
