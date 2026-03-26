@@ -64,6 +64,23 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
 .empty{text-align:center;padding:30px;color:var(--texto2);font-size:13px;opacity:.6}
 
+.btn-foto{background:var(--blanco);color:var(--texto2);border:1px solid var(--borde);font-size:12px;padding:8px 12px}
+.btn-foto:hover{border-color:var(--verde);color:var(--verde)}
+
+/* Modal fotos */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal-box{background:var(--blanco);border-radius:16px;padding:20px;max-width:500px;width:90%;max-height:85vh;overflow-y:auto;position:relative}
+.modal-close{position:absolute;top:10px;right:14px;font-size:22px;background:none;border:none;cursor:pointer;color:var(--texto2);line-height:1}
+.modal-close:hover{color:var(--texto)}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:16px;color:var(--verde)}
+.producto-item{margin-bottom:16px;text-align:center;border-bottom:1px solid var(--borde);padding-bottom:16px}
+.producto-item:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
+.producto-img{max-width:100%;max-height:280px;border-radius:10px;object-fit:contain;background:#f5f5f5}
+.producto-nombre{font-size:14px;font-weight:600;margin-top:8px}
+.producto-codigo{font-size:12px;color:var(--texto2)}
+.producto-sin-foto{padding:40px;color:var(--texto2);font-size:13px}
+
 /* Print styles - hidden on screen */
 #print-frame{display:none}
 
@@ -109,6 +126,14 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   </div>
 </div>
 
+<div class="modal-overlay" id="foto-modal" onclick="if(event.target===this)cerrarFotoModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="cerrarFotoModal()">&times;</button>
+    <div class="modal-title" id="foto-modal-title">Productos del pedido</div>
+    <div id="foto-modal-body"></div>
+  </div>
+</div>
+
 <div id="print-frame"></div>
 
 <script>
@@ -146,6 +171,7 @@ function renderCard(p) {
     actions += `<button class="action-btn btn-produccion" onclick="cambiarEstado(${p.id},'En producción')">En produccion</button>`;
   if (est.includes('producci'))
     actions += `<button class="action-btn btn-listo" onclick="cambiarEstado(${p.id},'Listo')">Listo ✓</button>`;
+  actions += `<button class="action-btn btn-foto" onclick="verFotos(${p.id},'${(p.numero||'').replace(/'/g,"\\'")}')">📷 Ver foto</button>`;
   actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicket(${p.id})">🖨 Imprimir ticket</button>`;
 
   return `
@@ -286,6 +312,43 @@ async function imprimirTicket(id) {
     document.getElementById('print-frame').innerHTML = lines.join('\n');
     setTimeout(() => window.print(), 100);
   } catch(e) { alert('Error al cargar pedido'); }
+}
+
+async function verFotos(pedidoId, numero) {
+  const modal = document.getElementById('foto-modal');
+  const body = document.getElementById('foto-modal-body');
+  const title = document.getElementById('foto-modal-title');
+  title.textContent = `Productos — ${numero}`;
+  body.innerHTML = '<div class="producto-sin-foto">Cargando...</div>';
+  modal.classList.add('active');
+
+  try {
+    const r = await fetch(`${API}/pedidos/${pedidoId}/items`, {credentials:'include'});
+    if (!r.ok) { body.innerHTML = '<div class="producto-sin-foto">Error al cargar productos</div>'; return; }
+    const items = await r.json();
+
+    if (!items.length) {
+      body.innerHTML = '<div class="producto-sin-foto">Sin productos asociados</div>';
+      return;
+    }
+
+    body.innerHTML = items.map(item => {
+      const img = item.imagen_url
+        ? `<img class="producto-img" src="${item.imagen_url}" alt="${item.nombre}" onerror="this.outerHTML='<div class=\\'producto-sin-foto\\'>Sin foto disponible</div>'">`
+        : '<div class="producto-sin-foto">Sin foto disponible</div>';
+      return `<div class="producto-item">
+        ${img}
+        <div class="producto-nombre">${item.nombre}${item.cantidad > 1 ? ` (x${item.cantidad})` : ''}</div>
+        ${item.codigo ? `<div class="producto-codigo">Código: ${item.codigo}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    body.innerHTML = '<div class="producto-sin-foto">Error al cargar productos</div>';
+  }
+}
+
+function cerrarFotoModal() {
+  document.getElementById('foto-modal').classList.remove('active');
 }
 
 // Init
