@@ -98,6 +98,15 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .summary-fail{margin-top:20px;text-align:left}
 .summary-fail-item{font-size:13px;padding:8px;background:#fff5f5;border-radius:8px;margin-bottom:6px}
 
+/* Filters */
+.filters{margin-bottom:12px}
+.filter-group{margin-bottom:8px}
+.filter-label{font-size:10px;font-weight:600;color:var(--texto2);text-transform:uppercase;margin-bottom:4px;letter-spacing:.5px}
+.filter-row{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.filter-row::-webkit-scrollbar{display:none}
+.fbtn{padding:5px 10px;border:1px solid var(--verde);border-radius:14px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--verde);white-space:nowrap;flex-shrink:0}
+.fbtn.active{background:var(--verde);color:var(--dorado);border-color:var(--verde)}
+
 .err-msg{color:var(--rojo);font-size:12px;margin-top:4px;display:none}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -122,6 +131,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     <div class="hdr-title">Repartidor — Floreria Lucy</div>
     <div class="hdr-sub" id="hdr-select-sub"></div>
   </div>
+  <div id="filters-select"></div>
   <div id="select-list"></div>
   <div class="bottom-bar">
     <button class="abtn bbtn-maps" id="btn-maps" onclick="abrirMaps()">📍 Ver en Maps</button>
@@ -135,6 +145,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     <div class="hdr-title">Repartidor — Floreria Lucy</div>
     <div class="hdr-sub" id="hdr-camino-sub"></div>
   </div>
+  <div id="filters-camino"></div>
   <div id="camino-list"></div>
 </div>
 
@@ -182,6 +193,62 @@ let allPedidos = [];
 let selected = new Set();
 let currentNoEntregaId = null;
 let currentState = 'login';
+
+// ─── Filters ───
+const filters = { dia: 'hoy', horario: 'todos', ruta: 'todos', tipo: 'todos' };
+const RUTAS = ['NORTE','NORESTE','NOROESTE','PONIENTE','ORIENTE','SUR','SURESTE','Zona Central'];
+
+function renderFilters(containerId) {
+  const mkBtn = (group, value, label) => {
+    const active = filters[group] === value ? 'active' : '';
+    return `<span class="fbtn ${active}" onclick="setFilter('${group}','${value}')">${label}</span>`;
+  };
+  document.getElementById(containerId).innerHTML = `<div class="filters">
+    <div class="filter-group"><div class="filter-label">Dia</div><div class="filter-row">
+      ${mkBtn('dia','hoy','Hoy')}${mkBtn('dia','manana','Manana')}${mkBtn('dia','todos','Todos')}
+    </div></div>
+    <div class="filter-group"><div class="filter-label">Horario</div><div class="filter-row">
+      ${mkBtn('horario','todos','Todos')}${mkBtn('horario','manana','Manana')}${mkBtn('horario','tarde','Tarde')}${mkBtn('horario','noche','Noche')}
+    </div></div>
+    <div class="filter-group"><div class="filter-label">Ruta</div><div class="filter-row">
+      ${mkBtn('ruta','todos','Todos')}${RUTAS.map(r => mkBtn('ruta', r, r)).join('')}
+    </div></div>
+    <div class="filter-group"><div class="filter-label">Tipo</div><div class="filter-row">
+      ${mkBtn('tipo','todos','Todos')}${mkBtn('tipo','domicilio','Domicilio')}${mkBtn('tipo','funeral','Funeral')}
+    </div></div>
+  </div>`;
+}
+
+function setFilter(group, value) {
+  const changed = filters[group] !== value;
+  filters[group] = value;
+  if (group === 'dia' && changed) {
+    loadEntregas();
+  } else {
+    if (currentState === 'select') renderSelect();
+    else if (currentState === 'camino') renderCamino();
+  }
+}
+
+function applyFilters(pedidos) {
+  return pedidos.filter(p => {
+    if (filters.horario !== 'todos') {
+      const h = (p.horario_entrega||'').toLowerCase();
+      if (filters.horario === 'manana' && !h.includes('mañana') && !h.includes('manana')) return false;
+      if (filters.horario === 'tarde' && !h.includes('tarde')) return false;
+      if (filters.horario === 'noche' && !h.includes('noche')) return false;
+    }
+    if (filters.ruta !== 'todos') {
+      if ((p.ruta||'') !== filters.ruta) return false;
+    }
+    if (filters.tipo !== 'todos') {
+      const isFuneral = (p.tipo_especial||'') === 'Funeral';
+      if (filters.tipo === 'funeral' && !isFuneral) return false;
+      if (filters.tipo === 'domicilio' && isFuneral) return false;
+    }
+    return true;
+  });
+}
 
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -276,7 +343,8 @@ function decideView() {
 // ─── Load data ───
 async function loadEntregas() {
   try {
-    const r = await fetch('/repartidor/entregas-hoy', {credentials:'include'});
+    const param = filters.dia !== 'hoy' ? `?fecha=${filters.dia}` : '';
+    const r = await fetch(`/repartidor/entregas-hoy${param}`, {credentials:'include'});
     if (r.status === 401) { showView('login'); return; }
     if (!r.ok) return;
     allPedidos = await r.json();
@@ -286,8 +354,10 @@ async function loadEntregas() {
 
 // ─── STATE B: Select ───
 function renderSelect() {
-  const listos = allPedidos.filter(p => p.estado === 'Listo');
-  document.getElementById('hdr-select-sub').textContent = `${todayStr()}  ·  ${listos.length} pendientes`;
+  renderFilters('filters-select');
+  const allListos = allPedidos.filter(p => p.estado === 'Listo');
+  const listos = applyFilters(allListos);
+  document.getElementById('hdr-select-sub').textContent = `${todayStr()}  ·  ${listos.length} de ${allListos.length} pendientes`;
   let html = '';
   if (!listos.length) {
     html = '<div style="text-align:center;padding:40px;color:var(--texto2)">No hay pedidos listos</div>';
@@ -355,9 +425,11 @@ async function iniciarRuta() {
 
 // ─── STATE C: En camino ───
 function renderCamino() {
-  const enCamino = allPedidos.filter(p => p.estado === 'En camino');
-  const entregados = allPedidos.filter(p => p.estado === 'Entregado' || p.estado === 'entregado');
-  const fallidos = allPedidos.filter(p => p.estado === 'intento_fallido');
+  renderFilters('filters-camino');
+  const allEnCamino = allPedidos.filter(p => p.estado === 'En camino');
+  const enCamino = applyFilters(allEnCamino);
+  const entregados = applyFilters(allPedidos.filter(p => p.estado === 'Entregado' || p.estado === 'entregado'));
+  const fallidos = applyFilters(allPedidos.filter(p => p.estado === 'intento_fallido'));
   const pendientes = enCamino.length;
   document.getElementById('hdr-camino-sub').textContent = `En camino · ${pendientes} entrega${pendientes!==1?'s':''}`;
 

@@ -45,18 +45,23 @@ async def _pedido_items_nombres(pedido_id: int, db: AsyncSession) -> list[str]:
 
 @router.get("/entregas-hoy")
 async def entregas_hoy(
+    fecha: str = "hoy",
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    from datetime import timedelta
     hoy = datetime.now(TZ).date()
-    result = await db.execute(
-        select(Pedido).where(
-            Pedido.fecha_entrega == hoy,
-            Pedido.estado.in_(["Listo", "En camino", "entregado", "Entregado", "intento_fallido"]),
-        )
-    )
+    manana = hoy + timedelta(days=1)
+    estados = ["Listo", "En camino", "entregado", "Entregado", "intento_fallido"]
+    if fecha == "manana":
+        query = select(Pedido).where(Pedido.fecha_entrega == manana, Pedido.estado.in_(estados))
+    elif fecha == "todos":
+        query = select(Pedido).where(Pedido.fecha_entrega.in_([hoy, manana]), Pedido.estado.in_(estados))
+    else:
+        query = select(Pedido).where(Pedido.fecha_entrega == hoy, Pedido.estado.in_(estados))
+    result = await db.execute(query)
     pedidos = sorted(result.scalars().all(), key=_sort_key)
     out = []
     for p in pedidos:
@@ -89,6 +94,7 @@ async def entregas_hoy(
             "cliente_telefono": cliente_telefono,
             "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
             "ruta": p.ruta,
+            "tipo_especial": p.tipo_especial,
         })
     return out
 
