@@ -43,6 +43,9 @@ class ItemPedido(Base):
     producto_id: Mapped[int] = mapped_column(Integer, index=True)
     cantidad: Mapped[int] = mapped_column(Integer, default=1)
     precio_unitario: Mapped[int] = mapped_column(Integer)  # en centavos
+    es_personalizado: Mapped[bool] = mapped_column(Boolean, default=False)
+    nombre_personalizado: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    observaciones: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class NotificacionLog(Base):

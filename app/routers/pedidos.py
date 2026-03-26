@@ -12,6 +12,38 @@ from app.routers.auth import verificar_sesion
 
 router = APIRouter()
 
+
+async def _serializar_pedido_con_items(p, db):
+    """Serializa un pedido incluyendo sus items con info de producto."""
+    result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == p.id))
+    items_db = result.scalars().all()
+    items = []
+    for item in items_db:
+        prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+        prod = prod_result.scalar_one_or_none()
+        items.append({
+            "nombre": prod.nombre if prod else "Producto eliminado",
+            "codigo": prod.codigo if prod else None,
+            "imagen_url": prod.imagen_url if prod else None,
+            "cantidad": item.cantidad,
+            "es_personalizado": item.es_personalizado,
+            "nombre_personalizado": item.nombre_personalizado,
+            "observaciones": item.observaciones,
+        })
+    return {
+        "id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal,
+        "total": p.total, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta,
+        "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono,
+        "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria,
+        "notas_internas": p.notas_internas, "requiere_humano": p.requiere_humano,
+        "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado,
+        "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago,
+        "estado_florista": p.estado_florista, "nota_florista": p.nota_florista,
+        "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
+        "items": items,
+    }
+
+
 async def generar_numero_pedido(db: AsyncSession) -> str:
     ahora = datetime.now(TZ)
     año = ahora.strftime("%Y")
@@ -49,7 +81,7 @@ async def pedidos_del_dia(
         .order_by(Pedido.horario_entrega)
     )
     pedidos = result.scalars().all()
-    return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta, "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono, "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria, "notas_internas": p.notas_internas, "requiere_humano": p.requiere_humano, "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado, "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago, "estado_florista": p.estado_florista, "nota_florista": p.nota_florista} for p in pedidos]
+    return [await _serializar_pedido_con_items(p, db) for p in pedidos]
 
 @router.get("/manana")
 async def pedidos_de_manana(
@@ -65,7 +97,7 @@ async def pedidos_de_manana(
         .order_by(Pedido.horario_entrega)
     )
     pedidos = result.scalars().all()
-    return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta, "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono, "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria, "notas_internas": p.notas_internas, "requiere_humano": p.requiere_humano, "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado, "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago, "estado_florista": p.estado_florista, "nota_florista": p.nota_florista, "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None} for p in pedidos]
+    return [await _serializar_pedido_con_items(p, db) for p in pedidos]
 
 @router.get("/agendados")
 async def pedidos_agendados(
@@ -242,6 +274,9 @@ async def obtener_items_pedido(
                 "imagen_url": prod.imagen_url,
                 "cantidad": item.cantidad,
                 "precio_unitario": item.precio_unitario,
+                "es_personalizado": item.es_personalizado,
+                "nombre_personalizado": item.nombre_personalizado,
+                "observaciones": item.observaciones,
             })
     return productos
 

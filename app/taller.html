@@ -48,6 +48,10 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .pedido-card .pago-warn{background:var(--rojo);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;margin-bottom:10px;display:inline-block}
 .pedido-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .pedido-num{font-size:20px;font-weight:700;color:var(--verde);letter-spacing:-.02em}
+.pedido-producto{font-size:16px;font-weight:700;color:var(--texto);margin-bottom:6px}
+.pedido-producto-code{font-size:11px;color:var(--texto2);font-weight:400;margin-left:6px}
+.badge-personalizado{background:var(--naranja);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-block;margin-bottom:4px}
+.pedido-producto-obs{font-style:italic;font-size:12px;color:var(--texto2);margin-bottom:4px}
 .pedido-estado{font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;text-transform:uppercase}
 .estado-nuevo{background:#fee2e2;color:#991b1b}
 .estado-produccion{background:#fef3c7;color:#92400e}
@@ -384,12 +388,28 @@ function renderCard(p, showActions) {
     if (isAprobado && est.includes('producci')) {
       actions += `<button class="action-btn btn-listo" onclick="marcarListo(${p.id})">Listo ✓</button>`;
     }
-    actions += `<button class="action-btn btn-foto" onclick="verFotos(${p.id},'${(p.numero||'').replace(/'/g,"\\'")}')">📷</button>`;
     actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicket(${p.id})">🖨</button>`;
   }
 
   const timer = funeralTimer(p);
   const notaFl = p.nota_florista ? `<div class="pedido-notas" style="border-left-color:var(--azul)">Nota florista: ${p.nota_florista}</div>` : '';
+
+  // Product info from items
+  let productoHtml = '';
+  const items = p.items || [];
+  if (items.length === 0) {
+    productoHtml = '<div class="pedido-producto" style="color:var(--texto2);font-size:13px">Producto no especificado</div>';
+  } else {
+    for (const item of items) {
+      if (item.es_personalizado) {
+        productoHtml += `<div><span class="badge-personalizado">⚡ PERSONALIZADO</span></div>`;
+        productoHtml += `<div class="pedido-producto">${item.nombre_personalizado || item.nombre}</div>`;
+        if (item.observaciones) productoHtml += `<div class="pedido-producto-obs">${item.observaciones}</div>`;
+      } else {
+        productoHtml += `<div class="pedido-producto">${item.nombre}${item.codigo ? `<span class="pedido-producto-code">${item.codigo}</span>` : ''}${item.cantidad > 1 ? ` <span class="pedido-producto-code">x${item.cantidad}</span>` : ''} <button class="action-btn btn-foto" style="padding:2px 8px;font-size:11px;display:inline;vertical-align:middle" onclick="verFotos(${p.id},'${(p.numero||'').replace(/'/g,"\\'")}')">📷 Ver foto</button></div>`;
+      }
+    }
+  }
 
   return `
   <div class="pedido-card ${pagoPendiente ? 'pago-pendiente' : ''}">
@@ -400,6 +420,7 @@ function renderCard(p, showActions) {
       <div class="pedido-num">${p.numero}</div>
       <span class="pedido-estado ${estadoClass(p.estado)}">${p.estado}</span>
     </div>
+    ${productoHtml}
     <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
     ${p.zona_entrega ? `<div class="pedido-detail">📍 Zona ${p.zona_entrega} — ${p.direccion_entrega || ''}</div>` : ''}
     ${p.receptor_telefono ? `<div class="pedido-detail">📞 ${p.receptor_telefono}</div>` : ''}
