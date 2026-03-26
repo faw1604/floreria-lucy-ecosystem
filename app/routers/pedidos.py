@@ -389,14 +389,27 @@ async def obtener_ruta_pedido(
 
     logger = logging.getLogger("floreria")
     ua = "FloreriaLucy/1.0 florerialucychihuahua@gmail.com"
-    query = f"{pedido.direccion_entrega}, Chihuahua, Mexico"
-    logger.info(f"[RUTA] Direccion original: '{pedido.direccion_entrega}'")
-    logger.info(f"[RUTA] Query Nominatim: '{query}'")
+    direccion = pedido.direccion_entrega
+    logger.info(f"[RUTA] Direccion original: '{direccion}'")
 
-    async def geocode(q: str) -> list:
+    # Extraer calle (antes de la primera coma = sin colonia)
+    calle = direccion.split(",")[0].strip()
+    logger.info(f"[RUTA] Street extraida: '{calle}'")
+
+    async def geocode(street: str) -> list:
         url = "https://nominatim.openstreetmap.org/search"
-        params = {"q": q, "format": "json", "limit": 1}
-        logger.info(f"[RUTA] GET {url}?q={q}")
+        params = {
+            "street": street,
+            "city": "Chihuahua",
+            "state": "Chihuahua",
+            "country": "Mexico",
+            "countrycodes": "mx",
+            "bounded": "1",
+            "viewbox": "-106.25,28.83,-105.92,28.55",
+            "format": "json",
+            "limit": "1",
+        }
+        logger.info(f"[RUTA] GET {url} street='{street}' city=Chihuahua")
         async with httpx.AsyncClient() as client:
             r = await client.get(url, params=params, headers={"User-Agent": ua}, timeout=10)
             data = r.json()
@@ -404,21 +417,29 @@ async def obtener_ruta_pedido(
             return data
 
     try:
-        data = await geocode(query)
+        data = await geocode(calle)
 
-        # Retry with simplified address if empty
+        # Retry with full address as free-form if structured fails
         if not data:
-            parts = pedido.direccion_entrega.split(",")
-            calle = parts[0].strip()
-            query2 = f"{calle}, Chihuahua, Mexico"
-            logger.info(f"[RUTA] Reintentando con calle: '{query2}'")
-            data = await geocode(query2)
+            logger.info(f"[RUTA] Reintentando con direccion completa como q=")
+            url = "https://nominatim.openstreetmap.org/search"
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url, params={
+                    "q": f"{direccion}, Chihuahua, Mexico",
+                    "countrycodes": "mx",
+                    "bounded": "1",
+                    "viewbox": "-106.25,28.83,-105.92,28.55",
+                    "format": "json",
+                    "limit": "1",
+                }, headers={"User-Agent": ua}, timeout=10)
+                data = r.json()
+                logger.info(f"[RUTA] Nominatim fallback response ({r.status_code}): {data}")
     except Exception as e:
         logger.error(f"[RUTA] Error geocoding: {e}")
         return {"ruta": None, "error": f"Error al conectar con el geocodificador: {str(e)}"}
 
     if not data:
-        return {"ruta": None, "error": "No se pudo geocodificar la dirección", "query": query}
+        return {"ruta": None, "error": "No se pudo geocodificar la dirección", "street": calle}
 
     lat = float(data[0]["lat"])
     lng = float(data[0]["lon"])
