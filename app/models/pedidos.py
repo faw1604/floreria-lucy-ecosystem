@@ -38,6 +38,7 @@ class Pedido(Base):
     foto_entrega_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     intento_fallido_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     nota_no_entrega: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ruta: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
 
 class ItemPedido(Base):

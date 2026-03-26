@@ -368,6 +368,49 @@ async def ticket_digital(
 </body></html>"""
     return HTMLResponse(html)
 
+@router.get("/{pedido_id}/ruta")
+async def obtener_ruta_pedido(
+    pedido_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    if not pedido.direccion_entrega:
+        return {"ruta": None, "error": "El pedido no tiene dirección de entrega"}
+
+    import httpx
+    from app.services.rutas import obtener_ruta
+    query = f"{pedido.direccion_entrega}, Chihuahua, Mexico"
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={"q": query, "format": "json", "limit": 1},
+                headers={"User-Agent": "FloreriaLucy/1.0"},
+                timeout=10,
+            )
+            data = r.json()
+    except Exception:
+        return {"ruta": None, "error": "Error al conectar con el geocodificador"}
+
+    if not data:
+        return {"ruta": None, "error": "No se pudo geocodificar la dirección"}
+
+    lat = float(data[0]["lat"])
+    lng = float(data[0]["lon"])
+    ruta = obtener_ruta(lat, lng)
+
+    if ruta and pedido.ruta != ruta:
+        pedido.ruta = ruta
+        await db.commit()
+
+    return {"ruta": ruta, "lat": lat, "lng": lng}
+
 @router.get("/{pedido_id}")
 async def obtener_pedido(
     pedido_id: int,

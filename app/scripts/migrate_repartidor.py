@@ -15,7 +15,8 @@ async def migrar():
             ADD COLUMN IF NOT EXISTS entregado_at TIMESTAMP,
             ADD COLUMN IF NOT EXISTS foto_entrega_url VARCHAR,
             ADD COLUMN IF NOT EXISTS intento_fallido_at TIMESTAMP,
-            ADD COLUMN IF NOT EXISTS nota_no_entrega VARCHAR
+            ADD COLUMN IF NOT EXISTS nota_no_entrega VARCHAR,
+            ADD COLUMN IF NOT EXISTS ruta VARCHAR
         """))
     print("Migracion repartidor completada")
 
