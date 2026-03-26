@@ -30,6 +30,9 @@ class Pedido(Base):
     total: Mapped[int] = mapped_column(Integer, default=0)  # en centavos
     requiere_humano: Mapped[bool] = mapped_column(Boolean, default=False)
     tipo_especial: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # Funeral / Evento / Normal
+    estado_florista: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    # pendiente_aprobacion / aprobado / aprobado_con_modificacion / cambio_sugerido / rechazado
+    nota_florista: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class ItemPedido(Base):

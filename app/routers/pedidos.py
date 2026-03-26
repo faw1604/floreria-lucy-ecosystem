@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Cookie, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from app.database import get_db
 from app.models.pedidos import Pedido, ItemPedido
@@ -49,7 +49,54 @@ async def pedidos_del_dia(
         .order_by(Pedido.horario_entrega)
     )
     pedidos = result.scalars().all()
-    return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta, "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono, "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria, "notas_internas": p.notas_internas, "requiere_humano": p.requiere_humano, "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado, "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago} for p in pedidos]
+    return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta, "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono, "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria, "notas_internas": p.notas_internas, "requiere_humano": p.requiere_humano, "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado, "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago, "estado_florista": p.estado_florista, "nota_florista": p.nota_florista} for p in pedidos]
+
+@router.get("/manana")
+async def pedidos_de_manana(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db)
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    manana = datetime.now(TZ).date() + timedelta(days=1)
+    result = await db.execute(
+        select(Pedido)
+        .where(Pedido.fecha_entrega == manana)
+        .order_by(Pedido.horario_entrega)
+    )
+    pedidos = result.scalars().all()
+    return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta, "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono, "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria, "notas_internas": p.notas_internas, "requiere_humano": p.requiere_humano, "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado, "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago, "estado_florista": p.estado_florista, "nota_florista": p.nota_florista, "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None} for p in pedidos]
+
+@router.get("/agendados")
+async def pedidos_agendados(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db)
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    pasado_manana = datetime.now(TZ).date() + timedelta(days=2)
+    result = await db.execute(
+        select(Pedido)
+        .where(Pedido.fecha_entrega >= pasado_manana)
+        .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
+    )
+    pedidos = result.scalars().all()
+    return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None, "horario_entrega": p.horario_entrega, "receptor_nombre": p.receptor_nombre, "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado, "zona_entrega": p.zona_entrega} for p in pedidos]
+
+@router.get("/realizados")
+async def pedidos_realizados(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db)
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(
+        select(Pedido)
+        .where(Pedido.estado == "Listo")
+        .order_by(Pedido.fecha_entrega.desc())
+    )
+    pedidos = result.scalars().all()
+    return [{"id": p.id, "numero": p.numero, "estado": p.estado, "canal": p.canal, "total": p.total, "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None, "horario_entrega": p.horario_entrega, "hora_exacta": p.hora_exacta, "receptor_nombre": p.receptor_nombre, "receptor_telefono": p.receptor_telefono, "direccion_entrega": p.direccion_entrega, "dedicatoria": p.dedicatoria, "notas_internas": p.notas_internas, "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado, "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago} for p in pedidos]
 
 @router.get("/desde-claudia/test")
 async def claudia_test():
@@ -260,5 +307,11 @@ async def actualizar_estado(
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
     pedido.estado = request.get("estado", pedido.estado)
     pedido.pago_confirmado = request.get("pago_confirmado", pedido.pago_confirmado)
+    if "estado_florista" in request:
+        pedido.estado_florista = request["estado_florista"]
+    if "nota_florista" in request:
+        pedido.nota_florista = request["nota_florista"]
+    if "requiere_humano" in request:
+        pedido.requiere_humano = request["requiere_humano"]
     await db.commit()
-    return {"id": pedido.id, "numero": pedido.numero, "estado": pedido.estado}
+    return {"id": pedido.id, "numero": pedido.numero, "estado": pedido.estado, "estado_florista": pedido.estado_florista}
