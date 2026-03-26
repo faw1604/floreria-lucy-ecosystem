@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import inicializar_db
 from app.core.config import settings
-from app.routers import pedidos, productos, clientes, flores, funerarias, pagos, panel, auth, catalogo, inventario
+from app.routers import pedidos, productos, clientes, flores, funerarias, pagos, panel, auth, catalogo, inventario, repartidor
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -40,6 +40,7 @@ app.include_router(pedidos.router, prefix="/pedidos", tags=["pedidos"])
 app.include_router(panel.router, prefix="/panel", tags=["panel"])
 app.include_router(catalogo.router, prefix="/catalogo", tags=["catalogo"])
 app.include_router(inventario.router, prefix="/inventario", tags=["inventario"])
+app.include_router(repartidor.router, prefix="/repartidor", tags=["repartidor"])
 
 @app.get("/")
 async def health_check():

@@ -33,6 +33,11 @@ class Pedido(Base):
     estado_florista: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     # pendiente_aprobacion / aprobado / aprobado_con_modificacion / cambio_sugerido / rechazado
     nota_florista: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    inicio_ruta_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    entregado_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    foto_entrega_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    intento_fallido_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    nota_no_entrega: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class ItemPedido(Base):
