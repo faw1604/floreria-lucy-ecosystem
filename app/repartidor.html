@@ -296,13 +296,13 @@ function renderSelect() {
     const checked = selected.has(p.id) ? 'checked' : '';
     html += `<div class="card ${zonaClass(p.zona_envio)}">
       <input type="checkbox" class="card-check" ${checked} onchange="toggleSel(${p.id},this.checked)">
+      <div style="font-size:18px;font-weight:700;color:var(--verde);margin-bottom:6px">${p.folio}</div>
       <div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}</div>
-      <div class="card-name">${p.nombre_destinatario||''}</div>
-      <div class="card-detail">${telLink(p.telefono_destinatario)}</div>
+      <div class="card-detail" style="font-weight:600">Entrega a: ${p.nombre_destinatario||''}</div>
+      <div class="card-detail">Tel: ${telLink(p.telefono_destinatario)}</div>
       <div class="card-detail">${p.direccion_entrega||''}</div>
       ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_entrega ? `<div class="card-notas">${p.notas_entrega}</div>` : ''}
-      <div class="card-pago">${p.metodo_pago||''} — $${(p.total||0)/100}</div>
       ${p.items.length ? `<div class="card-items">${p.items.join(', ')}</div>` : ''}
     </div>`;
   }
@@ -362,13 +362,13 @@ function renderCamino() {
   let html = '';
   for (const p of enCamino) {
     html += `<div class="card ${zonaClass(p.zona_envio)}" id="card-${p.id}">
+      <div style="font-size:18px;font-weight:700;color:var(--verde);margin-bottom:6px">${p.folio}</div>
       <div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}</div>
-      <div class="card-name">${p.nombre_destinatario||''}</div>
-      <div class="card-detail">${telLink(p.telefono_destinatario)}</div>
+      <div class="card-detail" style="font-weight:600">Entrega a: ${p.nombre_destinatario||''}</div>
+      <div class="card-detail">Tel: ${telLink(p.telefono_destinatario)}</div>
       <div class="card-detail">${p.direccion_entrega||''}</div>
       ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_entrega ? `<div class="card-notas">${p.notas_entrega}</div>` : ''}
-      <div class="card-pago">${p.metodo_pago||''} — $${(p.total||0)/100}</div>
       ${p.items.length ? `<div class="card-items">${p.items.join(', ')}</div>` : ''}
       <input type="file" accept="image/*" capture="environment" id="foto-${p.id}" style="display:none" onchange="onFoto(${p.id},this)">
       <div id="preview-${p.id}"></div>
