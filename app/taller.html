@@ -427,9 +427,10 @@ function renderCard(p, showActions) {
     </div>
     ${productoHtml}
     <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
+    ${p.fecha_entrega ? `<div class="pedido-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
     ${p.zona_entrega ? `<div class="pedido-detail">📍 Zona ${p.zona_entrega} — ${p.direccion_entrega || ''}</div>` : ''}
     ${p.receptor_telefono ? `<div class="pedido-detail">📞 ${p.receptor_telefono}</div>` : ''}
-    ${p.hora_exacta ? `<div class="pedido-detail">⏰ ${p.hora_exacta}</div>` : ''}
+    ${p.hora_exacta ? `<div class="pedido-detail">⏰ Hora exacta entrega: ${p.hora_exacta}</div>` : ''}
     ${p.dedicatoria ? `<div class="pedido-dedicatoria">"${p.dedicatoria}"</div>` : ''}
     ${p.notas_internas ? `<div class="pedido-notas">${p.notas_internas}</div>` : ''}
     ${notaFl}

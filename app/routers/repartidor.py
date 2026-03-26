@@ -87,6 +87,7 @@ async def entregas_hoy(
             "nota_no_entrega": p.nota_no_entrega,
             "cliente_nombre": cliente_nombre,
             "cliente_telefono": cliente_telefono,
+            "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
         })
     return out
 

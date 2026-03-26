@@ -298,6 +298,7 @@ function renderSelect() {
       <input type="checkbox" class="card-check" ${checked} onchange="toggleSel(${p.id},this.checked)">
       <div style="font-size:18px;font-weight:700;color:var(--verde);margin-bottom:6px">${p.folio}</div>
       <div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}</div>
+      ${p.fecha_entrega ? `<div class="card-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
       <div class="card-detail" style="font-weight:600">Entrega a: ${p.nombre_destinatario||''}</div>
       <div class="card-detail">Tel: ${telLink(p.telefono_destinatario)}</div>
       <div class="card-detail">${p.direccion_entrega||''}</div>
@@ -326,7 +327,7 @@ function updateBottomBar() {
 function abrirMaps() {
   const listos = allPedidos.filter(p => selected.has(p.id) && p.direccion_entrega);
   if (!listos.length) { alert('Selecciona pedidos con direccion'); return; }
-  const dirs = listos.map(p => encodeURIComponent((p.direccion_entrega||'') + ', Chihuahua, Chih., Mexico'));
+  const dirs = listos.map(p => encodeURIComponent(p.direccion_entrega||''));
   const last = dirs.pop();
   let url = `https://www.google.com/maps/dir/?api=1&destination=${last}`;
   if (dirs.length) url += `&waypoints=${dirs.join('|')}`;
@@ -365,6 +366,7 @@ function renderCamino() {
     html += `<div class="card ${zonaClass(p.zona_envio)}" id="card-${p.id}">
       <div style="font-size:18px;font-weight:700;color:var(--verde);margin-bottom:6px">${p.folio}</div>
       <div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}</div>
+      ${p.fecha_entrega ? `<div class="card-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
       <div class="card-detail" style="font-weight:600">Entrega a: ${p.nombre_destinatario||''}</div>
       <div class="card-detail">Tel: ${telLink(p.telefono_destinatario)}</div>
       <div class="card-detail">${p.direccion_entrega||''}</div>
