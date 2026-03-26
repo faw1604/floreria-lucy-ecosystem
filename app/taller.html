@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floreria Lucy — Taller</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#dc3545;--naranja:#f59e0b;--verde-c:#16a34a;--azul:#3b82f6;--gris:#9ca3af;--morado:#7c3aed}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh}
+
+.header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--verde);color:var(--blanco);padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
+.header-logo{font-family:'Playfair Display',serif;font-size:18px;font-weight:600}
+.header-logo span{opacity:.7;font-family:'Inter',sans-serif;font-size:13px;font-weight:400;margin-left:8px}
+.header-right{display:flex;align-items:center;gap:16px;font-size:13px}
+.header-time{opacity:.8}
+.header-btn{font-size:12px;background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;text-decoration:none}
+.header-btn:hover{background:rgba(255,255,255,.25)}
+.new-badge{background:var(--rojo);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+.main{padding:68px 16px 24px;max-width:1100px;margin:0 auto}
+
+.section{margin-bottom:28px}
+.section-title{font-size:15px;font-weight:600;color:var(--texto2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section-count{font-size:12px;background:var(--borde);color:var(--texto2);padding:2px 8px;border-radius:10px}
+
+.pedidos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+
+.pedido-card{background:var(--blanco);border-radius:14px;padding:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);border-left:5px solid var(--borde);position:relative}
+.pedido-card.pago-pendiente{border-color:var(--rojo);background:#fff5f5}
+.pedido-card .pago-warn{background:var(--rojo);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;margin-bottom:10px;display:inline-block}
+
+.pedido-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.pedido-num{font-size:20px;font-weight:700;color:var(--verde);letter-spacing:-.02em}
+.pedido-estado{font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;text-transform:uppercase}
+.estado-nuevo{background:#fee2e2;color:#991b1b}
+.estado-produccion{background:#fef3c7;color:#92400e}
+.estado-listo{background:#dcfce7;color:#166534}
+.estado-camino{background:#dbeafe;color:#1e40af}
+.estado-entregado{background:#f3f4f6;color:#6b7280}
+.estado-cancelado{background:#f3f4f6;color:#9ca3af;text-decoration:line-through}
+
+.pedido-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;margin-bottom:8px;display:inline-block}
+.badge-funeral{background:#1a1a1a;color:#fff}
+.badge-evento{background:var(--morado);color:#fff}
+
+.pedido-receptor{font-size:14px;font-weight:600;margin-bottom:4px}
+.pedido-detail{font-size:12px;color:var(--texto2);margin-bottom:3px;display:flex;align-items:flex-start;gap:6px}
+.pedido-dedicatoria{font-style:italic;color:var(--verde-m);background:#f0f7f2;padding:8px 10px;border-radius:8px;font-size:12px;margin:8px 0;line-height:1.4}
+.pedido-notas{background:#fef9e7;border-left:3px solid var(--naranja);padding:8px 10px;font-size:12px;margin:8px 0;line-height:1.4;color:#92400e}
+.pedido-pago{font-size:12px;margin:8px 0;font-weight:500}
+
+.pedido-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.action-btn{padding:10px 16px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.action-btn:active{transform:scale(.96)}
+.btn-produccion{background:var(--naranja);color:#fff}
+.btn-produccion:hover{background:#d97706}
+.btn-listo{background:var(--verde-c);color:#fff}
+.btn-listo:hover{background:#15803d}
+.btn-imprimir{background:var(--blanco);color:var(--texto);border:1px solid var(--borde)}
+.btn-imprimir:hover{border-color:var(--verde);color:var(--verde)}
+
+.empty{text-align:center;padding:30px;color:var(--texto2);font-size:13px;opacity:.6}
+
+/* Print styles - hidden on screen */
+#print-frame{display:none}
+
+@media print{
+  body *{display:none!important}
+  #print-frame,#print-frame *{display:block!important}
+  @page{size:80mm auto;margin:3mm}
+  #print-frame{font-family:'Courier New',monospace;font-size:10pt;width:74mm;color:#000;line-height:1.4}
+  #print-frame .tline{text-align:center}
+  #print-frame .sep{border-top:1px dashed #000;margin:4px 0}
+  #print-frame .dsep{border-top:2px solid #000;margin:4px 0}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">Floreria Lucy<span>Taller</span></div>
+  <div class="header-right">
+    <span class="header-time" id="hdr-date"></span>
+    <span class="header-time" id="hdr-time"></span>
+    <span class="new-badge" id="new-badge" style="display:none">NUEVO</span>
+    <a class="header-btn" href="/panel/">Volver al panel</a>
+  </div>
+</div>
+
+<div class="main" id="main">
+  <div class="section" id="sec-manana">
+    <div class="section-title">🌅 Manana (9am - 2pm) <span class="section-count" id="cnt-manana">0</span></div>
+    <div class="pedidos-grid" id="grid-manana"></div>
+  </div>
+  <div class="section" id="sec-tarde">
+    <div class="section-title">🌞 Tarde (2pm - 6pm) <span class="section-count" id="cnt-tarde">0</span></div>
+    <div class="pedidos-grid" id="grid-tarde"></div>
+  </div>
+  <div class="section" id="sec-noche">
+    <div class="section-title">🌙 Noche (6pm - 9pm) <span class="section-count" id="cnt-noche">0</span></div>
+    <div class="pedidos-grid" id="grid-noche"></div>
+  </div>
+  <div class="section" id="sec-tienda">
+    <div class="section-title">🏪 Recoger en tienda <span class="section-count" id="cnt-tienda">0</span></div>
+    <div class="pedidos-grid" id="grid-tienda"></div>
+  </div>
+</div>
+
+<div id="print-frame"></div>
+
+<script>
+const API = '';
+let prevCount = -1;
+
+function updateClock() {
+  const now = new Date();
+  const opts = {timeZone:'America/Chihuahua'};
+  document.getElementById('hdr-date').textContent = now.toLocaleDateString('es-MX',{...opts,weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('hdr-time').textContent = now.toLocaleTimeString('es-MX',{...opts,hour:'2-digit',minute:'2-digit'});
+}
+
+function estadoClass(estado) {
+  const e = (estado||'').toLowerCase();
+  if (e.includes('nuevo')) return 'estado-nuevo';
+  if (e.includes('producci')) return 'estado-produccion';
+  if (e === 'listo') return 'estado-listo';
+  if (e.includes('camino')) return 'estado-camino';
+  if (e.includes('entregado')) return 'estado-entregado';
+  if (e.includes('cancelado')) return 'estado-cancelado';
+  return '';
+}
+
+function renderCard(p) {
+  const pagoPendiente = !p.pago_confirmado;
+  const pagoIcon = p.pago_confirmado ? '✅' : '⚠️ PENDIENTE';
+  let badges = '';
+  if (p.tipo_especial === 'Funeral') badges = '<div class="pedido-badge badge-funeral">FUNERAL</div>';
+  else if (p.tipo_especial === 'Evento') badges = '<div class="pedido-badge badge-evento">EVENTO</div>';
+
+  let actions = '';
+  const est = (p.estado||'').toLowerCase();
+  if (est.includes('nuevo'))
+    actions += `<button class="action-btn btn-produccion" onclick="cambiarEstado(${p.id},'En producción')">En produccion</button>`;
+  if (est.includes('producci'))
+    actions += `<button class="action-btn btn-listo" onclick="cambiarEstado(${p.id},'Listo')">Listo ✓</button>`;
+  actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicket(${p.id})">🖨 Imprimir ticket</button>`;
+
+  return `
+  <div class="pedido-card ${pagoPendiente ? 'pago-pendiente' : ''}">
+    ${pagoPendiente ? '<div class="pago-warn">⚠️ PAGO PENDIENTE — no elaborar hasta confirmar</div>' : ''}
+    ${badges}
+    <div class="pedido-header">
+      <div class="pedido-num">${p.numero}</div>
+      <span class="pedido-estado ${estadoClass(p.estado)}">${p.estado}</span>
+    </div>
+    <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
+    ${p.zona_entrega ? `<div class="pedido-detail">📍 Zona ${p.zona_entrega} — ${p.direccion_entrega || ''}</div>` : ''}
+    ${p.receptor_telefono ? `<div class="pedido-detail">📞 ${p.receptor_telefono}</div>` : ''}
+    ${p.hora_exacta ? `<div class="pedido-detail">⏰ Hora exacta: ${p.hora_exacta}</div>` : ''}
+    ${p.dedicatoria ? `<div class="pedido-dedicatoria">"${p.dedicatoria}"</div>` : ''}
+    ${p.notas_internas ? `<div class="pedido-notas">${p.notas_internas}</div>` : ''}
+    <div class="pedido-pago">${p.forma_pago || 'Sin info'} ${pagoIcon} — Total: $${(p.total||0)/100}</div>
+    <div class="pedido-actions">${actions}</div>
+  </div>`;
+}
+
+function classify(p) {
+  const h = (p.horario_entrega||'').toLowerCase();
+  if (!p.direccion_entrega && !p.zona_entrega) return 'tienda';
+  if (h.includes('mañana') || h.includes('manana')) return 'manana';
+  if (h.includes('tarde')) return 'tarde';
+  if (h.includes('noche')) return 'noche';
+  return 'manana'; // default
+}
+
+async function loadPedidos() {
+  try {
+    const r = await fetch(`${API}/pedidos/hoy`, {credentials:'include'});
+    if (r.status === 401) { window.location.href = '/panel/'; return; }
+    if (!r.ok) return;
+    const pedidos = await r.json();
+
+    // Check for new orders
+    if (prevCount >= 0 && pedidos.length > prevCount) {
+      document.getElementById('new-badge').style.display = '';
+      setTimeout(() => document.getElementById('new-badge').style.display = 'none', 10000);
+    }
+    prevCount = pedidos.length;
+
+    const buckets = {manana:[], tarde:[], noche:[], tienda:[]};
+    pedidos.forEach(p => buckets[classify(p)].push(p));
+
+    for (const [key, items] of Object.entries(buckets)) {
+      document.getElementById(`grid-${key}`).innerHTML = items.length
+        ? items.map(renderCard).join('')
+        : '<div class="empty">Sin pedidos</div>';
+      document.getElementById(`cnt-${key}`).textContent = items.length;
+    }
+  } catch(e) {}
+}
+
+async function cambiarEstado(id, estado) {
+  try {
+    await fetch(`${API}/pedidos/${id}/estado`, {
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify({estado})
+    });
+    loadPedidos();
+  } catch(e) {}
+}
+
+async function imprimirTicket(id) {
+  try {
+    const r = await fetch(`${API}/pedidos/${id}`, {credentials:'include'});
+    if (!r.ok) return;
+    const p = await r.json();
+
+    const fecha = p.fecha_entrega ? new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX') : '';
+    const hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'});
+    const total = `$${(p.total||0)/100}`;
+    const pagoStatus = p.pago_confirmado ? 'CONFIRMADO' : 'PENDIENTE';
+    const horarioMap = {manana:'Manana 9-2pm', mañana:'Manana 9-2pm', tarde:'Tarde 2-6pm', noche:'Noche 6-9pm'};
+    const horarioLabel = horarioMap[(p.horario_entrega||'').toLowerCase()] || p.horario_entrega || '';
+    const recogerEnTienda = !p.direccion_entrega && !p.zona_entrega;
+
+    let lines = [];
+    lines.push('<div class="dsep"></div>');
+    lines.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
+    lines.push('<div class="tline">La expresion del amor</div>');
+    lines.push('<div class="tline">Tel: 614 334 9392</div>');
+    lines.push('<div class="dsep"></div>');
+
+    // Funeral header
+    if (p.tipo_especial === 'Funeral') {
+      lines.push('<div><strong>*** PEDIDO FUNERAL ***</strong></div>');
+      if (p.notas_internas) lines.push(`<div>${p.notas_internas}</div>`);
+      lines.push('<div class="sep"></div>');
+    }
+
+    lines.push(`<div>Pedido: <strong>${p.numero}</strong></div>`);
+    lines.push(`<div>Fecha:  ${fecha}</div>`);
+    lines.push(`<div>Hora:   ${hora}</div>`);
+
+    if (recogerEnTienda) {
+      lines.push('<div class="sep"></div>');
+      lines.push('<div><strong>MODALIDAD: RECOGER EN TIENDA</strong></div>');
+      if (p.hora_exacta) lines.push(`<div>Hora aprox: ${p.hora_exacta}</div>`);
+      lines.push('<div class="sep"></div>');
+      lines.push(`<div>CLIENTE: ${p.receptor_nombre || ''}</div>`);
+      if (p.receptor_telefono) lines.push(`<div>TEL: ${p.receptor_telefono}</div>`);
+    } else {
+      lines.push('<div class="sep"></div>');
+      lines.push(`<div>HORARIO ENTREGA: ${horarioLabel}</div>`);
+      if (p.hora_exacta) lines.push(`<div>HORA EXACTA: ${p.hora_exacta}</div>`);
+      if (p.zona_entrega) lines.push(`<div>ZONA: ${p.zona_entrega}</div>`);
+      lines.push('<div class="sep"></div>');
+      lines.push(`<div>RECIBE: ${p.receptor_nombre || ''}</div>`);
+      if (p.receptor_telefono) lines.push(`<div>TEL:    ${p.receptor_telefono}</div>`);
+      if (p.direccion_entrega) lines.push(`<div>DIR:    ${p.direccion_entrega}</div>`);
+    }
+
+    if (p.dedicatoria) {
+      lines.push('<div class="sep"></div>');
+      lines.push('<div>DEDICATORIA:</div>');
+      lines.push(`<div>"${p.dedicatoria}"</div>`);
+    }
+
+    if (p.notas_internas && p.tipo_especial !== 'Funeral') {
+      lines.push('<div class="sep"></div>');
+      lines.push('<div>NOTAS:</div>');
+      lines.push(`<div>${p.notas_internas}</div>`);
+    }
+
+    lines.push('<div class="sep"></div>');
+    lines.push(`<div>PAGO: ${p.forma_pago || ''} ${pagoStatus}</div>`);
+    lines.push(`<div>TOTAL: <strong>${total}</strong></div>`);
+    lines.push('<div class="dsep"></div>');
+    lines.push('<div class="tline">Gracias por su preferencia</div>');
+    lines.push('<div class="dsep"></div>');
+
+    document.getElementById('print-frame').innerHTML = lines.join('\n');
+    setTimeout(() => window.print(), 100);
+  } catch(e) { alert('Error al cargar pedido'); }
+}
+
+// Init
+updateClock();
+setInterval(updateClock, 30000);
+loadPedidos();
+setInterval(loadPedidos, 60000);
+</script>
+</body>
+</html>
