@@ -130,6 +130,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .inv-header:hover{background:var(--verde-m)}
 .inv-body{padding:8px 0}
 .inv-body.collapsed{display:none}
+.inv-colors.collapsed{display:none}
+.inv-family{border-bottom:1px solid var(--borde)}
 .inv-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--borde);font-size:13px}
 .inv-row:last-child{border-bottom:none}
 .inv-name{flex:1;font-weight:500}
@@ -562,30 +564,109 @@ async function loadInventario() {
   await Promise.all([loadInvFloral(), loadInvNoFloral()]);
 }
 
+const statusOpts = ['en_stock','stock_bajo','sin_stock'];
+const statusLabels = {'en_stock':'🟢 En stock','stock_bajo':'🟡 Stock bajo','sin_stock':'🔴 Sin stock'};
+
+function renderStatusSelect(id, tipo, current) {
+  return `<select onchange="updateInvStatus(${id},'${tipo}',this.value)">
+    ${statusOpts.map(s => `<option value="${s}" ${current===s?'selected':''}>${statusLabels[s]}</option>`).join('')}
+  </select>`;
+}
+
 async function loadInvFloral() {
   try {
     const r = await fetch(`${API}/inventario/floral`, {credentials:'include'});
     if (!r.ok) return;
     const items = await r.json();
-    const groups = {principal:[], otras_flores:[], follajes:[]};
-    items.forEach(i => { if (groups[i.categoria]) groups[i.categoria].push(i); });
-    const labels = {principal:'Flores Principales', otras_flores:'Otras Flores', follajes:'Follajes'};
+
+    // Separate by category
+    const principales = items.filter(i => i.categoria === 'principal');
+    const otras = items.filter(i => i.categoria === 'otras_flores');
+    const follajes = items.filter(i => i.categoria === 'follajes');
+
+    // Group principales by familia
+    const familias = {};
+    principales.forEach(i => {
+      if (!familias[i.familia]) familias[i.familia] = [];
+      familias[i.familia].push(i);
+    });
+
     let html = '';
-    for (const [cat, list] of Object.entries(groups)) {
-      html += `<div class="inv-section">
-        <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
-          ${labels[cat]} (${list.length}) <span>▾</span>
+
+    // ── Flores Principales (expandable families) ──
+    html += `<div class="inv-section">
+      <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        Flores Principales (${Object.keys(familias).length} familias) <span>▾</span>
+      </div>
+      <div class="inv-body">`;
+
+    for (const [familia, colors] of Object.entries(familias)) {
+      const hasColors = colors.length > 1 || (colors.length === 1 && colors[0].variante);
+      if (hasColors) {
+        // Expandable family row
+        html += `<div class="inv-row inv-family" onclick="this.nextElementSibling.classList.toggle('collapsed')" style="cursor:pointer;background:var(--crema)">
+          <div class="inv-name" style="font-weight:600">${familia} <span class="auto-badge">⚡</span></div>
+          <div style="font-size:12px;color:var(--texto2)">${colors.length} colores ▸</div>
         </div>
-        <div class="inv-body">`;
-      for (const i of list) {
-        const nombre = i.variante ? `${i.familia} — ${i.variante}` : i.familia;
-        const auto = i.descuento_automatico ? '<span class="auto-badge">⚡</span>' : '';
-        html += renderInvRow(i, nombre, auto, 'floral');
+        <div class="inv-colors">`;
+        for (const c of colors) {
+          html += `<div class="inv-row" style="padding-left:32px">
+            <div class="inv-name">${c.variante || familia}</div>
+            <div class="inv-qty">
+              <button onclick="updateInvQty(${c.id},'floral',${c.cantidad - 1})">−</button>
+              <span>${c.cantidad}</span>
+              <button onclick="updateInvQty(${c.id},'floral',${c.cantidad + 1})">+</button>
+            </div>
+            <div class="inv-status">${renderStatusSelect(c.id, 'floral', c.stock_estado)}</div>
+          </div>`;
+        }
+        html += '</div>';
+      } else {
+        // Single item (no colors)
+        const c = colors[0];
+        html += `<div class="inv-row">
+          <div class="inv-name">${familia} <span class="auto-badge">⚡</span></div>
+          <div class="inv-qty">
+            <button onclick="updateInvQty(${c.id},'floral',${c.cantidad - 1})">−</button>
+            <span>${c.cantidad}</span>
+            <button onclick="updateInvQty(${c.id},'floral',${c.cantidad + 1})">+</button>
+          </div>
+          <div class="inv-status">${renderStatusSelect(c.id, 'floral', c.stock_estado)}</div>
+        </div>`;
       }
-      html += '</div></div>';
     }
+    html += '</div></div>';
+
+    // ── Otras Flores (name + status only) ──
+    html += `<div class="inv-section">
+      <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        Otras Flores (${otras.length}) <span>▾</span>
+      </div>
+      <div class="inv-body">`;
+    for (const i of otras) {
+      html += `<div class="inv-row">
+        <div class="inv-name" style="flex:1">${i.familia}</div>
+        <div class="inv-status">${renderStatusSelect(i.id, 'floral', i.stock_estado)}</div>
+      </div>`;
+    }
+    html += '</div></div>';
+
+    // ── Follajes (name + status only) ──
+    html += `<div class="inv-section">
+      <div class="inv-header" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        Follajes (${follajes.length}) <span>▾</span>
+      </div>
+      <div class="inv-body">`;
+    for (const i of follajes) {
+      html += `<div class="inv-row">
+        <div class="inv-name" style="flex:1">${i.familia}</div>
+        <div class="inv-status">${renderStatusSelect(i.id, 'floral', i.stock_estado)}</div>
+      </div>`;
+    }
+    html += '</div></div>';
+
     document.getElementById('inv-floral').innerHTML = html;
-  } catch(e) {}
+  } catch(e) { console.error(e); }
 }
 
 async function loadInvNoFloral() {
@@ -604,30 +685,20 @@ async function loadInvNoFloral() {
         <div class="inv-body">`;
       for (const i of list) {
         const nombre = i.variante ? `${cat} — ${i.variante}` : cat;
-        html += renderInvRow(i, nombre, '', 'no-floral');
+        html += `<div class="inv-row">
+          <div class="inv-name">${nombre}</div>
+          <div class="inv-qty">
+            <button onclick="updateInvQty(${i.id},'no-floral',${i.cantidad - 1})">−</button>
+            <span>${i.cantidad}</span>
+            <button onclick="updateInvQty(${i.id},'no-floral',${i.cantidad + 1})">+</button>
+          </div>
+          <div class="inv-status">${renderStatusSelect(i.id, 'no-floral', i.stock_estado)}</div>
+        </div>`;
       }
       html += '</div></div>';
     }
     document.getElementById('inv-no-floral').innerHTML = html;
   } catch(e) {}
-}
-
-function renderInvRow(i, nombre, autoTag, tipo) {
-  const statusOpts = ['en_stock','stock_bajo','sin_stock'];
-  const statusLabels = {'en_stock':'🟢 En stock','stock_bajo':'🟡 Stock bajo','sin_stock':'🔴 Sin stock'};
-  return `<div class="inv-row">
-    <div class="inv-name">${nombre}${autoTag}</div>
-    <div class="inv-qty">
-      <button onclick="updateInvQty(${i.id},'${tipo}',${i.cantidad - 1})">−</button>
-      <span id="inv-qty-${tipo}-${i.id}">${i.cantidad}</span>
-      <button onclick="updateInvQty(${i.id},'${tipo}',${i.cantidad + 1})">+</button>
-    </div>
-    <div class="inv-status">
-      <select onchange="updateInvStatus(${i.id},'${tipo}',this.value)">
-        ${statusOpts.map(s => `<option value="${s}" ${i.stock_estado===s?'selected':''}>${statusLabels[s]}</option>`).join('')}
-      </select>
-    </div>
-  </div>`;
 }
 
 async function updateInvQty(id, tipo, newQty) {

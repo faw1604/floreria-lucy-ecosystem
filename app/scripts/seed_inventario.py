@@ -1,12 +1,11 @@
-"""Seed de insumos florales y no florales para Florería Lucy."""
+"""Seed de insumos florales y no florales para Florería Lucy.
+Re-siembra limpia: borra datos existentes y vuelve a insertar."""
 import asyncio
-from sqlalchemy import select
-from app.database import engine, async_session
-from app.models.inventario import InsumoFloral, InsumoNoFloral, InsumoProducto
+from sqlalchemy import select, delete
+from app.database import engine, async_session, Base
+from app.models.inventario import InsumoFloral, InsumoNoFloral
 
-# Ensure tables exist
-from app.database import Base
-
+# Flores principales: familia + variantes (colores) con cantidad y estado individual
 PRINCIPALES = [
     ("Rosas", "Roja"), ("Rosas", "Blanca"), ("Rosas", "Color"),
     ("Gerberas", "Rosa"), ("Gerberas", "Mixtas"),
@@ -20,6 +19,7 @@ PRINCIPALES = [
     ("Gladiola/Perritos", None),
 ]
 
+# Otras flores: solo nombre + estado (sin cantidad)
 OTRAS_FLORES = [
     "Agapando", "Alhelí", "Alium", "Alcatraz", "Anémona", "Aquilea", "Artemisa",
     "Aster", "Aster Matsumoto", "Ave del Paraíso", "Baby", "Calla Lilas",
@@ -30,6 +30,7 @@ OTRAS_FLORES = [
     "Tulipán", "Wax Flower",
 ]
 
+# Follajes: solo nombre + estado (sin cantidad)
 FOLLAJES = [
     "Amaranto", "Camedor", "Cambray", "Campana Irlandesa", "Camelia",
     "Clavo Japonés", "Clavo Nacional", "Cola de Zorra", "Cola de Zorro",
@@ -60,34 +61,33 @@ async def seed():
         await conn.run_sync(Base.metadata.create_all)
 
     async with async_session() as db:
-        # Check if already seeded
-        result = await db.execute(select(InsumoFloral).limit(1))
-        if result.scalar_one_or_none():
-            print("Insumos florales ya existen, saltando seed floral.")
-        else:
-            # Principales
-            for familia, variante in PRINCIPALES:
-                db.add(InsumoFloral(familia=familia, variante=variante, categoria="principal", descuento_automatico=True))
-            # Otras flores
-            for nombre in OTRAS_FLORES:
-                db.add(InsumoFloral(familia=nombre, variante=None, categoria="otras_flores", descuento_automatico=False))
-            # Follajes
-            for nombre in FOLLAJES:
-                db.add(InsumoFloral(familia=nombre, variante=None, categoria="follajes", descuento_automatico=False))
-            await db.commit()
-            print(f"Sembrados {len(PRINCIPALES) + len(OTRAS_FLORES) + len(FOLLAJES)} insumos florales.")
+        # Limpiar tablas
+        await db.execute(delete(InsumoFloral))
+        await db.execute(delete(InsumoNoFloral))
+        await db.commit()
+        print("Tablas limpiadas.")
+
+        # Principales — con cantidad y descuento automatico
+        for familia, variante in PRINCIPALES:
+            db.add(InsumoFloral(familia=familia, variante=variante, categoria="principal", descuento_automatico=True, cantidad=0, stock_estado="en_stock"))
+
+        # Otras flores — sin cantidad (siempre 0), solo estado
+        for nombre in OTRAS_FLORES:
+            db.add(InsumoFloral(familia=nombre, variante=None, categoria="otras_flores", descuento_automatico=False, cantidad=0, stock_estado="en_stock"))
+
+        # Follajes — sin cantidad (siempre 0), solo estado
+        for nombre in FOLLAJES:
+            db.add(InsumoFloral(familia=nombre, variante=None, categoria="follajes", descuento_automatico=False, cantidad=0, stock_estado="en_stock"))
 
         # No florales
-        result2 = await db.execute(select(InsumoNoFloral).limit(1))
-        if result2.scalar_one_or_none():
-            print("Insumos no florales ya existen, saltando seed no floral.")
-        else:
-            for cat, var in NO_FLORALES:
-                db.add(InsumoNoFloral(categoria=cat, variante=var))
-            await db.commit()
-            print(f"Sembrados {len(NO_FLORALES)} insumos no florales.")
+        for cat, var in NO_FLORALES:
+            db.add(InsumoNoFloral(categoria=cat, variante=var, cantidad=0, stock_estado="en_stock"))
 
-    print("Seed de inventario completado.")
+        await db.commit()
+        total_floral = len(PRINCIPALES) + len(OTRAS_FLORES) + len(FOLLAJES)
+        print(f"Sembrados {total_floral} insumos florales ({len(PRINCIPALES)} principales, {len(OTRAS_FLORES)} otras flores, {len(FOLLAJES)} follajes).")
+        print(f"Sembrados {len(NO_FLORALES)} insumos no florales.")
+        print("Seed de inventario completado.")
 
 
 if __name__ == "__main__":
