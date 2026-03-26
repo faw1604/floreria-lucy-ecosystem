@@ -303,6 +303,7 @@ function renderSelect() {
       <div class="card-detail">${p.direccion_entrega||''}</div>
       ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_entrega ? `<div class="card-notas">${p.notas_entrega}</div>` : ''}
+      ${p.cliente_nombre ? `<div style="font-size:11px;color:var(--texto2);margin-top:6px;border-top:1px solid var(--borde);padding-top:6px">Contacto cliente: ${p.cliente_nombre}${p.cliente_telefono ? ' · ' + telLink(p.cliente_telefono) : ''}</div>` : ''}
       ${p.items.length ? `<div class="card-items">${p.items.join(', ')}</div>` : ''}
     </div>`;
   }
@@ -369,6 +370,7 @@ function renderCamino() {
       <div class="card-detail">${p.direccion_entrega||''}</div>
       ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_entrega ? `<div class="card-notas">${p.notas_entrega}</div>` : ''}
+      ${p.cliente_nombre ? `<div style="font-size:11px;color:var(--texto2);margin-top:6px;border-top:1px solid var(--borde);padding-top:6px">Contacto cliente: ${p.cliente_nombre}${p.cliente_telefono ? ' · ' + telLink(p.cliente_telefono) : ''}</div>` : ''}
       ${p.items.length ? `<div class="card-items">${p.items.join(', ')}</div>` : ''}
       <input type="file" accept="image/*" capture="environment" id="foto-${p.id}" style="display:none" onchange="onFoto(${p.id},this)">
       <div id="preview-${p.id}"></div>

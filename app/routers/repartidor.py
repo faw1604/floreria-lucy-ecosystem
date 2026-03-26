@@ -8,6 +8,7 @@ import cloudinary.uploader
 from app.database import get_db
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.productos import Producto
+from app.models.clientes import Cliente
 from app.core.config import TZ
 from app.routers.auth import verificar_sesion
 
@@ -60,6 +61,14 @@ async def entregas_hoy(
     out = []
     for p in pedidos:
         items = await _pedido_items_nombres(p.id, db)
+        cliente_nombre = None
+        cliente_telefono = None
+        if p.customer_id:
+            cr = await db.execute(select(Cliente).where(Cliente.id == p.customer_id))
+            cli = cr.scalar_one_or_none()
+            if cli:
+                cliente_nombre = cli.nombre
+                cliente_telefono = cli.telefono
         out.append({
             "id": p.id,
             "folio": p.numero,
@@ -76,6 +85,8 @@ async def entregas_hoy(
             "estado": p.estado,
             "foto_entrega_url": p.foto_entrega_url,
             "nota_no_entrega": p.nota_no_entrega,
+            "cliente_nombre": cliente_nombre,
+            "cliente_telefono": cliente_telefono,
         })
     return out
 
