@@ -238,6 +238,12 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .reg-success p{font-size:13px;color:var(--texto2);line-height:1.5;margin-bottom:6px}
 .reg-code{background:#e8f5ec;color:var(--verde);font-weight:700;font-size:16px;padding:8px 16px;border-radius:8px;display:inline-block;margin:8px 0;letter-spacing:.05em}
 .reg-discount{background:#fff8e1;color:#8d6e00;padding:10px 14px;border-radius:10px;font-size:13px;margin:10px 0;text-align:center}
+.fecha-row{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.fecha-row input[type="text"]{flex:1;min-width:0}
+.fecha-row input[type="date"]{width:140px;flex-shrink:0}
+.fecha-row input{padding:8px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;outline:none}
+.fecha-row input:focus{border-color:var(--verde-c)}
+.fecha-remove{width:28px;height:28px;border-radius:50%;border:none;background:rgba(0,0,0,.06);color:var(--texto2);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 
 /* ====== EMPTY ====== */
 .empty-msg{text-align:center;padding:60px 20px;color:var(--texto2);font-size:14px;line-height:1.6}
@@ -434,7 +440,11 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
       <div class="reg-field"><label>Teléfono *</label><input type="tel" id="reg-tel" maxlength="10" placeholder="6141234567"></div>
       <div class="reg-field"><label>Correo electrónico</label><input type="email" id="reg-email" placeholder="ana@gmail.com"></div>
       <div class="reg-field"><label>Fecha de cumpleaños</label><input type="date" id="reg-nacimiento"></div>
-      <div class="reg-field"><label>Fecha de aniversario</label><input type="date" id="reg-aniversario"></div>
+      <div class="reg-field">
+        <label>Fechas especiales</label>
+        <div id="reg-fechas-list"></div>
+        <button type="button" onclick="addFechaEspecial()" style="margin-top:6px;font-size:12px;color:var(--verde);background:none;border:1px solid var(--borde);border-radius:8px;padding:6px 12px;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:4px">+ Agregar fecha especial</button>
+      </div>
       <div class="reg-field"><label>¿Tienes código de referido?</label><input type="text" id="reg-referido" maxlength="8" placeholder="ABC12345" style="text-transform:uppercase"></div>
       <div class="reg-check"><input type="checkbox" id="reg-consent" checked><span>Acepto recibir recordatorios de fechas especiales por WhatsApp</span></div>
       <button class="reg-btn" onclick="regSubmit()">Registrarme y continuar</button>
@@ -1242,6 +1252,30 @@ async function regVerify() {
   } catch(e) { regShowForm(); }
 }
 
+let fechaCounter = 0;
+
+function addFechaEspecial(nombre, fecha) {
+  const list = document.getElementById('reg-fechas-list');
+  const id = fechaCounter++;
+  const div = document.createElement('div');
+  div.className = 'fecha-row';
+  div.id = `fecha-row-${id}`;
+  div.innerHTML = `<input type="text" placeholder="Ej: Aniversario de bodas" value="${nombre || ''}"><input type="date" value="${fecha || ''}"><button type="button" class="fecha-remove" onclick="document.getElementById('fecha-row-${id}').remove()">&times;</button>`;
+  list.appendChild(div);
+}
+
+function getFechasEspeciales() {
+  const rows = document.querySelectorAll('#reg-fechas-list .fecha-row');
+  const fechas = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const nombre = inputs[0].value.trim();
+    const fecha = inputs[1].value;
+    if (nombre && fecha) fechas.push({nombre, fecha});
+  });
+  return fechas;
+}
+
 async function regSubmit() {
   const nombre = document.getElementById('reg-nombre').value.trim();
   const tel = document.getElementById('reg-tel').value.trim();
@@ -1251,7 +1285,7 @@ async function regSubmit() {
     telefono: tel,
     email: document.getElementById('reg-email').value.trim() || null,
     fecha_nacimiento: document.getElementById('reg-nacimiento').value || null,
-    fecha_aniversario: document.getElementById('reg-aniversario').value || null,
+    fechas_especiales: getFechasEspeciales(),
     codigo_referido_usado: document.getElementById('reg-referido').value.trim() || null,
   };
   try {

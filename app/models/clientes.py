@@ -20,3 +20,4 @@ class Cliente(Base):
     referido_por: Mapped[str | None] = mapped_column(String(20), nullable=True)
     descuento_referido: Mapped[int] = mapped_column(Integer, default=0)
     registrado_web: Mapped[bool] = mapped_column(Boolean, default=False)
+    fechas_especiales: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: [{"nombre":"Aniversario","fecha":"2020-03-20"},...]

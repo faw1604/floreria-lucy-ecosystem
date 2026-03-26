@@ -328,8 +328,9 @@ async function loadAlertasFechas() {
     });
     (d.aniversarios_proximos || []).forEach(c => {
       const dias = c.dias_faltan === 0 ? 'hoy' : `en ${c.dias_faltan} día(s)`;
+      const tipo = c.tipo || 'Fecha especial';
       const msg = encodeURIComponent(`Hola ${c.nombre}, en Florería Lucy recordamos que se acerca una fecha muy especial para ti 🌸 ¿Te ayudamos a celebrarlo con un arreglo?`);
-      html += `<div class="alerta-fecha"><span class="af-text">💍 Aniversario: <strong>${c.nombre}</strong> ${dias}</span><a class="af-btn" href="https://wa.me/52${c.telefono}?text=${msg}" target="_blank">Contactar</a></div>`;
+      html += `<div class="alerta-fecha"><span class="af-text">💍 ${tipo}: <strong>${c.nombre}</strong> ${dias}</span><a class="af-btn" href="https://wa.me/52${c.telefono}?text=${msg}" target="_blank">Contactar</a></div>`;
     });
     el.innerHTML = html;
   } catch(e) {}

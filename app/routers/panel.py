@@ -90,6 +90,7 @@ async def alertas_fechas(
         if 0 <= diff <= 3:
             cumpleanos.append({"nombre": c.nombre, "telefono": c.telefono, "dias_faltan": diff, "fecha": str(este_ano)})
 
+    # Check fecha_aniversario (legacy)
     result2 = await db.execute(
         select(Cliente).where(
             Cliente.fecha_aniversario.isnot(None)
@@ -103,7 +104,29 @@ async def alertas_fechas(
             continue
         diff = (este_ano - hoy).days
         if 0 <= diff <= 3:
-            aniversarios.append({"nombre": c.nombre, "telefono": c.telefono, "dias_faltan": diff, "fecha": str(este_ano)})
+            aniversarios.append({"nombre": c.nombre, "telefono": c.telefono, "dias_faltan": diff, "fecha": str(este_ano), "tipo": "Aniversario"})
+
+    # Check fechas_especiales (new JSON field)
+    import json as _json
+    result3 = await db.execute(
+        select(Cliente).where(
+            Cliente.fechas_especiales.isnot(None)
+        )
+    )
+    for c in result3.scalars().all():
+        try:
+            fechas = _json.loads(c.fechas_especiales)
+        except Exception:
+            continue
+        for fe in fechas:
+            try:
+                fd = date.fromisoformat(fe["fecha"])
+                este_ano = fd.replace(year=hoy.year)
+            except (ValueError, KeyError):
+                continue
+            diff = (este_ano - hoy).days
+            if 0 <= diff <= 3:
+                aniversarios.append({"nombre": c.nombre, "telefono": c.telefono, "dias_faltan": diff, "fecha": str(este_ano), "tipo": fe.get("nombre", "Fecha especial")})
 
     return {"cumpleanos_proximos": cumpleanos, "aniversarios_proximos": aniversarios}
 

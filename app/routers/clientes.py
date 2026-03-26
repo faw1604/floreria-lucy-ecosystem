@@ -6,6 +6,7 @@ from app.models.clientes import Cliente
 from app.routers.auth import verificar_sesion
 from app.core.security import generar_codigo_referido
 from datetime import date
+import json
 import re
 
 router = APIRouter()
@@ -74,7 +75,7 @@ async def registro_web(
     telefono_raw = (request.get("telefono") or "").strip()
     email = (request.get("email") or "").strip() or None
     fecha_nac_str = request.get("fecha_nacimiento")
-    fecha_aniv_str = request.get("fecha_aniversario")
+    fechas_especiales = request.get("fechas_especiales") or []
     codigo_usado = (request.get("codigo_referido_usado") or "").strip().upper() or None
 
     if not nombre or not telefono_raw:
@@ -89,12 +90,12 @@ async def registro_web(
         except ValueError:
             pass
 
-    fecha_aniv = None
-    if fecha_aniv_str:
-        try:
-            fecha_aniv = date.fromisoformat(fecha_aniv_str)
-        except ValueError:
-            pass
+    # Serialize fechas_especiales as JSON
+    fechas_json = None
+    if fechas_especiales and isinstance(fechas_especiales, list):
+        valid = [f for f in fechas_especiales if f.get("nombre") and f.get("fecha")]
+        if valid:
+            fechas_json = json.dumps(valid, ensure_ascii=False)
 
     # Check if client already exists
     result = await db.execute(select(Cliente).where(Cliente.telefono == telefono))
@@ -107,8 +108,8 @@ async def registro_web(
             cliente.email = email
         if fecha_nac:
             cliente.fecha_nacimiento = fecha_nac
-        if fecha_aniv:
-            cliente.fecha_aniversario = fecha_aniv
+        if fechas_json:
+            cliente.fechas_especiales = fechas_json
         if not cliente.codigo_referido:
             cliente.codigo_referido = generar_codigo_referido(cliente.nombre, cliente.telefono)
     else:
@@ -118,7 +119,7 @@ async def registro_web(
             telefono=telefono,
             email=email,
             fecha_nacimiento=fecha_nac,
-            fecha_aniversario=fecha_aniv,
+            fechas_especiales=fechas_json,
             fuente="Web",
             registrado_web=True,
             codigo_referido=codigo,
