@@ -215,21 +215,18 @@
       line-height: 1.75;
     }
 
-    /* Photo placeholder */
-    .photo-placeholder {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--blanco);
-      border: 2px dashed var(--borde);
-      border-radius: 12px;
-      color: var(--texto2);
-      font-size: 0.85rem;
-      font-style: italic;
-      height: 180px;
+    /* Historia photos */
+    .historia-photos {
+      display: grid;
+      gap: 10px;
       margin-top: 1rem;
-      text-align: center;
-      padding: 1rem;
+    }
+    .historia-photos.grid-2 { grid-template-columns: 1fr 1fr; }
+    .historia-photo {
+      width: 100%;
+      border-radius: 12px;
+      object-fit: cover;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
     }
 
     /* ── Quote ── */
@@ -294,7 +291,7 @@
       .timeline-year { font-size: 1.5rem; }
       .timeline-text { font-size: 1rem; }
 
-      .photo-placeholder { height: 220px; }
+      .historia-photos.grid-2 { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -346,7 +343,7 @@
         <p class="timeline-text">
           Florería Lucy nació un 14 de febrero de 1988, cuando Luz María Parra Loustaunau — comerciante chihuahuense de corazón — abrió las puertas de un pequeño local en la esquina de su casa. Nadie imaginaba entonces lo que ese primer ramo representaría.
         </p>
-        <div class="photo-placeholder">[ Foto: año fundación ]</div>
+        <img class="historia-photo" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483046/floreria-lucy/historia/lucy-80s.jpg" alt="Lucy en los 80s">
       </div>
 
       <!-- 1990s -->
@@ -356,7 +353,11 @@
         <p class="timeline-text">
           El negocio creció rápidamente. Entrada la década de los 90, ya se construía un nuevo local para responder a una demanda que no paraba de crecer. Pero lo que realmente distinguió a Florería Lucy no fue el tamaño del local, sino algo mucho más difícil de replicar: la calidez humana con la que Luz María atendía a cada cliente.
         </p>
-        <div class="photo-placeholder">[ Foto: local nuevo ]</div>
+        <div class="historia-photos grid-2">
+          <img class="historia-photo" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483034/floreria-lucy/historia/local-90s-inauguracion.jpg" alt="Inauguración del local en los 90s">
+          <img class="historia-photo" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483036/floreria-lucy/historia/local-noche-90s.jpg" alt="Local de noche en los 90s">
+        </div>
+        <img class="historia-photo" style="margin-top:10px" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483036/floreria-lucy/historia/fachada-2000.jpg" alt="Fachada del local">
         <div class="quote-block">
           Conocida popularmente como "Lucy la del sombrerito" — porque jamás faltó su sombrero para cubrirse del sol — se convirtió en una figura querida del Chihuahua cotidiano. Su forma de tratar a la gente generó una confianza que el dinero no compra.
         </div>
@@ -369,6 +370,11 @@
         <p class="timeline-text">
           En 2001, ese trabajo fue reconocido oficialmente: Florería Lucy recibió el Primer Lugar en el ramo de florería por parte del Instituto de Calidad y Prestigio, con sede en Guadalajara, Jalisco. Un reconocimiento que marcó el cierre de una etapa y el inicio de otra.
         </p>
+        <div class="historia-photos grid-2">
+          <img class="historia-photo" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483037/floreria-lucy/historia/premio-2001-familia.jpg" alt="Premio 2001 con la familia">
+          <img class="historia-photo" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483038/floreria-lucy/historia/entrega-premio-2001.jpg" alt="Entrega del premio 2001">
+        </div>
+        <img class="historia-photo" style="margin-top:10px" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483041/floreria-lucy/historia/premiados-guadalajara.jpg" alt="Premiados en Guadalajara">
       </div>
 
       <!-- 2022 -->
@@ -378,7 +384,7 @@
         <p class="timeline-text">
           En 2022, por motivos de salud, Luz María delegó la administración operativa del negocio. Desde entonces, seguimos atendiendo con la misma calidad humana que ella construyó — porque ese es el legado que no se hereda, se honra.
         </p>
-        <div class="photo-placeholder">[ Foto: Lucy ]</div>
+        <img class="historia-photo" src="https://res.cloudinary.com/ddku2wmpk/image/upload/v1774483044/floreria-lucy/historia/lucy-clientes.jpg" alt="Lucy con clientes">
       </div>
 
       <!-- Hoy -->
