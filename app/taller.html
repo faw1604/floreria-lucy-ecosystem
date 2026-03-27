@@ -389,6 +389,7 @@ function renderCard(p, showActions) {
   if (ef === 'aprobado_con_modificacion') badges += '<span class="badge-florista badge-esperando">ESPERANDO RESPUESTA CLIENTE</span>';
   else if (ef === 'cambio_sugerido') badges += '<span class="badge-florista badge-cambio">CAMBIO SUGERIDO — ESPERANDO CLIENTE</span>';
   else if (ef === 'rechazado') badges += '<span class="badge-florista badge-rechazado">RECHAZADO — REQUIERE INTERVENCION</span>';
+  else if (ef === 'pendiente_pago') badges += '<span class="badge-florista" style="background:#fef3c7;color:#92400e">⚠ PEDIDO NO PAGADO — NO REALIZAR</span>';
 
   let actions = '';
   if (showActions) {

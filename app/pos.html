@@ -468,6 +468,7 @@ let selectedPays = {}; // {nombre: monto}
 let lastResult = null;
 let lastCarritoSnap = [];
 let allFunerarias = [];
+let editingPedidoId = null; // when editing a pending order
 let debounceTimer = null;
 let debounceCliTimer = null;
 let debounceCliSearchTimer = null;
@@ -662,8 +663,11 @@ function calcTotals() {
   // Link pago commission
   let comision = 0;
   if (selectedPays['Link de pago']) comision = Math.round((selectedPays['Link de pago'] || 0) * 0.04);
-  const total = subtotal + iva - descGlobalAmt + envio + comision;
-  return { subtotal, iva, ieps, descGlobalAmt, envio, comision, total };
+  // Cargo hora específica
+  let cargoHora = 0;
+  if (selHorario === 'hora_especifica') cargoHora = 8000; // $80 en centavos
+  const total = subtotal + iva - descGlobalAmt + envio + comision + cargoHora;
+  return { subtotal, iva, ieps, descGlobalAmt, envio, comision, cargoHora, total };
 }
 
 function renderCart() {
@@ -888,6 +892,13 @@ function selHorarioBtn(el, val) {
   el.classList.add('active');
   selHorario = val;
   document.getElementById('hora-esp-wrap').style.display = val === 'hora_especifica' ? '' : 'none';
+  if (val === 'hora_especifica') {
+    const note = document.getElementById('hora-esp-wrap');
+    if (note) note.insertAdjacentHTML('beforeend', '<div style="font-size:11px;color:var(--dorado);font-weight:600;margin-top:2px" id="cargo-hora-note">+$80 cargo hora especifica</div>');
+  } else {
+    const cn = document.getElementById('cargo-hora-note');
+    if (cn) cn.remove();
+  }
   updateSummary();
 }
 
@@ -923,7 +934,9 @@ async function onDirVerificada() {
       geoData = null;
     } else {
       geoData = data;
-      document.getElementById('geo-badge').innerHTML = `<span class="zona-badge ${(data.zona_envio||'').toLowerCase()}">${data.ruta || '?'} — ${data.zona_envio || '?'} $${(data.tarifa_envio||0)/100}</span>`;
+      document.getElementById('geo-badge').innerHTML =
+        `<span class="zona-badge ${(data.zona_envio||'').toLowerCase()}" style="margin-right:6px">${data.zona_envio || '?'} — $${(data.tarifa_envio||0)/100}</span>` +
+        `<span class="zona-badge" style="background:#e8eaed;color:var(--texto)">${data.ruta || '?'}</span>`;
       const zonaEl = document.getElementById('f-zona');
       if (zonaEl && data.zona_envio) zonaEl.value = data.zona_envio;
     }
@@ -1146,8 +1159,9 @@ function updateSummary() {
     if (t.iva) html += `<div class="ct-line"><span>IVA 16%</span><span>$${(t.iva/100).toLocaleString()}</span></div>`;
     if (t.ieps && iepsActivo) html += `<div class="ct-line"><span>IEPS 8% (incluido)</span><span>$${(t.ieps/100).toLocaleString()}</span></div>`;
     if (t.envio) html += `<div class="ct-line"><span>Envio</span><span>$${(t.envio/100).toLocaleString()}</span></div>`;
+    if (t.cargoHora) html += `<div class="ct-line"><span>Hora especifica</span><span>+$${(t.cargoHora/100).toLocaleString()}</span></div>`;
     if (t.descGlobalAmt) html += `<div class="ct-line disc"><span>Descuento</span><span>-$${(t.descGlobalAmt/100).toLocaleString()}</span></div>`;
-    if (t.comision) html += `<div class="ct-line"><span>Comision link</span><span>$${(t.comision/100).toLocaleString()}</span></div>`;
+    if (t.comision) html += `<div class="ct-line"><span>Comision link (4%)</span><span>+$${(t.comision/100).toLocaleString()}</span></div>`;
     html += `<div class="ct-line total"><span>TOTAL</span><span>$${(t.total/100).toLocaleString()}</span></div>`;
     st.innerHTML = html;
   }
@@ -1230,6 +1244,7 @@ function buildPayload(estado) {
     items,
     tipo_impuesto: ivaActivo ? 'IVA' : (iepsActivo ? 'IEPS' : 'NA'),
     descuento_total: t.descGlobalAmt,
+    cargo_hora_especifica: t.cargoHora || 0,
     pagos,
     estado,
   };
@@ -1285,9 +1300,11 @@ async function finalizarVenta() {
 async function submitPedido(estado) {
   const body = buildPayload(estado);
   console.log('POS submitPedido body:', JSON.stringify(body, null, 2));
+  const url = editingPedidoId ? `/pos/pedido/${editingPedidoId}/completar` : '/pos/pedido';
+  const method = editingPedidoId ? 'PATCH' : 'POST';
   try {
-    const r = await fetch('/pos/pedido', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+    const r = await fetch(url, {
+      method, headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body)
     });
     const text = await r.text();
@@ -1359,6 +1376,7 @@ function resetVenta() {
   selectedPays = {};
   lastResult = null;
   lastCarritoSnap = [];
+  editingPedidoId = null;
   renderCart();
 }
 
@@ -1471,6 +1489,7 @@ async function loadPendientes() {
       <div class="ped-total">$${(p.total/100).toLocaleString()}</div>
       <div class="ped-btns">
         <button style="background:var(--verde);color:#fff" onclick="finalizarPendiente(${p.id},${p.total})">Finalizar</button>
+        <button style="background:var(--dorado);color:var(--verde)" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
         <button style="background:var(--crema);color:var(--texto)" onclick="toggleDetalle(this)">Ver detalle</button>
       </div>
       <div class="ped-detalle" style="display:none;margin-top:8px;font-size:11px;color:var(--texto2);line-height:1.8">
@@ -1490,6 +1509,30 @@ async function loadPendientes() {
 function toggleDetalle(btn) {
   const det = btn.parentElement.nextElementSibling;
   det.style.display = det.style.display === 'none' ? '' : 'none';
+}
+
+// Editar pendiente — load into cart
+function editarPendiente(p) {
+  resetVenta();
+  editingPedidoId = p.id;
+  // Load items into cart
+  carrito = (p.items || []).map(it => ({
+    producto_id: null, nombre: it.nombre, codigo: null, categoria: null,
+    precio: it.precio_unitario, cantidad: it.cantidad, imagen_url: null,
+    descuento: null, es_custom: true, observaciones: null
+  }));
+  // Determine type
+  if (p.tipo_especial === 'Funeral') ordenTipo = 'funeral';
+  else if (p.direccion_entrega) ordenTipo = 'domicilio';
+  else ordenTipo = 'mostrador';
+  // Load client
+  if (p.customer_id && p.cliente_nombre) {
+    clienteSel = { id: p.customer_id, nombre: p.cliente_nombre, telefono: '', primera_compra: false };
+  }
+  // Navigate to ventas > win1
+  navTo('ventas');
+  renderCart();
+  goWin(1);
 }
 
 // Finalizar pendiente inline

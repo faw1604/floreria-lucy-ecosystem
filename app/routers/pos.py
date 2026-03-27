@@ -237,7 +237,9 @@ async def pos_crear_pedido(
         elif "link" in nombre_pago:
             comision = int(pago["monto"] * 0.04)
 
-    total = subtotal + impuesto + envio - descuento + comision
+    # Cargo hora especifica
+    cargo_hora = data.get("cargo_hora_especifica", 0)
+    total = subtotal + impuesto + envio - descuento + comision + cargo_hora
 
     # Validate payment
     estado_pedido = data.get("estado", "pendiente_pago")
@@ -267,7 +269,7 @@ async def pos_crear_pedido(
         if funeral_parts:
             notas = ". ".join(funeral_parts) + (f". {notas}" if notas else "")
         # Recalc total with funeral shipping
-        total = subtotal + impuesto + envio - descuento + comision
+        total = subtotal + impuesto + envio - descuento + comision + cargo_hora
 
     folio = await _generar_folio(db)
     horario = data.get("horario_entrega")
@@ -283,7 +285,7 @@ async def pos_crear_pedido(
         customer_id=cliente_id,
         canal="Mostrador",
         estado="Listo" if estado_pedido == "pagado" else "Pendiente pago",
-        estado_florista="aprobado" if estado_pedido == "pagado" else None,
+        estado_florista="aprobado" if estado_pedido == "pagado" else "pendiente_pago",
         fecha_entrega=fecha_entrega,
         horario_entrega=horario,
         hora_exacta=data.get("hora_especifica"),
@@ -448,6 +450,115 @@ async def pos_editar_pedido(
             setattr(pedido, campo, data[campo])
     await db.commit()
     return {"ok": True, "folio": pedido.numero}
+
+
+@router.patch("/pedido/{pedido_id}/completar")
+async def pos_completar_pedido(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    data = await request.json()
+    estado_pedido = data.get("estado", "pendiente_pago")
+    items = data.get("items", [])
+    pagos = data.get("pagos", [])
+
+    # Recalculate totals
+    subtotal = sum(it["precio_unitario"] * it["cantidad"] for it in items)
+    tipo_impuesto = data.get("tipo_impuesto", "NA")
+    impuesto = int(subtotal * 0.16) if tipo_impuesto == "IVA" else 0
+    descuento = data.get("descuento_total", 0)
+    cargo_hora = data.get("cargo_hora_especifica", 0)
+    comision = 0
+    for pago in pagos:
+        if "link" in (pago.get("nombre") or "").lower():
+            comision = int(pago["monto"] * 0.04)
+
+    tipo = data.get("tipo", "mostrador")
+    envio = 0
+    zona = data.get("zona_envio")
+    if tipo == "domicilio" and zona:
+        tarifas = {"Morada": 9900, "Azul": 15900, "Verde": 19900}
+        envio = tarifas.get(zona, 0)
+    if tipo == "funeral" and data.get("funeraria_id"):
+        fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
+        if fun:
+            envio = fun.costo_envio
+
+    total = subtotal + impuesto + envio - descuento + comision + cargo_hora
+
+    # Validate payment if finalizing
+    if estado_pedido == "pagado":
+        suma_pagos = sum(p["monto"] for p in pagos)
+        if suma_pagos < total:
+            raise HTTPException(status_code=400, detail=f"Falta asignar ${(total - suma_pagos) / 100:.0f}")
+
+    # Update pedido fields
+    pedido.estado = "Listo" if estado_pedido == "pagado" else "Pendiente pago"
+    pedido.estado_florista = "aprobado" if estado_pedido == "pagado" else "pendiente_pago"
+    pedido.pago_confirmado = estado_pedido == "pagado"
+    pedido.subtotal = subtotal
+    pedido.envio = envio
+    pedido.total = total
+    pedido.forma_pago = ", ".join([p.get("nombre") or "" for p in pagos]) if pagos else pedido.forma_pago
+    pedido.customer_id = data.get("cliente_id") or pedido.customer_id
+    pedido.tipo_especial = "Funeral" if tipo == "funeral" else None
+    pedido.direccion_entrega = data.get("direccion_entrega") or pedido.direccion_entrega
+    pedido.receptor_nombre = data.get("nombre_destinatario") or pedido.receptor_nombre
+    pedido.receptor_telefono = data.get("telefono_destinatario") or pedido.receptor_telefono
+    pedido.dedicatoria = data.get("dedicatoria") or pedido.dedicatoria
+    pedido.notas_internas = data.get("notas_entrega") or pedido.notas_internas
+    pedido.ruta = data.get("ruta") or pedido.ruta
+
+    horario = data.get("horario_entrega")
+    if horario == "hora_especifica":
+        pedido.hora_exacta = data.get("hora_especifica")
+        pedido.horario_entrega = None
+    elif horario:
+        pedido.horario_entrega = horario
+
+    from datetime import date as date_type
+    fecha_str = data.get("fecha_entrega")
+    if fecha_str:
+        pedido.fecha_entrega = date_type.fromisoformat(fecha_str)
+
+    zona_entrega = data.get("zona_envio") or zona
+    if zona_entrega:
+        pedido.zona_entrega = zona_entrega
+
+    # Replace items
+    old_items = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+    for oi in old_items.scalars().all():
+        await db.delete(oi)
+
+    for it in items:
+        db.add(ItemPedido(
+            pedido_id=pedido.id,
+            producto_id=it.get("producto_id") or 0,
+            cantidad=it["cantidad"],
+            precio_unitario=it["precio_unitario"],
+            es_personalizado=it.get("es_personalizado", False),
+            nombre_personalizado=it.get("nombre_personalizado"),
+            observaciones=it.get("observaciones"),
+        ))
+
+    await db.commit()
+    await db.refresh(pedido)
+
+    return {
+        "ok": True, "folio": pedido.numero, "id": pedido.id,
+        "total": total, "subtotal": subtotal, "impuesto": impuesto,
+        "envio": envio, "descuento": descuento, "comision": comision,
+        "estado": pedido.estado,
+    }
 
 
 @router.post("/enviar-ticket-whatsapp")
