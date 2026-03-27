@@ -489,7 +489,7 @@ input,select,textarea{font-family:inherit;font-size:13px}
     <div class="pend-table-wrap">
       <table class="pend-table">
         <thead><tr>
-          <th>Codigo</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Items</th><th>Valor</th><th>Tipo</th><th>Obs.</th><th>Acciones</th>
+          <th>Codigo</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Items</th><th>Valor</th><th>Tipo</th><th>Obs.</th><th>Ticket</th><th>Acciones</th>
         </tr></thead>
         <tbody id="trans-tbody"></tbody>
       </table>
@@ -620,6 +620,26 @@ input,select,textarea{font-family:inherit;font-size:13px}
       <button onclick="document.getElementById('modal-cancelar-trans').classList.remove('active')" style="flex:1;padding:10px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:13px;font-weight:500">No</button>
       <button onclick="confirmarCancelarTrans()" style="flex:1;padding:10px;background:var(--rojo);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600">Cancelar pedido</button>
     </div>
+  </div>
+</div>
+
+<!-- Modal: WhatsApp a cliente -->
+<div class="modal-bg" id="modal-wa-cli" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:400px">
+    <button class="close" onclick="document.getElementById('modal-wa-cli').classList.remove('active')">&times;</button>
+    <h3>💬 Enviar WhatsApp</h3>
+    <div id="wa-cli-nombre" style="font-weight:600;font-size:14px;margin-bottom:10px"></div>
+    <div class="frow"><label>Mensaje</label><textarea id="wa-cli-msg" rows="4" placeholder="Escribe tu mensaje..."></textarea></div>
+    <div id="wa-cli-status" style="font-size:12px;margin-top:6px;display:none"></div>
+    <button id="wa-cli-btn" onclick="enviarWaCli()" style="width:100%;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;margin-top:8px">Enviar</button>
+  </div>
+</div>
+
+<!-- Modal: Ver ticket detalle -->
+<div class="modal-bg" id="modal-ticket" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:520px;padding:20px">
+    <button class="close" onclick="document.getElementById('modal-ticket').classList.remove('active')">&times;</button>
+    <div id="ticket-content"></div>
   </div>
 </div>
 
@@ -2051,7 +2071,7 @@ async function loadResumenVentas() {
 async function loadTransacciones(params) {
   const tbody = document.getElementById('trans-tbody');
   const empty = document.getElementById('trans-empty');
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
   loadResumenVentas();
   try {
     let url = '/pos/pedidos-hoy?periodo=' + transFilterPeriodo;
@@ -2075,7 +2095,7 @@ async function loadTransacciones(params) {
     transAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
     renderTransTable(transAllData);
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
   }
 }
 
@@ -2104,6 +2124,7 @@ function renderTransTable(rows) {
       <td style="font-weight:600;white-space:nowrap">${pagoIcon(p.forma_pago)} $${((p.total||0)/100).toLocaleString()}</td>
       <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
       <td>${obsIcon(p)}</td>
+      <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:16px;cursor:pointer" title="Ver ticket">🎫</button></td>
       <td class="pend-actions">
         ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelarTrans(${p.id},'${esc(p.folio)}')" title="Cancelar">✂️</button>` : '<span class="badge-estado cancelado">Cancelado</span>'}
       </td>
@@ -2156,12 +2177,196 @@ async function buscarClientesSec() {
     const clientes = await r.json();
     document.getElementById('cli-list').innerHTML = clientes.map(c =>
       `<div class="cli-card">
-        <div class="cli-name">${c.nombre}</div>
-        <div class="cli-phone">${c.telefono} ${c.email ? '— ' + c.email : ''}</div>
-        ${c.primera_compra ? '<div class="cli-orders" style="color:var(--dorado)">Primera compra — 10% descuento</div>' : '<div class="cli-orders">Cliente recurrente</div>'}
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="cli-name">${c.nombre}</div>
+            <div class="cli-phone">${c.telefono} ${c.email ? '— ' + c.email : ''}</div>
+            ${c.primera_compra ? '<div class="cli-orders" style="color:var(--dorado)">Primera compra — 10% descuento</div>' : '<div class="cli-orders">Cliente recurrente</div>'}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          ${c.telefono ? `<button onclick="abrirWaCli('${esc(c.nombre)}','${c.telefono}')" style="padding:5px 10px;border:1px solid #25D366;background:#fff;color:#25D366;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💬 WhatsApp</button>` : ''}
+          <button onclick="verPedidosCliente(${c.id},'${esc(c.nombre)}')" style="padding:5px 10px;border:1px solid var(--borde);background:#fff;color:var(--texto);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📋 Ver pedidos</button>
+          <button onclick="nuevoPedidoCliente(${c.id},'${esc(c.nombre)}','${c.telefono}',${c.primera_compra})" style="padding:5px 10px;border:1px solid var(--verde);background:var(--verde);color:#fff;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">➕ Nuevo pedido</button>
+        </div>
       </div>`
     ).join('') || '<div style="padding:10px;color:var(--texto2);font-size:12px">Sin resultados</div>';
   } catch(e) { console.error(e); }
+}
+
+// ═══════════════════════════════════════════
+// CLIENT ACTIONS
+// ═══════════════════════════════════════════
+let waCliTel = '';
+function abrirWaCli(nombre, tel) {
+  waCliTel = tel;
+  document.getElementById('wa-cli-nombre').textContent = nombre;
+  document.getElementById('wa-cli-msg').value = '';
+  document.getElementById('wa-cli-status').style.display = 'none';
+  document.getElementById('wa-cli-btn').disabled = false;
+  document.getElementById('wa-cli-btn').textContent = 'Enviar';
+  document.getElementById('modal-wa-cli').classList.add('active');
+}
+
+async function enviarWaCli() {
+  const msg = document.getElementById('wa-cli-msg').value.trim();
+  if (!msg) { document.getElementById('wa-cli-status').textContent = 'Escribe un mensaje'; document.getElementById('wa-cli-status').style.display = ''; document.getElementById('wa-cli-status').style.color = 'var(--rojo)'; return; }
+  const btn = document.getElementById('wa-cli-btn');
+  const status = document.getElementById('wa-cli-status');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  status.style.display = 'none';
+  try {
+    const r = await fetch('/pos/enviar-whatsapp-cliente', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({telefono: waCliTel, mensaje: msg})
+    });
+    const data = await r.json();
+    if (data.ok) {
+      status.textContent = '✓ Mensaje enviado';
+      status.style.color = '#2e7d32';
+      btn.textContent = 'Enviado ✓';
+    } else {
+      status.textContent = data.error || 'Error al enviar';
+      status.style.color = 'var(--rojo)';
+      btn.disabled = false;
+      btn.textContent = 'Reintentar';
+    }
+  } catch(e) {
+    status.textContent = 'Error de red';
+    status.style.color = 'var(--rojo)';
+    btn.disabled = false;
+    btn.textContent = 'Reintentar';
+  }
+  status.style.display = '';
+}
+
+function verPedidosCliente(id, nombre) {
+  transFilterPeriodo = 'mes';
+  navTo('transacciones');
+  loadTransacciones('cliente_id=' + id);
+  document.getElementById('trans-search').value = nombre;
+}
+
+function nuevoPedidoCliente(id, nombre, telefono, primera) {
+  resetVenta();
+  clienteSel = {id, nombre, telefono, primera_compra: primera};
+  navTo('ventas');
+  renderCart();
+  goWin(1);
+}
+
+// ═══════════════════════════════════════════
+// TICKET DETAIL MODAL
+// ═══════════════════════════════════════════
+let ticketPedido = null;
+
+function verTicket(p) {
+  ticketPedido = p;
+  const ec = estadoClass(p.estado);
+  const fecha = p.fecha_pedido || p.fecha_entrega || '';
+  let html = '';
+  // Header
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:20px;font-weight:700;color:var(--verde)">${p.folio}</div>
+    <span class="badge-estado ${ec}" style="font-size:12px">${estadoLabel(p.estado)}</span>
+  </div>`;
+  html += `<div style="font-size:12px;color:var(--texto2);margin-bottom:12px">${fecha}</div>`;
+  // Client
+  if (p.cliente_nombre) {
+    html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:4px">CLIENTE</h4>
+      <div style="font-size:13px;font-weight:600">${p.cliente_nombre}</div>
+      ${p.cliente_telefono ? `<div style="font-size:12px;color:var(--texto2)">${p.cliente_telefono}</div>` : ''}
+    </div>`;
+  }
+  // Type-specific data
+  const tipo = tipoLabel(p);
+  html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:4px">${tipoIcon(p)} ${tipo.toUpperCase()}</h4>`;
+  if (p.direccion_entrega && !p.tipo_especial) {
+    // Domicilio
+    if (p.receptor_nombre) html += `<div style="font-size:12px"><strong>Destinatario:</strong> ${p.receptor_nombre}</div>`;
+    if (p.receptor_telefono) html += `<div style="font-size:12px"><strong>Tel:</strong> ${p.receptor_telefono}</div>`;
+    html += `<div style="font-size:12px"><strong>Direccion:</strong> ${p.direccion_entrega}</div>`;
+    if (p.zona_entrega) html += `<div style="font-size:12px"><strong>Zona:</strong> <span class="zona-badge ${(p.zona_entrega||'').toLowerCase()}">${p.zona_entrega}</span></div>`;
+    if (p.ruta) html += `<div style="font-size:12px"><strong>Ruta:</strong> ${p.ruta}</div>`;
+    if (p.horario_entrega) html += `<div style="font-size:12px"><strong>Horario:</strong> ${p.horario_entrega}</div>`;
+    if (p.hora_exacta) html += `<div style="font-size:12px"><strong>Hora:</strong> ${p.hora_exacta}</div>`;
+    if (p.dedicatoria) html += `<div style="font-size:12px;margin-top:4px"><strong>Dedicatoria:</strong> ${p.dedicatoria}</div>`;
+    if (p.notas_internas) html += `<div style="font-size:12px"><strong>Notas:</strong> ${p.notas_internas}</div>`;
+  } else if (p.tipo_especial === 'Funeral') {
+    if (p.notas_internas) html += `<div style="font-size:12px;white-space:pre-line">${p.notas_internas}</div>`;
+    if (p.dedicatoria) html += `<div style="font-size:12px;margin-top:4px"><strong>Dedicatoria:</strong> ${p.dedicatoria}</div>`;
+    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha entrega:</strong> ${p.fecha_entrega}</div>`;
+  } else if (p.hora_exacta && !p.direccion_entrega) {
+    // Recoger
+    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha:</strong> ${p.fecha_entrega}</div>`;
+    html += `<div style="font-size:12px"><strong>Hora:</strong> ${p.hora_exacta}</div>`;
+  } else {
+    html += `<div style="font-size:12px;color:var(--texto2)">Venta en mostrador</div>`;
+  }
+  html += '</div>';
+  // Products
+  html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:6px">PRODUCTOS</h4>`;
+  (p.items||[]).forEach(it => {
+    const sub = (it.precio_unitario * it.cantidad) / 100;
+    html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--gris)">
+      <span>${it.cantidad}x ${it.nombre}</span><span style="font-weight:600">$${sub.toLocaleString()}</span>
+    </div>`;
+  });
+  html += '</div>';
+  // Totals
+  html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:6px">RESUMEN</h4>`;
+  html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Subtotal</span><span>$${((p.subtotal||0)/100).toLocaleString()}</span></div>`;
+  if (p.envio) html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Envio</span><span>$${(p.envio/100).toLocaleString()}</span></div>`;
+  html += `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--verde);padding:6px 0;border-top:2px solid var(--verde);margin-top:4px"><span>TOTAL</span><span>$${((p.total||0)/100).toLocaleString()}</span></div>`;
+  if (p.forma_pago) html += `<div style="font-size:11px;color:var(--texto2);margin-top:4px">Pago: ${p.forma_pago}</div>`;
+  html += '</div>';
+  // Buttons
+  html += `<div style="display:flex;gap:8px;margin-top:14px">
+    <button onclick="reimprimirDesdeTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Reimprimir</button>
+    ${p.cliente_telefono ? `<button onclick="enviarWaDesdeTicket()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>` : ''}
+    <button onclick="document.getElementById('modal-ticket').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>
+  </div>`;
+  document.getElementById('ticket-content').innerHTML = html;
+  document.getElementById('modal-ticket').classList.add('active');
+}
+
+function reimprimirDesdeTicket() {
+  const p = ticketPedido;
+  if (!p) return;
+  const L = [];
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
+  L.push('<div class="dsep"></div>');
+  L.push(`<div>Pedido: <strong>${p.folio}</strong></div>`);
+  L.push('<div class="sep"></div>');
+  (p.items||[]).forEach(it => L.push(`<div>${it.cantidad}x ${it.nombre} $${(it.precio_unitario*it.cantidad)/100}</div>`));
+  L.push('<div class="sep"></div>');
+  if (p.envio > 0) L.push(`<div>Envio: $${p.envio/100}</div>`);
+  L.push(`<div>TOTAL: <strong>$${(p.total||0)/100}</strong></div>`);
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline">Gracias por su preferencia</div>');
+  L.push('<div class="dsep"></div>');
+  document.getElementById('print-frame').innerHTML = L.join('\n');
+  setTimeout(() => window.print(), 100);
+}
+
+async function enviarWaDesdeTicket() {
+  const p = ticketPedido;
+  if (!p || !p.cliente_telefono) return;
+  // Capture ticket as image and send
+  try {
+    const tc = document.getElementById('ticket-content');
+    const canvas = await html2canvas(tc, {scale:2, backgroundColor:'#ffffff'});
+    const b64 = canvas.toDataURL('image/png').split(',')[1];
+    const r = await fetch('/pos/enviar-ticket-whatsapp', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({pedido_id: p.id, telefono: p.cliente_telefono, nombre_cliente: p.cliente_nombre || '', imagen_base64: b64})
+    });
+    const data = await r.json();
+    if (data.ok) alert('Ticket enviado por WhatsApp');
+    else alert(data.error || 'Error al enviar');
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ═══════════════════════════════════════════

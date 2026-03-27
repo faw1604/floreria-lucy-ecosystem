@@ -339,13 +339,15 @@ async def _serializar_pedido_pos(p, db):
             nombre = prod.nombre if prod else "?"
         items.append({"nombre": nombre, "cantidad": it.cantidad, "precio_unitario": it.precio_unitario})
     cliente_nombre = None
+    cliente_telefono = None
     if p.customer_id:
         cli = (await db.execute(select(Cliente).where(Cliente.id == p.customer_id))).scalar_one_or_none()
         if cli:
             cliente_nombre = cli.nombre
+            cliente_telefono = cli.telefono
     return {
         "id": p.id, "folio": p.numero, "estado": p.estado, "canal": p.canal,
-        "cliente_nombre": cliente_nombre, "customer_id": p.customer_id,
+        "cliente_nombre": cliente_nombre, "cliente_telefono": cliente_telefono, "customer_id": p.customer_id,
         "items": items, "subtotal": p.subtotal, "envio": p.envio, "total": p.total,
         "forma_pago": p.forma_pago, "pago_confirmado": p.pago_confirmado,
         "tipo_especial": p.tipo_especial, "horario_entrega": p.horario_entrega,
@@ -366,6 +368,7 @@ async def pos_pedidos_hoy(
     estado: str | None = None,
     canal: str | None = None,
     tipo: str | None = None,
+    cliente_id: int | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -415,6 +418,10 @@ async def pos_pedidos_hoy(
         Pedido.fecha_pedido >= utc_start,
         Pedido.fecha_pedido <= utc_end,
     ).order_by(Pedido.fecha_pedido.desc())
+
+    # Filter by cliente_id
+    if cliente_id:
+        query = query.where(Pedido.customer_id == cliente_id)
 
     # Filter by canal
     if canal:
@@ -722,6 +729,35 @@ async def pos_cancelar_pedido(
     pedido.estado_florista = "cancelado"
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/enviar-whatsapp-cliente")
+async def pos_enviar_whatsapp_cliente(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    whapi_token = os.environ.get("WHAPI_TOKEN")
+    if not whapi_token:
+        return {"error": "WHAPI_TOKEN no configurado"}
+    data = await request.json()
+    telefono = "".join(c for c in data.get("telefono", "") if c.isdigit())
+    if not telefono.startswith("52"):
+        telefono = "52" + telefono
+    mensaje = data.get("mensaje", "")
+    if not mensaje.strip():
+        return {"error": "Mensaje vacio"}
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            await client.post(
+                "https://gate.whapi.cloud/messages/text",
+                headers={"Authorization": f"Bearer {whapi_token}", "Content-Type": "application/json"},
+                json={"to": telefono, "body": mensaje},
+            )
+        return {"ok": True}
+    except Exception as e:
+        return {"error": f"Error al enviar: {str(e)}"}
 
 
 @router.post("/enviar-ticket-whatsapp")
