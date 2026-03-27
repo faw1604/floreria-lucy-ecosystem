@@ -275,6 +275,12 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .filter-overlay.open{display:block}
 .pend-table-wrap{flex:1;overflow-y:auto}
 
+/* ─── Transacciones metrics ─── */
+.trans-metrics{display:flex;gap:10px;margin-bottom:14px}
+.tm-card{flex:1;background:#fff;border:1px solid var(--borde);border-radius:10px;padding:12px 14px;text-align:center}
+.tm-label{font-size:11px;font-weight:600;color:var(--texto2);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.tm-val{font-size:13px;font-weight:700;color:var(--verde);line-height:1.4}
+
 /* Client detail */
 .cli-card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:14px;margin-bottom:10px}
 .cli-card .cli-name{font-weight:700;font-size:14px}
@@ -445,15 +451,35 @@ input,select,textarea{font-family:inherit;font-size:13px}
       <label class="fp-check"><input type="checkbox" value="Funeral"> Funeral</label>
     </div>
   </div>
-  <div class="fp-footer"><button onclick="aplicarFiltros()">Filtrar</button></div>
+  <div class="fp-footer"><button onclick="aplicarFiltrosPanel()">Filtrar</button></div>
 </div>
 
 <!-- ════════════ SECTION: TRANSACCIONES ════════════ -->
 <div class="section" id="sec-transacciones">
-  <div class="sec-pad">
-    <div class="sec-hdr">Transacciones del dia</div>
-    <div id="trans-list"></div>
-    <div id="trans-resumen"></div>
+  <div class="sec-pad" style="display:flex;flex-direction:column;overflow:hidden">
+    <!-- Resumen rápido -->
+    <div class="trans-metrics" id="trans-metrics">
+      <div class="tm-card"><div class="tm-label">Hoy</div><div class="tm-val" id="tm-hoy">—</div></div>
+      <div class="tm-card"><div class="tm-label">Ayer</div><div class="tm-val" id="tm-ayer">—</div></div>
+      <div class="tm-card"><div class="tm-label">Esta semana</div><div class="tm-val" id="tm-semana">—</div></div>
+      <div class="tm-card"><div class="tm-label">Este mes</div><div class="tm-val" id="tm-mes">—</div></div>
+    </div>
+    <!-- Toolbar -->
+    <div class="pend-toolbar">
+      <div class="pend-count" id="trans-count">0 transacciones</div>
+      <input type="text" id="trans-search" placeholder="Nombre del cliente o producto..." oninput="filtrarTablaTrans()">
+      <button class="btn-filtro" onclick="toggleFilterPanel('trans')">🔍 Filtro</button>
+    </div>
+    <!-- Tabla -->
+    <div class="pend-table-wrap">
+      <table class="pend-table">
+        <thead><tr>
+          <th>Codigo</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Items</th><th>Valor</th><th>Tipo</th><th>Obs.</th><th>Acciones</th>
+        </tr></thead>
+        <tbody id="trans-tbody"></tbody>
+      </table>
+      <div id="trans-empty" style="display:none;text-align:center;color:var(--texto2);font-size:13px;padding:40px">No hay transacciones</div>
+    </div>
   </div>
 </div>
 
@@ -558,7 +584,7 @@ input,select,textarea{font-family:inherit;font-size:13px}
   </div>
 </div>
 
-<!-- Modal: Cancelar pedido -->
+<!-- Modal: Cancelar pedido (pendientes) -->
 <div class="modal-bg" id="modal-cancelar" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="modal" style="max-width:340px;text-align:center">
     <h3>¿Cancelar este pedido?</h3>
@@ -566,6 +592,18 @@ input,select,textarea{font-family:inherit;font-size:13px}
     <div style="display:flex;gap:8px">
       <button onclick="document.getElementById('modal-cancelar').classList.remove('active')" style="flex:1;padding:10px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:13px;font-weight:500">No</button>
       <button onclick="confirmarCancelar()" style="flex:1;padding:10px;background:var(--rojo);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600">Cancelar pedido</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cancelar transacción -->
+<div class="modal-bg" id="modal-cancelar-trans" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <h3>¿Cancelar este pedido?</h3>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:16px">El pedido <strong id="cancel-trans-folio"></strong> sera cancelado.<br>Esta accion afectara el registro de finanzas.</p>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('modal-cancelar-trans').classList.remove('active')" style="flex:1;padding:10px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:13px;font-weight:500">No</button>
+      <button onclick="confirmarCancelarTrans()" style="flex:1;padding:10px;background:var(--rojo);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600">Cancelar pedido</button>
     </div>
   </div>
 </div>
@@ -1691,8 +1729,11 @@ function filtrarTablaPend() {
   renderPendTable(filtered);
 }
 
-// Filter panel
-function toggleFilterPanel() {
+// Filter panel — shared between pendientes and transacciones
+let filterPanelTarget = 'pend'; // 'pend' or 'trans'
+
+function toggleFilterPanel(target) {
+  if (target) filterPanelTarget = target;
   document.getElementById('filter-panel').classList.toggle('open');
   document.getElementById('filter-overlay').classList.toggle('open');
 }
@@ -1700,31 +1741,33 @@ function toggleFilterPanel() {
 function fpSelectPeriodo(el, val) {
   document.querySelectorAll('#fp-periodo .fp-chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-  pendFilterPeriodo = val;
+  if (filterPanelTarget === 'trans') transFilterPeriodo = val;
+  else pendFilterPeriodo = val;
   document.getElementById('fp-rango-dates').style.display = val === 'rango' ? 'flex' : 'none';
 }
 
-function aplicarFiltros() {
+function getFilterParams() {
   const params = [];
-  // Metodo de pago
   const metodos = [];
   document.querySelectorAll('#filter-panel .fp-section:nth-child(2) input:checked').forEach(cb => metodos.push(cb.value));
   if (metodos.length) params.push('metodo_pago=' + encodeURIComponent(metodos.join(',')));
-  // Estado
   const estados = [];
   document.querySelectorAll('#filter-panel .fp-section:nth-child(3) input:checked').forEach(cb => estados.push(cb.value));
   if (estados.length) params.push('estado=' + encodeURIComponent(estados.join(',')));
-  // Canal
   const canales = [];
   document.querySelectorAll('#filter-panel .fp-section:nth-child(4) input:checked').forEach(cb => canales.push(cb.value));
   if (canales.length) params.push('canal=' + encodeURIComponent(canales.join(',')));
-  // Tipo
   const tipos = [];
   document.querySelectorAll('#filter-panel .fp-section:nth-child(5) input:checked').forEach(cb => tipos.push(cb.value));
   if (tipos.length) params.push('tipo=' + encodeURIComponent(tipos.join(',')));
+  return params.join('&');
+}
 
+function aplicarFiltrosPanel() {
+  const params = getFilterParams();
   toggleFilterPanel();
-  loadPendientes(params.join('&'));
+  if (filterPanelTarget === 'trans') loadTransacciones(params);
+  else loadPendientes(params);
 }
 
 // Cancelar pedido
@@ -1828,77 +1871,123 @@ async function fpConfirm() {
 }
 
 // ═══════════════════════════════════════════
-// TRANSACCIONES SECTION
+// TRANSACCIONES SECTION — Table style
 // ═══════════════════════════════════════════
-async function loadTransacciones() {
-  const list = document.getElementById('trans-list');
-  const res = document.getElementById('trans-resumen');
-  list.innerHTML = '<div style="color:var(--texto2);font-size:13px">Cargando...</div>';
-  try {
-    const r = await fetch('/pos/pedidos-hoy');
-    const data = await r.json();
-    const fin = data.finalizados || [];
-    if (fin.length === 0) {
-      list.innerHTML = '<div style="color:var(--texto2);font-size:13px;padding:20px;text-align:center">No hay transacciones del dia</div>';
-      res.innerHTML = '';
-      return;
-    }
-    list.innerHTML = fin.map(p => `<div class="ped-card">
-      <div class="ped-hdr"><span class="folio">${p.folio}</span><span class="estado listo">${p.estado}</span></div>
-      <div class="ped-info">
-        ${p.cliente_nombre ? `Cliente: ${p.cliente_nombre}<br>` : 'Mostrador<br>'}
-        ${p.items.map(it => `${it.cantidad}x ${it.nombre}`).join(', ')}<br>
-        Pago: ${p.forma_pago || '—'}
-      </div>
-      <div class="ped-total">$${(p.total/100).toLocaleString()}</div>
-      <div class="ped-btns">
-        <button style="background:var(--crema);color:var(--texto)" onclick="editarPedido(${p.id})">Editar</button>
-        <button style="background:var(--crema);color:var(--texto)" onclick="reimprimirPedido(${JSON.stringify(p).replace(/"/g,'&quot;')})">Reimprimir</button>
-      </div>
-    </div>`).join('');
+let transAllData = [];
+let transFilterPeriodo = 'hoy';
 
-    const resumen = data.resumen;
-    let rhtml = `<div class="res-card"><h4>Resumen del dia</h4>`;
-    rhtml += `<div class="res-line"><span>Transacciones</span><span>${resumen.num_finalizados}</span></div>`;
-    for (const [m, v] of Object.entries(resumen.desglose_pago || {})) {
-      rhtml += `<div class="res-line"><span>${m}</span><span>$${(v/100).toLocaleString()}</span></div>`;
+function pagoIcon(forma) {
+  if (!forma) return '';
+  const f = forma.toLowerCase();
+  if (f.includes('efectivo')) return '💵';
+  if (f.includes('tarjeta')) return '💳';
+  if (f.includes('transferencia')) return '🏦';
+  if (f.includes('link')) return '📱';
+  if (f.includes('oxxo')) return '🏪';
+  return '';
+}
+
+function obsIcon(p) {
+  if (p.dedicatoria || p.notas_internas) return '<span title="' + esc(p.dedicatoria || p.notas_internas) + '" style="cursor:help">💬</span>';
+  return '<span style="color:var(--texto2)">-</span>';
+}
+
+async function loadResumenVentas() {
+  try {
+    const r = await fetch('/pos/resumen-ventas');
+    const d = await r.json();
+    document.getElementById('tm-hoy').innerHTML = `${d.hoy.ventas} ventas | $${d.hoy.total.toLocaleString()}`;
+    document.getElementById('tm-ayer').innerHTML = `${d.ayer.ventas} ventas | $${d.ayer.total.toLocaleString()}`;
+    document.getElementById('tm-semana').innerHTML = `${d.semana.ventas} ventas | $${d.semana.total.toLocaleString()}`;
+    document.getElementById('tm-mes').innerHTML = `${d.mes.ventas} ventas | $${d.mes.total.toLocaleString()}`;
+  } catch(e) { /* silent */ }
+}
+
+async function loadTransacciones(params) {
+  const tbody = document.getElementById('trans-tbody');
+  const empty = document.getElementById('trans-empty');
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
+  loadResumenVentas();
+  try {
+    let url = '/pos/pedidos-hoy?periodo=' + transFilterPeriodo;
+    // Default: only finalized states
+    if (!params || !params.includes('estado=')) {
+      url += '&estado=pagado,listo_taller,en_camino,entregado';
     }
-    rhtml += `<div class="res-line total"><span>Total vendido</span><span>$${(resumen.total_vendido/100).toLocaleString()}</span></div>`;
-    rhtml += '</div>';
-    res.innerHTML = rhtml;
+    if (params) url += '&' + params;
+    if (transFilterPeriodo === 'rango') {
+      const fi = document.getElementById('fp-fecha-ini').value;
+      const ff = document.getElementById('fp-fecha-fin').value;
+      if (fi) url += '&fecha_inicio=' + fi;
+      if (ff) url += '&fecha_fin=' + ff;
+    }
+    const r = await fetch(url);
+    const data = await r.json();
+    transAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
+    renderTransTable(transAllData);
   } catch(e) {
-    list.innerHTML = '<div style="color:var(--rojo);font-size:13px">Error al cargar</div>';
+    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar</td></tr>';
   }
 }
 
-async function editarPedido(id) {
-  const nuevoNotas = prompt('Notas internas:');
-  if (nuevoNotas === null) return;
-  try {
-    await fetch(`/pos/pedido/${id}/editar`, {
-      method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({notas_internas: nuevoNotas})
-    });
-    loadTransacciones();
-  } catch(e) { alert('Error'); }
+function renderTransTable(rows) {
+  const tbody = document.getElementById('trans-tbody');
+  const empty = document.getElementById('trans-empty');
+  const countEl = document.getElementById('trans-count');
+  countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '');
+  if (rows.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = rows.map(p => {
+    const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
+    const fecha = p.fecha_pedido || (p.fecha_entrega || '');
+    const ec = estadoClass(p.estado);
+    return `<tr>
+      <td style="font-weight:600;color:var(--verde);white-space:nowrap">📄 ${p.folio}</td>
+      <td style="white-space:nowrap;font-size:12px">${fecha}</td>
+      <td>${p.cliente_nombre || '-'}</td>
+      <td>${canalLabel(p.canal)}</td>
+      <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
+      <td style="font-weight:600;white-space:nowrap">${pagoIcon(p.forma_pago)} $${((p.total||0)/100).toLocaleString()}</td>
+      <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
+      <td>${obsIcon(p)}</td>
+      <td class="pend-actions">
+        ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelarTrans(${p.id},'${esc(p.folio)}')" title="Cancelar">✂️</button>` : '<span class="badge-estado cancelado">Cancelado</span>'}
+      </td>
+    </tr>`;
+  }).join('');
 }
 
-function reimprimirPedido(p) {
-  const L = [];
-  L.push('<div class="dsep"></div>');
-  L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
-  L.push('<div class="dsep"></div>');
-  L.push(`<div>Pedido: <strong>${p.folio}</strong></div>`);
-  L.push('<div class="sep"></div>');
-  p.items.forEach(it => L.push(`<div>${it.cantidad}x ${it.nombre} $${(it.precio_unitario*it.cantidad)/100}</div>`));
-  L.push('<div class="sep"></div>');
-  if (p.envio > 0) L.push(`<div>Envio: $${p.envio/100}</div>`);
-  L.push(`<div>TOTAL: <strong>$${p.total/100}</strong></div>`);
-  L.push('<div class="dsep"></div>');
-  L.push('<div class="tline">Gracias por su preferencia</div>');
-  L.push('<div class="dsep"></div>');
-  document.getElementById('print-frame').innerHTML = L.join('\n');
-  setTimeout(() => window.print(), 100);
+function filtrarTablaTrans() {
+  const q = document.getElementById('trans-search').value.toLowerCase().trim();
+  if (!q) { renderTransTable(transAllData); return; }
+  const filtered = transAllData.filter(p => {
+    const itemsStr = (p.items||[]).map(it => it.nombre).join(' ').toLowerCase();
+    const cli = (p.cliente_nombre || '').toLowerCase();
+    const folio = (p.folio || '').toLowerCase();
+    return cli.includes(q) || itemsStr.includes(q) || folio.includes(q);
+  });
+  renderTransTable(filtered);
+}
+
+// Cancelar desde transacciones — modal con advertencia de finanzas
+let cancelTransId = null;
+function pedirCancelarTrans(id, folio) {
+  cancelTransId = id;
+  document.getElementById('cancel-trans-folio').textContent = folio;
+  document.getElementById('modal-cancelar-trans').classList.add('active');
+}
+async function confirmarCancelarTrans() {
+  document.getElementById('modal-cancelar-trans').classList.remove('active');
+  try {
+    const r = await fetch(`/pos/pedido/${cancelTransId}/cancelar`, { method: 'PATCH' });
+    if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
+    loadTransacciones();
+    loadResumenVentas();
+  } catch(e) { alert('Error de red'); }
 }
 
 // ═══════════════════════════════════════════
@@ -1956,6 +2045,10 @@ async function updateBadgePend() {
       pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
       const q = document.getElementById('pend-search').value.trim();
       if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
+    }
+    // Auto-refresh transacciones if active
+    if (document.getElementById('sec-transacciones').classList.contains('active') && transFilterPeriodo === 'hoy') {
+      loadTransacciones();
     }
   } catch(e) { /* silent */ }
 }

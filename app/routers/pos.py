@@ -646,6 +646,40 @@ async def pos_completar_pedido(
     }
 
 
+@router.get("/resumen-ventas")
+async def pos_resumen_ventas(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    hoy = datetime.now(TZ).date()
+    ayer = hoy - timedelta(days=1)
+    inicio_semana = hoy - timedelta(days=hoy.weekday())
+    inicio_mes = hoy.replace(day=1)
+
+    estados_venta = ["Listo", "Listo taller", "En camino", "Entregado"]
+
+    async def contar(f_ini, f_fin):
+        r = await db.execute(
+            select(func.count(Pedido.id), func.coalesce(func.sum(Pedido.total), 0))
+            .where(
+                Pedido.fecha_pedido >= datetime.combine(f_ini, datetime.min.time()),
+                Pedido.fecha_pedido <= datetime.combine(f_fin, datetime.max.time()),
+                Pedido.estado.in_(estados_venta),
+            )
+        )
+        row = r.one()
+        return {"ventas": row[0], "total": round((row[1] or 0) / 100, 2)}
+
+    return {
+        "hoy": await contar(hoy, hoy),
+        "ayer": await contar(ayer, ayer),
+        "semana": await contar(inicio_semana, hoy),
+        "mes": await contar(inicio_mes, hoy),
+    }
+
+
 @router.patch("/pedido/{pedido_id}/cancelar")
 async def pos_cancelar_pedido(
     pedido_id: int,
