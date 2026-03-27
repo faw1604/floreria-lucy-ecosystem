@@ -1957,7 +1957,8 @@ function renderTransTable(rows) {
   const tbody = document.getElementById('trans-tbody');
   const empty = document.getElementById('trans-empty');
   const countEl = document.getElementById('trans-count');
-  countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '');
+  const totalSum = rows.reduce((s, p) => s + (p.total || 0), 0) / 100;
+  countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '') + ' | $' + totalSum.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   if (rows.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = '';
