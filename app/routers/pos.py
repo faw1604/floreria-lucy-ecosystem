@@ -194,13 +194,11 @@ async def pos_crear_pedido(
     # Calculate subtotal
     subtotal = sum(it["precio_unitario"] * it["cantidad"] for it in items)
 
-    # Tax
+    # Tax — IEPS is already included in the price, does NOT add to total
     tipo_impuesto = data.get("tipo_impuesto", "NA")
     impuesto = 0
     if tipo_impuesto == "IVA":
         impuesto = int(subtotal * 0.16)
-    elif tipo_impuesto == "IEPS":
-        impuesto = int(subtotal * 0.08)
 
     # Shipping
     envio = 0

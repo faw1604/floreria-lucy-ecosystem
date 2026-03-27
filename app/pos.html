@@ -509,8 +509,9 @@ function calcTotals() {
   const subtotal = subtotalBruto - descItemTotal;
 
   let impuesto = 0;
+  let iepsIncluido = 0;
   if (selTaxVal === 'IVA') impuesto = Math.round(subtotal * 0.16);
-  else if (selTaxVal === 'IEPS') impuesto = Math.round(subtotal * 0.08);
+  else if (selTaxVal === 'IEPS') iepsIncluido = Math.round(subtotal * 0.08 / 1.08);
   let envio = 0;
   if (modo === 'domicilio' && selZonaVal) {
     const tarifas = {Morada: 9900, Azul: 15900, Verde: 19900};
@@ -526,7 +527,7 @@ function calcTotals() {
   if (selectedPays['Link de pago'] > 0) comision = Math.round(selectedPays['Link de pago'] * 0.04);
   const total = subtotal + impuesto + envio - descTotalSum + comision;
   const pagado = Object.values(selectedPays).reduce((s, v) => s + v, 0);
-  return {subtotalBruto, subtotal, impuesto, envio, descItemTotal, descTotalSum, comision, total, pagado};
+  return {subtotalBruto, subtotal, impuesto, iepsIncluido, envio, descItemTotal, descTotalSum, comision, total, pagado};
 }
 
 function renderTotals() {
@@ -535,7 +536,8 @@ function renderTotals() {
   if (!div) return;
   let html = `<div class="cart-total-row"><span>Subtotal</span><span>$${t.subtotalBruto/100}</span></div>`;
   if (t.descItemTotal) html += `<div class="cart-total-row discount"><span>Desc. productos</span><span>-$${t.descItemTotal/100}</span></div>`;
-  if (t.impuesto) html += `<div class="cart-total-row"><span>${selTaxVal} ${selTaxVal==='IVA'?'16%':'8%'}</span><span>$${t.impuesto/100}</span></div>`;
+  if (t.impuesto) html += `<div class="cart-total-row"><span>IVA 16%</span><span>$${t.impuesto/100}</span></div>`;
+  if (t.iepsIncluido) html += `<div class="cart-total-row" style="color:var(--texto2)"><span>IEPS incluido (8%)</span><span>$${t.iepsIncluido/100}</span></div>`;
   if (t.envio) html += `<div class="cart-total-row"><span>Envio (${selZonaVal})</span><span>$${t.envio/100}</span></div>`;
   descuentosTotal.forEach(d => {
     if (d.monto_centavos) html += `<div class="cart-total-row discount"><span>${d.label}</span><span>-$${d.monto_centavos/100}</span></div>`;
