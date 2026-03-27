@@ -200,6 +200,12 @@ let direccionVerificada = false;
 let rutaAsignada = null;
 let geoLat = null, geoLng = null;
 
+// Descuentos
+// Per-item: [{idx, tipo:'%'|'$', valor, monto_centavos}]
+// Total: [{label, tipo:'%'|'$', valor, monto_centavos, auto:bool}]
+let descuentosItem = [];
+let descuentosTotal = [];
+
 // ─── Mode ───
 function setModo(m) {
   modo = m;
@@ -260,6 +266,7 @@ function changeQty(idx, delta) {
 
 function removeItem(idx) {
   carrito.splice(idx, 1);
+  descuentosItem = descuentosItem.filter(d => d.idx !== idx).map(d => ({...d, idx: d.idx > idx ? d.idx - 1 : d.idx}));
   renderCart();
 }
 
@@ -279,19 +286,47 @@ function renderCart() {
       if (nonFuneral.length) html += '<div class="f-warn">⚠ Solo productos de funeral permitidos en este modo</div>';
     }
     carrito.forEach((item, idx) => {
+      const di = descuentosItem.find(d => d.idx === idx);
+      const precioOriginal = item.precio * item.cantidad;
+      const precioFinal = di ? precioOriginal - di.monto_centavos : precioOriginal;
       html += `<div class="cart-item">
-        <div class="cart-item-name">${item.nombre}</div>
+        <div class="cart-item-name">${item.nombre}${di ? `<div style="font-size:10px;color:var(--dorado)">Desc: -$${di.monto_centavos/100} <button class="cart-item-del" onclick="quitarDescItem(${idx})" style="font-size:10px">×</button></div>` : ''}</div>
         <div class="cart-item-qty">
           <button onclick="changeQty(${idx},-1)">−</button>
           <span>${item.cantidad}</span>
           <button onclick="changeQty(${idx},1)">+</button>
         </div>
-        <div class="cart-item-price">$${(item.precio * item.cantidad)/100}</div>
+        <div class="cart-item-price">${di ? `<span style="text-decoration:line-through;color:var(--texto2);font-size:11px">$${precioOriginal/100}</span> $${precioFinal/100}` : `$${precioOriginal/100}`}</div>
         <button class="cart-item-del" onclick="removeItem(${idx})">×</button>
       </div>`;
     });
   }
   html += '</div>';
+
+  // Discounts section
+  if (carrito.length) {
+    html += '<div class="cart-section"><div class="cart-section-title">Descuentos</div>';
+    // Existing total discounts
+    descuentosTotal.forEach((d, i) => {
+      html += `<div style="font-size:12px;color:var(--dorado);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center"><span>${d.label}: -$${d.monto_centavos/100}</span><button class="cart-item-del" onclick="quitarDescTotal(${i})" style="font-size:11px">×</button></div>`;
+    });
+    // Add per-item discount
+    html += `<div style="font-size:11px;font-weight:600;margin:6px 0 4px;color:var(--texto2)">Sobre producto:</div>`;
+    html += `<div class="f-row-inline" style="gap:4px;align-items:center;flex-wrap:wrap">
+      <select class="f-input" id="desc-item-sel" style="width:auto;flex:1;font-size:11px;padding:6px">${carrito.map((it,i) => `<option value="${i}">${it.nombre}</option>`).join('')}</select>
+      <select class="f-input" id="desc-item-tipo" style="width:50px;font-size:11px;padding:6px"><option value="%">%</option><option value="$">$</option></select>
+      <input class="f-input" id="desc-item-val" type="number" placeholder="0" style="width:60px;font-size:11px;padding:6px">
+      <button class="f-btn" onclick="aplicarDescItem()" style="font-size:11px;padding:5px 8px">Aplicar</button>
+    </div>`;
+    // Add total discount
+    html += `<div style="font-size:11px;font-weight:600;margin:8px 0 4px;color:var(--texto2)">Sobre total:</div>`;
+    html += `<div class="f-row-inline" style="gap:4px;align-items:center">
+      <select class="f-input" id="desc-total-tipo" style="width:50px;font-size:11px;padding:6px"><option value="%">%</option><option value="$">$</option></select>
+      <input class="f-input" id="desc-total-val" type="number" placeholder="0" style="width:60px;font-size:11px;padding:6px">
+      <button class="f-btn" onclick="aplicarDescTotal()" style="font-size:11px;padding:5px 8px">Aplicar</button>
+    </div>`;
+    html += '</div>';
+  }
 
   // Client section (domicilio/funeral)
   if (modo === 'domicilio' || modo === 'funeral') {
@@ -433,9 +468,46 @@ function updatePayMonto(name, val) {
   renderTotals();
 }
 
+// ─── Discount helpers ───
+function aplicarDescItem() {
+  const idx = parseInt(document.getElementById('desc-item-sel')?.value);
+  const tipo = document.getElementById('desc-item-tipo')?.value;
+  const valor = parseFloat(document.getElementById('desc-item-val')?.value) || 0;
+  if (valor <= 0 || isNaN(idx)) return;
+  const item = carrito[idx];
+  if (!item) return;
+  const base = item.precio * item.cantidad;
+  const monto = tipo === '%' ? Math.round(base * valor / 100) : Math.round(valor * 100);
+  descuentosItem = descuentosItem.filter(d => d.idx !== idx);
+  descuentosItem.push({idx, tipo, valor, monto_centavos: Math.min(monto, base)});
+  renderCart();
+}
+
+function quitarDescItem(idx) {
+  descuentosItem = descuentosItem.filter(d => d.idx !== idx);
+  renderCart();
+}
+
+function aplicarDescTotal() {
+  const tipo = document.getElementById('desc-total-tipo')?.value;
+  const valor = parseFloat(document.getElementById('desc-total-val')?.value) || 0;
+  if (valor <= 0) return;
+  descuentosTotal.push({label: tipo === '%' ? `${valor}% descuento` : `Descuento $${valor}`, tipo, valor, monto_centavos: 0, auto: false});
+  renderCart();
+}
+
+function quitarDescTotal(i) {
+  descuentosTotal.splice(i, 1);
+  renderCart();
+}
+
 // ─── Totals ───
 function calcTotals() {
-  const subtotal = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+  const subtotalBruto = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+  // Item discounts
+  const descItemTotal = descuentosItem.reduce((s, d) => s + d.monto_centavos, 0);
+  const subtotal = subtotalBruto - descItemTotal;
+
   let impuesto = 0;
   if (selTaxVal === 'IVA') impuesto = Math.round(subtotal * 0.16);
   else if (selTaxVal === 'IEPS') impuesto = Math.round(subtotal * 0.08);
@@ -444,23 +516,30 @@ function calcTotals() {
     const tarifas = {Morada: 9900, Azul: 15900, Verde: 19900};
     envio = tarifas[selZonaVal] || 0;
   }
-  let descuento = 0;
-  if (clienteSel && clienteSel.primera_compra) descuento = Math.round(subtotal * 0.10);
+  // Total discounts (recalc % ones based on current subtotal)
+  let descTotalSum = 0;
+  descuentosTotal.forEach(d => {
+    d.monto_centavos = d.tipo === '%' ? Math.round(subtotal * d.valor / 100) : Math.round(d.valor * 100);
+    descTotalSum += d.monto_centavos;
+  });
   let comision = 0;
   if (selectedPays['Link de pago'] > 0) comision = Math.round(selectedPays['Link de pago'] * 0.04);
-  const total = subtotal + impuesto + envio - descuento + comision;
+  const total = subtotal + impuesto + envio - descTotalSum + comision;
   const pagado = Object.values(selectedPays).reduce((s, v) => s + v, 0);
-  return {subtotal, impuesto, envio, descuento, comision, total, pagado};
+  return {subtotalBruto, subtotal, impuesto, envio, descItemTotal, descTotalSum, comision, total, pagado};
 }
 
 function renderTotals() {
   const t = calcTotals();
   const div = document.getElementById('cart-totals');
   if (!div) return;
-  let html = `<div class="cart-total-row"><span>Subtotal</span><span>$${t.subtotal/100}</span></div>`;
+  let html = `<div class="cart-total-row"><span>Subtotal</span><span>$${t.subtotalBruto/100}</span></div>`;
+  if (t.descItemTotal) html += `<div class="cart-total-row discount"><span>Desc. productos</span><span>-$${t.descItemTotal/100}</span></div>`;
   if (t.impuesto) html += `<div class="cart-total-row"><span>${selTaxVal} ${selTaxVal==='IVA'?'16%':'8%'}</span><span>$${t.impuesto/100}</span></div>`;
   if (t.envio) html += `<div class="cart-total-row"><span>Envio (${selZonaVal})</span><span>$${t.envio/100}</span></div>`;
-  if (t.descuento) html += `<div class="cart-total-row discount"><span>Descuento 10%</span><span>-$${t.descuento/100}</span></div>`;
+  descuentosTotal.forEach(d => {
+    if (d.monto_centavos) html += `<div class="cart-total-row discount"><span>${d.label}</span><span>-$${d.monto_centavos/100}</span></div>`;
+  });
   if (t.comision) html += `<div class="cart-total-row"><span>Comision link +4%</span><span>$${t.comision/100}</span></div>`;
   html += `<div class="cart-total-row grand"><span>TOTAL</span><span>$${t.total/100}</span></div>`;
   // Pay status
@@ -538,6 +617,11 @@ async function buscarClientes() {
 function seleccionarCliente(id, nombre, telefono, primera) {
   clienteSel = {id, nombre, telefono, primera_compra: primera};
   document.getElementById('modal-cliente').classList.remove('active');
+  // Auto-add primera compra discount
+  descuentosTotal = descuentosTotal.filter(d => !d.auto);
+  if (primera) {
+    descuentosTotal.push({label:'10% primera compra', tipo:'%', valor:10, monto_centavos:0, auto:true});
+  }
   updateClienteBtn();
   renderCart();
 }
@@ -589,10 +673,15 @@ async function submitPedido(estado) {
   const body = {
     tipo: modo,
     cliente_id: clienteSel?.id || null,
-    items: carrito.map(i => ({producto_id: i.producto_id, cantidad: i.cantidad, precio_unitario: i.precio})),
+    items: carrito.map((i, idx) => {
+      const di = descuentosItem.find(d => d.idx === idx);
+      return {producto_id: i.producto_id, cantidad: i.cantidad, precio_unitario: i.precio, descuento_item: di ? di.monto_centavos : 0};
+    }),
     tipo_impuesto: selTaxVal,
     pagos: Object.entries(selectedPays).map(([name, monto]) => ({metodo_pago_id: 0, monto, nombre: name})),
     estado,
+    descuentos: descuentosTotal.map(d => ({label: d.label, monto: d.monto_centavos})),
+    descuento_total: t.descTotalSum + t.descItemTotal,
   };
 
   if (modo === 'domicilio') {
@@ -641,6 +730,8 @@ async function submitPedido(estado) {
     direccionVerificada = false;
     rutaAsignada = null;
     funerariaSelId = null;
+    descuentosItem = [];
+    descuentosTotal = [];
     updateClienteBtn();
     renderCart();
   } catch(e) { alert('Error de conexion'); }

@@ -209,15 +209,9 @@ async def pos_crear_pedido(
         tarifas = {"Morada": 9900, "Azul": 15900, "Verde": 19900}
         envio = tarifas.get(zona, 0)
 
-    # First purchase discount
-    descuento = 0
+    # Discounts from frontend
+    descuento = data.get("descuento_total", 0)
     cliente_id = data.get("cliente_id")
-    if cliente_id:
-        pedidos_prev = await db.execute(
-            select(func.count(Pedido.id)).where(Pedido.customer_id == cliente_id, Pedido.estado != "pendiente_pago")
-        )
-        if pedidos_prev.scalar() == 0:
-            descuento = int(subtotal * 0.10)
 
     # Link de pago commission
     comision = 0
