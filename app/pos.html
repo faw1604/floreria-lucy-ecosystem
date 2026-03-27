@@ -1669,7 +1669,7 @@ async function loadPendientes(params) {
   const empty = document.getElementById('pend-empty');
   tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
   try {
-    let url = '/pos/pedidos-hoy?periodo=' + pendFilterPeriodo;
+    let url = '/pos/pedidos-hoy?periodo=' + pendFilterPeriodo + '&estado=pendiente_pago';
     if (params) url += '&' + params;
     if (pendFilterPeriodo === 'rango') {
       const fi = document.getElementById('fp-fecha-ini').value;
@@ -1683,7 +1683,7 @@ async function loadPendientes(params) {
       throw new Error(err.detail || `Error ${r.status}`);
     }
     const data = await r.json();
-    pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
+    pendAllData = data.pendientes || [];
     renderPendTable(pendAllData);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
@@ -1788,7 +1788,10 @@ async function confirmarCancelar() {
   try {
     const r = await fetch(`/pos/pedido/${cancelPedidoId}/cancelar`, { method: 'PATCH' });
     if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
-    loadPendientes();
+    // Remove from local data and DOM immediately
+    pendAllData = pendAllData.filter(p => p.id !== cancelPedidoId);
+    renderPendTable(pendAllData);
+    updateBadgePend();
   } catch(e) { alert('Error de red'); }
 }
 
@@ -2040,7 +2043,7 @@ renderCart();
 // Badge pendientes — poll every 60s + auto-refresh table
 async function updateBadgePend() {
   try {
-    const r = await fetch('/pos/pedidos-hoy');
+    const r = await fetch('/pos/pedidos-hoy?estado=pendiente_pago');
     const data = await r.json();
     const n = (data.pendientes || []).length;
     const badge = document.getElementById('badge-pend');
@@ -2052,7 +2055,7 @@ async function updateBadgePend() {
     }
     // Auto-refresh if pendientes section is active
     if (document.getElementById('sec-pendientes').classList.contains('active') && pendFilterPeriodo === 'hoy') {
-      pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
+      pendAllData = data.pendientes || [];
       const q = document.getElementById('pend-search').value.trim();
       if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
     }
