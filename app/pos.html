@@ -1041,7 +1041,7 @@ function buildW3Form() {
           <div class="hor-btn" onclick="selHorarioBtn(this,'hora_especifica')">Hora especifica</div>
         </div>
         <div id="hora-esp-wrap" style="display:none;margin-top:6px">
-          <input type="time" id="f-hora-esp" onchange="horaEspecifica=this.value">
+          <select id="f-hora-esp" onchange="horaEspecifica=this.value" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">${buildHoraOptions()}</select>
           <div style="font-size:11px;color:var(--texto2);margin-top:2px">Minimo 2 hrs de anticipacion</div>
         </div>
         <div class="errmsg">Selecciona un horario</div>
@@ -1081,7 +1081,7 @@ function buildW3Form() {
           <div class="hor-btn" onclick="selHorVelacion(this,'ya_inicio')">Ya inicio</div>
           <div class="hor-btn" onclick="selHorVelacion(this,'hora')">Inicia a las...</div>
         </div>
-        <div id="vel-hora-wrap" style="display:none;margin-top:6px"><input type="time" id="f-vel-hora"></div>
+        <div id="vel-hora-wrap" style="display:none;margin-top:6px"><select id="f-vel-hora" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">${buildHoraOptions()}</select></div>
       </div>
     </div>`;
   }
@@ -1090,7 +1090,7 @@ function buildW3Form() {
   if (ordenTipo === 'recoger') {
     html += `<div class="fbox"><h4>Datos de recogida</h4>
       <div class="frow" id="fr-fecha-rec"><label>¿Cuando pasa a recoger? *</label><input type="date" id="f-fecha-rec" min="${todayStr()}" value="${todayStr()}"><div class="errmsg">Campo obligatorio</div></div>
-      <div class="frow" id="fr-hora-rec"><label>Hora *</label><input type="time" id="f-hora-rec"><div class="errmsg">Campo obligatorio</div></div>
+      <div class="frow" id="fr-hora-rec"><label>Hora *</label><select id="f-hora-rec" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">${buildHoraOptions()}</select><div class="errmsg">Campo obligatorio</div></div>
     </div>`;
   }
 
@@ -1778,11 +1778,11 @@ function renderPendTable(rows) {
   empty.style.display = 'none';
   tbody.innerHTML = rows.map(p => {
     const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
-    const fecha = p.fecha_pedido || (p.fecha_entrega || '');
+    const fecha = formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
     const ec = estadoClass(p.estado);
     return `<tr>
       <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}</td>
-      <td style="white-space:nowrap;font-size:12px">${fecha}</td>
+      <td style="white-space:nowrap;font-size:11px">${fecha}</td>
       <td>${p.cliente_nombre || 'Mostrador'}</td>
       <td>${canalLabel(p.canal)}</td>
       <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
@@ -2132,11 +2132,11 @@ function renderTransTable(rows) {
   empty.style.display = 'none';
   tbody.innerHTML = rows.map(p => {
     const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
-    const fecha = p.fecha_pedido || (p.fecha_entrega || '');
+    const fecha = formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
     const ec = estadoClass(p.estado);
     return `<tr>
       <td style="font-weight:600;color:var(--verde);white-space:nowrap">📄 ${p.folio}</td>
-      <td style="white-space:nowrap;font-size:12px">${fecha}</td>
+      <td style="white-space:nowrap;font-size:11px">${fecha}</td>
       <td>${p.cliente_nombre || '-'}</td>
       <td>${canalLabel(p.canal)}</td>
       <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
@@ -2276,7 +2276,7 @@ async function verPedidosCliente(id, nombre) {
     }
     tbody.innerHTML = all.map(p => {
       const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
-      const fecha = p.fecha_pedido || p.fecha_entrega || '';
+      const fecha = formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
       const ec = estadoClass(p.estado);
       return `<tr>
         <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}</td>
@@ -2309,8 +2309,8 @@ let ticketPedido = null;
 function verTicket(p) {
   ticketPedido = p;
   const ec = estadoClass(p.estado);
-  const fechaOrden = p.fecha_pedido || '';
-  const fechaEntrega = p.fecha_entrega || '';
+  const fechaOrden = formatearFecha(p.fecha_pedido);
+  const fechaEntrega = formatearFecha(p.fecha_entrega);
   const tl = (a, b) => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>${a}</span><span>${b}</span></div>`;
   let html = '';
 
@@ -2352,7 +2352,7 @@ function verTicket(p) {
     if (p.notas_internas) html += `<div style="font-size:12px;white-space:pre-line">${p.notas_internas}</div>`;
     if (p.dedicatoria) html += `<div style="font-size:12px;margin-top:4px"><strong>Dedicatoria:</strong> ${p.dedicatoria}</div>`;
   } else if (p.hora_exacta && !p.direccion_entrega) {
-    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha recogida:</strong> ${p.fecha_entrega}</div>`;
+    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha recogida:</strong> ${formatearFecha(p.fecha_entrega)}</div>`;
     html += `<div style="font-size:12px"><strong>Hora recogida:</strong> ${p.hora_exacta}</div>`;
   } else {
     html += `<div style="font-size:12px;color:var(--texto2)">Venta en mostrador</div>`;
@@ -2438,6 +2438,40 @@ async function enviarWaDesdeTicket() {
 // UTIL
 // ═══════════════════════════════════════════
 function esc(s) { return (s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+const _dias = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+const _meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function formatearFecha(str) {
+  if (!str) return '';
+  // Accept "2026-03-27 22:30" or "2026-03-27" or ISO
+  const d = new Date(str.replace(' ', 'T'));
+  if (isNaN(d)) return str;
+  const dia = _dias[d.getDay()];
+  const dd = d.getDate();
+  const mes = _meses[d.getMonth()];
+  const yyyy = d.getFullYear();
+  // If time portion exists
+  const hasTime = str.includes(':');
+  if (!hasTime) return `${dia} ${dd} ${mes} ${yyyy}`;
+  let h = d.getHours(), m = d.getMinutes();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  if (h === 0) h = 12; else if (h > 12) h -= 12;
+  return `${dia} ${dd} ${mes} ${yyyy}, ${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function buildHoraOptions() {
+  let html = '<option value="">Seleccionar hora</option>';
+  for (let h = 9; h <= 21; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      if (h === 21 && m > 0) break;
+      const val24 = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+      let dh = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+      const ap = h >= 12 ? 'pm' : 'am';
+      html += `<option value="${val24}">${dh}:${String(m).padStart(2,'0')} ${ap}</option>`;
+    }
+  }
+  return html;
+}
 
 // ═══════════════════════════════════════════
 // INIT
