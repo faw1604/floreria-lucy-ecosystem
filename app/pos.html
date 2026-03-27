@@ -6,6 +6,7 @@
 <title>POS — Floreria Lucy</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#dc3545;--dorado:#d4a843}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -226,9 +227,11 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
     <div id="creado-cliente" style="font-size:13px;color:var(--texto2);margin-bottom:10px"></div>
     <div id="creado-desglose" style="font-size:13px;text-align:left;background:var(--crema);padding:12px;border-radius:8px;margin-bottom:16px"></div>
     <div style="display:flex;flex-direction:column;gap:8px">
+      <!-- TODO: reemplazar con QZ Tray para impresión directa sin diálogo -->
       <button onclick="imprimirDesdeModal()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--verde);color:#fff;border:none;min-height:44px">🖨 Imprimir ticket</button>
       <button onclick="descargarPDF()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--verde);border:1px solid var(--verde);min-height:44px">📄 Descargar PDF</button>
-      <button onclick="compartirWhatsApp()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#25D366;color:#fff;border:none;min-height:44px">💬 Compartir por WhatsApp</button>
+      <button onclick="compartirWhatsApp()" id="btn-wa" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#25D366;color:#fff;border:none;min-height:44px">💬 Compartir por WhatsApp</button>
+      <div id="wa-note" style="display:none;font-size:11px;color:var(--texto2);margin-top:4px"></div>
     </div>
   </div>
 </div>
@@ -919,15 +922,54 @@ function descargarPDF() {
   doc.save(`${r.folio}.pdf`);
 }
 
-function compartirWhatsApp() {
-  const r = lastResult;
-  const items = lastCarritoSnapshot;
-  let msg = `🌸 *Floreria Lucy*\nPedido: ${r.folio}\n`;
-  for (const item of items) {
-    msg += `${item.cantidad}x ${item.nombre}\n`;
+async function compartirWhatsApp() {
+  const btn = document.getElementById('btn-wa');
+  const note = document.getElementById('wa-note');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando imagen...';
+  note.style.display = 'none';
+
+  // Render ticket HTML into a visible temporary container for html2canvas
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-9999px;top:0;width:300px;padding:16px;background:#fff;font-family:Courier New,monospace;font-size:12px;line-height:1.5;color:#000';
+  container.innerHTML = buildTicketLines().join('\n');
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, {scale: 2, backgroundColor: '#ffffff'});
+    document.body.removeChild(container);
+
+    canvas.toBlob(async (blob) => {
+      const filename = `ticket-${lastResult.folio}.png`;
+      const file = new File([blob], filename, {type: 'image/png'});
+
+      // Try Web Share API with files (mobile)
+      if (navigator.canShare && navigator.canShare({files: [file]})) {
+        try {
+          await navigator.share({files: [file]});
+        } catch(e) { /* user cancelled share */ }
+      } else {
+        // Desktop fallback: download image + open WhatsApp Web
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        window.open('https://web.whatsapp.com', '_blank');
+        note.textContent = 'Imagen descargada — adjuntala en WhatsApp Web';
+        note.style.display = '';
+      }
+
+      btn.disabled = false;
+      btn.textContent = '💬 Compartir por WhatsApp';
+    }, 'image/png');
+  } catch(e) {
+    document.body.removeChild(container);
+    btn.disabled = false;
+    btn.textContent = '💬 Compartir por WhatsApp';
+    note.textContent = 'Error al generar imagen';
+    note.style.display = '';
   }
-  msg += `Total: $${r.total/100}\nGracias por tu compra 🌸`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 // ─── Drawer: Pedidos del dia ───
