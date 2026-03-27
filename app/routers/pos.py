@@ -256,13 +256,17 @@ async def pos_crear_pedido(
     if horario == "hora_especifica":
         horario = None
 
+    from datetime import date as date_type
+    fecha_str = data.get("fecha_entrega")
+    fecha_entrega = date_type.fromisoformat(fecha_str) if fecha_str else datetime.now(TZ).date()
+
     pedido = Pedido(
         numero=folio,
         customer_id=cliente_id,
         canal="Mostrador",
         estado="Listo" if estado_pedido == "pagado" else "Pendiente pago",
         estado_florista="aprobado" if estado_pedido == "pagado" else None,
-        fecha_entrega=datetime.now(TZ).date(),
+        fecha_entrega=fecha_entrega,
         horario_entrega=horario,
         hora_exacta=data.get("hora_especifica"),
         zona_entrega=zona,

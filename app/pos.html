@@ -76,6 +76,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
 .f-chip.active{background:var(--verde);color:#fff;border-color:var(--verde)}
 .f-badge{display:inline-block;background:var(--verde);color:var(--dorado);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;margin-left:6px}
 .f-warn{background:#fee2e2;color:#991b1b;font-size:11px;padding:6px 8px;border-radius:6px;margin:6px 0}
+.f-input.f-error,.f-textarea.f-error{border-color:var(--rojo)!important}
+.f-err{color:var(--rojo);font-size:11px;margin-top:2px}
 
 /* Totals */
 .cart-totals{padding:0 16px;font-size:13px}
@@ -447,6 +449,7 @@ function renderCart() {
       ${rutaAsignada ? `<span class="f-badge">${rutaAsignada}</span>` : ''}</div>`;
     html += `<div class="f-row"><div class="f-label">Dedicatoria</div><textarea class="f-textarea" id="f-dedi" placeholder="Opcional"></textarea></div>`;
     html += `<div class="f-row"><div class="f-label">Notas para el repartidor</div><textarea class="f-textarea" id="f-notas" placeholder="Opcional"></textarea></div>`;
+    html += `<div class="f-row"><div class="f-label">Fecha de entrega</div><input class="f-input" id="f-fecha-entrega" type="date" value="${new Date().toLocaleDateString('en-CA',{timeZone:'America/Chihuahua'})}"></div>`;
     html += '</div>';
 
     // Horario
@@ -476,6 +479,7 @@ function renderCart() {
     html += `<div class="f-row"><div class="f-label">Sala</div><input class="f-input" id="f-sala" placeholder="Opcional"></div>`;
     html += `<div class="f-row"><div class="f-label">Texto banda</div><input class="f-input" id="f-banda" placeholder="Opcional"></div>`;
     html += `<div class="f-row"><div class="f-label">Dedicatoria</div><textarea class="f-textarea" id="f-dedi-fun" placeholder="Opcional"></textarea></div>`;
+    html += `<div class="f-row"><div class="f-label">Fecha de entrega</div><input class="f-input" id="f-fecha-funeral" type="date" value="${new Date().toLocaleDateString('en-CA',{timeZone:'America/Chihuahua'})}"></div>`;
     html += `<div class="f-row"><div class="f-label">Horario velacion</div>
       <div class="f-row-inline"><button class="f-chip" onclick="this.classList.toggle('active')">Ya inicio</button>
       <input class="f-input" type="time" id="f-velacion-hora" style="width:120px" placeholder="Hora"></div></div>`;
@@ -755,15 +759,91 @@ async function registrarCliente() {
   } catch(e) { document.getElementById('reg-err').textContent = 'Error de conexion'; document.getElementById('reg-err').style.display = ''; }
 }
 
+// ─── Validation ───
+function clearErrors() {
+  document.querySelectorAll('.f-error').forEach(el => el.classList.remove('f-error'));
+  document.querySelectorAll('.f-err').forEach(el => el.remove());
+}
+
+function addError(fieldId, msg) {
+  const el = document.getElementById(fieldId);
+  if (!el) return false;
+  el.classList.add('f-error');
+  const err = document.createElement('div');
+  err.className = 'f-err';
+  err.textContent = msg;
+  el.parentElement.appendChild(err);
+  return true;
+}
+
+function validarFinalizacion() {
+  clearErrors();
+  const t = calcTotals();
+  const errors = [];
+
+  // All modes: products
+  if (!carrito.length) { errors.push({id: null, msg: 'Agrega productos al carrito'}); }
+
+  if (modo === 'mostrador') {
+    if (Object.keys(selectedPays).length === 0) errors.push({id: null, msg: 'Selecciona un metodo de pago'});
+    else if (t.pagado < t.total) errors.push({id: null, msg: `Falta asignar $${(t.total - t.pagado)/100}`});
+  }
+
+  if (modo === 'domicilio') {
+    if (!clienteSel) errors.push({id: null, msg: 'Selecciona un cliente'});
+    if (!document.getElementById('f-dest-nombre')?.value.trim()) errors.push({id: 'f-dest-nombre', msg: 'Nombre obligatorio'});
+    if (!document.getElementById('f-dest-tel')?.value.trim()) errors.push({id: 'f-dest-tel', msg: 'Telefono obligatorio'});
+    if (!document.getElementById('f-dir')?.value.trim()) errors.push({id: 'f-dir', msg: 'Direccion obligatoria'});
+    if (!document.getElementById('f-fecha-entrega')?.value) errors.push({id: 'f-fecha-entrega', msg: 'Fecha obligatoria'});
+    if (!selHorarioVal) errors.push({id: null, msg: 'Selecciona un horario de entrega'});
+    if (selHorarioVal === 'hora_especifica' && !document.getElementById('f-hora')?.value) errors.push({id: 'f-hora', msg: 'Hora obligatoria'});
+    if (!selZonaVal) errors.push({id: null, msg: 'Selecciona zona de envio'});
+    if (Object.keys(selectedPays).length === 0) errors.push({id: null, msg: 'Selecciona un metodo de pago'});
+    else if (t.pagado < t.total) errors.push({id: null, msg: `Falta asignar $${(t.total - t.pagado)/100}`});
+  }
+
+  if (modo === 'funeral') {
+    if (!clienteSel) errors.push({id: null, msg: 'Selecciona un cliente'});
+    const nonFuneral = carrito.filter(i => i.categoria.toLowerCase() !== 'funeral');
+    if (nonFuneral.length) errors.push({id: null, msg: 'Solo productos de funeral permitidos'});
+    if (!funerariaSelId) errors.push({id: 'f-funeraria', msg: 'Funeraria obligatoria'});
+    if (!document.getElementById('f-fallecido')?.value.trim()) errors.push({id: 'f-fallecido', msg: 'Nombre del fallecido obligatorio'});
+    if (!document.getElementById('f-fecha-funeral')?.value) errors.push({id: 'f-fecha-funeral', msg: 'Fecha obligatoria'});
+    if (!document.getElementById('f-velacion-hora')?.value) errors.push({id: 'f-velacion-hora', msg: 'Horario velacion obligatorio'});
+    if (Object.keys(selectedPays).length === 0) errors.push({id: null, msg: 'Selecciona un metodo de pago'});
+    else if (t.pagado < t.total) errors.push({id: null, msg: `Falta asignar $${(t.total - t.pagado)/100}`});
+  }
+
+  if (modo === 'recoger') {
+    if (!clienteSel) errors.push({id: null, msg: 'Selecciona un cliente'});
+    if (!document.getElementById('f-rec-fecha')?.value) errors.push({id: 'f-rec-fecha', msg: 'Fecha obligatoria'});
+    if (!document.getElementById('f-rec-hora')?.value) errors.push({id: 'f-rec-hora', msg: 'Hora obligatoria'});
+  }
+
+  if (errors.length) {
+    let firstEl = null;
+    for (const e of errors) {
+      if (e.id) {
+        addError(e.id, e.msg);
+        if (!firstEl) firstEl = document.getElementById(e.id);
+      }
+    }
+    // Show non-field errors in alert
+    const general = errors.filter(e => !e.id).map(e => e.msg);
+    if (general.length) alert(general.join('\n'));
+    if (firstEl) firstEl.scrollIntoView({behavior:'smooth', block:'center'});
+    return false;
+  }
+  return true;
+}
+
 // ─── Submit order ───
 async function submitPedido(estado) {
   if (!carrito.length) { alert('Agrega productos al carrito'); return; }
-  const t = calcTotals();
 
-  if (estado === 'pagado') {
-    if (Object.keys(selectedPays).length === 0) { alert('Selecciona un metodo de pago'); return; }
-    if (t.pagado < t.total) { alert(`Falta asignar $${(t.total - t.pagado)/100}`); return; }
-  }
+  if (estado === 'pagado' && !validarFinalizacion()) return;
+
+  const t = calcTotals();
 
   const body = {
     tipo: modo,
@@ -785,6 +865,7 @@ async function submitPedido(estado) {
     body.direccion_entrega = document.getElementById('f-dir')?.value || '';
     body.dedicatoria = document.getElementById('f-dedi')?.value || '';
     body.notas_entrega = document.getElementById('f-notas')?.value || '';
+    body.fecha_entrega = document.getElementById('f-fecha-entrega')?.value || null;
     body.horario_entrega = selHorarioVal;
     body.hora_especifica = document.getElementById('f-hora')?.value || null;
     body.zona_envio = selZonaVal;
@@ -799,7 +880,12 @@ async function submitPedido(estado) {
     body.sala = document.getElementById('f-sala')?.value || '';
     body.banda = document.getElementById('f-banda')?.value || '';
     body.dedicatoria = document.getElementById('f-dedi-fun')?.value || '';
+    body.fecha_entrega = document.getElementById('f-fecha-funeral')?.value || null;
     body.horario_velacion = document.getElementById('f-velacion-hora')?.value || 'ya_inicio';
+  }
+
+  if (modo === 'recoger') {
+    body.fecha_recoger = document.getElementById('f-rec-fecha')?.value || null;
   }
 
   try {
