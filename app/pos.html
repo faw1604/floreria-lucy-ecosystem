@@ -223,8 +223,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
 
 <!-- Modal: Pedido creado -->
 <div class="modal-bg" id="modal-creado">
-  <div class="modal" style="max-width:380px;text-align:center">
-    <button class="drawer-close" style="position:absolute;top:10px;right:14px;color:var(--texto2)" onclick="cerrarModalCreado()">&times;</button>
+  <div class="modal" style="max-width:380px;text-align:center;position:relative;padding-top:28px">
+    <button onclick="cerrarModalCreado()" style="position:absolute;top:12px;right:12px;width:36px;height:36px;min-width:36px;background:transparent;border:none;cursor:pointer;font-size:22px;color:var(--texto2);display:flex;align-items:center;justify-content:center;z-index:1">&times;</button>
     <div id="creado-folio" style="font-size:22px;font-weight:700;color:var(--verde);margin:8px 0 12px"></div>
     <div id="creado-cliente" style="font-size:13px;color:var(--texto2);margin-bottom:10px"></div>
     <div id="creado-desglose" style="font-size:13px;text-align:left;background:var(--crema);padding:12px;border-radius:8px;margin-bottom:16px"></div>
@@ -428,8 +428,11 @@ function renderCart() {
     html += '<div class="cart-section"><div class="cart-section-title">Cliente</div>';
     if (clienteSel) {
       html += `<div style="font-size:13px"><strong>${clienteSel.nombre}</strong> — ${clienteSel.telefono}`;
-      if (clienteSel.primera_compra) html += '<span class="badge-desc">10% primera compra</span>';
       html += ` <button class="f-btn" onclick="abrirBuscarCliente()" style="margin-left:8px">Cambiar</button></div>`;
+      const yaTieneDesc = descuentosTotal.some(d => d.auto);
+      if (clienteSel.primera_compra && !yaTieneDesc) {
+        html += `<button class="f-btn" onclick="aplicarPrimeraCompra()" style="margin-top:6px;color:var(--dorado);border-color:var(--dorado)">Aplicar 10% primera compra</button>`;
+      }
     } else {
       html += `<button class="f-btn" onclick="abrirBuscarCliente()" style="width:100%;border-style:dashed;padding:12px">Seleccionar o registrar cliente</button>`;
     }
@@ -716,12 +719,13 @@ async function buscarClientes() {
 function seleccionarCliente(id, nombre, telefono, primera) {
   clienteSel = {id, nombre, telefono, primera_compra: primera};
   document.getElementById('modal-cliente').classList.remove('active');
-  // Auto-add primera compra discount
-  descuentosTotal = descuentosTotal.filter(d => !d.auto);
-  if (primera) {
-    descuentosTotal.push({label:'10% primera compra', tipo:'%', valor:10, monto_centavos:0, auto:true});
-  }
   updateClienteBtn();
+  renderCart();
+}
+
+function aplicarPrimeraCompra() {
+  if (descuentosTotal.some(d => d.auto)) return;
+  descuentosTotal.push({label:'10% primera compra', tipo:'%', valor:10, monto_centavos:0, auto:true});
   renderCart();
 }
 
