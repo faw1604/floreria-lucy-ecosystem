@@ -636,6 +636,7 @@ let lastResult = null;
 let lastCarritoSnap = [];
 let allFunerarias = [];
 let editingPedidoId = null; // when editing a pending order
+let contadorPendientes = 0;
 let debounceTimer = null;
 let debounceCliTimer = null;
 let debounceCliSearchTimer = null;
@@ -1484,6 +1485,10 @@ async function submitPedido(estado) {
     }
     lastResult = result;
     lastCarritoSnap = [...carrito];
+    if (estado === 'pendiente_pago' && !editingPedidoId) {
+      contadorPendientes++;
+      renderBadge();
+    }
     mostrarModalCreado(result);
   } catch(e) {
     console.error('POS submitPedido error:', e);
@@ -1684,6 +1689,8 @@ async function loadPendientes(params) {
     }
     const data = await r.json();
     pendAllData = data.pendientes || [];
+    contadorPendientes = pendAllData.length;
+    renderBadge();
     renderPendTable(pendAllData);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
@@ -1788,10 +1795,10 @@ async function confirmarCancelar() {
   try {
     const r = await fetch(`/pos/pedido/${cancelPedidoId}/cancelar`, { method: 'PATCH' });
     if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
-    // Remove from local data and DOM immediately
     pendAllData = pendAllData.filter(p => p.id !== cancelPedidoId);
     renderPendTable(pendAllData);
-    updateBadgePend();
+    contadorPendientes--;
+    renderBadge();
   } catch(e) { alert('Error de red'); }
 }
 
@@ -1875,7 +1882,10 @@ async function fpConfirm() {
     });
     if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
     document.getElementById('modal-fin-pend').remove();
-    loadPendientes();
+    pendAllData = pendAllData.filter(p => p.id !== finPendId);
+    renderPendTable(pendAllData);
+    contadorPendientes--;
+    renderBadge();
   } catch(e) { alert('Error de red'); }
 }
 
@@ -2040,19 +2050,24 @@ fetchCategorias();
 setView(vistaActual);
 renderCart();
 
-// Badge pendientes — poll every 60s + auto-refresh table
+// Badge pendientes — local render + polling every 60s to sync with DB
+function renderBadge() {
+  const badge = document.getElementById('badge-pend');
+  if (contadorPendientes <= 0) {
+    contadorPendientes = 0;
+    badge.style.display = 'none';
+  } else {
+    badge.style.display = 'flex';
+    badge.textContent = contadorPendientes > 9 ? '9+' : contadorPendientes;
+  }
+}
+
 async function updateBadgePend() {
   try {
     const r = await fetch('/pos/pedidos-hoy?estado=pendiente_pago');
     const data = await r.json();
-    const n = (data.pendientes || []).length;
-    const badge = document.getElementById('badge-pend');
-    if (n > 0) {
-      badge.textContent = n > 9 ? '9+' : n;
-      badge.style.display = 'flex';
-    } else {
-      badge.style.display = 'none';
-    }
+    contadorPendientes = (data.pendientes || []).length;
+    renderBadge();
     // Auto-refresh if pendientes section is active
     if (document.getElementById('sec-pendientes').classList.contains('active') && pendFilterPeriodo === 'hoy') {
       pendAllData = data.pendientes || [];
