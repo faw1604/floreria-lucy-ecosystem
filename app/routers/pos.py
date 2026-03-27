@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime
 import httpx
+import os
 from app.database import get_db
 from app.models.productos import Producto
 from app.models.clientes import Cliente
@@ -434,3 +435,60 @@ async def pos_editar_pedido(
             setattr(pedido, campo, data[campo])
     await db.commit()
     return {"ok": True, "folio": pedido.numero}
+
+
+@router.post("/enviar-ticket-whatsapp")
+async def pos_enviar_ticket_whatsapp(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+
+    whapi_token = os.environ.get("WHAPI_TOKEN")
+    if not whapi_token:
+        return {"error": "WHAPI_TOKEN no configurado"}
+
+    data = await request.json()
+    pedido_id = data.get("pedido_id")
+    telefono = data.get("telefono", "")
+    nombre = data.get("nombre_cliente", "")
+    imagen_b64 = data.get("imagen_base64", "")
+
+    # Format phone: digits only, prepend 52 if needed
+    telefono = "".join(c for c in telefono if c.isdigit())
+    if not telefono.startswith("52"):
+        telefono = "52" + telefono
+
+    # Get folio
+    folio = ""
+    if pedido_id:
+        result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+        pedido = result.scalar_one_or_none()
+        if pedido:
+            folio = pedido.numero
+
+    headers = {"Authorization": f"Bearer {whapi_token}", "Content-Type": "application/json"}
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            # Send text message
+            texto = f"Hola {nombre}, aqui esta tu comprobante del pedido {folio} 🌸\nGracias por tu preferencia — Floreria Lucy"
+            await client.post(
+                "https://gate.whapi.cloud/messages/text",
+                headers=headers,
+                json={"to": telefono, "body": texto},
+            )
+
+            # Send ticket image
+            if imagen_b64:
+                await client.post(
+                    "https://gate.whapi.cloud/messages/image",
+                    headers=headers,
+                    json={"to": telefono, "media": f"data:image/png;base64,{imagen_b64}", "caption": ""},
+                )
+
+        return {"ok": True}
+    except Exception as e:
+        return {"error": f"Error al enviar WhatsApp: {str(e)}"}

@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POS — Floreria Lucy</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#dc3545;--dorado:#d4a843}
@@ -231,9 +230,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
     <div style="display:flex;flex-direction:column;gap:8px">
       <!-- TODO: reemplazar con QZ Tray para impresión directa sin diálogo -->
       <button onclick="imprimirDesdeModal()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--verde);color:#fff;border:none;min-height:44px">🖨 Imprimir ticket</button>
-      <button onclick="descargarPDF()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--verde);border:1px solid var(--verde);min-height:44px">📄 Descargar PDF</button>
-      <button onclick="compartirWhatsApp()" id="btn-wa" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#25D366;color:#fff;border:none;min-height:44px">💬 Compartir por WhatsApp</button>
-      <div id="wa-note" style="display:none;font-size:11px;color:var(--texto2);margin-top:4px"></div>
+      <button onclick="compartirWhatsApp()" id="btn-wa" style="display:none;padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#25D366;color:#fff;border:none;min-height:44px">💬 Enviar por WhatsApp</button>
+      <div id="wa-note" style="display:none;font-size:11px;margin-top:4px"></div>
     </div>
   </div>
 </div>
@@ -959,6 +957,19 @@ function mostrarModalCreado(result) {
   if (result.comision > 0) desg += `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Comision link</span><span>$${result.comision/100}</span></div>`;
   desg += `<div style="display:flex;justify-content:space-between;padding:6px 0;margin-top:4px;border-top:2px solid var(--verde);font-size:16px;font-weight:700;color:var(--verde)"><span>TOTAL</span><span>$${result.total/100}</span></div>`;
   document.getElementById('creado-desglose').innerHTML = desg;
+  // Show WhatsApp button only if client with phone exists (not mostrador without client)
+  const btnWa = document.getElementById('btn-wa');
+  const waNote = document.getElementById('wa-note');
+  waNote.style.display = 'none';
+  waNote.textContent = '';
+  if (clienteSel && clienteSel.telefono && modo !== 'mostrador') {
+    btnWa.style.display = '';
+    btnWa.disabled = false;
+    btnWa.textContent = '💬 Enviar por WhatsApp';
+    btnWa.style.background = '#25D366';
+  } else {
+    btnWa.style.display = 'none';
+  }
   document.getElementById('modal-creado').classList.add('active');
 }
 
@@ -1011,51 +1022,15 @@ function imprimirDesdeModal() {
   setTimeout(() => window.print(), 100);
 }
 
-function descargarPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: [80, 200] });
-  const r = lastResult;
-  const items = lastCarritoSnapshot;
-  let y = 8;
-  const lh = 4.5;
-  doc.setFont('courier', 'bold');
-  doc.setFontSize(12);
-  doc.text('FLORERIA LUCY', 40, y, {align:'center'}); y += lh + 1;
-  doc.setFont('courier', 'normal');
-  doc.setFontSize(9);
-  doc.text('================================', 4, y); y += lh;
-  doc.text(`Pedido: ${r.folio}`, 4, y); y += lh;
-  doc.text(`Fecha: ${new Date().toLocaleDateString('es-MX')}`, 4, y); y += lh;
-  doc.text('--------------------------------', 4, y); y += lh;
-  doc.text('PRODUCTOS:', 4, y); y += lh;
-  for (const item of items) {
-    const line = `${item.cantidad}x ${item.nombre}`;
-    const price = `$${(item.precio*item.cantidad)/100}`;
-    doc.text(line, 4, y);
-    doc.text(price, 76, y, {align:'right'});
-    y += lh;
-    if (y > 190) { doc.addPage([80, 200]); y = 8; }
-  }
-  doc.text('--------------------------------', 4, y); y += lh;
-  if (r.envio > 0) { doc.text(`Envio: $${r.envio/100}`, 4, y); y += lh; }
-  if (r.impuesto > 0) { doc.text(`Impuesto: $${r.impuesto/100}`, 4, y); y += lh; }
-  if (r.descuento > 0) { doc.text(`Descuento: -$${r.descuento/100}`, 4, y); y += lh; }
-  doc.setFont('courier', 'bold');
-  doc.text(`TOTAL: $${r.total/100}`, 4, y); y += lh;
-  doc.text('================================', 4, y); y += lh;
-  doc.setFont('courier', 'normal');
-  doc.text('Gracias por su preferencia', 40, y, {align:'center'});
-  doc.save(`${r.folio}.pdf`);
-}
-
 async function compartirWhatsApp() {
   const btn = document.getElementById('btn-wa');
   const note = document.getElementById('wa-note');
+  if (!clienteSel || !clienteSel.telefono) return;
   btn.disabled = true;
-  btn.textContent = '⏳ Generando imagen...';
+  btn.textContent = '⏳ Enviando...';
   note.style.display = 'none';
 
-  // Render ticket HTML into a visible temporary container for html2canvas
+  // Render ticket HTML into a temporary container for html2canvas
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:-9999px;top:0;width:300px;padding:16px;background:#fff;font-family:Courier New,monospace;font-size:12px;line-height:1.5;color:#000';
   container.innerHTML = buildTicketLines().join('\n');
@@ -1064,37 +1039,38 @@ async function compartirWhatsApp() {
   try {
     const canvas = await html2canvas(container, {scale: 2, backgroundColor: '#ffffff'});
     document.body.removeChild(container);
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64 = dataUrl.split(',')[1];
 
-    canvas.toBlob(async (blob) => {
-      const filename = `ticket-${lastResult.folio}.png`;
-      const file = new File([blob], filename, {type: 'image/png'});
-
-      // Try Web Share API with files (mobile)
-      if (navigator.canShare && navigator.canShare({files: [file]})) {
-        try {
-          await navigator.share({files: [file]});
-        } catch(e) { /* user cancelled share */ }
-      } else {
-        // Desktop fallback: download image + open WhatsApp Web
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        window.open('https://web.whatsapp.com', '_blank');
-        note.textContent = 'Imagen descargada — adjuntala en WhatsApp Web';
-        note.style.display = '';
-      }
-
+    const resp = await fetch('/pos/enviar-ticket-whatsapp', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        pedido_id: lastResult.id,
+        telefono: clienteSel.telefono,
+        nombre_cliente: clienteSel.nombre,
+        imagen_base64: base64,
+      }),
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      btn.textContent = '✓ Enviado';
+      btn.style.background = '#2d5a3d';
+      btn.disabled = true;
+    } else {
+      note.textContent = data.error || 'Error al enviar';
+      note.style.color = 'var(--rojo)';
+      note.style.display = '';
       btn.disabled = false;
-      btn.textContent = '💬 Compartir por WhatsApp';
-    }, 'image/png');
+      btn.textContent = '💬 Enviar por WhatsApp';
+    }
   } catch(e) {
-    document.body.removeChild(container);
-    btn.disabled = false;
-    btn.textContent = '💬 Compartir por WhatsApp';
-    note.textContent = 'Error al generar imagen';
+    if (container.parentNode) document.body.removeChild(container);
+    note.textContent = 'Error al generar o enviar imagen';
+    note.style.color = 'var(--rojo)';
     note.style.display = '';
+    btn.disabled = false;
+    btn.textContent = '💬 Enviar por WhatsApp';
   }
 }
 
