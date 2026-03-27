@@ -150,6 +150,13 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .inv-subtab.active{background:var(--verde);color:#fff;border-color:var(--verde)}
 .inv-note{font-size:12px;color:var(--texto2);margin-top:16px;padding:10px;background:var(--blanco);border-radius:8px;border-left:3px solid var(--naranja)}
 
+/* Collapsible cards */
+.card-collapsible{cursor:pointer;transition:box-shadow .15s}
+.card-collapsible:hover{box-shadow:0 2px 12px rgba(0,0,0,.1)}
+.card-collapsible .card-expand{display:none;margin-top:12px;border-top:1px solid var(--borde);padding-top:12px}
+.card-collapsible.expanded .card-expand{display:block}
+.card-collapsible .card-items{font-size:13px;color:var(--texto2);margin-top:4px;line-height:1.5}
+
 /* Agendados table */
 .agenda-table{width:100%;border-collapse:collapse;font-size:13px}
 .agenda-table th{text-align:left;padding:10px 12px;background:var(--verde);color:#fff;font-weight:600;font-size:12px}
@@ -185,21 +192,27 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 </div>
 
 <div class="tabs">
-  <button class="tab active" data-tab="pedidos">Pedidos</button>
-  <button class="tab" data-tab="agendados">Pedidos Agendados</button>
+  <button class="tab active" data-tab="nuevos">Nuevos pedidos</button>
+  <button class="tab" data-tab="produccion">Pedidos</button>
+  <button class="tab" data-tab="agendados">Proximos pedidos</button>
   <button class="tab hidden" data-tab="fecha-fuerte" id="tab-fecha-fuerte">Produccion Fecha Fuerte</button>
   <button class="tab" data-tab="realizados">Pedidos Realizados</button>
   <button class="tab" data-tab="inventario">Inventario</button>
 </div>
 
 <div class="main">
-  <!-- TAB: Pedidos -->
-  <div class="tab-content active" id="content-pedidos">
+  <!-- TAB: Nuevos pedidos -->
+  <div class="tab-content active" id="content-nuevos">
     <div id="pedidos-hoy"></div>
     <div id="pedidos-manana"></div>
   </div>
 
-  <!-- TAB: Agendados -->
+  <!-- TAB: Pedidos (en produccion) -->
+  <div class="tab-content" id="content-produccion">
+    <div id="produccion-body"></div>
+  </div>
+
+  <!-- TAB: Proximos pedidos -->
   <div class="tab-content" id="content-agendados">
     <div id="agendados-body"></div>
   </div>
@@ -299,6 +312,7 @@ document.querySelectorAll('.tab').forEach(t => {
     document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
     t.classList.add('active');
     document.getElementById('content-' + t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'produccion') loadProduccion();
     if (t.dataset.tab === 'agendados') loadAgendados();
     if (t.dataset.tab === 'realizados') loadRealizados();
     if (t.dataset.tab === 'inventario') loadInventario();
@@ -484,6 +498,111 @@ async function loadPedidos() {
   } catch(e) { console.error(e); }
 }
 
+// ─── Produccion (pedidos aceptados del dia) ───
+let expandedProduccionId = null;
+
+async function loadProduccion() {
+  try {
+    const [rHoy, rManana] = await Promise.all([
+      fetch(`${API}/pedidos/hoy`, {credentials:'include'}),
+      fetch(`${API}/pedidos/manana`, {credentials:'include'})
+    ]);
+    if (!rHoy.ok) return;
+    const hoy = rHoy.ok ? await rHoy.json() : [];
+    const manana = rManana.ok ? await rManana.json() : [];
+    const todos = [...hoy, ...manana];
+    // Solo pedidos aceptados en produccion
+    const produccion = todos.filter(p => {
+      const ef = p.estado_florista || '';
+      const est = (p.estado||'').toLowerCase();
+      return (ef === 'aprobado' || ef === 'aprobado_con_modificacion') && est.includes('producci');
+    });
+    if (!produccion.length) {
+      document.getElementById('produccion-body').innerHTML = '<div class="empty">No hay pedidos en produccion</div>';
+      return;
+    }
+    let html = '<div class="pedidos-grid">';
+    for (const p of produccion) {
+      const items = p.items || [];
+      const itemsHtml = items.length
+        ? items.map(it => `${it.cantidad > 1 ? it.cantidad + 'x ' : ''}${it.nombre}`).join('<br>')
+        : '<span style="opacity:.5">Sin productos</span>';
+      const isExpanded = expandedProduccionId === p.id;
+      html += `<div class="pedido-card card-collapsible ${isExpanded ? 'expanded' : ''}" style="border-left-color:var(--naranja)" onclick="toggleProduccion(${p.id})">
+        <div class="pedido-num" style="margin-bottom:4px">${p.numero}</div>
+        <div class="card-items">${itemsHtml}</div>
+        <div class="card-expand" onclick="event.stopPropagation()">
+          ${renderCardDetails(p)}
+          <div class="pedido-actions">
+            <button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Imprimir ticket</button>
+            <button class="action-btn btn-listo" onclick="marcarPreparado(${p.id})">✅ Marcar como preparado</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+    document.getElementById('produccion-body').innerHTML = html;
+  } catch(e) { console.error(e); }
+}
+
+function toggleProduccion(id) {
+  if (expandedProduccionId === id) {
+    expandedProduccionId = null;
+  } else {
+    expandedProduccionId = id;
+  }
+  loadProduccion();
+}
+
+async function marcarPreparado(id) {
+  try {
+    await fetch(`${API}/pedidos/${id}/estado`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({estado:'Listo'})
+    });
+    loadProduccion();
+  } catch(e) {}
+}
+
+function renderCardDetails(p) {
+  const pagoIcon = p.pago_confirmado ? '✅' : '⚠️ PENDIENTE';
+  let badges = '';
+  if (p.tipo_especial === 'Funeral') badges += '<span class="pedido-badge badge-funeral">FUNERAL</span>';
+  else if (p.tipo_especial === 'Evento') badges += '<span class="pedido-badge badge-evento">EVENTO</span>';
+  const timer = funeralTimer(p);
+  const notaFl = p.nota_florista ? `<div class="pedido-notas" style="border-left-color:var(--azul)">Nota florista: ${p.nota_florista}</div>` : '';
+
+  let productoHtml = '';
+  const items = p.items || [];
+  for (const item of items) {
+    if (item.es_personalizado) {
+      productoHtml += `<div><span class="badge-personalizado">⚡ PERSONALIZADO</span></div>`;
+      productoHtml += `<div class="pedido-producto">${item.nombre_personalizado || item.nombre}</div>`;
+      if (item.observaciones) productoHtml += `<div class="pedido-producto-obs">${item.observaciones}</div>`;
+    } else {
+      productoHtml += `<div class="pedido-producto">${item.nombre}${item.codigo ? `<span class="pedido-producto-code">${item.codigo}</span>` : ''}${item.cantidad > 1 ? ` <span class="pedido-producto-code">x${item.cantidad}</span>` : ''}</div>`;
+    }
+  }
+
+  return `
+    <div>${badges}</div>
+    ${timer}
+    <div class="pedido-header">
+      <span class="pedido-estado ${estadoClass(p.estado)}">${p.estado}</span>
+    </div>
+    ${productoHtml}
+    <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
+    ${p.fecha_entrega ? `<div class="pedido-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
+    ${p.zona_entrega ? `<div class="pedido-detail">📍 Zona ${p.zona_entrega} — ${p.direccion_entrega || ''}</div>` : ''}
+    ${p.receptor_telefono ? `<div class="pedido-detail">📞 ${p.receptor_telefono}</div>` : ''}
+    ${p.hora_exacta ? `<div class="pedido-detail">⏰ Hora exacta entrega: ${p.hora_exacta}</div>` : ''}
+    ${p.dedicatoria ? `<div class="pedido-dedicatoria">"${p.dedicatoria}"</div>` : ''}
+    ${p.notas_internas ? `<div class="pedido-notas">${p.notas_internas}</div>` : ''}
+    ${notaFl}
+    <div class="pedido-pago">${p.forma_pago || 'Sin info'} ${pagoIcon} — Total: $${(p.total||0)/100}</div>
+  `;
+}
+
 // ─── Agendados ───
 async function loadAgendados() {
   try {
@@ -515,6 +634,8 @@ async function loadAgendados() {
 }
 
 // ─── Realizados ───
+let expandedRealizadoId = null;
+
 async function loadRealizados() {
   try {
     const r = await fetch(`${API}/pedidos/realizados`, {credentials:'include'});
@@ -526,25 +647,29 @@ async function loadRealizados() {
     }
     let html = '<div class="pedidos-grid">';
     for (const p of pedidos) {
-      html += `<div class="pedido-card" style="border-left-color:var(--verde-c)">
-        <div class="pedido-header">
-          <div class="pedido-num">${p.numero}</div>
-          <span class="pedido-estado estado-listo">LISTO</span>
-        </div>
-        <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
-        ${p.zona_entrega ? `<div class="pedido-detail">📍 Zona ${p.zona_entrega}</div>` : ''}
-        ${p.horario_entrega ? `<div class="pedido-detail">⏰ ${p.horario_entrega}</div>` : ''}
-        <div class="pedido-pago">${p.forma_pago||''} ${p.pago_confirmado?'✅':'⚠️'} — $${(p.total||0)/100}</div>
-        <div class="pedido-actions">
-          <button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Comprador</button>
-          <button class="action-btn btn-imprimir" onclick="imprimirTicketRepartidor(${p.id})">🖨 Repartidor</button>
-          <button class="action-btn btn-imprimir" onclick="imprimirMiniTicket(${p.id})">🏷 Etiqueta</button>
+      const isExpanded = expandedRealizadoId === p.id;
+      html += `<div class="pedido-card card-collapsible ${isExpanded ? 'expanded' : ''}" style="border-left-color:var(--verde-c)" onclick="toggleRealizado(${p.id})">
+        <div class="pedido-num">${p.numero}</div>
+        <div class="card-expand" onclick="event.stopPropagation()">
+          ${renderCardDetails(p)}
+          <div class="pedido-actions">
+            <button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Reimprimir</button>
+          </div>
         </div>
       </div>`;
     }
     html += '</div>';
     document.getElementById('realizados-body').innerHTML = html;
   } catch(e) {}
+}
+
+function toggleRealizado(id) {
+  if (expandedRealizadoId === id) {
+    expandedRealizadoId = null;
+  } else {
+    expandedRealizadoId = id;
+  }
+  loadRealizados();
 }
 
 // ─── Fecha Fuerte ───
