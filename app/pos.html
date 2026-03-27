@@ -296,14 +296,28 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .cli-card .cli-phone{font-size:12px;color:var(--texto2)}
 .cli-card .cli-orders{font-size:12px;color:var(--dorado);font-weight:500}
 
-/* Print */
+/* Print — Ticket 80mm */
 #print-frame{display:none}
 @media print{
+  @page{size:80mm auto;margin:4mm}
   body>*:not(#print-frame){display:none!important}
-  #print-frame{display:block!important;width:80mm;font-family:'Courier New',monospace;font-size:12px;line-height:1.5;color:#000}
-  #print-frame .sep{border-top:1px dashed #000;margin:6px 0}
-  #print-frame .dsep{border-top:2px solid #000;margin:6px 0}
+  #print-frame{display:block!important;width:72mm;font-family:'Courier New',monospace;font-size:10px;line-height:1.5;color:#000;text-transform:uppercase}
+  #print-frame *{text-transform:uppercase}
   #print-frame .tline{text-align:center}
+  #print-frame .rline{text-align:right}
+  #print-frame .sep{border-top:1px dashed #000;margin:4px 0}
+  #print-frame .dsep{border-bottom:none;margin:4px 0;font-size:10px;text-align:center;letter-spacing:1px}
+  #print-frame .dsep::after{content:'══════════════════════════════════';display:block}
+  #print-frame .psep{margin:4px 0;font-size:10px;text-align:center;letter-spacing:1px}
+  #print-frame .psep::after{content:'· · · · · · · · · · · · · · · · ·';display:block}
+  #print-frame .hdr{font-weight:700;border-bottom:1px solid #000;padding-bottom:2px;margin:6px 0 4px}
+  #print-frame .irow{display:flex;justify-content:space-between}
+  #print-frame .irow .r{font-weight:400;text-align:right}
+  #print-frame .big{font-size:18px;font-weight:700}
+  #print-frame .med{font-size:14px;font-weight:700}
+  #print-frame .sm{font-size:9px}
+  #print-frame .mini-ticket{page-break-after:always;padding:4px 0}
+  #print-frame .mini-ticket:last-child{page-break-after:avoid}
 }
 </style>
 </head>
@@ -1620,34 +1634,193 @@ function resetVenta() {
   renderCart();
 }
 
-// ─── Print ───
-function buildTicketLines() {
-  const r = lastResult;
-  const items = lastCarritoSnap;
-  let L = [];
+// ─── Print — Ticket Completo ───
+function buildTicketCompleto(info) {
+  // info: {folio, fecha, cliente_nombre, cliente_telefono, items[], subtotal, envio, total,
+  //        impuesto, descuento, comision, cargo_hora, zona_envio, forma_pago, pagos[],
+  //        tipo, receptor_nombre, receptor_telefono, direccion_entrega, dedicatoria,
+  //        notas_internas, horario_entrega, hora_exacta, ruta, fecha_entrega,
+  //        funeraria, nombre_fallecido, sala, banda, horario_velacion}
+  const S = sanitizarTexto;
+  const L = [];
+  // Header
   L.push('<div class="dsep"></div>');
-  L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
+  L.push('<div class="tline" style="font-size:20px"><strong>FLORERIA LUCY</strong></div>');
+  L.push('<div class="tline" style="font-size:10px"><strong>- LA FLORE CHOCOLATIER -</strong></div>');
+  L.push('<div class="tline sm">C. SABINO 610, LAS GRANJAS</div>');
+  L.push('<div class="tline sm">CHIHUAHUA, CHIH., MEXICO</div>');
+  L.push('<div class="tline sm">TEL. 614 334 9392</div>');
+  L.push('<div class="tline sm">florerialucychihuahua@gmail.com</div>');
   L.push('<div class="dsep"></div>');
-  L.push(`<div>Pedido: <strong>${r.folio}</strong></div>`);
-  L.push(`<div>Fecha: ${new Date().toLocaleDateString('es-MX')}</div>`);
-  L.push('<div class="sep"></div>');
-  L.push('<div>PRODUCTOS:</div>');
+  L.push('<div class="tline"><strong>COMPROBANTE DE COMPRA</strong></div>');
+  L.push(`<div class="tline big">${info.folio||''}</div>`);
+  L.push(`<div class="tline sm">${fechaTicket(info.fecha || new Date().toISOString())}</div>`);
+  L.push('<div class="dsep"></div>');
+  // Client
+  if (info.cliente_nombre) {
+    L.push('<div class="hdr">CLIENTE</div>');
+    L.push(`<div>${S(info.cliente_nombre)}</div>`);
+    if (info.cliente_telefono) L.push(`<div>${info.cliente_telefono}</div>`);
+  }
+  // Delivery / Funeral / Recoger
+  const tipo = info.tipo || 'mostrador';
+  if (tipo === 'funeral' || (info.notas_internas && info.notas_internas.includes('FUNERAL'))) {
+    L.push('<div class="tline" style="margin:6px 0"><strong>*** PEDIDO FUNERAL ***</strong></div>');
+    if (info.funeraria) L.push(`<div><strong>FUNERARIA:</strong> ${S(info.funeraria)}</div>`);
+    if (info.nombre_fallecido) L.push(`<div><strong>FALLECIDO:</strong> ${S(info.nombre_fallecido)}</div>`);
+    if (info.sala) L.push(`<div><strong>SALA:</strong> ${S(info.sala)}</div>`);
+    if (info.banda) L.push(`<div><strong>BANDA:</strong> ${S(info.banda)}</div>`);
+    if (info.horario_velacion) L.push(`<div><strong>VELACION:</strong> ${S(info.horario_velacion)}</div>`);
+    if (info.fecha_entrega) L.push(`<div><strong>FECHA:</strong> ${fechaTicket(info.fecha_entrega)}</div>`);
+  } else if (info.direccion_entrega) {
+    L.push('<div class="hdr">DATOS DE ENTREGA</div>');
+    if (info.receptor_nombre) L.push(`<div><strong>RECIBE:</strong> ${S(info.receptor_nombre)}</div>`);
+    if (info.receptor_telefono) L.push(`<div><strong>TEL:</strong> ${info.receptor_telefono}</div>`);
+    L.push(`<div><strong>DIR:</strong> ${S(info.direccion_entrega)}</div>`);
+    if (info.fecha_entrega) L.push(`<div><strong>FECHA:</strong> ${fechaTicket(info.fecha_entrega)}</div>`);
+    if (info.horario_entrega) L.push(`<div><strong>HORARIO:</strong> ${S(info.horario_entrega)}</div>`);
+    if (info.hora_exacta) L.push(`<div><strong>HORA:</strong> ${info.hora_exacta}</div>`);
+    if (info.zona_envio) L.push(`<div><strong>ZONA:</strong> ${S(info.zona_envio)}</div>`);
+    if (info.ruta) L.push(`<div><strong>RUTA:</strong> ${S(info.ruta)}</div>`);
+  } else if (info.hora_exacta && tipo === 'recoger') {
+    L.push('<div class="hdr">RECOGER EN TIENDA</div>');
+    if (info.fecha_entrega) L.push(`<div><strong>FECHA:</strong> ${fechaTicket(info.fecha_entrega)}</div>`);
+    L.push(`<div><strong>HORA:</strong> ${info.hora_exacta}</div>`);
+  }
+  // Dedicatoria
+  if (info.dedicatoria) {
+    L.push('<div class="psep"></div>');
+    L.push('<div><strong>DEDICATORIA:</strong></div>');
+    L.push(`<div>${S(info.dedicatoria)}</div>`);
+    L.push('<div class="psep"></div>');
+  }
+  // Products
+  L.push('<div class="hdr">ARTICULOS</div>');
+  const items = info.items || [];
   for (const it of items) {
-    L.push(`<div>${it.cantidad}x ${it.nombre} $${(it.precio*it.cantidad)/100}</div>`);
+    const name = S(it.nombre || it.nombre_personalizado || '');
+    const qty = it.cantidad || 1;
+    const price = fmtPrecioTk((it.precio_unitario || it.precio || 0) * qty);
+    L.push(`<div class="irow"><span>${qty}X ${name}</span><span class="r">${price}</span></div>`);
   }
   L.push('<div class="sep"></div>');
-  if (r.envio > 0) L.push(`<div>Envio: $${r.envio/100}</div>`);
-  if (r.impuesto > 0) L.push(`<div>Impuesto: $${r.impuesto/100}</div>`);
-  if (r.descuento > 0) L.push(`<div>Descuento: -$${r.descuento/100}</div>`);
-  L.push(`<div>TOTAL: <strong>$${r.total/100}</strong></div>`);
+  // Totals
+  const subtotal = info.subtotal || 0;
+  L.push(`<div class="irow"><span>SUBTOTAL</span><span class="r">${fmtPrecioTk(subtotal)}</span></div>`);
+  if (info.envio) L.push(`<div class="irow"><span>ENVIO ZONA ${S(info.zona_envio||'')}</span><span class="r">${fmtPrecioTk(info.envio)}</span></div>`);
+  if (info.impuesto) L.push(`<div class="irow"><span>IVA (16%)</span><span class="r">${fmtPrecioTk(info.impuesto)}</span></div>`);
+  if (info.cargo_hora) L.push(`<div class="irow"><span>HORA ESPECIFICA</span><span class="r">+${fmtPrecioTk(info.cargo_hora)}</span></div>`);
+  if (info.comision) L.push(`<div class="irow"><span>COMISION LINK (4%)</span><span class="r">+${fmtPrecioTk(info.comision)}</span></div>`);
+  if (info.descuento) L.push(`<div class="irow"><span>DESCUENTO</span><span class="r">-${fmtPrecioTk(info.descuento)}</span></div>`);
   L.push('<div class="dsep"></div>');
-  L.push('<div class="tline">Gracias por su preferencia</div>');
+  L.push(`<div class="irow"><span class="med">TOTAL</span><span class="r med">${fmtPrecioTk(info.total||0)}</span></div>`);
+  L.push('<div class="sep"></div>');
+  // Payment
+  L.push('<div><strong>FORMA DE PAGO:</strong></div>');
+  if (info.pagos && info.pagos.length) {
+    for (const p of info.pagos) L.push(`<div class="irow"><span>${S(p.nombre||'')}</span><span class="r">${fmtPrecioTk(p.monto||0)}</span></div>`);
+  } else if (info.forma_pago) {
+    L.push(`<div>${S(info.forma_pago)}</div>`);
+  }
   L.push('<div class="dsep"></div>');
-  return L;
+  L.push('<div class="tline"><strong>GRACIAS POR SU PREFERENCIA</strong></div>');
+  L.push(`<div class="tline sm">${fechaLargaHoy()}</div>`);
+  L.push('<div class="dsep"></div>');
+  return L.join('\n');
+}
+
+function buildMiniTickets(info) {
+  const S = sanitizarTexto;
+  const items = info.items || [];
+  const total = Math.max(items.length, 1);
+  let html = '';
+  for (let i = 0; i < total; i++) {
+    const it = items[i];
+    const label = total > 1 ? ` (${i+1} DE ${total})` : '';
+    const itemName = it ? S(it.nombre || it.nombre_personalizado || '') : '';
+    let L = [];
+    L.push('<div class="dsep"></div>');
+    L.push(`<div class="tline med">${info.folio||''}${label}</div>`);
+    if (itemName) L.push(`<div class="tline"><strong>${itemName}</strong></div>`);
+    L.push('<div class="sep"></div>');
+    if (info.fecha_entrega) L.push(`<div>ENTREGA: ${fechaTicket(info.fecha_entrega)}</div>`);
+    if (info.horario_entrega) L.push(`<div>HORARIO: ${S(info.horario_entrega)}</div>`);
+    if (info.hora_exacta) L.push(`<div>HORA: ${info.hora_exacta}</div>`);
+    if (info.zona_envio) L.push(`<div>ZONA: ${S(info.zona_envio)}</div>`);
+    if (info.receptor_nombre) L.push(`<div>RECIBE: ${S(info.receptor_nombre)}</div>`);
+    if (info.funeraria) L.push(`<div>FUNERARIA: ${S(info.funeraria)}</div>`);
+    L.push('<div class="dsep"></div>');
+    html += `<div class="mini-ticket">${L.join('\n')}</div>`;
+  }
+  return html;
+}
+
+// Build info object from POS post-sale result + carrito state
+function buildInfoFromPOS() {
+  const r = lastResult;
+  const items = lastCarritoSnap.map(it => ({
+    nombre: it.nombre, cantidad: it.cantidad, precio_unitario: it.precio
+  }));
+  const tipo = ordenTipo || 'mostrador';
+  return {
+    folio: r.folio, fecha: new Date().toISOString(), items, tipo,
+    subtotal: r.subtotal, envio: r.envio, total: r.total,
+    impuesto: r.impuesto, descuento: r.descuento, comision: r.comision,
+    cargo_hora: r.cargo_hora || 0,
+    zona_envio: document.getElementById('f-zona')?.value || '',
+    forma_pago: Object.keys(selectedPays).join(', '),
+    pagos: Object.entries(selectedPays).map(([nombre,monto])=>({nombre,monto})),
+    cliente_nombre: clienteSel?.nombre || null,
+    cliente_telefono: clienteSel?.telefono || null,
+    receptor_nombre: document.getElementById('f-rec-nombre')?.value || '',
+    receptor_telefono: document.getElementById('f-rec-tel')?.value || '',
+    direccion_entrega: document.getElementById('f-dir')?.value || '',
+    dedicatoria: document.getElementById('f-dedicatoria')?.value || document.getElementById('f-dedicatoria-fun')?.value || '',
+    notas_internas: document.getElementById('f-notas')?.value || '',
+    horario_entrega: selHorario || '',
+    hora_exacta: horaEspecifica || document.getElementById('f-hora-rec')?.value || '',
+    fecha_entrega: document.getElementById('f-fecha')?.value || document.getElementById('f-fecha-rec')?.value || document.getElementById('f-fecha-fun')?.value || '',
+    ruta: geoData?.ruta || '',
+    funeraria: funerariaSel?.nombre || '',
+    nombre_fallecido: document.getElementById('f-fallecido')?.value || '',
+    sala: document.getElementById('f-sala')?.value || '',
+    banda: document.getElementById('f-banda')?.value || '',
+    horario_velacion: velHorario === 'hora' ? (document.getElementById('f-vel-hora')?.value || '') : (velHorario || ''),
+  };
+}
+
+// Build info object from a pedido object (from API)
+function buildInfoFromPedido(p) {
+  // Parse funeral data from notas_internas
+  let funeraria='', fallecido='', sala='', banda='', velacion='';
+  if (p.tipo_especial === 'Funeral' && p.notas_internas) {
+    const n = p.notas_internas;
+    const mf = n.match(/FUNERAL\s*(?:—|-)\s*([^.]+)/i); if (mf) funeraria = mf[1].trim();
+    const mfa = n.match(/Fallecido:\s*([^.]+)/i); if (mfa) fallecido = mfa[1].trim();
+    const ms = n.match(/Sala:\s*([^.]+)/i); if (ms) sala = ms[1].trim();
+    const mb = n.match(/Banda:\s*([^.]+)/i); if (mb) banda = mb[1].trim();
+    const mv = n.match(/Velacion:\s*([^.]+)/i); if (mv) velacion = mv[1].trim();
+  }
+  let tipo = 'mostrador';
+  if (p.tipo_especial === 'Funeral') tipo = 'funeral';
+  else if (p.direccion_entrega) tipo = 'domicilio';
+  else if (p.hora_exacta) tipo = 'recoger';
+  return {
+    folio: p.folio, fecha: p.fecha_pedido, items: p.items || [], tipo,
+    subtotal: p.subtotal, envio: p.envio, total: p.total,
+    impuesto: 0, descuento: 0, comision: 0, cargo_hora: 0,
+    zona_envio: p.zona_entrega || '', forma_pago: p.forma_pago || '', pagos: [],
+    cliente_nombre: p.cliente_nombre, cliente_telefono: p.cliente_telefono,
+    receptor_nombre: p.receptor_nombre, receptor_telefono: p.receptor_telefono,
+    direccion_entrega: p.direccion_entrega, dedicatoria: p.dedicatoria,
+    notas_internas: p.notas_internas, horario_entrega: p.horario_entrega,
+    hora_exacta: p.hora_exacta, fecha_entrega: p.fecha_entrega, ruta: p.ruta,
+    funeraria, nombre_fallecido: fallecido, sala, banda, horario_velacion: velacion,
+  };
 }
 
 function imprimirTicket() {
-  document.getElementById('print-frame').innerHTML = buildTicketLines().join('\n');
+  document.getElementById('print-frame').innerHTML = buildTicketCompleto(buildInfoFromPOS());
   setTimeout(() => window.print(), 100);
 }
 
@@ -1662,7 +1835,7 @@ async function enviarWhatsApp() {
 
   const container = document.createElement('div');
   container.style.cssText = 'position:fixed;left:-9999px;top:0;width:300px;padding:16px;background:#fff;font-family:Courier New,monospace;font-size:12px;line-height:1.5;color:#000';
-  container.innerHTML = buildTicketLines().join('\n');
+  container.innerHTML = buildTicketCompleto(buildInfoFromPOS());
   document.body.appendChild(container);
 
   try {
@@ -2399,20 +2572,7 @@ function verTicket(p) {
 function reimprimirDesdeTicket() {
   const p = ticketPedido;
   if (!p) return;
-  const L = [];
-  L.push('<div class="dsep"></div>');
-  L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
-  L.push('<div class="dsep"></div>');
-  L.push(`<div>Pedido: <strong>${p.folio}</strong></div>`);
-  L.push('<div class="sep"></div>');
-  (p.items||[]).forEach(it => L.push(`<div>${it.cantidad}x ${it.nombre} $${(it.precio_unitario*it.cantidad)/100}</div>`));
-  L.push('<div class="sep"></div>');
-  if (p.envio > 0) L.push(`<div>Envio: $${p.envio/100}</div>`);
-  L.push(`<div>TOTAL: <strong>$${(p.total||0)/100}</strong></div>`);
-  L.push('<div class="dsep"></div>');
-  L.push('<div class="tline">Gracias por su preferencia</div>');
-  L.push('<div class="dsep"></div>');
-  document.getElementById('print-frame').innerHTML = L.join('\n');
+  document.getElementById('print-frame').innerHTML = buildTicketCompleto(buildInfoFromPedido(p));
   setTimeout(() => window.print(), 100);
 }
 
@@ -2438,6 +2598,38 @@ async function enviarWaDesdeTicket() {
 // UTIL
 // ═══════════════════════════════════════════
 function esc(s) { return (s||'').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+function sanitizarTexto(s) {
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ñ/g,'N').replace(/Ñ/g,'N').replace(/ü/g,'U').replace(/Ü/g,'U').toUpperCase();
+}
+
+function fmtPrecioTk(centavos) {
+  return '$' + (centavos/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function fechaTicket(str) {
+  if (!str) return '';
+  const d = new Date((str||'').replace(' ','T'));
+  if (isNaN(d)) return sanitizarTexto(str);
+  const dias = ['DOM','LUN','MAR','MIE','JUE','VIE','SAB'];
+  const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  const dia = dias[d.getDay()];
+  const dd = d.getDate();
+  const mes = meses[d.getMonth()];
+  const yyyy = d.getFullYear();
+  const hasTime = (str||'').includes(':');
+  if (!hasTime) return `${dia} ${dd} ${mes} ${yyyy}`;
+  let h = d.getHours(), m = d.getMinutes();
+  const ap = h >= 12 ? 'PM' : 'AM';
+  if (h === 0) h = 12; else if (h > 12) h -= 12;
+  return `${dia} ${dd} ${mes} ${yyyy}  ${h}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+function fechaLargaHoy() {
+  const d = new Date();
+  const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  return `CHIHUAHUA, CHIH., A ${d.getDate()} DE ${meses[d.getMonth()]} DE ${d.getFullYear()}`;
+}
 
 const _dias = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
 const _meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
