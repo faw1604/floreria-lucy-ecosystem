@@ -449,7 +449,7 @@ function renderCart() {
       <button class="f-btn" onclick="verificarDir()">📍 Verificar</button></div></div>`;
     html += `<div class="f-row"><label style="font-size:12px;display:flex;align-items:center;gap:6px">
       <input type="checkbox" id="f-dir-ok" onchange="onDirVerificada()"> ✓ Direccion verificada</label>
-      ${rutaAsignada ? `<span class="f-badge">${rutaAsignada}</span>` : ''}</div>`;
+      <span id="geo-ruta-badge">${rutaAsignada ? `<span class="f-badge">${rutaAsignada}</span>` : ''}</span></div>`;
     html += `<div class="f-row"><div class="f-label">Dedicatoria</div><textarea class="f-textarea" id="f-dedi" placeholder="Opcional"></textarea></div>`;
     html += `<div class="f-row"><div class="f-label">Notas para el repartidor</div><textarea class="f-textarea" id="f-notas" placeholder="Opcional"></textarea></div>`;
     html += `<div class="f-row"><div class="f-label">Fecha de entrega</div><input class="f-input" id="f-fecha-entrega" type="date" value="${new Date().toLocaleDateString('en-CA',{timeZone:'America/Chihuahua'})}"></div>`;
@@ -467,7 +467,7 @@ function renderCart() {
 
     // Zona y envio
     html += '<div class="cart-section"><div class="cart-section-title">Zona y envio</div>';
-    if (zonaAutoMsg) html += `<div style="font-size:11px;color:var(--rojo);margin-bottom:6px">${zonaAutoMsg}</div>`;
+    html += `<div id="zona-auto-msg" style="font-size:11px;color:var(--rojo);margin-bottom:6px;display:${zonaAutoMsg?'':'none'}">${zonaAutoMsg||''}</div>`;
     html += '<div class="f-row-inline" style="flex-wrap:wrap;gap:4px">';
     for (const [z, p] of [['Morada','$99'],['Azul','$159'],['Verde','$199']]) {
       html += `<button class="f-chip ${selZonaVal===z?'active':''}" data-zona="${z}" onclick="selZona('${z}',this)">${z} ${p}</button>`;
@@ -664,25 +664,50 @@ let zonaAutoMsg = null;
 
 async function onDirVerificada() {
   const checked = document.getElementById('f-dir-ok')?.checked;
-  if (!checked) { rutaAsignada = null; zonaAutoMsg = null; renderCart(); return; }
+  if (!checked) {
+    rutaAsignada = null; zonaAutoMsg = null;
+    updateGeoUI();
+    return;
+  }
   const dir = document.getElementById('f-dir')?.value;
   if (!dir) return;
   zonaAutoMsg = null;
+  console.log('[GEO] Geocodificando:', dir);
   try {
     const r = await fetch('/pos/geocodificar', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
       body: JSON.stringify({direccion: dir})
     });
+    console.log('[GEO] HTTP status:', r.status);
     const data = await r.json();
+    console.log('[GEO] Respuesta:', data);
+    if (data.error) { console.warn('[GEO] Error:', data.error); }
     if (data.ruta) { rutaAsignada = data.ruta; geoLat = data.lat; geoLng = data.lng; }
     if (data.zona_envio) {
       selZonaVal = data.zona_envio;
       zonaAutoMsg = null;
-    } else {
+    } else if (!data.error) {
       zonaAutoMsg = 'Direccion fuera de cobertura — seleccionar zona manualmente';
     }
-  } catch(e) {}
-  renderCart();
+  } catch(e) { console.error('[GEO] Fetch error:', e); }
+  updateGeoUI();
+}
+
+function updateGeoUI() {
+  // Update ruta badge in-place
+  const badgeEl = document.getElementById('geo-ruta-badge');
+  if (badgeEl) badgeEl.innerHTML = rutaAsignada ? `<span class="f-badge">${rutaAsignada}</span>` : '';
+  // Update zona chips in-place
+  document.querySelectorAll('[data-zona]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.zona === selZonaVal);
+  });
+  // Update zona message
+  const msgEl = document.getElementById('zona-auto-msg');
+  if (msgEl) {
+    msgEl.textContent = zonaAutoMsg || '';
+    msgEl.style.display = zonaAutoMsg ? '' : 'none';
+  }
+  renderTotals();
 }
 
 // ─── Funeraria search ───
