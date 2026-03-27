@@ -299,3 +299,123 @@ async def pos_crear_pedido(
         "envio": envio, "descuento": descuento, "comision": comision,
         "estado": pedido.estado,
     }
+
+
+async def _serializar_pedido_pos(p, db):
+    items_r = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == p.id))
+    items = []
+    for it in items_r.scalars().all():
+        prod = (await db.execute(select(Producto).where(Producto.id == it.producto_id))).scalar_one_or_none()
+        items.append({"nombre": prod.nombre if prod else "?", "cantidad": it.cantidad, "precio_unitario": it.precio_unitario})
+    cliente_nombre = None
+    if p.customer_id:
+        cli = (await db.execute(select(Cliente).where(Cliente.id == p.customer_id))).scalar_one_or_none()
+        if cli:
+            cliente_nombre = cli.nombre
+    return {
+        "id": p.id, "folio": p.numero, "estado": p.estado, "canal": p.canal,
+        "cliente_nombre": cliente_nombre, "customer_id": p.customer_id,
+        "items": items, "subtotal": p.subtotal, "envio": p.envio, "total": p.total,
+        "forma_pago": p.forma_pago, "pago_confirmado": p.pago_confirmado,
+        "tipo_especial": p.tipo_especial, "horario_entrega": p.horario_entrega,
+        "hora_exacta": p.hora_exacta, "zona_entrega": p.zona_entrega,
+        "direccion_entrega": p.direccion_entrega, "receptor_nombre": p.receptor_nombre,
+        "receptor_telefono": p.receptor_telefono, "dedicatoria": p.dedicatoria,
+        "notas_internas": p.notas_internas, "ruta": p.ruta,
+        "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
+    }
+
+
+@router.get("/pedidos-hoy")
+async def pos_pedidos_hoy(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    hoy = datetime.now(TZ).date()
+    result = await db.execute(select(Pedido).where(Pedido.fecha_entrega == hoy, Pedido.canal == "Mostrador").order_by(Pedido.fecha_pedido.desc()))
+    pedidos = result.scalars().all()
+
+    pendientes = []
+    finalizados = []
+    total_vendido = 0
+    desglose_pago = {}
+
+    for p in pedidos:
+        data = await _serializar_pedido_pos(p, db)
+        if p.estado in ("Pendiente pago", "pendiente_pago"):
+            pendientes.append(data)
+        else:
+            finalizados.append(data)
+            total_vendido += p.total or 0
+            for metodo in (p.forma_pago or "").split(", "):
+                metodo = metodo.strip()
+                if metodo:
+                    desglose_pago[metodo] = desglose_pago.get(metodo, 0) + (p.total or 0)
+
+    return {
+        "pendientes": pendientes,
+        "finalizados": finalizados,
+        "resumen": {
+            "total_vendido": total_vendido,
+            "desglose_pago": desglose_pago,
+            "num_finalizados": len(finalizados),
+            "num_pendientes": len(pendientes),
+        },
+    }
+
+
+@router.patch("/pedido/{pedido_id}/finalizar")
+async def pos_finalizar_pedido(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    data = await request.json()
+    pagos = data.get("pagos", [])
+    suma_pagos = sum(p["monto"] for p in pagos)
+    if suma_pagos < (pedido.total or 0):
+        raise HTTPException(status_code=400, detail=f"Falta asignar ${((pedido.total or 0) - suma_pagos) / 100:.0f}")
+
+    pedido.estado = "Listo"
+    pedido.estado_florista = "aprobado"
+    pedido.pago_confirmado = True
+    pedido.forma_pago = ", ".join(p.get("nombre", "") for p in pagos if p.get("nombre"))
+    await db.commit()
+    return {"ok": True, "folio": pedido.numero, "estado": pedido.estado}
+
+
+@router.patch("/pedido/{pedido_id}/editar")
+async def pos_editar_pedido(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    data = await request.json()
+    campos_editables = [
+        "receptor_nombre", "receptor_telefono", "direccion_entrega",
+        "dedicatoria", "notas_internas", "horario_entrega", "hora_exacta",
+        "fecha_entrega",
+    ]
+    for campo in campos_editables:
+        if campo in data:
+            setattr(pedido, campo, data[campo])
+    await db.commit()
+    return {"ok": True, "folio": pedido.numero}

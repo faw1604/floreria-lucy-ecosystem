@@ -108,6 +108,34 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
 .modal-btns{display:flex;gap:8px;margin-top:12px}
 .modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
 
+/* Drawer */
+.drawer-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:80}
+.drawer-bg.active{display:block}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:90vw;background:var(--blanco);z-index:90;box-shadow:-4px 0 20px rgba(0,0,0,.1);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s}
+.drawer.active{transform:translateX(0)}
+.drawer-hdr{padding:14px 16px;background:var(--verde);color:#fff;display:flex;justify-content:space-between;align-items:center}
+.drawer-hdr h3{font-size:15px;font-weight:600}
+.drawer-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer}
+.drawer-tabs{display:flex;border-bottom:1px solid var(--borde)}
+.drawer-tab{flex:1;padding:10px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;color:var(--texto2);border-bottom:2px solid transparent}
+.drawer-tab.active{color:var(--verde);border-bottom-color:var(--verde)}
+.drawer-body{flex:1;overflow-y:auto;padding:12px}
+.dw-card{background:var(--crema);border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px}
+.dw-card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.dw-card-folio{font-weight:700;color:var(--verde);font-size:14px}
+.dw-card-total{font-weight:700;font-size:14px}
+.dw-card-items{color:var(--texto2);margin:4px 0}
+.dw-card-pago{font-size:11px;color:var(--texto2)}
+.dw-card-actions{display:flex;gap:4px;margin-top:6px}
+.dw-card-actions button{padding:6px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:none}
+.dw-btn-fin{background:var(--verde);color:#fff}
+.dw-btn-edit{background:var(--blanco);color:var(--verde);border:1px solid var(--verde)!important}
+.dw-btn-print{background:var(--blanco);color:var(--texto);border:1px solid var(--borde)!important}
+.dw-resumen{background:var(--crema);border-radius:8px;padding:12px;margin-top:12px;font-size:13px}
+.dw-resumen h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;color:var(--texto2)}
+.dw-resumen-row{display:flex;justify-content:space-between;padding:3px 0}
+.dw-resumen-total{font-weight:700;font-size:15px;color:var(--verde);border-top:2px solid var(--verde);padding-top:6px;margin-top:6px}
+
 /* Print */
 #print-frame{display:none}
 @media print{
@@ -134,6 +162,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
     </div>
   </div>
   <div class="pos-right">
+    <button class="pos-cliente-btn" onclick="abrirDrawer()" style="background:rgba(255,255,255,.1)">📋 Pedidos del dia</button>
     <button class="pos-cliente-btn" id="btn-cliente" onclick="abrirBuscarCliente()">👤 Sin cliente</button>
     <a class="pos-link" href="/panel/">← Panel</a>
   </div>
@@ -184,6 +213,51 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
     <div class="modal-btns">
       <button style="background:var(--blanco);border:1px solid var(--borde);color:var(--texto)" onclick="document.getElementById('modal-registro').classList.remove('active')">Cancelar</button>
       <button style="background:var(--verde);border:none;color:#fff" onclick="registrarCliente()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer: Pedidos del dia -->
+<div class="drawer-bg" id="drawer-bg" onclick="cerrarDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hdr"><h3>Pedidos del dia</h3><button class="drawer-close" onclick="cerrarDrawer()">&times;</button></div>
+  <div class="drawer-tabs">
+    <button class="drawer-tab active" onclick="setDrawerTab('pendientes',this)">Pendientes (<span id="dw-cnt-pend">0</span>)</button>
+    <button class="drawer-tab" onclick="setDrawerTab('finalizados',this)">Finalizados (<span id="dw-cnt-fin">0</span>)</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<!-- Modal: Finalizar pendiente -->
+<div class="modal-bg" id="modal-fin-pend" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <h3>Finalizar pedido <span id="fin-pend-folio"></span></h3>
+    <div class="cart-section-title" style="margin-bottom:8px">Metodos de pago</div>
+    <div id="fin-pend-pays"></div>
+    <div id="fin-pend-total" style="font-weight:700;margin:8px 0"></div>
+    <div id="fin-pend-err" style="color:var(--rojo);font-size:12px;display:none"></div>
+    <div class="modal-btns">
+      <button style="background:var(--blanco);border:1px solid var(--borde);color:var(--texto)" onclick="document.getElementById('modal-fin-pend').classList.remove('active')">Cancelar</button>
+      <button style="background:var(--verde);border:none;color:#fff" onclick="confirmarFinPend()">Finalizar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Editar pedido -->
+<div class="modal-bg" id="modal-editar" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <h3>Editar pedido <span id="edit-folio"></span></h3>
+    <div class="f-row"><div class="f-label">Nombre destinatario</div><input class="f-input" id="edit-dest-nombre"></div>
+    <div class="f-row"><div class="f-label">Telefono destinatario</div><input class="f-input" id="edit-dest-tel"></div>
+    <div class="f-row"><div class="f-label">Direccion entrega</div><input class="f-input" id="edit-dir"></div>
+    <div class="f-row"><div class="f-label">Dedicatoria</div><textarea class="f-textarea" id="edit-dedi"></textarea></div>
+    <div class="f-row"><div class="f-label">Notas</div><textarea class="f-textarea" id="edit-notas"></textarea></div>
+    <div class="f-row"><div class="f-label">Horario entrega</div><input class="f-input" id="edit-horario"></div>
+    <div class="f-row"><div class="f-label">Hora exacta</div><input class="f-input" id="edit-hora" type="time"></div>
+    <div id="edit-err" style="color:var(--rojo);font-size:12px;display:none"></div>
+    <div class="modal-btns">
+      <button style="background:var(--blanco);border:1px solid var(--borde);color:var(--texto)" onclick="document.getElementById('modal-editar').classList.remove('active')">Cancelar</button>
+      <button style="background:var(--verde);border:none;color:#fff" onclick="guardarEdicion()">Guardar</button>
     </div>
   </div>
 </div>
@@ -761,6 +835,177 @@ function imprimirTicketPOS(result) {
   if (result.impuesto > 0) L.push(`<div>Impuesto: $${result.impuesto/100}</div>`);
   if (result.descuento > 0) L.push(`<div>Descuento: -$${result.descuento/100}</div>`);
   L.push(`<div>TOTAL: <strong>$${result.total/100}</strong></div>`);
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline">Gracias por su preferencia</div>');
+  L.push('<div class="dsep"></div>');
+  document.getElementById('print-frame').innerHTML = L.join('\n');
+  setTimeout(() => window.print(), 200);
+}
+
+// ─── Drawer: Pedidos del dia ───
+let dwData = null;
+let dwTab = 'pendientes';
+let finPendId = null;
+let finPendPays = {};
+let editId = null;
+
+function abrirDrawer() {
+  document.getElementById('drawer-bg').classList.add('active');
+  document.getElementById('drawer').classList.add('active');
+  loadDrawer();
+}
+
+function cerrarDrawer() {
+  document.getElementById('drawer-bg').classList.remove('active');
+  document.getElementById('drawer').classList.remove('active');
+}
+
+function setDrawerTab(tab, el) {
+  dwTab = tab;
+  document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDrawer();
+}
+
+async function loadDrawer() {
+  try {
+    const r = await fetch('/pos/pedidos-hoy', {credentials:'include'});
+    if (!r.ok) return;
+    dwData = await r.json();
+    document.getElementById('dw-cnt-pend').textContent = dwData.resumen.num_pendientes;
+    document.getElementById('dw-cnt-fin').textContent = dwData.resumen.num_finalizados;
+    renderDrawer();
+  } catch(e) {}
+}
+
+function renderDrawer() {
+  if (!dwData) return;
+  const body = document.getElementById('drawer-body');
+  if (dwTab === 'pendientes') {
+    if (!dwData.pendientes.length) { body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--texto2)">Sin pedidos pendientes</div>'; return; }
+    body.innerHTML = dwData.pendientes.map(p => `<div class="dw-card">
+      <div class="dw-card-hdr"><span class="dw-card-folio">${p.folio}</span><span class="dw-card-total">$${(p.total||0)/100}</span></div>
+      <div style="font-size:12px">${p.cliente_nombre || 'Mostrador'}</div>
+      <div class="dw-card-items">${p.items.map(i => `${i.cantidad}x ${i.nombre}`).join(', ')}</div>
+      <div class="dw-card-actions">
+        <button class="dw-btn-fin" onclick="abrirFinPend(${p.id},'${p.folio}',${p.total||0})">Finalizar</button>
+      </div>
+    </div>`).join('');
+  } else {
+    let html = '';
+    if (!dwData.finalizados.length) {
+      html = '<div style="text-align:center;padding:30px;color:var(--texto2)">Sin pedidos finalizados</div>';
+    } else {
+      html = dwData.finalizados.map(p => `<div class="dw-card">
+        <div class="dw-card-hdr"><span class="dw-card-folio">${p.folio}</span><span class="dw-card-total">$${(p.total||0)/100}</span></div>
+        <div style="font-size:12px">${p.cliente_nombre || 'Mostrador'}</div>
+        <div class="dw-card-items">${p.items.map(i => `${i.cantidad}x ${i.nombre}`).join(', ')}</div>
+        <div class="dw-card-pago">${p.forma_pago||''}</div>
+        <div class="dw-card-actions">
+          <button class="dw-btn-edit" onclick='abrirEditar(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
+          <button class="dw-btn-print" onclick="reimprimirTicket(${p.id},'${p.folio}',${p.total||0})">🖨 Ticket</button>
+        </div>
+      </div>`).join('');
+    }
+    // Resumen
+    const res = dwData.resumen;
+    html += '<div class="dw-resumen"><h4>Resumen del dia</h4>';
+    html += `<div class="dw-resumen-row"><span>Pedidos finalizados</span><span>${res.num_finalizados}</span></div>`;
+    for (const [metodo, monto] of Object.entries(res.desglose_pago)) {
+      if (monto > 0) html += `<div class="dw-resumen-row"><span>${metodo}</span><span>$${monto/100}</span></div>`;
+    }
+    html += `<div class="dw-resumen-row dw-resumen-total"><span>TOTAL DEL DIA</span><span>$${res.total_vendido/100}</span></div>`;
+    html += '</div>';
+    body.innerHTML = html;
+  }
+}
+
+// Finalizar pendiente
+function abrirFinPend(id, folio, total) {
+  finPendId = id;
+  finPendPays = {};
+  document.getElementById('fin-pend-folio').textContent = folio;
+  document.getElementById('fin-pend-total').textContent = `Total: $${total/100}`;
+  document.getElementById('fin-pend-err').style.display = 'none';
+  const metodos = ['Efectivo','Tarjeta credito','Tarjeta debito','Transferencia','Link de pago','OXXO'];
+  document.getElementById('fin-pend-pays').innerHTML = metodos.map(m =>
+    `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px;min-width:120px"><input type="checkbox" onchange="toggleFinPay('${m}',this.checked)"> ${m}</label>
+      <input class="f-input" type="number" placeholder="$0" style="width:80px;font-size:12px;padding:6px" id="fin-pay-${m.replace(/ /g,'_')}" disabled onchange="updateFinPay('${m}',this.value)">
+    </div>`
+  ).join('');
+  document.getElementById('modal-fin-pend').classList.add('active');
+}
+
+function toggleFinPay(name, checked) {
+  const input = document.getElementById('fin-pay-' + name.replace(/ /g,'_'));
+  if (checked) { finPendPays[name] = 0; input.disabled = false; }
+  else { delete finPendPays[name]; input.disabled = true; input.value = ''; }
+}
+
+function updateFinPay(name, val) {
+  finPendPays[name] = Math.round((parseFloat(val)||0) * 100);
+}
+
+async function confirmarFinPend() {
+  const pagos = Object.entries(finPendPays).filter(([,v]) => v > 0).map(([nombre, monto]) => ({nombre, monto}));
+  if (!pagos.length) { document.getElementById('fin-pend-err').textContent = 'Selecciona metodo de pago'; document.getElementById('fin-pend-err').style.display = ''; return; }
+  try {
+    const r = await fetch(`/pos/pedido/${finPendId}/finalizar`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({pagos})
+    });
+    if (!r.ok) { const d = await r.json(); document.getElementById('fin-pend-err').textContent = d.detail||'Error'; document.getElementById('fin-pend-err').style.display = ''; return; }
+    document.getElementById('modal-fin-pend').classList.remove('active');
+    loadDrawer();
+  } catch(e) { document.getElementById('fin-pend-err').textContent = 'Error de conexion'; document.getElementById('fin-pend-err').style.display = ''; }
+}
+
+// Editar pedido
+function abrirEditar(p) {
+  editId = p.id;
+  document.getElementById('edit-folio').textContent = p.folio;
+  document.getElementById('edit-dest-nombre').value = p.receptor_nombre || '';
+  document.getElementById('edit-dest-tel').value = p.receptor_telefono || '';
+  document.getElementById('edit-dir').value = p.direccion_entrega || '';
+  document.getElementById('edit-dedi').value = p.dedicatoria || '';
+  document.getElementById('edit-notas').value = p.notas_internas || '';
+  document.getElementById('edit-horario').value = p.horario_entrega || '';
+  document.getElementById('edit-hora').value = p.hora_exacta || '';
+  document.getElementById('edit-err').style.display = 'none';
+  document.getElementById('modal-editar').classList.add('active');
+}
+
+async function guardarEdicion() {
+  try {
+    const r = await fetch(`/pos/pedido/${editId}/editar`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({
+        receptor_nombre: document.getElementById('edit-dest-nombre').value,
+        receptor_telefono: document.getElementById('edit-dest-tel').value,
+        direccion_entrega: document.getElementById('edit-dir').value,
+        dedicatoria: document.getElementById('edit-dedi').value,
+        notas_internas: document.getElementById('edit-notas').value,
+        horario_entrega: document.getElementById('edit-horario').value,
+        hora_exacta: document.getElementById('edit-hora').value || null,
+      })
+    });
+    if (!r.ok) { const d = await r.json(); document.getElementById('edit-err').textContent = d.detail||'Error'; document.getElementById('edit-err').style.display = ''; return; }
+    document.getElementById('modal-editar').classList.remove('active');
+    loadDrawer();
+  } catch(e) { document.getElementById('edit-err').textContent = 'Error de conexion'; document.getElementById('edit-err').style.display = ''; }
+}
+
+// Reimprimir
+function reimprimirTicket(id, folio, total) {
+  let L = [];
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
+  L.push('<div class="dsep"></div>');
+  L.push(`<div>Pedido: <strong>${folio}</strong></div>`);
+  L.push(`<div>Fecha: ${new Date().toLocaleDateString('es-MX')}</div>`);
+  L.push('<div class="sep"></div>');
+  L.push(`<div>TOTAL: <strong>$${total/100}</strong></div>`);
   L.push('<div class="dsep"></div>');
   L.push('<div class="tline">Gracias por su preferencia</div>');
   L.push('<div class="dsep"></div>');
