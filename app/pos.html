@@ -623,6 +623,25 @@ input,select,textarea{font-family:inherit;font-size:13px}
   </div>
 </div>
 
+<!-- Modal: Pedidos de cliente -->
+<div class="modal-bg" id="modal-cli-pedidos" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:700px;padding:20px">
+    <button class="close" onclick="document.getElementById('modal-cli-pedidos').classList.remove('active')">&times;</button>
+    <h3 id="cli-ped-titulo">Pedidos de cliente</h3>
+    <div style="overflow-y:auto;max-height:60vh;margin-top:12px">
+      <table class="pend-table" style="font-size:12px">
+        <thead><tr>
+          <th>Codigo</th><th>Fecha</th><th>Items</th><th>Valor</th><th>Estado</th><th>Tipo</th><th>Ticket</th>
+        </tr></thead>
+        <tbody id="cli-ped-tbody"></tbody>
+      </table>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <button onclick="document.getElementById('modal-cli-pedidos').classList.remove('active')" style="padding:10px 24px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: WhatsApp a cliente -->
 <div class="modal-bg" id="modal-wa-cli" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="modal" style="max-width:400px">
@@ -2241,11 +2260,37 @@ async function enviarWaCli() {
   status.style.display = '';
 }
 
-function verPedidosCliente(id, nombre) {
-  transFilterPeriodo = 'mes';
-  navTo('transacciones');
-  loadTransacciones('cliente_id=' + id);
-  document.getElementById('trans-search').value = nombre;
+async function verPedidosCliente(id, nombre) {
+  document.getElementById('cli-ped-titulo').textContent = 'Pedidos de ' + nombre;
+  const tbody = document.getElementById('cli-ped-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
+  document.getElementById('modal-cli-pedidos').classList.add('active');
+  try {
+    const r = await fetch('/pos/pedidos-hoy?periodo=todos&cliente_id=' + id);
+    if (!r.ok) throw new Error('Error ' + r.status);
+    const data = await r.json();
+    const all = [...(data.pendientes||[]), ...(data.finalizados||[])];
+    if (all.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--texto2);padding:20px">Sin pedidos</td></tr>';
+      return;
+    }
+    tbody.innerHTML = all.map(p => {
+      const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
+      const fecha = p.fecha_pedido || p.fecha_entrega || '';
+      const ec = estadoClass(p.estado);
+      return `<tr>
+        <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}</td>
+        <td style="white-space:nowrap;font-size:11px">${fecha}</td>
+        <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
+        <td style="font-weight:600">$${((p.total||0)/100).toLocaleString()}</td>
+        <td><span class="badge-estado ${ec}">${estadoLabel(p.estado)}</span></td>
+        <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
+        <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:14px;cursor:pointer" title="Ver ticket">🎫</button></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--rojo);padding:16px">Error: ${e.message}</td></tr>`;
+  }
 }
 
 function nuevoPedidoCliente(id, nombre, telefono, primera) {
@@ -2264,14 +2309,24 @@ let ticketPedido = null;
 function verTicket(p) {
   ticketPedido = p;
   const ec = estadoClass(p.estado);
-  const fecha = p.fecha_pedido || p.fecha_entrega || '';
+  const fechaOrden = p.fecha_pedido || '';
+  const fechaEntrega = p.fecha_entrega || '';
+  const tl = (a, b) => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>${a}</span><span>${b}</span></div>`;
   let html = '';
-  // Header
-  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <div style="font-size:20px;font-weight:700;color:var(--verde)">${p.folio}</div>
-    <span class="badge-estado ${ec}" style="font-size:12px">${estadoLabel(p.estado)}</span>
+
+  // Header — folio grande + estado
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <div style="font-size:22px;font-weight:700;color:var(--verde)">${p.folio}</div>
+    <span class="badge-estado ${ec}" style="font-size:12px;padding:4px 12px">${estadoLabel(p.estado)}</span>
   </div>`;
-  html += `<div style="font-size:12px;color:var(--texto2);margin-bottom:12px">${fecha}</div>`;
+
+  // Dates + Canal
+  html += '<div style="margin-bottom:12px;font-size:12px;color:var(--texto2);line-height:1.8">';
+  if (fechaOrden) html += `<div><strong>Fecha de orden:</strong> ${fechaOrden}</div>`;
+  if (fechaEntrega) html += `<div><strong>Fecha de entrega:</strong> ${fechaEntrega}</div>`;
+  html += `<div><strong>Canal:</strong> ${canalLabel(p.canal)}</div>`;
+  html += '</div>';
+
   // Client
   if (p.cliente_nombre) {
     html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:4px">CLIENTE</h4>
@@ -2279,54 +2334,64 @@ function verTicket(p) {
       ${p.cliente_telefono ? `<div style="font-size:12px;color:var(--texto2)">${p.cliente_telefono}</div>` : ''}
     </div>`;
   }
+
   // Type-specific data
   const tipo = tipoLabel(p);
   html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:4px">${tipoIcon(p)} ${tipo.toUpperCase()}</h4>`;
   if (p.direccion_entrega && !p.tipo_especial) {
-    // Domicilio
     if (p.receptor_nombre) html += `<div style="font-size:12px"><strong>Destinatario:</strong> ${p.receptor_nombre}</div>`;
     if (p.receptor_telefono) html += `<div style="font-size:12px"><strong>Tel:</strong> ${p.receptor_telefono}</div>`;
     html += `<div style="font-size:12px"><strong>Direccion:</strong> ${p.direccion_entrega}</div>`;
     if (p.zona_entrega) html += `<div style="font-size:12px"><strong>Zona:</strong> <span class="zona-badge ${(p.zona_entrega||'').toLowerCase()}">${p.zona_entrega}</span></div>`;
     if (p.ruta) html += `<div style="font-size:12px"><strong>Ruta:</strong> ${p.ruta}</div>`;
     if (p.horario_entrega) html += `<div style="font-size:12px"><strong>Horario:</strong> ${p.horario_entrega}</div>`;
-    if (p.hora_exacta) html += `<div style="font-size:12px"><strong>Hora:</strong> ${p.hora_exacta}</div>`;
+    if (p.hora_exacta) html += `<div style="font-size:12px"><strong>Hora especifica:</strong> ${p.hora_exacta}</div>`;
     if (p.dedicatoria) html += `<div style="font-size:12px;margin-top:4px"><strong>Dedicatoria:</strong> ${p.dedicatoria}</div>`;
     if (p.notas_internas) html += `<div style="font-size:12px"><strong>Notas:</strong> ${p.notas_internas}</div>`;
   } else if (p.tipo_especial === 'Funeral') {
     if (p.notas_internas) html += `<div style="font-size:12px;white-space:pre-line">${p.notas_internas}</div>`;
     if (p.dedicatoria) html += `<div style="font-size:12px;margin-top:4px"><strong>Dedicatoria:</strong> ${p.dedicatoria}</div>`;
-    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha entrega:</strong> ${p.fecha_entrega}</div>`;
   } else if (p.hora_exacta && !p.direccion_entrega) {
-    // Recoger
-    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha:</strong> ${p.fecha_entrega}</div>`;
-    html += `<div style="font-size:12px"><strong>Hora:</strong> ${p.hora_exacta}</div>`;
+    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha recogida:</strong> ${p.fecha_entrega}</div>`;
+    html += `<div style="font-size:12px"><strong>Hora recogida:</strong> ${p.hora_exacta}</div>`;
   } else {
     html += `<div style="font-size:12px;color:var(--texto2)">Venta en mostrador</div>`;
   }
   html += '</div>';
-  // Products
+
+  // Products — with unit price column
   html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:6px">PRODUCTOS</h4>`;
   (p.items||[]).forEach(it => {
     const sub = (it.precio_unitario * it.cantidad) / 100;
-    html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--gris)">
-      <span>${it.cantidad}x ${it.nombre}</span><span style="font-weight:600">$${sub.toLocaleString()}</span>
+    const unitP = it.precio_unitario / 100;
+    html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris)">
+      <span style="flex:1">${it.cantidad}x ${it.nombre}</span>
+      <span style="min-width:60px;text-align:right;color:var(--texto2)">$${unitP.toLocaleString()} c/u</span>
+      <span style="min-width:70px;text-align:right;font-weight:600">$${sub.toLocaleString()}</span>
     </div>`;
   });
   html += '</div>';
-  // Totals
+
+  // Totals — complete breakdown
   html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:6px">RESUMEN</h4>`;
-  html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Subtotal</span><span>$${((p.subtotal||0)/100).toLocaleString()}</span></div>`;
-  if (p.envio) html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>Envio</span><span>$${(p.envio/100).toLocaleString()}</span></div>`;
-  html += `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--verde);padding:6px 0;border-top:2px solid var(--verde);margin-top:4px"><span>TOTAL</span><span>$${((p.total||0)/100).toLocaleString()}</span></div>`;
-  if (p.forma_pago) html += `<div style="font-size:11px;color:var(--texto2);margin-top:4px">Pago: ${p.forma_pago}</div>`;
+  html += tl('Subtotal', '$' + ((p.subtotal||0)/100).toLocaleString());
+  // Calculate what was added: impuesto = total - subtotal - envio + descuento - comision - cargo
+  // We don't have these fields individually, so show what we have
+  if (p.envio) html += tl('Envio', '$' + (p.envio/100).toLocaleString());
+  const diff = (p.total||0) - (p.subtotal||0) - (p.envio||0);
+  if (diff > 0) html += tl('Impuestos / Cargos', '+$' + (diff/100).toLocaleString());
+  if (diff < 0) html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--dorado)"><span>Descuento</span><span>-$${(Math.abs(diff)/100).toLocaleString()}</span></div>`;
+  html += `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--verde);padding:8px 0;border-top:2px solid var(--verde);margin-top:4px"><span>TOTAL</span><span>$${((p.total||0)/100).toLocaleString()}</span></div>`;
+  if (p.forma_pago) html += `<div style="font-size:12px;color:var(--texto2);margin-top:4px"><strong>Metodo de pago:</strong> ${p.forma_pago}</div>`;
   html += '</div>';
+
   // Buttons
   html += `<div style="display:flex;gap:8px;margin-top:14px">
     <button onclick="reimprimirDesdeTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Reimprimir</button>
     ${p.cliente_telefono ? `<button onclick="enviarWaDesdeTicket()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>` : ''}
     <button onclick="document.getElementById('modal-ticket').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>
   </div>`;
+
   document.getElementById('ticket-content').innerHTML = html;
   document.getElementById('modal-ticket').classList.add('active');
 }

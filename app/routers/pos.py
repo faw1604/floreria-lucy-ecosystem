@@ -383,7 +383,11 @@ async def pos_pedidos_hoy(
     dow = (hoy.weekday() + 1) % 7  # convert Mon=0 to Sun=0
 
     # Determine date range (local dates)
-    if periodo == "rango" and fecha_inicio and fecha_fin:
+    skip_date_filter = False
+    if periodo == "todos":
+        skip_date_filter = True
+        f_ini = f_fin = hoy  # unused but avoids unbound
+    elif periodo == "rango" and fecha_inicio and fecha_fin:
         f_ini = date_type.fromisoformat(fecha_inicio)
         f_fin = date_type.fromisoformat(fecha_fin)
     elif periodo == "ayer":
@@ -411,13 +415,15 @@ async def pos_pedidos_hoy(
         f_ini = f_fin = hoy
 
     # Convert local date boundaries to UTC for DB query (fecha_pedido stored as UTC)
-    utc_start = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
-    utc_end = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
-
-    query = select(Pedido).where(
-        Pedido.fecha_pedido >= utc_start,
-        Pedido.fecha_pedido <= utc_end,
-    ).order_by(Pedido.fecha_pedido.desc())
+    if skip_date_filter:
+        query = select(Pedido).order_by(Pedido.fecha_pedido.desc())
+    else:
+        utc_start = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+        utc_end = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+        query = select(Pedido).where(
+            Pedido.fecha_pedido >= utc_start,
+            Pedido.fecha_pedido <= utc_end,
+        ).order_by(Pedido.fecha_pedido.desc())
 
     # Filter by cliente_id
     if cliente_id:
