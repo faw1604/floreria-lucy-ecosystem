@@ -274,6 +274,14 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .filter-panel .fp-footer button{width:100%;padding:12px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer}
 .filter-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:140}
 .filter-overlay.open{display:block}
+.fp-toggle{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--borde);margin-top:10px}
+.fp-toggle label{font-size:12px;font-weight:600;color:var(--texto);cursor:pointer}
+.ios-switch{position:relative;width:44px;height:24px;flex-shrink:0}
+.ios-switch input{opacity:0;width:0;height:0}
+.ios-switch .slider{position:absolute;inset:0;background:#ccc;border-radius:24px;cursor:pointer;transition:.25s}
+.ios-switch .slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s}
+.ios-switch input:checked+.slider{background:var(--rojo)}
+.ios-switch input:checked+.slider::before{transform:translateX(20px)}
 .pend-table-wrap{flex:1;overflow-y:auto}
 
 /* ─── Transacciones metrics ─── */
@@ -452,6 +460,10 @@ input,select,textarea{font-family:inherit;font-size:13px}
       <label class="fp-check"><input type="checkbox" value="Domicilio"> Domicilio</label>
       <label class="fp-check"><input type="checkbox" value="Recoger"> Recoger</label>
       <label class="fp-check"><input type="checkbox" value="Funeral"> Funeral</label>
+    </div>
+    <div class="fp-toggle" id="fp-toggle-cancelados">
+      <label for="fp-cancelados">Mostrar solo pedidos cancelados</label>
+      <label class="ios-switch"><input type="checkbox" id="fp-cancelados" onchange="onToggleCancelados()"><span class="slider"></span></label>
     </div>
   </div>
   <div class="fp-footer"><button onclick="aplicarFiltrosPanel()">Filtrar</button></div>
@@ -1776,14 +1788,30 @@ function fpSelectPeriodo(el, val) {
   document.getElementById('fp-rango-dates').style.display = val === 'rango' ? 'flex' : 'none';
 }
 
+function onToggleCancelados() {
+  const on = document.getElementById('fp-cancelados').checked;
+  // Disable estado checkboxes when toggle is active
+  document.querySelectorAll('#filter-panel .fp-section:nth-child(3) input').forEach(cb => {
+    cb.disabled = on;
+    if (on) cb.checked = false;
+    cb.closest('.fp-check').style.opacity = on ? '.4' : '1';
+  });
+}
+
 function getFilterParams() {
   const params = [];
   const metodos = [];
   document.querySelectorAll('#filter-panel .fp-section:nth-child(2) input:checked').forEach(cb => metodos.push(cb.value));
   if (metodos.length) params.push('metodo_pago=' + encodeURIComponent(metodos.join(',')));
-  const estados = [];
-  document.querySelectorAll('#filter-panel .fp-section:nth-child(3) input:checked').forEach(cb => estados.push(cb.value));
-  if (estados.length) params.push('estado=' + encodeURIComponent(estados.join(',')));
+  // Cancelados toggle overrides estado
+  const canceladosOn = document.getElementById('fp-cancelados').checked;
+  if (canceladosOn) {
+    params.push('estado=cancelado');
+  } else {
+    const estados = [];
+    document.querySelectorAll('#filter-panel .fp-section:nth-child(3) input:checked').forEach(cb => estados.push(cb.value));
+    if (estados.length) params.push('estado=' + encodeURIComponent(estados.join(',')));
+  }
   const canales = [];
   document.querySelectorAll('#filter-panel .fp-section:nth-child(4) input:checked').forEach(cb => canales.push(cb.value));
   if (canales.length) params.push('canal=' + encodeURIComponent(canales.join(',')));
