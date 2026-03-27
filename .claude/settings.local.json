@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(PGPASSWORD=[REDACTED] psql \"postgresql://postgres@autorack.proxy.rlwy.net:18068/railway\" -c \"DELETE FROM pedido_items WHERE pedido_id IN \\(SELECT id FROM pedidos WHERE numero IN \\('FL-2026-P001', 'FL-2026-P002', 'FL-2026-P003', 'FL-2026-P004', 'FL-2026-TEST'\\)\\); DELETE FROM pedidos WHERE numero IN \\('FL-2026-P001', 'FL-2026-P002', 'FL-2026-P003', 'FL-2026-P004', 'FL-2026-TEST'\\);\")",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(python3 -m pip --version)",
+      "Bash(source /c/Users/EQUIPO/floreria-lucy-ecosystem/venv/Scripts/activate)",
+      "Bash(railway logs:*)"
+    ]
+  }
+}

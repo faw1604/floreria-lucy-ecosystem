@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Cookie, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, extract
 from datetime import datetime
 import os
 from app.database import get_db
@@ -68,7 +69,6 @@ async def alertas_fechas(
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
     from app.models.clientes import Cliente
-    from sqlalchemy import extract
 
     ahora = datetime.now(TZ)
     hoy = ahora.date()
@@ -148,7 +148,7 @@ async def stats_del_dia(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
-    from sqlalchemy import select, func
+
     from app.models.pedidos import Pedido
     hoy = datetime.now(TZ).date()
     result = await db.execute(
@@ -172,7 +172,7 @@ async def stats_semana(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
-    from sqlalchemy import select, func
+
     from datetime import timedelta
     from app.models.pedidos import Pedido, ItemPedido
     from app.models.productos import Producto
@@ -289,7 +289,7 @@ async def asistente_ia(
         raise HTTPException(status_code=401, detail="No autenticado")
     import os
     import httpx
-    from sqlalchemy import select, func
+
     from app.models.pedidos import Pedido
     from app.models.flores import TipoFlor
     from app.models.pagos import MetodoPago

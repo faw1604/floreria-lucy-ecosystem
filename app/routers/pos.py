@@ -17,9 +17,13 @@ router = APIRouter()
 
 async def _generar_folio(db: AsyncSession) -> str:
     año = datetime.now(TZ).strftime("%Y")
-    result = await db.execute(select(Pedido).where(Pedido.numero.like(f"FL-{año}-%")))
-    count = len(result.scalars().all())
-    return f"FL-{año}-{str(count + 1).zfill(4)}"
+    result = await db.execute(select(func.max(Pedido.numero)).where(Pedido.numero.like(f"FL-{año}-%")))
+    max_folio = result.scalar()
+    if max_folio:
+        ultimo_num = int(max_folio.rsplit("-", 1)[1])
+    else:
+        ultimo_num = 0
+    return f"FL-{año}-{str(ultimo_num + 1).zfill(4)}"
 
 
 @router.get("/productos")
