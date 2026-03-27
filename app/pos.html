@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>POS — Floreria Lucy</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <style>
 :root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#dc3545;--dorado:#d4a843}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -213,6 +214,21 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;h
     <div class="modal-btns">
       <button style="background:var(--blanco);border:1px solid var(--borde);color:var(--texto)" onclick="document.getElementById('modal-registro').classList.remove('active')">Cancelar</button>
       <button style="background:var(--verde);border:none;color:#fff" onclick="registrarCliente()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Pedido creado -->
+<div class="modal-bg" id="modal-creado">
+  <div class="modal" style="max-width:380px;text-align:center">
+    <button class="drawer-close" style="position:absolute;top:10px;right:14px;color:var(--texto2)" onclick="cerrarModalCreado()">&times;</button>
+    <div id="creado-folio" style="font-size:22px;font-weight:700;color:var(--verde);margin:8px 0 12px"></div>
+    <div id="creado-cliente" style="font-size:13px;color:var(--texto2);margin-bottom:10px"></div>
+    <div id="creado-desglose" style="font-size:13px;text-align:left;background:var(--crema);padding:12px;border-radius:8px;margin-bottom:16px"></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="imprimirDesdeModal()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--verde);color:#fff;border:none;min-height:44px">🖨 Imprimir ticket</button>
+      <button onclick="descargarPDF()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--verde);border:1px solid var(--verde);min-height:44px">📄 Descargar PDF</button>
+      <button onclick="compartirWhatsApp()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#25D366;color:#fff;border:none;min-height:44px">💬 Compartir por WhatsApp</button>
     </div>
   </div>
 </div>
@@ -790,56 +806,128 @@ async function submitPedido(estado) {
     });
     if (!r.ok) { const d = await r.json(); alert(d.detail || 'Error al crear pedido'); return; }
     const result = await r.json();
-    alert(`Pedido ${result.folio} creado — Total: $${result.total/100}`);
-
-    if (estado === 'pagado') {
-      imprimirTicketPOS(result);
-    }
-
-    // Reset
-    carrito = [];
-    clienteSel = null;
-    selHorarioVal = null;
-    selZonaVal = null;
-    selTaxVal = 'NA';
-    selectedPays = {};
-    direccionVerificada = false;
-    rutaAsignada = null;
-    funerariaSelId = null;
-    descuentosItem = [];
-    descuentosTotal = [];
-    updateClienteBtn();
-    renderCart();
+    mostrarModalCreado(result);
   } catch(e) { alert('Error de conexion'); }
 }
 
 function guardarPedido() { submitPedido('pendiente_pago'); }
 function finalizarVenta() { submitPedido('pagado'); }
 
-// ─── Print ───
-function imprimirTicketPOS(result) {
+// ─── Post-venta: modal + acciones ───
+let lastResult = null;
+let lastCarritoSnapshot = [];
+
+function mostrarModalCreado(result) {
+  lastResult = result;
+  lastCarritoSnapshot = [...carrito];
+  document.getElementById('creado-folio').textContent = result.folio;
+  document.getElementById('creado-cliente').textContent = clienteSel ? `Cliente: ${clienteSel.nombre}` : '';
+
+  let desg = '';
+  desg += `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Subtotal</span><span>$${result.subtotal/100}</span></div>`;
+  if (result.impuesto > 0) desg += `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>IVA 16%</span><span>$${result.impuesto/100}</span></div>`;
+  if (result.envio > 0) desg += `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Envio</span><span>$${result.envio/100}</span></div>`;
+  if (result.descuento > 0) desg += `<div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--dorado)"><span>Descuento</span><span>-$${result.descuento/100}</span></div>`;
+  if (result.comision > 0) desg += `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>Comision link</span><span>$${result.comision/100}</span></div>`;
+  desg += `<div style="display:flex;justify-content:space-between;padding:6px 0;margin-top:4px;border-top:2px solid var(--verde);font-size:16px;font-weight:700;color:var(--verde)"><span>TOTAL</span><span>$${result.total/100}</span></div>`;
+  document.getElementById('creado-desglose').innerHTML = desg;
+  document.getElementById('modal-creado').classList.add('active');
+}
+
+function cerrarModalCreado() {
+  document.getElementById('modal-creado').classList.remove('active');
+  // Reset state
+  carrito = [];
+  clienteSel = null;
+  selHorarioVal = null;
+  selZonaVal = null;
+  selTaxVal = 'NA';
+  selectedPays = {};
+  direccionVerificada = false;
+  rutaAsignada = null;
+  funerariaSelId = null;
+  descuentosItem = [];
+  descuentosTotal = [];
+  updateClienteBtn();
+  renderCart();
+}
+
+function buildTicketLines() {
+  const r = lastResult;
+  const items = lastCarritoSnapshot;
   let L = [];
   L.push('<div class="dsep"></div>');
   L.push('<div class="tline"><strong>FLORERIA LUCY</strong></div>');
   L.push('<div class="dsep"></div>');
-  L.push(`<div>Pedido: <strong>${result.folio}</strong></div>`);
+  L.push(`<div>Pedido: <strong>${r.folio}</strong></div>`);
   L.push(`<div>Fecha: ${new Date().toLocaleDateString('es-MX')}</div>`);
   L.push('<div class="sep"></div>');
   L.push('<div>PRODUCTOS:</div>');
-  for (const item of carrito) {
-    const price = `$${(item.precio * item.cantidad)/100}`;
-    L.push(`<div>${item.cantidad}x ${item.nombre} ${price}</div>`);
+  for (const item of items) {
+    L.push(`<div>${item.cantidad}x ${item.nombre} $${(item.precio*item.cantidad)/100}</div>`);
   }
   L.push('<div class="sep"></div>');
-  if (result.envio > 0) L.push(`<div>Envio: $${result.envio/100}</div>`);
-  if (result.impuesto > 0) L.push(`<div>Impuesto: $${result.impuesto/100}</div>`);
-  if (result.descuento > 0) L.push(`<div>Descuento: -$${result.descuento/100}</div>`);
-  L.push(`<div>TOTAL: <strong>$${result.total/100}</strong></div>`);
+  if (r.envio > 0) L.push(`<div>Envio: $${r.envio/100}</div>`);
+  if (r.impuesto > 0) L.push(`<div>Impuesto: $${r.impuesto/100}</div>`);
+  if (r.descuento > 0) L.push(`<div>Descuento: -$${r.descuento/100}</div>`);
+  L.push(`<div>TOTAL: <strong>$${r.total/100}</strong></div>`);
   L.push('<div class="dsep"></div>');
   L.push('<div class="tline">Gracias por su preferencia</div>');
   L.push('<div class="dsep"></div>');
-  document.getElementById('print-frame').innerHTML = L.join('\n');
-  setTimeout(() => window.print(), 200);
+  return L;
+}
+
+function imprimirDesdeModal() {
+  document.getElementById('print-frame').innerHTML = buildTicketLines().join('\n');
+  setTimeout(() => window.print(), 100);
+}
+
+function descargarPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: [80, 200] });
+  const r = lastResult;
+  const items = lastCarritoSnapshot;
+  let y = 8;
+  const lh = 4.5;
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(12);
+  doc.text('FLORERIA LUCY', 40, y, {align:'center'}); y += lh + 1;
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(9);
+  doc.text('================================', 4, y); y += lh;
+  doc.text(`Pedido: ${r.folio}`, 4, y); y += lh;
+  doc.text(`Fecha: ${new Date().toLocaleDateString('es-MX')}`, 4, y); y += lh;
+  doc.text('--------------------------------', 4, y); y += lh;
+  doc.text('PRODUCTOS:', 4, y); y += lh;
+  for (const item of items) {
+    const line = `${item.cantidad}x ${item.nombre}`;
+    const price = `$${(item.precio*item.cantidad)/100}`;
+    doc.text(line, 4, y);
+    doc.text(price, 76, y, {align:'right'});
+    y += lh;
+    if (y > 190) { doc.addPage([80, 200]); y = 8; }
+  }
+  doc.text('--------------------------------', 4, y); y += lh;
+  if (r.envio > 0) { doc.text(`Envio: $${r.envio/100}`, 4, y); y += lh; }
+  if (r.impuesto > 0) { doc.text(`Impuesto: $${r.impuesto/100}`, 4, y); y += lh; }
+  if (r.descuento > 0) { doc.text(`Descuento: -$${r.descuento/100}`, 4, y); y += lh; }
+  doc.setFont('courier', 'bold');
+  doc.text(`TOTAL: $${r.total/100}`, 4, y); y += lh;
+  doc.text('================================', 4, y); y += lh;
+  doc.setFont('courier', 'normal');
+  doc.text('Gracias por su preferencia', 40, y, {align:'center'});
+  doc.save(`${r.folio}.pdf`);
+}
+
+function compartirWhatsApp() {
+  const r = lastResult;
+  const items = lastCarritoSnapshot;
+  let msg = `🌸 *Floreria Lucy*\nPedido: ${r.folio}\n`;
+  for (const item of items) {
+    msg += `${item.cantidad}x ${item.nombre}\n`;
+  }
+  msg += `Total: $${r.total/100}\nGracias por tu compra 🌸`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 // ─── Drawer: Pedidos del dia ───
