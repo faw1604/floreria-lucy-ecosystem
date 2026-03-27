@@ -588,15 +588,14 @@ input,select,textarea{font-family:inherit;font-size:13px}
 
 <!-- Modal: Post-venta -->
 <div class="modal-bg" id="modal-creado">
-  <div class="modal" style="max-width:380px;text-align:center;padding-top:28px">
-    <button class="close" onclick="cerrarModalCreado()">&times;</button>
-    <div id="creado-folio" style="font-size:22px;font-weight:700;color:var(--verde);margin:8px 0 12px"></div>
-    <div id="creado-info" style="font-size:13px;color:var(--texto2);margin-bottom:10px"></div>
-    <div id="creado-desglose" style="font-size:13px;text-align:left;background:var(--crema);padding:12px;border-radius:8px;margin-bottom:16px"></div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button onclick="imprimirTicket()" style="padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:var(--verde);color:#fff;border:none">🖨 Imprimir ticket</button>
-      <button onclick="enviarWhatsApp()" id="btn-wa" style="display:none;padding:12px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#25D366;color:#fff;border:none">💬 Enviar por WhatsApp</button>
+  <div class="modal" style="max-width:440px;padding:0;overflow:hidden">
+    <button class="close" onclick="cerrarModalCreado()" style="position:absolute;top:8px;right:12px;z-index:5;color:#fff;font-size:22px;background:none;border:none;cursor:pointer">&times;</button>
+    <div id="creado-ticket-digital"></div>
+    <div style="padding:12px 16px;display:flex;gap:8px;border-top:1px solid var(--borde)">
+      <button onclick="imprimirTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Imprimir</button>
+      <button onclick="enviarWhatsApp()" id="btn-wa" style="display:none;flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>
       <div id="wa-note" style="display:none;font-size:11px;margin-top:4px"></div>
+      <button onclick="cerrarModalCreado()" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>
     </div>
   </div>
 </div>
@@ -670,9 +669,10 @@ input,select,textarea{font-family:inherit;font-size:13px}
 
 <!-- Modal: Ver ticket detalle -->
 <div class="modal-bg" id="modal-ticket" onclick="if(event.target===this)this.classList.remove('active')">
-  <div class="modal" style="max-width:520px;padding:20px">
-    <button class="close" onclick="document.getElementById('modal-ticket').classList.remove('active')">&times;</button>
+  <div class="modal" style="max-width:440px;padding:0;overflow:hidden">
+    <button class="close" onclick="document.getElementById('modal-ticket').classList.remove('active')" style="position:absolute;top:8px;right:12px;z-index:5;color:#fff;font-size:22px;background:none;border:none;cursor:pointer">&times;</button>
     <div id="ticket-content"></div>
+    <div id="ticket-buttons" style="padding:12px 16px;display:flex;gap:8px;border-top:1px solid var(--borde)"></div>
   </div>
 </div>
 
@@ -1581,16 +1581,9 @@ async function submitPedido(estado) {
 // POST-SALE MODAL
 // ═══════════════════════════════════════════
 function mostrarModalCreado(result) {
-  document.getElementById('creado-folio').textContent = result.folio;
-  document.getElementById('creado-info').textContent = result.estado === 'Listo' ? 'Venta finalizada' : 'Guardado como pendiente';
-  let d = '';
-  d += `<div class="ct-line"><span>Subtotal</span><span>$${result.subtotal/100}</span></div>`;
-  if (result.impuesto > 0) d += `<div class="ct-line"><span>IVA</span><span>$${result.impuesto/100}</span></div>`;
-  if (result.envio > 0) d += `<div class="ct-line"><span>Envio</span><span>$${result.envio/100}</span></div>`;
-  if (result.descuento > 0) d += `<div class="ct-line" style="color:var(--dorado)"><span>Descuento</span><span>-$${result.descuento/100}</span></div>`;
-  if (result.comision > 0) d += `<div class="ct-line"><span>Comision</span><span>$${result.comision/100}</span></div>`;
-  d += `<div class="ct-line total"><span>TOTAL</span><span>$${result.total/100}</span></div>`;
-  document.getElementById('creado-desglose').innerHTML = d;
+  const info = buildInfoFromPOS();
+  info.estado = result.estado;
+  document.getElementById('creado-ticket-digital').innerHTML = buildTicketDigital(info);
 
   // WhatsApp button
   const btnWa = document.getElementById('btn-wa');
@@ -1599,7 +1592,7 @@ function mostrarModalCreado(result) {
   if (clienteSel && clienteSel.telefono && ordenTipo !== 'mostrador') {
     btnWa.style.display = '';
     btnWa.disabled = false;
-    btnWa.textContent = '💬 Enviar por WhatsApp';
+    btnWa.textContent = '💬 WhatsApp';
     btnWa.style.background = '#25D366';
   } else {
     btnWa.style.display = 'none';
@@ -2475,97 +2468,142 @@ function nuevoPedidoCliente(id, nombre, telefono, primera) {
 }
 
 // ═══════════════════════════════════════════
-// TICKET DETAIL MODAL
+// TICKET DIGITAL (pantalla) — diseño elegante
 // ═══════════════════════════════════════════
 let ticketPedido = null;
 
-function verTicket(p) {
-  ticketPedido = p;
-  const ec = estadoClass(p.estado);
-  const fechaOrden = formatearFecha(p.fecha_pedido);
-  const fechaEntrega = formatearFecha(p.fecha_entrega);
-  const tl = (a, b) => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>${a}</span><span>${b}</span></div>`;
-  let html = '';
+function buildTicketDigital(info) {
+  // info same shape as buildTicketCompleto. NO sanitizarTexto — acentos normales.
+  const fP = (c) => '$' + (c/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const secLabel = (txt) => `<div style="font-size:10px;font-weight:700;color:#d4a843;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid #e0ddd8;padding-bottom:4px;margin:14px 0 8px">${txt}</div>`;
+  const row2 = (a,b) => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span>${a}</span><span style="font-weight:600">${b}</span></div>`;
+  const gridItem = (label, val) => val ? `<div style="min-width:45%"><div style="font-size:10px;color:#888;margin-bottom:1px">${label}</div><div style="font-size:12px;font-weight:600">${val}</div></div>` : '';
 
-  // Header — folio grande + estado
-  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-    <div style="font-size:22px;font-weight:700;color:var(--verde)">${p.folio}</div>
-    <span class="badge-estado ${ec}" style="font-size:12px;padding:4px 12px">${estadoLabel(p.estado)}</span>
-  </div>`;
+  let h = '';
+  // Header
+  h += '<div style="background:#193a2c;padding:18px 20px 14px;text-align:center">';
+  h += '<div style="font-size:20px;font-weight:700;color:#d4a843;font-family:Inter,sans-serif">FLORERIA LUCY</div>';
+  h += '<div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;font-style:italic">La expresion del amor</div>';
+  h += '</div>';
 
-  // Dates + Canal
-  html += '<div style="margin-bottom:12px;font-size:12px;color:var(--texto2);line-height:1.8">';
-  if (fechaOrden) html += `<div><strong>Fecha de orden:</strong> ${fechaOrden}</div>`;
-  if (fechaEntrega) html += `<div><strong>Fecha de entrega:</strong> ${fechaEntrega}</div>`;
-  html += `<div><strong>Canal:</strong> ${canalLabel(p.canal)}</div>`;
-  html += '</div>';
+  // Folio + fecha
+  h += '<div style="text-align:center;padding:16px 20px 10px">';
+  h += '<div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">Comprobante de compra</div>';
+  h += `<div style="font-size:24px;font-weight:700;color:#193a2c;margin:4px 0">${info.folio||''}</div>`;
+  h += `<div style="font-size:12px;color:#888">${formatearFecha(info.fecha || new Date().toISOString())}</div>`;
+  if (info.estado) h += `<span class="badge-estado ${estadoClass(info.estado)}" style="font-size:11px;margin-top:6px;display:inline-block">${estadoLabel(info.estado)}</span>`;
+  if (info.canal) h += `<div style="font-size:11px;color:#888;margin-top:4px">Canal: ${canalLabel(info.canal)}</div>`;
+  h += '</div>';
 
-  // Client
-  if (p.cliente_nombre) {
-    html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:4px">CLIENTE</h4>
-      <div style="font-size:13px;font-weight:600">${p.cliente_nombre}</div>
-      ${p.cliente_telefono ? `<div style="font-size:12px;color:var(--texto2)">${p.cliente_telefono}</div>` : ''}
-    </div>`;
+  h += '<div style="padding:0 20px 16px">';
+
+  // Cliente
+  if (info.cliente_nombre) {
+    h += secLabel('Cliente');
+    h += `<div style="font-size:13px;font-weight:600">${info.cliente_nombre}</div>`;
+    if (info.cliente_telefono) h += `<div style="font-size:12px;color:#888">${info.cliente_telefono}</div>`;
   }
 
-  // Type-specific data
-  const tipo = tipoLabel(p);
-  html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:4px">${tipoIcon(p)} ${tipo.toUpperCase()}</h4>`;
-  if (p.direccion_entrega && !p.tipo_especial) {
-    if (p.receptor_nombre) html += `<div style="font-size:12px"><strong>Destinatario:</strong> ${p.receptor_nombre}</div>`;
-    if (p.receptor_telefono) html += `<div style="font-size:12px"><strong>Tel:</strong> ${p.receptor_telefono}</div>`;
-    html += `<div style="font-size:12px"><strong>Direccion:</strong> ${p.direccion_entrega}</div>`;
-    if (p.zona_entrega) html += `<div style="font-size:12px"><strong>Zona:</strong> <span class="zona-badge ${(p.zona_entrega||'').toLowerCase()}">${p.zona_entrega}</span></div>`;
-    if (p.ruta) html += `<div style="font-size:12px"><strong>Ruta:</strong> ${p.ruta}</div>`;
-    if (p.horario_entrega) html += `<div style="font-size:12px"><strong>Horario:</strong> ${p.horario_entrega}</div>`;
-    if (p.hora_exacta) html += `<div style="font-size:12px"><strong>Hora especifica:</strong> ${p.hora_exacta}</div>`;
-    if (p.dedicatoria) html += `<div style="font-size:12px;margin-top:4px"><strong>Dedicatoria:</strong> ${p.dedicatoria}</div>`;
-    if (p.notas_internas) html += `<div style="font-size:12px"><strong>Notas:</strong> ${p.notas_internas}</div>`;
-  } else if (p.tipo_especial === 'Funeral') {
-    if (p.notas_internas) html += `<div style="font-size:12px;white-space:pre-line">${p.notas_internas}</div>`;
-    if (p.dedicatoria) html += `<div style="font-size:12px;margin-top:4px"><strong>Dedicatoria:</strong> ${p.dedicatoria}</div>`;
-  } else if (p.hora_exacta && !p.direccion_entrega) {
-    if (p.fecha_entrega) html += `<div style="font-size:12px"><strong>Fecha recogida:</strong> ${formatearFecha(p.fecha_entrega)}</div>`;
-    html += `<div style="font-size:12px"><strong>Hora recogida:</strong> ${p.hora_exacta}</div>`;
-  } else {
-    html += `<div style="font-size:12px;color:var(--texto2)">Venta en mostrador</div>`;
+  // Entrega
+  const tipo = info.tipo || 'mostrador';
+  if (tipo === 'funeral' || (info.funeraria)) {
+    h += secLabel('Funeral');
+    h += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    h += gridItem('Funeraria', info.funeraria);
+    h += gridItem('Fallecido', info.nombre_fallecido);
+    h += gridItem('Sala', info.sala);
+    h += gridItem('Banda', info.banda);
+    h += gridItem('Fecha', formatearFecha(info.fecha_entrega));
+    h += gridItem('Velacion', info.horario_velacion);
+    h += '</div>';
+    if (info.dedicatoria) {
+      h += secLabel('Dedicatoria');
+      h += `<div style="background:#fffdf7;border-left:3px solid #d4a843;padding:10px 12px;font-style:italic;font-size:12px;border-radius:0 6px 6px 0">"${info.dedicatoria}"</div>`;
+    }
+  } else if (info.direccion_entrega) {
+    h += secLabel('Entrega');
+    h += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    h += gridItem('Recibe', info.receptor_nombre);
+    h += gridItem('Tel', info.receptor_telefono);
+    h += '</div>';
+    if (info.direccion_entrega) h += `<div style="margin-top:6px"><div style="font-size:10px;color:#888">Direccion</div><div style="font-size:12px;font-weight:600">${info.direccion_entrega}</div></div>`;
+    h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">';
+    h += gridItem('Fecha', formatearFecha(info.fecha_entrega));
+    h += gridItem('Horario', info.horario_entrega);
+    if (info.hora_exacta) h += gridItem('Hora', info.hora_exacta);
+    h += gridItem('Zona', info.zona_envio);
+    h += gridItem('Ruta', info.ruta);
+    h += '</div>';
+    if (info.dedicatoria) {
+      h += secLabel('Dedicatoria');
+      h += `<div style="background:#fffdf7;border-left:3px solid #d4a843;padding:10px 12px;font-style:italic;font-size:12px;border-radius:0 6px 6px 0">"${info.dedicatoria}"</div>`;
+    }
+    if (info.notas_internas) h += `<div style="font-size:11px;color:#888;margin-top:6px"><strong>Notas:</strong> ${info.notas_internas}</div>`;
+  } else if (tipo === 'recoger') {
+    h += secLabel('Recoger en tienda');
+    h += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    h += gridItem('Fecha', formatearFecha(info.fecha_entrega));
+    h += gridItem('Hora', info.hora_exacta);
+    h += '</div>';
   }
-  html += '</div>';
 
-  // Products — with unit price column
-  html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:6px">PRODUCTOS</h4>`;
-  (p.items||[]).forEach(it => {
-    const sub = (it.precio_unitario * it.cantidad) / 100;
-    const unitP = it.precio_unitario / 100;
-    html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--gris)">
-      <span style="flex:1">${it.cantidad}x ${it.nombre}</span>
-      <span style="min-width:60px;text-align:right;color:var(--texto2)">$${unitP.toLocaleString()} c/u</span>
-      <span style="min-width:70px;text-align:right;font-weight:600">$${sub.toLocaleString()}</span>
+  // Articulos
+  h += secLabel('Articulos');
+  (info.items||[]).forEach(it => {
+    const price = (it.precio_unitario || it.precio || 0) * (it.cantidad || 1);
+    h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #f0ede8">
+      <span>${it.cantidad||1}x ${it.nombre||''}</span>
+      <span style="font-weight:600">${fP(price)}</span>
     </div>`;
   });
-  html += '</div>';
 
-  // Totals — complete breakdown
-  html += `<div class="fbox" style="padding:10px"><h4 style="font-size:12px;color:var(--verde);margin-bottom:6px">RESUMEN</h4>`;
-  html += tl('Subtotal', '$' + ((p.subtotal||0)/100).toLocaleString());
-  // Calculate what was added: impuesto = total - subtotal - envio + descuento - comision - cargo
-  // We don't have these fields individually, so show what we have
-  if (p.envio) html += tl('Envio', '$' + (p.envio/100).toLocaleString());
-  const diff = (p.total||0) - (p.subtotal||0) - (p.envio||0);
-  if (diff > 0) html += tl('Impuestos / Cargos', '+$' + (diff/100).toLocaleString());
-  if (diff < 0) html += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--dorado)"><span>Descuento</span><span>-$${(Math.abs(diff)/100).toLocaleString()}</span></div>`;
-  html += `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--verde);padding:8px 0;border-top:2px solid var(--verde);margin-top:4px"><span>TOTAL</span><span>$${((p.total||0)/100).toLocaleString()}</span></div>`;
-  if (p.forma_pago) html += `<div style="font-size:12px;color:var(--texto2);margin-top:4px"><strong>Metodo de pago:</strong> ${p.forma_pago}</div>`;
-  html += '</div>';
+  // Totales
+  h += secLabel('Totales');
+  h += row2('Subtotal', fP(info.subtotal||0));
+  if (info.envio) h += row2('Envio ' + (info.zona_envio||''), fP(info.envio));
+  if (info.impuesto) h += row2('IVA (16%)', fP(info.impuesto));
+  if (info.cargo_hora) h += row2('Hora especifica', '+' + fP(info.cargo_hora));
+  if (info.comision) h += row2('Comision link (4%)', '+' + fP(info.comision));
+  if (info.descuento) h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#d4a843"><span>Descuento</span><span style="font-weight:600">-${fP(info.descuento)}</span></div>`;
+  // If we don't have individual breakdowns, show diff
+  if (!info.impuesto && !info.cargo_hora && !info.comision && !info.descuento) {
+    const diff = (info.total||0) - (info.subtotal||0) - (info.envio||0);
+    if (diff > 0) h += row2('Impuestos / Cargos', '+' + fP(diff));
+    if (diff < 0) h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#d4a843"><span>Descuento</span><span style="font-weight:600">-${fP(Math.abs(diff))}</span></div>`;
+  }
+  h += `<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:700;color:#193a2c;padding:10px 0 4px;border-top:2px solid #193a2c;margin-top:6px"><span>TOTAL</span><span>${fP(info.total||0)}</span></div>`;
 
+  // Forma de pago
+  h += secLabel('Forma de pago');
+  if (info.pagos && info.pagos.length) {
+    info.pagos.forEach(p => { if(p.monto) h += row2(p.nombre||'', fP(p.monto)); });
+  } else if (info.forma_pago) {
+    h += `<div style="font-size:12px">${info.forma_pago}</div>`;
+  }
+
+  h += '</div>'; // /padding container
+
+  // Footer
+  h += '<div style="background:#193a2c;padding:14px 20px;text-align:center;margin-top:8px">';
+  h += '<div style="font-size:13px;font-weight:600;color:#d4a843">¡Gracias por tu preferencia!</div>';
+  h += '<div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:4px">C. Sabino 610, Las Granjas · 614 334 9392</div>';
+  h += '<div style="font-size:10px;color:rgba(255,255,255,.6)">florerialucychihuahua@gmail.com</div>';
+  h += '</div>';
+
+  return h;
+}
+
+function verTicket(p) {
+  ticketPedido = p;
+  const info = buildInfoFromPedido(p);
+  info.estado = p.estado;
+  info.canal = p.canal;
+  document.getElementById('ticket-content').innerHTML = buildTicketDigital(info);
   // Buttons
-  html += `<div style="display:flex;gap:8px;margin-top:14px">
-    <button onclick="reimprimirDesdeTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Reimprimir</button>
-    ${p.cliente_telefono ? `<button onclick="enviarWaDesdeTicket()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>` : ''}
-    <button onclick="document.getElementById('modal-ticket').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>
-  </div>`;
-
-  document.getElementById('ticket-content').innerHTML = html;
+  let btns = '<button onclick="reimprimirDesdeTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Imprimir</button>';
+  if (p.cliente_telefono) btns += '<button onclick="enviarWaDesdeTicket()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>';
+  btns += `<button onclick="document.getElementById('modal-ticket').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>`;
+  document.getElementById('ticket-buttons').innerHTML = btns;
   document.getElementById('modal-ticket').classList.add('active');
 }
 
