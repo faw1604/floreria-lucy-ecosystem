@@ -196,9 +196,11 @@ async def pos_crear_pedido(
     if not items:
         raise HTTPException(status_code=400, detail="No hay productos en el pedido")
 
-    # Validate funeral products
+    # Validate funeral products (skip custom items)
     if tipo == "funeral":
         for item in items:
+            if item.get("es_personalizado") or not item.get("producto_id"):
+                continue
             prod = (await db.execute(select(Producto).where(Producto.id == item["producto_id"]))).scalar_one_or_none()
             if prod and prod.categoria.lower() != "funeral":
                 raise HTTPException(status_code=400, detail=f"Producto '{prod.nombre}' no es de categoría funeral")
@@ -227,8 +229,12 @@ async def pos_crear_pedido(
     comision = 0
     pagos = data.get("pagos", [])
     for pago in pagos:
-        mp = (await db.execute(select(MetodoPago).where(MetodoPago.id == pago["metodo_pago_id"]))).scalar_one_or_none()
-        if mp and "link" in (mp.tipo or "").lower():
+        nombre_pago = (pago.get("nombre") or "").lower()
+        if pago.get("metodo_pago_id"):
+            mp = (await db.execute(select(MetodoPago).where(MetodoPago.id == pago["metodo_pago_id"]))).scalar_one_or_none()
+            if mp and "link" in (mp.tipo or "").lower():
+                comision = int(pago["monto"] * 0.04)
+        elif "link" in nombre_pago:
             comision = int(pago["monto"] * 0.04)
 
     total = subtotal + impuesto + envio - descuento + comision
@@ -287,7 +293,7 @@ async def pos_crear_pedido(
         receptor_telefono=data.get("telefono_destinatario"),
         dedicatoria=data.get("dedicatoria"),
         notas_internas=notas or None,
-        forma_pago=", ".join([str(p.get("metodo_pago_id", "")) for p in pagos]) if pagos else "Efectivo",
+        forma_pago=", ".join([p.get("nombre") or str(p.get("metodo_pago_id", "")) for p in pagos]) if pagos else "Efectivo",
         pago_confirmado=estado_pedido == "pagado",
         subtotal=subtotal,
         envio=envio,
@@ -301,9 +307,12 @@ async def pos_crear_pedido(
     for it in items:
         db.add(ItemPedido(
             pedido_id=pedido.id,
-            producto_id=it["producto_id"],
+            producto_id=it.get("producto_id") or 0,
             cantidad=it["cantidad"],
             precio_unitario=it["precio_unitario"],
+            es_personalizado=it.get("es_personalizado", False),
+            nombre_personalizado=it.get("nombre_personalizado"),
+            observaciones=it.get("observaciones"),
         ))
 
     await db.commit()
@@ -321,8 +330,12 @@ async def _serializar_pedido_pos(p, db):
     items_r = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == p.id))
     items = []
     for it in items_r.scalars().all():
-        prod = (await db.execute(select(Producto).where(Producto.id == it.producto_id))).scalar_one_or_none()
-        items.append({"nombre": prod.nombre if prod else "?", "cantidad": it.cantidad, "precio_unitario": it.precio_unitario})
+        if it.es_personalizado and it.nombre_personalizado:
+            nombre = f"⚡ {it.nombre_personalizado}"
+        else:
+            prod = (await db.execute(select(Producto).where(Producto.id == it.producto_id))).scalar_one_or_none()
+            nombre = prod.nombre if prod else "?"
+        items.append({"nombre": nombre, "cantidad": it.cantidad, "precio_unitario": it.precio_unitario})
     cliente_nombre = None
     if p.customer_id:
         cli = (await db.execute(select(Cliente).where(Cliente.id == p.customer_id))).scalar_one_or_none()
