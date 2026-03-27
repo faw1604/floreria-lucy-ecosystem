@@ -75,6 +75,7 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .pcard-list .plname{flex:1;font-size:13px;font-weight:500}
 .pcard-list .plcode{color:var(--texto2);font-size:11px;min-width:60px}
 .pcard-list .plprice{font-weight:700;color:var(--verde);font-size:13px;min-width:70px;text-align:right}
+.pcard-list .plstock{font-size:12px;min-width:55px;text-align:center;flex-shrink:0}
 .pcard-list .plbtn{background:var(--verde);color:#fff;border:none;width:28px;height:28px;border-radius:50%;font-size:16px;flex-shrink:0}
 
 /* Cart */
@@ -724,12 +725,25 @@ function renderProds() {
     c.innerHTML = productos.map(p => {
       const nostock = p.disponible_hoy === false ? ' sinstock' : '';
       const pr = p.precio_descuento || p.precio;
-      return `<div class="pcard-list${nostock}" onclick="addToCart(${p.id})">
+      const stockVal = p.stock != null ? p.stock : (p.disponible_hoy === false ? 0 : null);
+      let stockHtml = '';
+      if (stockVal === 0 || p.disponible_hoy === false) {
+        stockHtml = '<div class="plstock" style="color:var(--rojo);font-weight:600">Sin stock</div>';
+      } else if (stockVal != null && stockVal <= 3) {
+        stockHtml = `<div class="plstock" style="color:#e65100;font-weight:600">${stockVal}</div>`;
+      } else if (stockVal != null) {
+        stockHtml = `<div class="plstock" style="color:var(--texto2)">${stockVal}</div>`;
+      } else {
+        stockHtml = '<div class="plstock" style="color:var(--texto2)">—</div>';
+      }
+      const btnDisabled = (stockVal === 0 || p.disponible_hoy === false);
+      return `<div class="pcard-list${nostock}" onclick="${btnDisabled ? '' : `addToCart(${p.id})`}">
         <img src="${p.imagen_url}" alt="">
         <div class="plname">${p.nombre}</div>
         <div class="plcode">${p.codigo||''}</div>
         <div class="plprice">$${(pr/100).toLocaleString()}</div>
-        <button class="plbtn">+</button>
+        ${stockHtml}
+        <button class="plbtn"${btnDisabled ? ' disabled style="opacity:.4;cursor:not-allowed"' : ''}>+</button>
       </div>`;
     }).join('');
   }
@@ -1046,6 +1060,8 @@ function buildW3Form() {
   document.getElementById('w3-form').innerHTML = html;
   // Restore payment state if navigating back
   selectedPays = {};
+  // Pre-fill fields if editing a pending order
+  if (editingPedidoData) prefillFromEditing();
   updateSummary();
 }
 
@@ -1549,6 +1565,7 @@ function resetVenta() {
   lastResult = null;
   lastCarritoSnap = [];
   editingPedidoId = null;
+  editingPedidoData = null;
   renderCart();
 }
 
@@ -1802,28 +1819,109 @@ async function confirmarCancelar() {
   } catch(e) { alert('Error de red'); }
 }
 
-// Editar pendiente — load into cart
+// Editar pendiente — load into cart with ALL data preserved
+// Store pending order data for pre-filling form fields
+let editingPedidoData = null;
+
 function editarPendiente(p) {
   resetVenta();
   editingPedidoId = p.id;
+  editingPedidoData = p;
+
   // Load items into cart
   carrito = (p.items || []).map(it => ({
     producto_id: null, nombre: it.nombre, codigo: null, categoria: null,
     precio: it.precio_unitario, cantidad: it.cantidad, imagen_url: null,
     descuento: null, es_custom: true, observaciones: null
   }));
+
   // Determine type
   if (p.tipo_especial === 'Funeral') ordenTipo = 'funeral';
   else if (p.direccion_entrega) ordenTipo = 'domicilio';
+  else if (p.hora_exacta && !p.direccion_entrega && !p.tipo_especial) ordenTipo = 'recoger';
   else ordenTipo = 'mostrador';
+
   // Load client
   if (p.customer_id && p.cliente_nombre) {
     clienteSel = { id: p.customer_id, nombre: p.cliente_nombre, telefono: '', primera_compra: false };
   }
+
+  // Restore delivery data
+  if (ordenTipo === 'domicilio') {
+    if (p.horario_entrega) selHorario = p.horario_entrega;
+    else if (p.hora_exacta) { selHorario = 'hora_especifica'; horaEspecifica = p.hora_exacta; }
+    if (p.zona_entrega) {
+      geoData = { zona_envio: p.zona_entrega, tarifa_envio: null, ruta: p.ruta };
+    }
+    if (p.direccion_entrega) dirVerificada = true;
+  }
+
   // Navigate to ventas > win1
   navTo('ventas');
   renderCart();
   goWin(1);
+}
+
+// Pre-fill form fields after buildW3Form renders the DOM
+function prefillFromEditing() {
+  const p = editingPedidoData;
+  if (!p) return;
+
+  if (ordenTipo === 'domicilio') {
+    const el = (id) => document.getElementById(id);
+    if (el('f-rec-nombre') && p.receptor_nombre) el('f-rec-nombre').value = p.receptor_nombre;
+    if (el('f-rec-tel') && p.receptor_telefono) el('f-rec-tel').value = p.receptor_telefono;
+    if (el('f-dir') && p.direccion_entrega) el('f-dir').value = p.direccion_entrega;
+    if (el('f-notas') && p.notas_internas) el('f-notas').value = p.notas_internas;
+    if (el('f-dedicatoria') && p.dedicatoria) el('f-dedicatoria').value = p.dedicatoria;
+    if (el('f-fecha') && p.fecha_entrega) el('f-fecha').value = p.fecha_entrega;
+    if (el('f-zona') && p.zona_entrega) el('f-zona').value = p.zona_entrega;
+    // Restore horario button
+    if (selHorario) {
+      const btns = document.querySelectorAll('#w3-form .hor-btn');
+      btns.forEach(b => {
+        const map = {'manana':'manana','tarde':'tarde','noche':'noche','hora_especifica':'hora_especifica'};
+        if (b.textContent.toLowerCase().includes('manana') && selHorario === 'manana') b.classList.add('active');
+        else if (b.textContent.toLowerCase().includes('tarde') && selHorario === 'tarde') b.classList.add('active');
+        else if (b.textContent.toLowerCase().includes('noche') && selHorario === 'noche') b.classList.add('active');
+        else if (b.textContent.toLowerCase().includes('especifica') && selHorario === 'hora_especifica') {
+          b.classList.add('active');
+          const wrap = document.getElementById('hora-esp-wrap');
+          if (wrap) { wrap.style.display = ''; }
+          if (el('f-hora-esp') && horaEspecifica) el('f-hora-esp').value = horaEspecifica;
+        }
+      });
+    }
+    // Restore geo badge
+    if (p.zona_entrega && p.ruta) {
+      const gb = document.getElementById('geo-badge');
+      if (gb) gb.innerHTML = `<span class="zona-badge ${(p.zona_entrega||'').toLowerCase()}">${p.zona_entrega}</span> <span class="zona-badge" style="background:#e8eaed;color:var(--texto)">${p.ruta}</span>`;
+      const chk = document.getElementById('f-dir-check');
+      if (chk) chk.checked = true;
+    }
+  }
+
+  if (ordenTipo === 'recoger') {
+    if (document.getElementById('f-fecha-rec') && p.fecha_entrega) document.getElementById('f-fecha-rec').value = p.fecha_entrega;
+    if (document.getElementById('f-hora-rec') && p.hora_exacta) document.getElementById('f-hora-rec').value = p.hora_exacta;
+  }
+
+  if (ordenTipo === 'funeral') {
+    if (document.getElementById('f-fallecido') && p.notas_internas) {
+      // Parse funeral data from notas_internas
+      const notas = p.notas_internas || '';
+      const match_fallecido = notas.match(/Fallecido:\s*([^.]+)/);
+      const match_sala = notas.match(/Sala:\s*([^.]+)/);
+      const match_banda = notas.match(/Banda:\s*([^.]+)/);
+      if (match_fallecido) document.getElementById('f-fallecido').value = match_fallecido[1].trim();
+      if (match_sala && document.getElementById('f-sala')) document.getElementById('f-sala').value = match_sala[1].trim();
+      if (match_banda && document.getElementById('f-banda')) document.getElementById('f-banda').value = match_banda[1].trim();
+    }
+    if (document.getElementById('f-dedicatoria-fun') && p.dedicatoria) document.getElementById('f-dedicatoria-fun').value = p.dedicatoria;
+    if (document.getElementById('f-fecha-fun') && p.fecha_entrega) document.getElementById('f-fecha-fun').value = p.fecha_entrega;
+  }
+
+  updateSummary();
 }
 
 // Finalizar pendiente inline
