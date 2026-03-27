@@ -1067,13 +1067,23 @@ function togglePay(el, name) {
 
 function renderPayInputs() {
   const c = document.getElementById('pay-inputs');
+  const soloEfectivo = Object.keys(selectedPays).length === 1 && selectedPays['Efectivo'] !== undefined;
   c.innerHTML = Object.keys(selectedPays).map(name => {
     const comNote = name === 'Link de pago' ? `<div style="font-size:10px;color:var(--dorado);margin-top:2px">+4% comision</div>` : '';
+    const displayVal = selectedPays[name] ? (selectedPays[name] / 100) : '';
+    let extra = '';
+    if (name === 'Efectivo' && soloEfectivo) {
+      extra = `<div style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:12px" id="vuelto-row">
+        <label style="min-width:60px;font-weight:500">Recibido:</label>
+        <input type="number" id="vuelto-recibido" placeholder="$0" step="any" style="flex:1;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:13px" oninput="calcVuelto()">
+        <span id="vuelto-cambio" style="min-width:90px;font-weight:600">Cambio: —</span>
+      </div>`;
+    }
     return `<div class="pay-input">
       <label>${name}</label>
-      <input type="number" placeholder="$0" value="${selectedPays[name]||''}" onchange="updatePayAmt('${name}',this.value)">
+      <input type="number" placeholder="$0" step="any" value="${displayVal}" onchange="updatePayAmt('${name}',this.value)">
       ${comNote}
-    </div>`;
+    </div>${extra}`;
   }).join('');
   updatePayStatus();
 }
@@ -1082,6 +1092,26 @@ function updatePayAmt(name, val) {
   selectedPays[name] = Math.round(parseFloat(val || 0) * 100);
   updatePayStatus();
   updateSummary();
+}
+
+function calcVuelto() {
+  const inp = document.getElementById('vuelto-recibido');
+  const span = document.getElementById('vuelto-cambio');
+  if (!inp || !span) return;
+  const recibido = parseFloat(inp.value || 0);
+  const t = calcTotals();
+  const totalPesos = t.total / 100;
+  if (!inp.value || recibido === 0) {
+    span.textContent = 'Cambio: —';
+    span.style.color = 'var(--texto2)';
+  } else if (recibido < totalPesos) {
+    span.textContent = 'Monto insuficiente';
+    span.style.color = 'var(--rojo)';
+  } else {
+    const cambio = (recibido - totalPesos).toFixed(2);
+    span.textContent = `Cambio: $${cambio}`;
+    span.style.color = '#2e7d32';
+  }
 }
 
 function updatePayStatus() {
@@ -1253,22 +1283,26 @@ async function finalizarVenta() {
 
 async function submitPedido(estado) {
   const body = buildPayload(estado);
+  console.log('POS submitPedido body:', JSON.stringify(body, null, 2));
   try {
     const r = await fetch('/pos/pedido', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body)
     });
+    const text = await r.text();
+    console.log('POS response:', r.status, text);
+    let result;
+    try { result = JSON.parse(text); } catch(pe) { alert('Respuesta invalida del servidor'); return; }
     if (!r.ok) {
-      const err = await r.json();
-      alert(err.detail || 'Error al crear pedido');
+      alert(result.detail || 'Error al crear pedido');
       return;
     }
-    const result = await r.json();
     lastResult = result;
     lastCarritoSnap = [...carrito];
     mostrarModalCreado(result);
   } catch(e) {
-    alert('Error de red al crear pedido');
+    console.error('POS submitPedido error:', e);
+    alert('Error de red al crear pedido: ' + e.message);
   }
 }
 
@@ -1492,9 +1526,10 @@ function fpToggle(el, name) {
 }
 
 function fpRenderInputs() {
-  document.getElementById('fp-inputs').innerHTML = Object.keys(finPendPays).map(name =>
-    `<div class="pay-input"><label>${name}</label><input type="number" placeholder="$0" onchange="finPendPays['${name}']=Math.round(parseFloat(this.value||0)*100)"></div>`
-  ).join('');
+  document.getElementById('fp-inputs').innerHTML = Object.keys(finPendPays).map(name => {
+    const displayVal = finPendPays[name] ? (finPendPays[name] / 100) : '';
+    return `<div class="pay-input"><label>${name}</label><input type="number" placeholder="$0" step="any" value="${displayVal}" onchange="finPendPays['${name}']=Math.round(parseFloat(this.value||0)*100)"></div>`;
+  }).join('');
 }
 
 async function fpConfirm() {
