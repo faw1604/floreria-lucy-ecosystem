@@ -389,7 +389,7 @@ input,select,textarea{font-family:inherit;font-size:13px}
     <div class="pend-toolbar">
       <div class="pend-count" id="pend-count">0 pedidos</div>
       <input type="text" id="pend-search" placeholder="Articulo o cliente..." oninput="filtrarTablaPend()">
-      <button class="btn-filtro" onclick="toggleFilterPanel()">🔍 Filtro</button>
+      <button class="btn-filtro" onclick="toggleFilterPanel('pend')">🔍 Filtro</button>
     </div>
     <div class="pend-table-wrap">
       <table class="pend-table">
@@ -414,7 +414,9 @@ input,select,textarea{font-family:inherit;font-size:13px}
         <div class="fp-chip active" onclick="fpSelectPeriodo(this,'hoy')">Hoy</div>
         <div class="fp-chip" onclick="fpSelectPeriodo(this,'ayer')">Ayer</div>
         <div class="fp-chip" onclick="fpSelectPeriodo(this,'semana')">Esta semana</div>
+        <div class="fp-chip" onclick="fpSelectPeriodo(this,'semana_pasada')">Semana pasada</div>
         <div class="fp-chip" onclick="fpSelectPeriodo(this,'mes')">Este mes</div>
+        <div class="fp-chip" onclick="fpSelectPeriodo(this,'mes_pasado')">Mes pasado</div>
         <div class="fp-chip" onclick="fpSelectPeriodo(this,'rango')">Rango</div>
       </div>
       <div class="fp-dates" id="fp-rango-dates" style="display:none">
@@ -1676,11 +1678,15 @@ async function loadPendientes(params) {
       if (ff) url += '&fecha_fin=' + ff;
     }
     const r = await fetch(url);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `Error ${r.status}`);
+    }
     const data = await r.json();
     pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
     renderPendTable(pendAllData);
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
   }
 }
 
@@ -1922,11 +1928,15 @@ async function loadTransacciones(params) {
       if (ff) url += '&fecha_fin=' + ff;
     }
     const r = await fetch(url);
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `Error ${r.status}`);
+    }
     const data = await r.json();
     transAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
     renderTransTable(transAllData);
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
   }
 }
 

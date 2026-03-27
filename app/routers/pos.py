@@ -371,27 +371,49 @@ async def pos_pedidos_hoy(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
-    from datetime import date as date_type
-    hoy = datetime.now(TZ).date()
+    from datetime import date as date_type, time as time_type
+    from calendar import monthrange
+    ahora = datetime.now(TZ)
+    hoy = ahora.date()
 
-    # Determine date range
+    # Week: Sunday=0..Saturday=6 (Mexican convention)
+    dow = (hoy.weekday() + 1) % 7  # convert Mon=0 to Sun=0
+
+    # Determine date range (local dates)
     if periodo == "rango" and fecha_inicio and fecha_fin:
         f_ini = date_type.fromisoformat(fecha_inicio)
         f_fin = date_type.fromisoformat(fecha_fin)
     elif periodo == "ayer":
         f_ini = f_fin = hoy - timedelta(days=1)
     elif periodo == "semana":
-        f_ini = hoy - timedelta(days=hoy.weekday())
-        f_fin = hoy
+        f_ini = hoy - timedelta(days=dow)  # Sunday of this week
+        f_fin = f_ini + timedelta(days=6)  # Saturday
+        if f_fin > hoy:
+            f_fin = hoy
+    elif periodo == "semana_pasada":
+        inicio_esta = hoy - timedelta(days=dow)
+        f_ini = inicio_esta - timedelta(days=7)
+        f_fin = inicio_esta - timedelta(days=1)
     elif periodo == "mes":
         f_ini = hoy.replace(day=1)
-        f_fin = hoy
+        f_fin = hoy.replace(day=monthrange(hoy.year, hoy.month)[1])
+        if f_fin > hoy:
+            f_fin = hoy
+    elif periodo == "mes_pasado":
+        primer_dia_este_mes = hoy.replace(day=1)
+        ultimo_dia_mes_pasado = primer_dia_este_mes - timedelta(days=1)
+        f_ini = ultimo_dia_mes_pasado.replace(day=1)
+        f_fin = ultimo_dia_mes_pasado
     else:  # hoy
         f_ini = f_fin = hoy
 
+    # Convert local date boundaries to UTC for DB query (fecha_pedido stored as UTC)
+    utc_start = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+    utc_end = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+
     query = select(Pedido).where(
-        Pedido.fecha_pedido >= datetime.combine(f_ini, datetime.min.time()),
-        Pedido.fecha_pedido <= datetime.combine(f_fin, datetime.max.time()),
+        Pedido.fecha_pedido >= utc_start,
+        Pedido.fecha_pedido <= utc_end,
     ).order_by(Pedido.fecha_pedido.desc())
 
     # Filter by canal
@@ -653,19 +675,23 @@ async def pos_resumen_ventas(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    from datetime import time as time_type
     hoy = datetime.now(TZ).date()
     ayer = hoy - timedelta(days=1)
-    inicio_semana = hoy - timedelta(days=hoy.weekday())
+    dow = (hoy.weekday() + 1) % 7  # Sun=0
+    inicio_semana = hoy - timedelta(days=dow)
     inicio_mes = hoy.replace(day=1)
 
     estados_venta = ["Listo", "Listo taller", "En camino", "Entregado"]
 
     async def contar(f_ini, f_fin):
+        utc_s = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+        utc_e = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
         r = await db.execute(
             select(func.count(Pedido.id), func.coalesce(func.sum(Pedido.total), 0))
             .where(
-                Pedido.fecha_pedido >= datetime.combine(f_ini, datetime.min.time()),
-                Pedido.fecha_pedido <= datetime.combine(f_fin, datetime.max.time()),
+                Pedido.fecha_pedido >= utc_s,
+                Pedido.fecha_pedido <= utc_e,
                 Pedido.estado.in_(estados_venta),
             )
         )
