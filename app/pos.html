@@ -23,7 +23,8 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .sb-item{width:56px;padding:10px 0;text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:500;border-radius:10px;margin-bottom:4px;cursor:pointer;transition:all .15s}
 .sb-item:hover{background:rgba(255,255,255,.1);color:#fff}
 .sb-item.active{background:var(--dorado);color:var(--verde)}
-.sb-item .ico{font-size:20px;display:block;margin-bottom:2px}
+.sb-item .ico{font-size:20px;display:block;margin-bottom:2px;position:relative;display:inline-block}
+.badge-notif{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1;padding:0 4px;pointer-events:none}
 .sb-bottom{margin-top:auto;padding-top:8px}
 .sb-bottom a{color:rgba(255,255,255,.5);font-size:10px;text-decoration:none}
 .sb-bottom a:hover{color:#fff}
@@ -245,7 +246,7 @@ input,select,textarea{font-family:inherit;font-size:13px}
 <div class="sidebar">
   <div class="logo"><span>🌸</span>Floreria<br>Lucy</div>
   <div class="sb-item active" onclick="navTo('ventas')" id="sb-ventas"><span class="ico">🛒</span>Ventas</div>
-  <div class="sb-item" onclick="navTo('pendientes')" id="sb-pendientes"><span class="ico">⏳</span>Pendientes</div>
+  <div class="sb-item" onclick="navTo('pendientes')" id="sb-pendientes"><span class="ico">⏳<span class="badge-notif" id="badge-pend" style="display:none">0</span></span>Pendientes</div>
   <div class="sb-item" onclick="navTo('transacciones')" id="sb-transacciones"><span class="ico">💰</span>Transacc.</div>
   <div class="sb-item" onclick="navTo('clientes')" id="sb-clientes"><span class="ico">👤</span>Clientes</div>
   <div class="sb-item" onclick="navTo('claudia')" id="sb-claudia"><span class="ico">🤖</span>Claudia</div>
@@ -1661,6 +1662,24 @@ fetchProds();
 fetchCategorias();
 setView(vistaActual);
 renderCart();
+
+// Badge pendientes — poll every 60s
+async function updateBadgePend() {
+  try {
+    const r = await fetch('/pos/pedidos-hoy');
+    const data = await r.json();
+    const n = (data.pendientes || []).length;
+    const badge = document.getElementById('badge-pend');
+    if (n > 0) {
+      badge.textContent = n > 9 ? '9+' : n;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch(e) { /* silent */ }
+}
+updateBadgePend();
+setInterval(updateBadgePend, 60000);
 </script>
 </body>
 </html>
