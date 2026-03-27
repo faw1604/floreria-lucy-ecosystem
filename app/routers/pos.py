@@ -167,7 +167,14 @@ async def pos_geocodificar(
     lat = float(data[0]["lat"])
     lng = float(data[0]["lon"])
     ruta = obtener_ruta(lat, lng)
-    return {"lat": lat, "lng": lng, "ruta": ruta, "display_name": data[0].get("display_name", "")}
+    from app.services.zonas_envio import obtener_zona_envio
+    zona = obtener_zona_envio(lat, lng)
+    return {
+        "lat": lat, "lng": lng, "ruta": ruta,
+        "zona_envio": zona["zona"] if zona else None,
+        "tarifa_envio": zona["tarifa"] if zona else None,
+        "display_name": data[0].get("display_name", ""),
+    }
 
 
 @router.post("/pedido")

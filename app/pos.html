@@ -467,9 +467,10 @@ function renderCart() {
 
     // Zona y envio
     html += '<div class="cart-section"><div class="cart-section-title">Zona y envio</div>';
+    if (zonaAutoMsg) html += `<div style="font-size:11px;color:var(--rojo);margin-bottom:6px">${zonaAutoMsg}</div>`;
     html += '<div class="f-row-inline" style="flex-wrap:wrap;gap:4px">';
     for (const [z, p] of [['Morada','$99'],['Azul','$159'],['Verde','$199']]) {
-      html += `<button class="f-chip" data-zona="${z}" onclick="selZona('${z}',this)">${z} ${p}</button>`;
+      html += `<button class="f-chip ${selZonaVal===z?'active':''}" data-zona="${z}" onclick="selZona('${z}',this)">${z} ${p}</button>`;
     }
     html += '</div></div>';
   }
@@ -659,11 +660,14 @@ function verificarDir() {
   if (dir) window.open(`https://www.google.com/maps/search/${encodeURIComponent(dir + ', Chihuahua, Mexico')}`, '_blank');
 }
 
+let zonaAutoMsg = null;
+
 async function onDirVerificada() {
   const checked = document.getElementById('f-dir-ok')?.checked;
-  if (!checked) { rutaAsignada = null; renderCart(); return; }
+  if (!checked) { rutaAsignada = null; zonaAutoMsg = null; renderCart(); return; }
   const dir = document.getElementById('f-dir')?.value;
   if (!dir) return;
+  zonaAutoMsg = null;
   try {
     const r = await fetch('/pos/geocodificar', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include',
@@ -671,6 +675,12 @@ async function onDirVerificada() {
     });
     const data = await r.json();
     if (data.ruta) { rutaAsignada = data.ruta; geoLat = data.lat; geoLng = data.lng; }
+    if (data.zona_envio) {
+      selZonaVal = data.zona_envio;
+      zonaAutoMsg = null;
+    } else {
+      zonaAutoMsg = 'Direccion fuera de cobertura — seleccionar zona manualmente';
+    }
   } catch(e) {}
   renderCart();
 }
@@ -938,6 +948,7 @@ function cerrarModalCreado() {
   selectedPays = {};
   direccionVerificada = false;
   rutaAsignada = null;
+  zonaAutoMsg = null;
   funerariaSelId = null;
   descuentosItem = [];
   descuentosTotal = [];
