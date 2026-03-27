@@ -223,6 +223,58 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .res-line{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
 .res-line.total{font-weight:700;border-top:2px solid var(--verde);margin-top:6px;padding-top:8px;font-size:15px;color:var(--verde)}
 
+/* ─── Pedidos table (Kyte style) ─── */
+.pend-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.pend-toolbar .pend-count{font-size:18px;font-weight:700;color:var(--verde);white-space:nowrap}
+.pend-toolbar input[type=text]{flex:1;min-width:180px;padding:8px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px}
+.pend-toolbar .btn-filtro{padding:8px 14px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px}
+.pend-toolbar .btn-filtro:hover{border-color:var(--verde);color:var(--verde)}
+.pend-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.pend-table thead{position:sticky;top:0;z-index:2}
+.pend-table th{background:var(--verde);color:#fff;padding:10px 10px;text-align:left;font-weight:600;font-size:12px;white-space:nowrap}
+.pend-table th:first-child{border-radius:8px 0 0 0}
+.pend-table th:last-child{border-radius:0 8px 0 0}
+.pend-table td{padding:10px 10px;border-bottom:1px solid var(--borde);background:#fff;vertical-align:middle}
+.pend-table tr:hover td{background:var(--crema)}
+.pend-table .items-link{color:var(--dorado);font-weight:600;cursor:pointer;position:relative;text-decoration:underline}
+.pend-table .items-link:hover .items-tooltip{display:block}
+.items-tooltip{display:none;position:absolute;bottom:100%;left:0;background:#fff;border:1px solid var(--borde);border-radius:8px;padding:8px 10px;min-width:200px;font-size:11px;font-weight:400;color:var(--texto);box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:10;white-space:nowrap}
+.items-tooltip div{padding:2px 0}
+.badge-estado{display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-estado.pendiente_pago{background:#fff3cd;color:#856404}
+.badge-estado.pagado{background:#d5f5e3;color:#2e7d32}
+.badge-estado.listo_taller{background:#d5e8f5;color:#1565c0}
+.badge-estado.en_camino{background:#ffe0b2;color:#e65100}
+.badge-estado.entregado{background:#e0e0e0;color:#616161}
+.badge-estado.cancelado{background:#fce4e4;color:var(--rojo)}
+.pend-actions{display:flex;gap:4px}
+.pend-actions button{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;white-space:nowrap}
+.pend-actions .btn-edit{background:var(--dorado);color:var(--verde)}
+.pend-actions .btn-fin{background:var(--verde);color:#fff}
+.pend-actions .btn-cancel{background:var(--gris);color:var(--rojo)}
+
+/* Filter panel (slide-in right) */
+.filter-panel{position:fixed;top:0;right:-360px;width:340px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:150;transition:right .25s ease;display:flex;flex-direction:column}
+.filter-panel.open{right:0}
+.filter-panel .fp-hdr{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--borde)}
+.filter-panel .fp-hdr h3{font-size:15px;font-weight:700;color:var(--verde);margin:0}
+.filter-panel .fp-hdr button{background:none;border:none;font-size:20px;color:var(--texto2);cursor:pointer}
+.filter-panel .fp-body{flex:1;overflow-y:auto;padding:16px 18px}
+.filter-panel .fp-section{margin-bottom:18px}
+.filter-panel .fp-section h4{font-size:12px;font-weight:700;color:var(--verde);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.filter-panel .fp-chips{display:flex;gap:6px;flex-wrap:wrap}
+.filter-panel .fp-chip{padding:6px 12px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-weight:500;background:#fff;cursor:pointer}
+.filter-panel .fp-chip.active{background:var(--verde);color:#fff;border-color:var(--verde)}
+.filter-panel .fp-dates{display:flex;gap:6px;align-items:center;margin-top:8px}
+.filter-panel .fp-dates input{flex:1;padding:6px 8px;border:1px solid var(--borde);border-radius:6px;font-size:12px}
+.filter-panel .fp-check{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;cursor:pointer}
+.filter-panel .fp-check input{accent-color:var(--verde)}
+.filter-panel .fp-footer{padding:14px 18px;border-top:1px solid var(--borde)}
+.filter-panel .fp-footer button{width:100%;padding:12px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer}
+.filter-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:140}
+.filter-overlay.open{display:block}
+.pend-table-wrap{flex:1;overflow-y:auto}
+
 /* Client detail */
 .cli-card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:14px;margin-bottom:10px}
 .cli-card .cli-name{font-weight:700;font-size:14px}
@@ -327,10 +379,73 @@ input,select,textarea{font-family:inherit;font-size:13px}
 
 <!-- ════════════ SECTION: PENDIENTES ════════════ -->
 <div class="section" id="sec-pendientes">
-  <div class="sec-pad">
-    <div class="sec-hdr">Pedidos pendientes de pago</div>
-    <div id="pend-list"></div>
+  <div class="sec-pad" style="display:flex;flex-direction:column;overflow:hidden">
+    <div class="pend-toolbar">
+      <div class="pend-count" id="pend-count">0 pedidos</div>
+      <input type="text" id="pend-search" placeholder="Articulo o cliente..." oninput="filtrarTablaPend()">
+      <button class="btn-filtro" onclick="toggleFilterPanel()">🔍 Filtro</button>
+    </div>
+    <div class="pend-table-wrap">
+      <table class="pend-table">
+        <thead><tr>
+          <th>Codigo</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Items</th><th>Valor</th><th>Estado</th><th>Tipo</th><th>Acciones</th>
+        </tr></thead>
+        <tbody id="pend-tbody"></tbody>
+      </table>
+      <div id="pend-empty" style="display:none;text-align:center;color:var(--texto2);font-size:13px;padding:40px">No hay pedidos</div>
+    </div>
   </div>
+</div>
+
+<!-- Filter panel -->
+<div class="filter-overlay" id="filter-overlay" onclick="toggleFilterPanel()"></div>
+<div class="filter-panel" id="filter-panel">
+  <div class="fp-hdr"><h3>Filtros</h3><button onclick="toggleFilterPanel()">&times;</button></div>
+  <div class="fp-body">
+    <div class="fp-section">
+      <h4>Periodo</h4>
+      <div class="fp-chips" id="fp-periodo">
+        <div class="fp-chip active" onclick="fpSelectPeriodo(this,'hoy')">Hoy</div>
+        <div class="fp-chip" onclick="fpSelectPeriodo(this,'ayer')">Ayer</div>
+        <div class="fp-chip" onclick="fpSelectPeriodo(this,'semana')">Esta semana</div>
+        <div class="fp-chip" onclick="fpSelectPeriodo(this,'mes')">Este mes</div>
+        <div class="fp-chip" onclick="fpSelectPeriodo(this,'rango')">Rango</div>
+      </div>
+      <div class="fp-dates" id="fp-rango-dates" style="display:none">
+        <input type="date" id="fp-fecha-ini"> <span>—</span> <input type="date" id="fp-fecha-fin">
+      </div>
+    </div>
+    <div class="fp-section">
+      <h4>Metodo de pago</h4>
+      <label class="fp-check"><input type="checkbox" value="Efectivo"> Efectivo</label>
+      <label class="fp-check"><input type="checkbox" value="Tarjeta debito"> Tarjeta debito</label>
+      <label class="fp-check"><input type="checkbox" value="Tarjeta credito"> Tarjeta credito</label>
+      <label class="fp-check"><input type="checkbox" value="Transferencia"> Transferencia</label>
+      <label class="fp-check"><input type="checkbox" value="Link de pago"> Link de pago</label>
+      <label class="fp-check"><input type="checkbox" value="OXXO"> OXXO</label>
+    </div>
+    <div class="fp-section">
+      <h4>Estado</h4>
+      <label class="fp-check"><input type="checkbox" value="pendiente_pago"> Pendiente pago</label>
+      <label class="fp-check"><input type="checkbox" value="pagado"> Pagado</label>
+      <label class="fp-check"><input type="checkbox" value="listo_taller"> Listo taller</label>
+      <label class="fp-check"><input type="checkbox" value="en_camino"> En camino</label>
+      <label class="fp-check"><input type="checkbox" value="entregado"> Entregado</label>
+    </div>
+    <div class="fp-section">
+      <h4>Canal</h4>
+      <label class="fp-check"><input type="checkbox" value="POS"> POS</label>
+      <label class="fp-check"><input type="checkbox" value="Claudia"> Claudia</label>
+    </div>
+    <div class="fp-section">
+      <h4>Tipo</h4>
+      <label class="fp-check"><input type="checkbox" value="Mostrador"> Mostrador</label>
+      <label class="fp-check"><input type="checkbox" value="Domicilio"> Domicilio</label>
+      <label class="fp-check"><input type="checkbox" value="Recoger"> Recoger</label>
+      <label class="fp-check"><input type="checkbox" value="Funeral"> Funeral</label>
+    </div>
+  </div>
+  <div class="fp-footer"><button onclick="aplicarFiltros()">Filtrar</button></div>
 </div>
 
 <!-- ════════════ SECTION: TRANSACCIONES ════════════ -->
@@ -439,6 +554,18 @@ input,select,textarea{font-family:inherit;font-size:13px}
     <div style="display:flex;gap:8px">
       <button onclick="document.getElementById('modal-descartar').classList.remove('active')" style="flex:1;padding:10px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:13px;font-weight:500">Cancelar</button>
       <button onclick="confirmarDescartar()" style="flex:1;padding:10px;background:var(--rojo);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600">Descartar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Cancelar pedido -->
+<div class="modal-bg" id="modal-cancelar" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <h3>¿Cancelar este pedido?</h3>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:16px">El pedido <strong id="cancel-folio"></strong> sera marcado como cancelado.</p>
+    <div style="display:flex;gap:8px">
+      <button onclick="document.getElementById('modal-cancelar').classList.remove('active')" style="flex:1;padding:10px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:13px;font-weight:500">No</button>
+      <button onclick="confirmarCancelar()" style="flex:1;padding:10px;background:var(--rojo);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600">Cancelar pedido</button>
     </div>
   </div>
 </div>
@@ -1465,50 +1592,155 @@ function confirmarDescartar() {
 }
 
 // ═══════════════════════════════════════════
-// PENDIENTES SECTION
+// PENDIENTES SECTION — Table style
 // ═══════════════════════════════════════════
-async function loadPendientes() {
-  const el = document.getElementById('pend-list');
-  el.innerHTML = '<div style="color:var(--texto2);font-size:13px">Cargando...</div>';
+let pendAllData = []; // all pedidos from last fetch (pendientes+finalizados)
+let pendFilterPeriodo = 'hoy';
+let pendRefreshTimer = null;
+
+function estadoClass(estado) {
+  if (!estado) return '';
+  const map = {'Pendiente pago':'pendiente_pago','pendiente_pago':'pendiente_pago','Listo':'pagado','Pagado':'pagado','Listo taller':'listo_taller','En camino':'en_camino','Entregado':'entregado','Cancelado':'cancelado'};
+  return map[estado] || '';
+}
+function estadoLabel(estado) {
+  const map = {'Pendiente pago':'Pendiente pago','pendiente_pago':'Pendiente pago','Listo':'Pagado','Pagado':'Pagado','Listo taller':'Listo taller','En camino':'En camino','Entregado':'Entregado','Cancelado':'Cancelado'};
+  return map[estado] || estado;
+}
+function tipoIcon(p) {
+  if (p.tipo_especial === 'Funeral') return '🌹';
+  if (p.direccion_entrega) return '🚚';
+  if (p.tipo_especial === 'Recoger') return '🛍';
+  return '🏪';
+}
+function tipoLabel(p) {
+  if (p.tipo_especial === 'Funeral') return 'Funeral';
+  if (p.direccion_entrega) return 'Domicilio';
+  if (p.tipo_especial === 'Recoger') return 'Recoger';
+  return 'Mostrador';
+}
+function canalLabel(canal) {
+  if (canal === 'WhatsApp') return 'Claudia';
+  return 'POS';
+}
+
+async function loadPendientes(params) {
+  const tbody = document.getElementById('pend-tbody');
+  const empty = document.getElementById('pend-empty');
+  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
   try {
-    const r = await fetch('/pos/pedidos-hoy');
-    const data = await r.json();
-    const pend = data.pendientes || [];
-    if (pend.length === 0) {
-      el.innerHTML = '<div style="color:var(--texto2);font-size:13px;padding:20px;text-align:center">No hay pedidos pendientes</div>';
-      return;
+    let url = '/pos/pedidos-hoy?periodo=' + pendFilterPeriodo;
+    if (params) url += '&' + params;
+    if (pendFilterPeriodo === 'rango') {
+      const fi = document.getElementById('fp-fecha-ini').value;
+      const ff = document.getElementById('fp-fecha-fin').value;
+      if (fi) url += '&fecha_inicio=' + fi;
+      if (ff) url += '&fecha_fin=' + ff;
     }
-    el.innerHTML = pend.map(p => `<div class="ped-card">
-      <div class="ped-hdr"><span class="folio">${p.folio}</span><span class="estado pend">Pendiente pago</span></div>
-      <div class="ped-info">
-        ${p.cliente_nombre ? `Cliente: ${p.cliente_nombre}<br>` : 'Mostrador<br>'}
-        ${p.items.map(it => `${it.cantidad}x ${it.nombre}`).join(', ')}<br>
-        ${p.tipo_especial ? `Tipo: ${p.tipo_especial}<br>` : ''}
-        ${p.direccion_entrega ? `Entrega: ${p.direccion_entrega}<br>` : ''}
-      </div>
-      <div class="ped-total">$${(p.total/100).toLocaleString()}</div>
-      <div class="ped-btns">
-        <button style="background:var(--verde);color:#fff" onclick="finalizarPendiente(${p.id},${p.total})">Finalizar</button>
-        <button style="background:var(--dorado);color:var(--verde)" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
-        <button style="background:var(--crema);color:var(--texto)" onclick="toggleDetalle(this)">Ver detalle</button>
-      </div>
-      <div class="ped-detalle" style="display:none;margin-top:8px;font-size:11px;color:var(--texto2);line-height:1.8">
-        ${p.receptor_nombre ? `Receptor: ${p.receptor_nombre}<br>` : ''}
-        ${p.receptor_telefono ? `Tel receptor: ${p.receptor_telefono}<br>` : ''}
-        ${p.horario_entrega ? `Horario: ${p.horario_entrega}<br>` : ''}
-        ${p.zona_entrega ? `Zona: ${p.zona_entrega}<br>` : ''}
-        ${p.dedicatoria ? `Dedicatoria: ${p.dedicatoria}<br>` : ''}
-        ${p.notas_internas ? `Notas: ${p.notas_internas}` : ''}
-      </div>
-    </div>`).join('');
+    const r = await fetch(url);
+    const data = await r.json();
+    pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
+    renderPendTable(pendAllData);
   } catch(e) {
-    el.innerHTML = '<div style="color:var(--rojo);font-size:13px">Error al cargar</div>';
+    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar</td></tr>';
   }
 }
 
-function toggleDetalle(btn) {
-  const det = btn.parentElement.nextElementSibling;
-  det.style.display = det.style.display === 'none' ? '' : 'none';
+function renderPendTable(rows) {
+  const tbody = document.getElementById('pend-tbody');
+  const empty = document.getElementById('pend-empty');
+  const countEl = document.getElementById('pend-count');
+  countEl.textContent = rows.length + ' pedido' + (rows.length !== 1 ? 's' : '');
+  if (rows.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = rows.map(p => {
+    const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
+    const fecha = p.fecha_pedido || (p.fecha_entrega || '');
+    const ec = estadoClass(p.estado);
+    return `<tr>
+      <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}</td>
+      <td style="white-space:nowrap;font-size:12px">${fecha}</td>
+      <td>${p.cliente_nombre || 'Mostrador'}</td>
+      <td>${canalLabel(p.canal)}</td>
+      <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
+      <td style="font-weight:600">$${((p.total||0)/100).toLocaleString()}</td>
+      <td><span class="badge-estado ${ec}">${estadoLabel(p.estado)}</span></td>
+      <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
+      <td class="pend-actions">
+        <button class="btn-edit" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
+        ${ec === 'pendiente_pago' ? `<button class="btn-fin" onclick="finalizarPendiente(${p.id},${p.total})">Finalizar</button>` : ''}
+        ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelar(${p.id},'${esc(p.folio)}')">Cancelar</button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarTablaPend() {
+  const q = document.getElementById('pend-search').value.toLowerCase().trim();
+  if (!q) { renderPendTable(pendAllData); return; }
+  const filtered = pendAllData.filter(p => {
+    const itemsStr = (p.items||[]).map(it => it.nombre).join(' ').toLowerCase();
+    const cli = (p.cliente_nombre || 'mostrador').toLowerCase();
+    const folio = (p.folio || '').toLowerCase();
+    return cli.includes(q) || itemsStr.includes(q) || folio.includes(q);
+  });
+  renderPendTable(filtered);
+}
+
+// Filter panel
+function toggleFilterPanel() {
+  document.getElementById('filter-panel').classList.toggle('open');
+  document.getElementById('filter-overlay').classList.toggle('open');
+}
+
+function fpSelectPeriodo(el, val) {
+  document.querySelectorAll('#fp-periodo .fp-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  pendFilterPeriodo = val;
+  document.getElementById('fp-rango-dates').style.display = val === 'rango' ? 'flex' : 'none';
+}
+
+function aplicarFiltros() {
+  const params = [];
+  // Metodo de pago
+  const metodos = [];
+  document.querySelectorAll('#filter-panel .fp-section:nth-child(2) input:checked').forEach(cb => metodos.push(cb.value));
+  if (metodos.length) params.push('metodo_pago=' + encodeURIComponent(metodos.join(',')));
+  // Estado
+  const estados = [];
+  document.querySelectorAll('#filter-panel .fp-section:nth-child(3) input:checked').forEach(cb => estados.push(cb.value));
+  if (estados.length) params.push('estado=' + encodeURIComponent(estados.join(',')));
+  // Canal
+  const canales = [];
+  document.querySelectorAll('#filter-panel .fp-section:nth-child(4) input:checked').forEach(cb => canales.push(cb.value));
+  if (canales.length) params.push('canal=' + encodeURIComponent(canales.join(',')));
+  // Tipo
+  const tipos = [];
+  document.querySelectorAll('#filter-panel .fp-section:nth-child(5) input:checked').forEach(cb => tipos.push(cb.value));
+  if (tipos.length) params.push('tipo=' + encodeURIComponent(tipos.join(',')));
+
+  toggleFilterPanel();
+  loadPendientes(params.join('&'));
+}
+
+// Cancelar pedido
+let cancelPedidoId = null;
+function pedirCancelar(id, folio) {
+  cancelPedidoId = id;
+  document.getElementById('cancel-folio').textContent = folio;
+  document.getElementById('modal-cancelar').classList.add('active');
+}
+async function confirmarCancelar() {
+  document.getElementById('modal-cancelar').classList.remove('active');
+  try {
+    const r = await fetch(`/pos/pedido/${cancelPedidoId}/cancelar`, { method: 'PATCH' });
+    if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
+    loadPendientes();
+  } catch(e) { alert('Error de red'); }
 }
 
 // Editar pendiente — load into cart
@@ -1706,7 +1938,7 @@ fetchCategorias();
 setView(vistaActual);
 renderCart();
 
-// Badge pendientes — poll every 60s
+// Badge pendientes — poll every 60s + auto-refresh table
 async function updateBadgePend() {
   try {
     const r = await fetch('/pos/pedidos-hoy');
@@ -1718,6 +1950,12 @@ async function updateBadgePend() {
       badge.style.display = 'flex';
     } else {
       badge.style.display = 'none';
+    }
+    // Auto-refresh if pendientes section is active
+    if (document.getElementById('sec-pendientes').classList.contains('active') && pendFilterPeriodo === 'hoy') {
+      pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
+      const q = document.getElementById('pend-search').value.trim();
+      if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
     }
   } catch(e) { /* silent */ }
 }

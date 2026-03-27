@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Cookie, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime
+from datetime import datetime, timedelta
 import httpx
 import os
 from app.database import get_db
@@ -359,13 +359,77 @@ async def _serializar_pedido_pos(p, db):
 
 @router.get("/pedidos-hoy")
 async def pos_pedidos_hoy(
+    periodo: str = "hoy",
+    fecha_inicio: str | None = None,
+    fecha_fin: str | None = None,
+    metodo_pago: str | None = None,
+    estado: str | None = None,
+    canal: str | None = None,
+    tipo: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    from datetime import date as date_type
     hoy = datetime.now(TZ).date()
-    result = await db.execute(select(Pedido).where(Pedido.fecha_entrega == hoy, Pedido.canal == "Mostrador").order_by(Pedido.fecha_pedido.desc()))
+
+    # Determine date range
+    if periodo == "rango" and fecha_inicio and fecha_fin:
+        f_ini = date_type.fromisoformat(fecha_inicio)
+        f_fin = date_type.fromisoformat(fecha_fin)
+    elif periodo == "ayer":
+        f_ini = f_fin = hoy - timedelta(days=1)
+    elif periodo == "semana":
+        f_ini = hoy - timedelta(days=hoy.weekday())
+        f_fin = hoy
+    elif periodo == "mes":
+        f_ini = hoy.replace(day=1)
+        f_fin = hoy
+    else:  # hoy
+        f_ini = f_fin = hoy
+
+    query = select(Pedido).where(
+        Pedido.fecha_pedido >= datetime.combine(f_ini, datetime.min.time()),
+        Pedido.fecha_pedido <= datetime.combine(f_fin, datetime.max.time()),
+    ).order_by(Pedido.fecha_pedido.desc())
+
+    # Filter by canal
+    if canal:
+        canales = [c.strip() for c in canal.split(",")]
+        canal_map = {"POS": "Mostrador", "Claudia": "WhatsApp"}
+        db_canales = [canal_map.get(c, c) for c in canales]
+        query = query.where(Pedido.canal.in_(db_canales))
+
+    # Filter by estado
+    estado_filter = None
+    if estado:
+        estado_filter = [e.strip() for e in estado.split(",")]
+
+    # Filter by tipo
+    from sqlalchemy import or_, and_
+    if tipo:
+        tipos = [t.strip() for t in tipo.split(",")]
+        tipo_conditions = []
+        for t in tipos:
+            if t == "Funeral":
+                tipo_conditions.append(Pedido.tipo_especial == "Funeral")
+            elif t == "Mostrador":
+                tipo_conditions.append(and_(Pedido.tipo_especial.is_(None), Pedido.direccion_entrega.is_(None)))
+            elif t == "Domicilio":
+                tipo_conditions.append(and_(Pedido.tipo_especial.is_(None), Pedido.direccion_entrega.isnot(None)))
+            elif t == "Recoger":
+                tipo_conditions.append(Pedido.tipo_especial == "Recoger")
+        if tipo_conditions:
+            query = query.where(or_(*tipo_conditions))
+
+    # Filter by metodo_pago
+    if metodo_pago:
+        metodos = [m.strip() for m in metodo_pago.split(",")]
+        mp_conds = [Pedido.forma_pago.ilike(f"%{m}%") for m in metodos]
+        query = query.where(or_(*mp_conds))
+
+    result = await db.execute(query)
     pedidos = result.scalars().all()
 
     pendientes = []
@@ -373,8 +437,29 @@ async def pos_pedidos_hoy(
     total_vendido = 0
     desglose_pago = {}
 
+    # Map estado filter values to DB values
+    estado_map = {
+        "pendiente_pago": ["Pendiente pago", "pendiente_pago"],
+        "pagado": ["Listo"],
+        "listo_taller": ["Listo taller"],
+        "en_camino": ["En camino"],
+        "entregado": ["Entregado"],
+        "cancelado": ["Cancelado"],
+    }
+
     for p in pedidos:
+        # Apply estado filter
+        if estado_filter:
+            matched = False
+            for ef in estado_filter:
+                if p.estado in estado_map.get(ef, [ef]):
+                    matched = True
+                    break
+            if not matched:
+                continue
+
         data = await _serializar_pedido_pos(p, db)
+        data["fecha_pedido"] = p.fecha_pedido.strftime("%Y-%m-%d %H:%M") if p.fecha_pedido else None
         if p.estado in ("Pendiente pago", "pendiente_pago"):
             pendientes.append(data)
         else:
@@ -559,6 +644,24 @@ async def pos_completar_pedido(
         "envio": envio, "descuento": descuento, "comision": comision,
         "estado": pedido.estado,
     }
+
+
+@router.patch("/pedido/{pedido_id}/cancelar")
+async def pos_cancelar_pedido(
+    pedido_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    pedido.estado = "Cancelado"
+    pedido.estado_florista = "cancelado"
+    await db.commit()
+    return {"ok": True}
 
 
 @router.post("/enviar-ticket-whatsapp")
