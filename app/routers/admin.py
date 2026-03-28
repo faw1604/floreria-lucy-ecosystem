@@ -144,7 +144,7 @@ async def listar_egresos(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    sql = "SELECT id, fecha, concepto, categoria, monto, metodo_pago, notas, referencia, es_recurrente FROM egresos"
+    sql = "SELECT id, fecha, concepto, categoria, monto, metodo_pago, proveedor, notas, referencia, es_recurrente FROM egresos"
     params = {}
     wheres = []
     if desde:
@@ -159,8 +159,8 @@ async def listar_egresos(
     result = await db.execute(text(sql), params)
     return [
         {"id": r[0], "fecha": str(r[1]), "concepto": r[2], "categoria": r[3],
-         "monto": r[4], "metodo_pago": r[5], "notas": r[6], "referencia": r[7],
-         "es_recurrente": r[8]}
+         "monto": r[4], "metodo_pago": r[5], "proveedor": r[6], "notas": r[7],
+         "referencia": r[8], "es_recurrente": r[9]}
         for r in result.fetchall()
     ]
 
@@ -176,13 +176,13 @@ async def crear_egreso(
     try:
         fecha_val = date.fromisoformat(data["fecha"]) if isinstance(data["fecha"], str) else data["fecha"]
         await db.execute(text("""
-            INSERT INTO egresos (fecha, concepto, categoria, monto, metodo_pago, notas, referencia, es_recurrente)
-            VALUES (:f, :c, :cat, :m, :mp, :n, :ref, :er)
+            INSERT INTO egresos (fecha, concepto, categoria, monto, metodo_pago, proveedor, notas, referencia, es_recurrente)
+            VALUES (:f, :c, :cat, :m, :mp, :prov, :n, :ref, :er)
         """), {
             "f": fecha_val, "c": data["concepto"], "cat": data.get("categoria", "otro"),
             "m": data.get("monto", 0), "mp": data.get("metodo_pago"),
-            "n": data.get("notas"), "ref": data.get("referencia"),
-            "er": data.get("es_recurrente", False),
+            "prov": data.get("proveedor"), "n": data.get("notas"),
+            "ref": data.get("referencia"), "er": data.get("es_recurrente", False),
         })
         await db.commit()
         return {"ok": True}
@@ -202,7 +202,7 @@ async def actualizar_egreso(
     data = await request.json()
     sets = []
     params = {"id": egreso_id}
-    for k in ["concepto", "categoria", "monto", "metodo_pago", "notas", "referencia"]:
+    for k in ["concepto", "categoria", "monto", "metodo_pago", "proveedor", "notas", "referencia"]:
         if k in data:
             sets.append(f"{k} = :{k}")
             params[k] = data[k]

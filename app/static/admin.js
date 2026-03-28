@@ -1129,9 +1129,10 @@ async function loadEgresos() {
       <td>${esc(e.concepto)}${e.es_recurrente ? ' <span style="color:var(--dorado);font-size:10px">RECURRENTE</span>' : ''}</td>
       <td>${esc(e.categoria)}</td>
       <td>${esc(e.metodo_pago||'—')}</td>
+      <td>${esc(e.proveedor||'—')}</td>
       <td style="font-weight:600">${fmt$(e.monto)}</td>
       <td><button class="btn-sm" onclick="eliminarEgreso(${e.id})">🗑</button></td>
-    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos</td></tr>';
   } catch(e) {}
 }
 
@@ -1148,6 +1149,7 @@ async function abrirModalEgreso(eg) {
     <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
     <div class="field"><label>Categoría</label><select id="eg-cat"><option value="">Selecciona...</option>${catGastoOptions(eg?.categoria)}</select></div>
     <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
+    <div class="field"><label>Proveedor</label><input id="eg-prov" value="${esc(eg?.proveedor||'')}" placeholder="Nombre del proveedor (opcional)"></div>
     <div class="field"><label>Monto * (pesos)</label><input type="number" id="eg-monto" step="0.01" value="${eg ? (eg.monto/100).toFixed(2) : ''}"></div>
     <div class="field"><label>Notas</label><textarea id="eg-notas">${esc(eg?.notas||'')}</textarea></div>
     <div class="field"><label># Factura / Nota de referencia</label><input id="eg-ref" value="${esc(eg?.referencia||'')}" placeholder="Opcional"></div>
@@ -1162,6 +1164,7 @@ async function guardarEgreso(id) {
     concepto: document.getElementById('eg-concepto').value.trim(),
     categoria: document.getElementById('eg-cat').value,
     metodo_pago: document.getElementById('eg-mp').value || null,
+    proveedor: document.getElementById('eg-prov')?.value?.trim() || null,
     monto: Math.round(parseFloat(document.getElementById('eg-monto').value || 0) * 100),
     notas: document.getElementById('eg-notas').value.trim() || null,
     referencia: document.getElementById('eg-ref')?.value?.trim() || null,

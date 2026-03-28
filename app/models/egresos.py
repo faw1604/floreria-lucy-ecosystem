@@ -31,6 +31,7 @@ class Egreso(Base):
     categoria: Mapped[str] = mapped_column(String(50))
     monto: Mapped[int] = mapped_column(Integer)  # en centavos
     metodo_pago: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    proveedor: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     notas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     referencia: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     es_recurrente: Mapped[bool] = mapped_column(Boolean, default=False)
