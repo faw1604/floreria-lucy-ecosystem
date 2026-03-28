@@ -144,17 +144,24 @@ async def listar_egresos(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    query = select(Egreso).order_by(Egreso.fecha.desc())
+    sql = "SELECT id, fecha, concepto, categoria, monto, metodo_pago, notas, referencia, es_recurrente FROM egresos"
+    params = {}
+    wheres = []
     if desde:
-        query = query.where(Egreso.fecha >= desde)
+        wheres.append("fecha >= :desde")
+        params["desde"] = desde
     if hasta:
-        query = query.where(Egreso.fecha <= hasta)
-    result = await db.execute(query.limit(500))
+        wheres.append("fecha <= :hasta")
+        params["hasta"] = hasta
+    if wheres:
+        sql += " WHERE " + " AND ".join(wheres)
+    sql += " ORDER BY fecha DESC LIMIT 500"
+    result = await db.execute(text(sql), params)
     return [
-        {"id": e.id, "fecha": str(e.fecha), "concepto": e.concepto,
-         "categoria": e.categoria, "monto": e.monto, "metodo_pago": e.metodo_pago,
-         "notas": e.notas, "referencia": e.referencia, "es_recurrente": e.es_recurrente}
-        for e in result.scalars().all()
+        {"id": r[0], "fecha": str(r[1]), "concepto": r[2], "categoria": r[3],
+         "monto": r[4], "metodo_pago": r[5], "notas": r[6], "referencia": r[7],
+         "es_recurrente": r[8]}
+        for r in result.fetchall()
     ]
 
 
@@ -166,20 +173,22 @@ async def crear_egreso(
 ):
     _auth(panel_session)
     data = await request.json()
-    e = Egreso(
-        fecha=data["fecha"],
-        concepto=data["concepto"],
-        categoria=data.get("categoria", "otro"),
-        monto=data.get("monto", 0),
-        metodo_pago=data.get("metodo_pago"),
-        notas=data.get("notas"),
-        referencia=data.get("referencia"),
-        es_recurrente=data.get("es_recurrente", False),
-    )
-    db.add(e)
-    await db.commit()
-    await db.refresh(e)
-    return {"ok": True, "id": e.id}
+    try:
+        fecha_val = date.fromisoformat(data["fecha"]) if isinstance(data["fecha"], str) else data["fecha"]
+        await db.execute(text("""
+            INSERT INTO egresos (fecha, concepto, categoria, monto, metodo_pago, notas, referencia, es_recurrente)
+            VALUES (:f, :c, :cat, :m, :mp, :n, :ref, :er)
+        """), {
+            "f": fecha_val, "c": data["concepto"], "cat": data.get("categoria", "otro"),
+            "m": data.get("monto", 0), "mp": data.get("metodo_pago"),
+            "n": data.get("notas"), "ref": data.get("referencia"),
+            "er": data.get("es_recurrente", False),
+        })
+        await db.commit()
+        return {"ok": True}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/egresos/{egreso_id}")
@@ -190,14 +199,19 @@ async def actualizar_egreso(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(select(Egreso).where(Egreso.id == egreso_id))
-    e = result.scalar_one_or_none()
-    if not e:
-        raise HTTPException(status_code=404, detail="Egreso no encontrado")
     data = await request.json()
-    for k in ["fecha", "concepto", "categoria", "monto", "metodo_pago", "notas", "referencia"]:
+    sets = []
+    params = {"id": egreso_id}
+    for k in ["concepto", "categoria", "monto", "metodo_pago", "notas", "referencia"]:
         if k in data:
-            setattr(e, k, data[k])
+            sets.append(f"{k} = :{k}")
+            params[k] = data[k]
+    if "fecha" in data:
+        sets.append("fecha = :fecha")
+        params["fecha"] = date.fromisoformat(data["fecha"]) if isinstance(data["fecha"], str) else data["fecha"]
+    if not sets:
+        return {"ok": True}
+    await db.execute(text(f"UPDATE egresos SET {', '.join(sets)} WHERE id = :id"), params)
     await db.commit()
     return {"ok": True}
 
@@ -209,11 +223,7 @@ async def eliminar_egreso(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(select(Egreso).where(Egreso.id == egreso_id))
-    e = result.scalar_one_or_none()
-    if not e:
-        raise HTTPException(status_code=404, detail="Egreso no encontrado")
-    await db.delete(e)
+    await db.execute(text("DELETE FROM egresos WHERE id = :id"), {"id": egreso_id})
     await db.commit()
     return {"ok": True}
 
