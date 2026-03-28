@@ -7,8 +7,7 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "Bash(ls:*)",
-      "Bash(cd:*)",
-      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --tree-filter 'find . -type f \\\\\\( -name \"\"*.md\"\" -o -name \"\"*.py\"\" -o -name \"\"*.json\"\" \\\\\\) | xargs sed -i \"\"s/[REDACTED]/[REDACTED]/g\"\" 2>/dev/null; true' -- --all)"
+      "Bash(cd:*)"
     ]
   }
 }
