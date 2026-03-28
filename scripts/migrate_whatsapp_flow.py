@@ -6,10 +6,9 @@ Ejecutar: python scripts/migrate_whatsapp_flow.py
 import asyncio
 import os
 
-DATABASE_URL = os.getenv(
-    "DATABASE_PUBLIC_URL",
-    "[REDACTED]"
-)
+DATABASE_URL = os.getenv("DATABASE_PUBLIC_URL", "")
+if not DATABASE_URL:
+    raise RuntimeError("Set DATABASE_PUBLIC_URL env var")
 
 # Convertir a asyncpg format
 if DATABASE_URL.startswith("postgres://"):
