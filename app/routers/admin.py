@@ -200,6 +200,7 @@ async def listar_descuentos(
     return [
         {"id": d.id, "codigo": d.codigo, "tipo": d.tipo, "valor": d.valor,
          "descripcion": d.descripcion, "activo": d.activo,
+         "fecha_inicio": str(d.fecha_inicio) if d.fecha_inicio else None,
          "fecha_expiracion": str(d.fecha_expiracion) if d.fecha_expiracion else None,
          "usos_maximos": d.usos_maximos, "usos_actuales": d.usos_actuales}
         for d in result.scalars().all()
@@ -220,6 +221,7 @@ async def crear_descuento(
         valor=data.get("valor", 0),
         descripcion=data.get("descripcion"),
         activo=data.get("activo", True),
+        fecha_inicio=data.get("fecha_inicio"),
         fecha_expiracion=data.get("fecha_expiracion"),
         usos_maximos=data.get("usos_maximos"),
     )
@@ -242,7 +244,7 @@ async def actualizar_descuento(
     if not d:
         raise HTTPException(status_code=404, detail="Descuento no encontrado")
     data = await request.json()
-    for k in ["codigo", "tipo", "valor", "descripcion", "activo", "fecha_expiracion", "usos_maximos"]:
+    for k in ["codigo", "tipo", "valor", "descripcion", "activo", "fecha_inicio", "fecha_expiracion", "usos_maximos"]:
         if k in data:
             setattr(d, k, data[k])
     await db.commit()

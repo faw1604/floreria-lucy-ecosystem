@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.productos import Producto
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
-from app.models.configuracion import HorarioEspecifico, CodigoDescuento
+from app.models.configuracion import HorarioEspecifico, CodigoDescuento, ConfiguracionNegocio
 from app.core.config import TZ
 from datetime import date as date_type
 
@@ -57,6 +57,28 @@ async def legal_html():
             return HTMLResponse(f.read())
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Página no encontrada")
+
+@router.get("/config")
+async def catalogo_config(db: AsyncSession = Depends(get_db)):
+    """Config pública del catálogo — hero, textos, fecha especial."""
+    result = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in result.scalars().all()}
+    return {
+        "hero_imagen": cfg.get("catalogo_hero_imagen", ""),
+        "hero_titulo": cfg.get("catalogo_hero_titulo", "Floreria Lucy"),
+        "hero_subtitulo": cfg.get("catalogo_hero_subtitulo", "La expresion del amor"),
+        "whatsapp_msg": cfg.get("catalogo_whatsapp_msg", ""),
+        "footer": cfg.get("catalogo_footer", ""),
+        "meta_titulo": cfg.get("catalogo_meta_titulo", "Floreria Lucy"),
+        "meta_descripcion": cfg.get("catalogo_meta_descripcion", ""),
+        "cerrado": cfg.get("catalogo_cerrado", "false") == "true",
+        "fecha_especial_activa": cfg.get("catalogo_fecha_especial_activa", "false") == "true",
+        "fecha_especial_nombre": cfg.get("catalogo_fecha_especial_nombre", ""),
+        "fecha_especial_categorias": cfg.get("catalogo_fecha_especial_categorias", "[]"),
+        "fecha_especial_boton_texto": cfg.get("catalogo_fecha_especial_boton_texto", ""),
+        "temporada_alta": cfg.get("claudia_temporada_alta", "false") == "true",
+    }
+
 
 @router.get("/productos")
 async def catalogo_productos(

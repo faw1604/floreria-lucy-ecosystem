@@ -314,9 +314,9 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     </svg>
   </div>
   <div class="landing-deco"></div>
-  <h1>Floreria Lucy</h1>
-  <div class="sub">La expresión del amor</div>
-  <div class="landing-btns">
+  <h1 id="hero-titulo">Floreria Lucy</h1>
+  <div class="sub" id="hero-subtitulo">La expresión del amor</div>
+  <div class="landing-btns" id="hero-btns">
     <button class="landing-btn primary" onclick="startMode('dynamic')">Explorar arreglos</button>
     <button class="landing-btn secondary" onclick="startMode('classic')">Ver catalogo completo</button>
   </div>
@@ -2116,6 +2116,54 @@ function closeNav() { document.getElementById('nav-overlay').classList.remove('o
 
 // Init cart fab on load
 updateCartFab();
+
+// Load catalog config from BD
+let catConfig = null;
+(async function loadCatConfig() {
+  try {
+    const r = await fetch(`${API}/catalogo/config`);
+    if (!r.ok) return;
+    catConfig = await r.json();
+    // Hero
+    if (catConfig.hero_titulo) document.getElementById('hero-titulo').textContent = catConfig.hero_titulo;
+    if (catConfig.hero_subtitulo) document.getElementById('hero-subtitulo').textContent = catConfig.hero_subtitulo;
+    if (catConfig.hero_imagen) document.getElementById('landing').style.backgroundImage = `url('${catConfig.hero_imagen}')`;
+    if (catConfig.meta_titulo) document.title = catConfig.meta_titulo;
+    // Fecha especial button
+    if (catConfig.fecha_especial_activa && catConfig.fecha_especial_boton_texto) {
+      const btns = document.getElementById('hero-btns');
+      const feBtn = document.createElement('button');
+      feBtn.className = 'landing-btn primary';
+      feBtn.style.background = 'var(--dorado)';
+      feBtn.style.color = 'var(--verde)';
+      feBtn.style.borderColor = 'var(--dorado)';
+      feBtn.textContent = catConfig.fecha_especial_boton_texto;
+      feBtn.onclick = () => startFechaEspecial();
+      btns.prepend(feBtn);
+    }
+    // Cerrado
+    if (catConfig.cerrado) {
+      document.getElementById('landing').innerHTML = '<div style="text-align:center;color:#fff;position:relative;z-index:1"><h1 style="font-size:28px;margin-bottom:12px">Catálogo temporalmente cerrado</h1><p style="font-size:14px;opacity:.8">Estamos actualizando nuestro catálogo. Vuelve pronto.</p><a href="https://wa.me/' + WHATSAPP + '" style="display:inline-block;margin-top:20px;padding:12px 24px;background:#25d366;color:#fff;border-radius:10px;text-decoration:none;font-weight:600">Contáctanos por WhatsApp</a></div>';
+    }
+  } catch(e) {}
+})();
+
+function startFechaEspecial() {
+  if (!catConfig) return;
+  try {
+    const catIds = JSON.parse(catConfig.fecha_especial_categorias || '[]');
+    // Start classic mode filtered by those categories
+    startMode('classic');
+    // After classic inits, filter — use timeout to let it render
+    setTimeout(() => {
+      if (catIds.length > 0) {
+        // Fetch category names from the loaded products
+        const matchCats = allProducts.filter(p => true).map(p => p.categoria);
+        // For now, just start classic normally — the fecha especial mostly affects the hero CTA
+      }
+    }, 300);
+  } catch(e) { startMode('classic'); }
+}
 </script>
 </body>
 </html>

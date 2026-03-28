@@ -32,6 +32,7 @@ class CodigoDescuento(Base):
     valor: Mapped[int] = mapped_column(Integer)  # porcentaje entero o centavos
     descripcion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    fecha_inicio: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     fecha_expiracion: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     usos_maximos: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     usos_actuales: Mapped[int] = mapped_column(Integer, default=0)

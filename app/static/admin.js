@@ -750,37 +750,245 @@ async function saveConfigField(clave, valor) {
 }
 
 // ══════ PÁGINA WEB ══════
+let webCfg = {};
+
 async function loadWeb() {
-  loadWebProductos();
+  // Load all config
+  try {
+    const r = await fetch(API + '/configuracion/', {credentials:'include'});
+    const data = await r.json();
+    webCfg = {};
+    data.forEach(c => webCfg[c.clave] = c.valor);
+  } catch(e) {}
+  loadWebBanners();
 }
 
-async function loadWebProductos() {
+// --- BANNERS / HERO ---
+function loadWebBanners() {
+  const el = document.getElementById('web-banners-content');
+  el.innerHTML = `<div style="max-width:600px">
+    <div class="field"><label>Imagen de fondo del hero</label>
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div id="web-hero-preview" style="width:200px;height:120px;border-radius:10px;background:var(--borde);overflow:hidden;flex-shrink:0">
+          ${webCfg.catalogo_hero_imagen ? '<img src="'+esc(webCfg.catalogo_hero_imagen)+'" style="width:100%;height:100%;object-fit:cover">' : ''}
+        </div>
+        <div style="flex:1"><input type="file" id="web-hero-file" accept="image/*" onchange="subirHeroImg()"><input type="hidden" id="web-hero-img" value="${esc(webCfg.catalogo_hero_imagen||'')}"><div id="web-hero-status" style="font-size:11px;color:var(--texto2);margin-top:4px"></div></div>
+      </div>
+    </div>
+    <div class="config-field"><label>Título del hero</label><input id="web-hero-titulo" value="${esc(webCfg.catalogo_hero_titulo||'')}"></div>
+    <div class="config-field"><label>Subtítulo del hero</label><input id="web-hero-subtitulo" value="${esc(webCfg.catalogo_hero_subtitulo||'')}"></div>
+    <button class="btn-primary" onclick="guardarHero()" style="margin-top:12px">Guardar cambios</button>
+  </div>`;
+}
+
+async function subirHeroImg() {
+  const file = document.getElementById('web-hero-file').files[0];
+  if (!file) return;
+  document.getElementById('web-hero-status').textContent = 'Subiendo...';
+  const fd = new FormData(); fd.append('imagen', file);
   try {
-    const r = await fetch(API + '/productos/', {credentials:'include'});
+    const r = await fetch(API + '/productos/subir-imagen', {method:'POST', body:fd, credentials:'include'});
+    const d = await r.json();
+    if (d.url) {
+      document.getElementById('web-hero-img').value = d.url;
+      document.getElementById('web-hero-preview').innerHTML = '<img src="'+d.url+'" style="width:100%;height:100%;object-fit:cover">';
+      document.getElementById('web-hero-status').textContent = 'Subida ✓';
+    }
+  } catch(e) { document.getElementById('web-hero-status').textContent = 'Error'; }
+}
+
+async function guardarHero() {
+  const keys = {
+    catalogo_hero_imagen: document.getElementById('web-hero-img').value,
+    catalogo_hero_titulo: document.getElementById('web-hero-titulo').value,
+    catalogo_hero_subtitulo: document.getElementById('web-hero-subtitulo').value,
+  };
+  for (const [k,v] of Object.entries(keys)) {
+    await fetch(API + '/configuracion/' + k, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({valor: v})});
+  }
+  showToast('Hero guardado ✓');
+}
+
+// --- TEXTOS ---
+function webSubTab(id) {
+  switchSubTab('web', id);
+  if (id === 'web-textos') loadWebTextos();
+  if (id === 'web-horarios') loadWebHorarios();
+  if (id === 'web-descuentos') loadWebDescuentos();
+}
+
+function loadWebTextos() {
+  const el = document.getElementById('web-textos-content');
+  const fields = [
+    {k:'catalogo_whatsapp_msg', l:'Mensaje WhatsApp (pre-llenado al contactar)', type:'textarea'},
+    {k:'catalogo_footer', l:'Texto del footer'},
+    {k:'catalogo_meta_titulo', l:'Título de la pestaña del navegador'},
+    {k:'catalogo_meta_descripcion', l:'Descripción SEO', type:'textarea'},
+  ];
+  el.innerHTML = '<div style="max-width:600px">' + fields.map(f =>
+    `<div class="config-field"><label>${f.l}</label>${f.type === 'textarea' ? `<textarea id="wt-${f.k}" rows="2">${esc(webCfg[f.k]||'')}</textarea>` : `<input id="wt-${f.k}" value="${esc(webCfg[f.k]||'')}">`}</div>`
+  ).join('') + '<button class="btn-primary" onclick="guardarWebTextos()" style="margin-top:12px">Guardar textos</button></div>';
+}
+
+async function guardarWebTextos() {
+  const keys = ['catalogo_whatsapp_msg','catalogo_footer','catalogo_meta_titulo','catalogo_meta_descripcion'];
+  for (const k of keys) {
+    const val = document.getElementById('wt-' + k)?.value || '';
+    await fetch(API + '/configuracion/' + k, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({valor: val})});
+  }
+  showToast('Textos guardados ✓');
+}
+
+// --- HORARIOS ---
+const DIAS_WEB = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+async function loadWebHorarios() {
+  const el = document.getElementById('web-horarios-content');
+  // Load horarios especificos
+  let horariosHtml = '<div style="color:var(--texto2);font-size:13px">Cargando...</div>';
+  try {
+    const r = await fetch(API + '/panel/horarios-especificos', {credentials:'include'});
     const data = await r.json();
-    const el = document.getElementById('web-productos-content');
-    el.innerHTML = `<div class="table-wrap"><table class="data-table">
-      <thead><tr><th><input type="checkbox" onchange="toggleAllWebProds(this.checked)"></th><th>Imagen</th><th>Nombre</th><th>Categoría</th><th>Visible en web</th></tr></thead>
-      <tbody>${data.map(p => `<tr>
-        <td><input type="checkbox" class="web-prod-check" data-id="${p.id}"></td>
-        <td>${p.imagen_url ? '<img src="'+esc(p.imagen_url)+'" class="thumb">' : '—'}</td>
-        <td>${esc(p.nombre)}</td>
-        <td>${esc(p.categoria)}</td>
-        <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProd(${p.id}, this.checked)"></td>
+    horariosHtml = DIAS_WEB.map((dia, i) => {
+      const horas = data.filter(h => h.dia_semana === i);
+      const chips = horas.length ? horas.map(h => `<span style="display:inline-flex;align-items:center;gap:4px;background:#e8f5ec;color:var(--verde);font-size:12px;padding:4px 8px;border-radius:6px">${h.hora} <button onclick="eliminarHorarioWeb(${h.id})" style="background:none;border:none;color:var(--rojo);cursor:pointer;font-size:14px">&times;</button></span>`).join(' ') : '<span style="font-size:12px;color:var(--texto2);font-style:italic">Sin horas</span>';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--borde)"><span style="width:90px;font-size:13px;font-weight:500">${dia}</span><div style="flex:1;display:flex;flex-wrap:wrap;gap:4px">${chips}</div><button class="btn-sm" onclick="agregarHorarioWeb(${i})" style="font-size:11px">+</button></div>`;
+    }).join('');
+  } catch(e) {}
+
+  // Load categories for fecha especial
+  let catOpts = '';
+  try {
+    const r = await fetch(API + '/api/admin/categorias', {credentials:'include'});
+    const cats = await r.json();
+    const selCats = JSON.parse(webCfg.catalogo_fecha_especial_categorias || '[]');
+    catOpts = cats.map(c => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:4px 0"><input type="checkbox" class="fe-cat" value="${c.id}" ${selCats.includes(c.id) ? 'checked' : ''}> ${esc(c.nombre)}</label>`).join('');
+  } catch(e) {}
+
+  el.innerHTML = `<div style="max-width:700px">
+    <h4 style="font-size:14px;color:var(--verde);margin-bottom:12px">Horarios de hora específica</h4>
+    ${horariosHtml}
+
+    <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--borde)">
+      <div class="toggle-row"><label>Temporada alta (envíos $99)</label><input type="checkbox" id="wh-temporada" ${webCfg.claudia_temporada_alta==='true'?'checked':''} onchange="saveConfigField('claudia_temporada_alta', String(this.checked))"></div>
+      <div class="toggle-row"><label>Cerrar catálogo temporalmente</label><input type="checkbox" id="wh-cerrado" ${webCfg.catalogo_cerrado==='true'?'checked':''} onchange="saveConfigField('catalogo_cerrado', String(this.checked))"></div>
+    </div>
+
+    <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--borde)">
+      <h4 style="font-size:14px;color:var(--verde);margin-bottom:12px">Modo fecha especial</h4>
+      <div class="toggle-row"><label>Activar modo fecha especial</label><input type="checkbox" id="wh-fe-activa" ${webCfg.catalogo_fecha_especial_activa==='true'?'checked':''} onchange="toggleFechaEspecial(this.checked)"></div>
+      <div id="wh-fe-fields" style="${webCfg.catalogo_fecha_especial_activa==='true'?'':'display:none'};margin-top:12px">
+        <div class="config-field"><label>Nombre del evento</label><input id="wh-fe-nombre" value="${esc(webCfg.catalogo_fecha_especial_nombre||'')}" placeholder="Ej: Día de las Madres"></div>
+        <div class="config-field"><label>Texto del botón en hero</label><input id="wh-fe-boton" value="${esc(webCfg.catalogo_fecha_especial_boton_texto||'')}" placeholder="Ej: Ver arreglos para mamá"></div>
+        <div class="config-field"><label>Categorías a mostrar</label><div style="max-height:150px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px">${catOpts || '<span style="color:var(--texto2);font-size:12px">Sin categorías</span>'}</div></div>
+        <button class="btn-primary" onclick="guardarFechaEspecial()" style="margin-top:12px">Guardar fecha especial</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleFechaEspecial(checked) {
+  document.getElementById('wh-fe-fields').style.display = checked ? '' : 'none';
+  saveConfigField('catalogo_fecha_especial_activa', String(checked));
+}
+
+async function guardarFechaEspecial() {
+  const catIds = [...document.querySelectorAll('.fe-cat:checked')].map(c => parseInt(c.value));
+  const keys = {
+    catalogo_fecha_especial_nombre: document.getElementById('wh-fe-nombre').value,
+    catalogo_fecha_especial_boton_texto: document.getElementById('wh-fe-boton').value,
+    catalogo_fecha_especial_categorias: JSON.stringify(catIds),
+  };
+  for (const [k,v] of Object.entries(keys)) {
+    await fetch(API + '/configuracion/' + k, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({valor: v})});
+  }
+  showToast('Fecha especial guardada ✓');
+}
+
+async function agregarHorarioWeb(dia) {
+  const hora = prompt('Hora (HH:MM, ej: 13:00):');
+  if (!hora || !/^\d{2}:\d{2}$/.test(hora)) return;
+  await fetch(API + '/panel/horarios-especificos', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({dia_semana: dia, hora})});
+  loadWebHorarios();
+}
+
+async function eliminarHorarioWeb(id) {
+  await fetch(API + '/panel/horarios-especificos/' + id, {method:'DELETE', credentials:'include'});
+  loadWebHorarios();
+}
+
+// --- DESCUENTOS ---
+async function loadWebDescuentos() {
+  const el = document.getElementById('web-descuentos-content');
+  try {
+    const r = await fetch(API + '/api/admin/descuentos', {credentials:'include'});
+    const data = await r.json();
+    el.innerHTML = `<button class="btn-primary" onclick="abrirModalDescuento()" style="margin-bottom:12px">+ Nuevo código</button>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Código</th><th>Tipo</th><th>Valor</th><th>Usos</th><th>Vigencia</th><th>Activo</th><th></th></tr></thead>
+      <tbody>${data.map(d => `<tr>
+        <td style="font-weight:600">${esc(d.codigo)}</td>
+        <td>${d.tipo === 'porcentaje' ? '%' : '$'}</td>
+        <td>${d.tipo === 'porcentaje' ? d.valor + '%' : fmt$(d.valor)}</td>
+        <td>${d.usos_actuales}${d.usos_maximos ? '/' + d.usos_maximos : '/∞'}</td>
+        <td style="font-size:11px">${d.fecha_inicio ? d.fecha_inicio + ' → ' : ''}${d.fecha_expiracion || 'Sin límite'}</td>
+        <td>${d.activo ? '<span style="color:var(--verde)">Si</span>' : '<span style="color:var(--rojo)">No</span>'}</td>
+        <td><button class="btn-sm" onclick="editarDescuento(${d.id})">Editar</button> <button class="btn-danger" style="font-size:11px;padding:4px 8px" onclick="eliminarDescuento(${d.id})">Eliminar</button></td>
       </tr>`).join('')}</tbody>
     </table></div>`;
   } catch(e) {}
 }
 
-function toggleAllWebProds(checked) {
-  document.querySelectorAll('.web-prod-check').forEach(c => c.checked = checked);
+let editDescId = null;
+function abrirModalDescuento(d) {
+  editDescId = d?.id || null;
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <div class="field"><label>Código *</label><input id="dc-codigo" value="${esc(d?.codigo||'')}" style="text-transform:uppercase" ${d ? 'disabled' : ''}></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Tipo *</label><select id="dc-tipo"><option value="porcentaje" ${d?.tipo==='porcentaje'?'selected':''}>Porcentaje (%)</option><option value="monto" ${d?.tipo==='monto'?'selected':''}>Monto fijo ($)</option></select></div>
+      <div class="field"><label>Valor *</label><input type="number" id="dc-valor" value="${d?.valor||''}" min="0"></div>
+    </div>
+    <div class="field"><label>Usos máximos (vacío = ilimitado)</label><input type="number" id="dc-usos" value="${d?.usos_maximos||''}" min="0"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Fecha inicio</label><input type="date" id="dc-inicio" value="${d?.fecha_inicio||''}"></div>
+      <div class="field"><label>Fecha fin</label><input type="date" id="dc-fin" value="${d?.fecha_expiracion||''}"></div>
+    </div>
+    <div class="toggle-row" style="border:none"><label>Activo</label><input type="checkbox" id="dc-activo" ${d?.activo !== false ? 'checked' : ''}></div>
+    <button class="btn-primary" onclick="guardarDescuento()" style="width:100%;margin-top:8px">Guardar</button>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
 }
 
-async function toggleWebProd(id, visible) {
-  await fetch(API + '/productos/' + id, {
-    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
-    body: JSON.stringify({visible_catalogo: visible})
-  });
+async function editarDescuento(id) {
+  const r = await fetch(API + '/api/admin/descuentos', {credentials:'include'});
+  const data = await r.json();
+  const d = data.find(x => x.id === id);
+  if (d) abrirModalDescuento(d);
+}
+
+async function guardarDescuento() {
+  const body = {
+    codigo: document.getElementById('dc-codigo').value.trim().toUpperCase(),
+    tipo: document.getElementById('dc-tipo').value,
+    valor: parseInt(document.getElementById('dc-valor').value || 0),
+    usos_maximos: document.getElementById('dc-usos').value ? parseInt(document.getElementById('dc-usos').value) : null,
+    fecha_inicio: document.getElementById('dc-inicio').value || null,
+    fecha_expiracion: document.getElementById('dc-fin').value || null,
+    activo: document.getElementById('dc-activo').checked,
+  };
+  if (!body.codigo || !body.valor) return alert('Código y valor son obligatorios');
+  const url = editDescId ? API + '/api/admin/descuentos/' + editDescId : API + '/api/admin/descuentos';
+  const method = editDescId ? 'PUT' : 'POST';
+  await fetch(url, {method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+  cerrarModal('modal-egreso');
+  showToast('Código guardado ✓');
+  loadWebDescuentos();
+}
+
+async function eliminarDescuento(id) {
+  if (!confirm('¿Eliminar este código?')) return;
+  await fetch(API + '/api/admin/descuentos/' + id, {method:'DELETE', credentials:'include'});
+  loadWebDescuentos();
 }
 
 // ══════ FINANZAS ══════
