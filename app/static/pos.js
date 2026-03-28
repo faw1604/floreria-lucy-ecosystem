@@ -1561,10 +1561,10 @@ async function loadResumenVentas() {
   try {
     const r = await fetch('/pos/resumen-ventas');
     const d = await r.json();
-    document.getElementById('tm-hoy').innerHTML = `${d.hoy.ventas} ventas | $${d.hoy.total.toLocaleString()}`;
-    document.getElementById('tm-ayer').innerHTML = `${d.ayer.ventas} ventas | $${d.ayer.total.toLocaleString()}`;
-    document.getElementById('tm-semana').innerHTML = `${d.semana.ventas} ventas | $${d.semana.total.toLocaleString()}`;
-    document.getElementById('tm-mes').innerHTML = `${d.mes.ventas} ventas | $${d.mes.total.toLocaleString()}`;
+    document.getElementById('tm-hoy').innerHTML = `${d.hoy.ventas} ventas`;
+    document.getElementById('tm-ayer').innerHTML = `${d.ayer.ventas} ventas`;
+    document.getElementById('tm-semana').innerHTML = `${d.semana.ventas} ventas`;
+    document.getElementById('tm-mes').innerHTML = `${d.mes.ventas} ventas`;
   } catch(e) { /* silent */ }
 }
 
@@ -1603,8 +1603,7 @@ function renderTransTable(rows) {
   const tbody = document.getElementById('trans-tbody');
   const empty = document.getElementById('trans-empty');
   const countEl = document.getElementById('trans-count');
-  const totalSum = rows.reduce((s, p) => s + (p.total || 0), 0) / 100;
-  countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '') + ' | $' + totalSum.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '');
   if (rows.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = '';
@@ -1621,7 +1620,6 @@ function renderTransTable(rows) {
       <td>${p.cliente_nombre || '-'}</td>
       <td>${canalLabel(p.canal)}</td>
       <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
-      <td style="font-weight:600;white-space:nowrap">${pagoIcon(p.forma_pago)} $${((p.total||0)/100).toLocaleString()}</td>
       <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
       <td>${obsIcon(p)}</td>
       <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:16px;cursor:pointer" title="Ver ticket">🎫</button></td>
