@@ -228,44 +228,85 @@ async function exportarClientes() {
 
 // ══════ PRODUCTOS ══════
 let prodSearchTimeout = null;
-let prodVariantesCache = {}; // {prodId: [variantes]}
-function debounceProdSearch() { clearTimeout(prodSearchTimeout); prodSearchTimeout = setTimeout(loadProductos, 300); }
+let prodVariantesCache = {};
+let prodAllData = [];
+let prodOffset = 0;
+const PROD_PAGE = 50;
+let prodLoading = false;
+let prodHasMore = true;
+let prodCatsLoaded = false;
+function debounceProdSearch() { clearTimeout(prodSearchTimeout); prodSearchTimeout = setTimeout(() => { prodOffset = 0; prodAllData = []; prodHasMore = true; loadProductos(); }, 300); }
 
-async function loadProductos() {
+function prodFilterUrl() {
+  const status = document.getElementById('prod-status-filter')?.value || '';
+  const cat = document.getElementById('prod-cat-filter')?.value || '';
+  const activoVal = status === '1' ? 'true' : status === '0' ? 'false' : 'todos';
+  let url = API + '/productos/?activo=' + activoVal + '&offset=' + prodOffset + '&limit=' + PROD_PAGE;
+  if (cat) url += '&categoria=' + encodeURIComponent(cat);
+  return url;
+}
+
+async function loadProductos(append) {
+  if (prodLoading) return;
+  if (!append) { prodOffset = 0; prodAllData = []; prodHasMore = true; }
+  if (!prodHasMore) return;
+  prodLoading = true;
   try {
-    const q = (document.getElementById('prod-search')?.value || '').trim();
-    const cat = document.getElementById('prod-cat-filter')?.value || '';
-    const status = document.getElementById('prod-status-filter')?.value || '';
-    // Pass activo filter to backend
-    let url = API + '/productos/?activo=' + (status === '1' ? '1' : status === '0' ? '0' : 'all');
-    if (cat) url += '&categoria=' + encodeURIComponent(cat);
-    const r = await fetch(url, {credentials:'include'});
+    const r = await fetch(prodFilterUrl(), {credentials:'include'});
     if (!r.ok) return;
     let data = await r.json();
+    if (data.length < PROD_PAGE) prodHasMore = false;
+    prodOffset += data.length;
+    // Client-side search filter
+    const q = (document.getElementById('prod-search')?.value || '').trim();
     if (q) { const ql = q.toLowerCase(); data = data.filter(p => p.nombre.toLowerCase().includes(ql) || (p.codigo||'').toLowerCase().includes(ql)); }
+    prodAllData = append ? prodAllData.concat(data) : data;
     // Populate category filter once
-    const allCats = [...new Set(data.map(p => p.categoria))].sort();
-    const catSel = document.getElementById('prod-cat-filter');
-    if (catSel.options.length <= 1) {
-      allCats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+    if (!prodCatsLoaded) {
+      prodCatsLoaded = true;
+      const catR = await fetch(API + '/productos/?activo=todos&limit=0', {credentials:'include'});
+      if (catR.ok) {
+        const allProds = await catR.json();
+        const allCats = [...new Set(allProds.map(p => p.categoria))].filter(Boolean).sort();
+        const catSel = document.getElementById('prod-cat-filter');
+        if (catSel.options.length <= 1) allCats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+      }
     }
-    const tbody = document.getElementById('prod-tbody');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:40px">Sin productos</td></tr>'; return; }
-    tbody.innerHTML = data.slice(0, 200).map(p => `<tr>
-      <td><input type="checkbox" class="prod-check" data-id="${p.id}"></td>
-      <td>${p.imagen_url ? '<img src="'+esc(p.imagen_url)+'" class="thumb">' : '—'}</td>
-      <td style="font-weight:500">${esc(p.nombre)}${p.precio_descuento ? ' <span style="color:var(--dorado);font-size:10px">OFERTA</span>' : ''}</td>
-      <td style="color:var(--texto2)">${esc(p.codigo||'—')}</td>
-      <td>${esc(p.categoria)}</td>
-      <td style="font-weight:600">${p.precio_descuento ? '<span style="text-decoration:line-through;color:#999;font-weight:400">'+fmt$(p.precio)+'</span> '+fmt$(p.precio_descuento) : fmt$(p.precio)}</td>
-      <td>${p.activo ? '<span style="color:var(--verde)">Si</span>' : '<span style="color:var(--rojo)">No</span>'}</td>
-      <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProdQuick(${p.id}, this.checked)" title="Visible en catálogo web"></td>
-      <td id="var-badge-${p.id}"></td>
-      <td><button class="btn-sm" onclick="editarProducto(${p.id})">Editar</button></td>
-    </tr>`).join('');
-    // Load variantes badge async
-    data.slice(0, 200).forEach(p => loadVariantesBadge(p.id));
+    renderProdTable();
   } catch(e) { console.error(e); }
+  prodLoading = false;
+}
+
+function renderProdTable() {
+  const tbody = document.getElementById('prod-tbody');
+  if (!prodAllData.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:40px">Sin productos</td></tr>'; return; }
+  tbody.innerHTML = prodAllData.map(p => `<tr>
+    <td><input type="checkbox" class="prod-check" data-id="${p.id}"></td>
+    <td>${p.imagen_url ? '<img src="'+esc(p.imagen_url)+'" class="thumb">' : '—'}</td>
+    <td style="font-weight:500">${esc(p.nombre)}${p.precio_descuento ? ' <span style="color:var(--dorado);font-size:10px">OFERTA</span>' : ''}</td>
+    <td style="color:var(--texto2)">${esc(p.codigo||'—')}</td>
+    <td>${esc(p.categoria)}</td>
+    <td style="font-weight:600">${p.precio_descuento ? '<span style="text-decoration:line-through;color:#999;font-weight:400">'+fmt$(p.precio)+'</span> '+fmt$(p.precio_descuento) : fmt$(p.precio)}</td>
+    <td>${p.activo ? '<span style="color:var(--verde)">Si</span>' : '<span style="color:var(--rojo)">No</span>'}</td>
+    <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProdQuick(${p.id}, this.checked)" title="Visible en catálogo web"></td>
+    <td id="var-badge-${p.id}"></td>
+    <td><button class="btn-sm" onclick="editarProducto(${p.id})">Editar</button></td>
+  </tr>`).join('');
+  if (prodHasMore) {
+    tbody.innerHTML += '<tr id="prod-sentinel"><td colspan="10" style="text-align:center;padding:12px;color:var(--texto2);font-size:12px">Cargando más...</td></tr>';
+    observeProdSentinel();
+  }
+}
+
+let prodObserver = null;
+function observeProdSentinel() {
+  if (prodObserver) prodObserver.disconnect();
+  const sentinel = document.getElementById('prod-sentinel');
+  if (!sentinel) return;
+  prodObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && prodHasMore && !prodLoading) loadProductos(true);
+  }, {rootMargin: '200px'});
+  prodObserver.observe(sentinel);
 }
 
 async function loadVariantesBadge(prodId) {

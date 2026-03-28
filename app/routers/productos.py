@@ -12,16 +12,24 @@ async def listar_productos(
     categoria: str | None = None,
     solo_disponibles: bool = False,
     activo: str | None = None,
+    offset: int = 0,
+    limit: int = 0,
     db: AsyncSession = Depends(get_db)
 ):
     query = select(Producto)
-    # Filter by active status — default: only active (backward compat)
-    if activo == "0":
+    if activo == "false":
         query = query.where(Producto.activo == False)
-    elif activo == "1":
+    elif activo == "true":
+        query = query.where(Producto.activo == True)
+    elif activo == "todos":
+        pass  # no filter
+    # Backward compat: old callers (POS, catálogo) send no param → only active
+    elif activo in ("0",):
+        query = query.where(Producto.activo == False)
+    elif activo in ("1",):
         query = query.where(Producto.activo == True)
     elif activo == "all":
-        pass  # no filter
+        pass
     else:
         query = query.where(Producto.activo == True)
     if categoria:
@@ -29,6 +37,10 @@ async def listar_productos(
     if solo_disponibles:
         query = query.where(Producto.disponible_hoy == True)
     query = query.order_by(Producto.categoria, Producto.nombre)
+    if offset > 0:
+        query = query.offset(offset)
+    if limit > 0:
+        query = query.limit(limit)
     result = await db.execute(query)
     productos = result.scalars().all()
     return [{"id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria, "precio": p.precio, "precio_descuento": p.precio_descuento, "disponible_hoy": p.disponible_hoy, "imagen_url": p.imagen_url, "etiquetas": p.etiquetas, "dimensiones": p.dimensiones, "activo": p.activo, "visible_catalogo": p.visible_catalogo, "stock_activo": p.stock_activo, "stock": p.stock} for p in productos]
