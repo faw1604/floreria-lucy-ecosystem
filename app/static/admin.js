@@ -638,8 +638,19 @@ async function crearCat() {
 }
 
 // --- EXPORTAR / IMPORTAR ---
-function exportarProductos() {
-  window.location.href = API + '/api/admin/productos/exportar';
+async function exportarProductos() {
+  try {
+    const r = await fetch(API + '/api/admin/productos/exportar', {credentials:'include'});
+    if (!r.ok) { alert('Error al exportar'); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const hoy = new Date().toISOString().split('T')[0];
+    a.download = 'productos_floreria_lucy_' + hoy + '.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { alert('Error al exportar'); }
 }
 
 async function importarProductos(input) {
