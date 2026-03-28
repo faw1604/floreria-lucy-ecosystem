@@ -185,6 +185,7 @@
       <div class="pend-count" id="trans-count">0 transacciones</div>
       <input type="text" id="trans-search" placeholder="Nombre del cliente o producto..." oninput="filtrarTablaTrans()">
       <button class="btn-filtro" onclick="toggleFilterPanel('trans')">🔍 Filtro</button>
+      <button class="btn-filtro" onclick="abrirCorteCaja()" style="border-color:var(--dorado);color:var(--dorado)">📊 Corte de caja</button>
     </div>
     <!-- Tabla -->
     <div class="pend-table-wrap">
@@ -360,6 +361,18 @@
     <button class="close" onclick="document.getElementById('modal-ticket').classList.remove('active')" style="position:absolute;top:8px;right:12px;z-index:5;color:#fff;font-size:22px;background:none;border:none;cursor:pointer">&times;</button>
     <div class="ticket-scroll" id="ticket-content"></div>
     <div class="ticket-btns" id="ticket-buttons"></div>
+  </div>
+</div>
+
+<!-- Modal: Corte de caja -->
+<div class="modal-bg" id="modal-corte" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:400px">
+    <button class="close" onclick="document.getElementById('modal-corte').classList.remove('active')">&times;</button>
+    <div id="corte-content" style="text-align:center">Cargando...</div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="imprimirCorte()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Imprimir corte</button>
+      <button onclick="document.getElementById('modal-corte').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>
+    </div>
   </div>
 </div>
 

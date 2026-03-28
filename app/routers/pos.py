@@ -719,6 +719,123 @@ async def pos_resumen_ventas(
     }
 
 
+@router.get("/corte-caja")
+async def pos_corte_caja(
+    periodo: str = "hoy",
+    fecha_inicio: str | None = None,
+    fecha_fin: str | None = None,
+    metodo_pago: str | None = None,
+    canal: str | None = None,
+    tipo: str | None = None,
+    cliente_id: int | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    from datetime import date as date_type, time as time_type
+    from calendar import monthrange
+    hoy = datetime.now(TZ).date()
+    dow = (hoy.weekday() + 1) % 7
+
+    # Date range
+    skip_date_filter = False
+    if periodo == "todos":
+        skip_date_filter = True
+        f_ini = f_fin = hoy
+    elif periodo == "rango" and fecha_inicio and fecha_fin:
+        f_ini = date_type.fromisoformat(fecha_inicio)
+        f_fin = date_type.fromisoformat(fecha_fin)
+    elif periodo == "ayer":
+        f_ini = f_fin = hoy - timedelta(days=1)
+    elif periodo == "semana":
+        f_ini = hoy - timedelta(days=dow)
+        f_fin = hoy
+    elif periodo == "semana_pasada":
+        inicio_esta = hoy - timedelta(days=dow)
+        f_ini = inicio_esta - timedelta(days=7)
+        f_fin = inicio_esta - timedelta(days=1)
+    elif periodo == "mes":
+        f_ini = hoy.replace(day=1)
+        f_fin = hoy
+    elif periodo == "mes_pasado":
+        primer_dia = hoy.replace(day=1)
+        ultimo_pasado = primer_dia - timedelta(days=1)
+        f_ini = ultimo_pasado.replace(day=1)
+        f_fin = ultimo_pasado
+    else:
+        f_ini = f_fin = hoy
+
+    estados_venta = ["Listo", "Listo taller", "En camino", "Entregado"]
+
+    if skip_date_filter:
+        query = select(Pedido).where(Pedido.estado.in_(estados_venta))
+    else:
+        utc_s = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+        utc_e = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+        query = select(Pedido).where(
+            Pedido.fecha_pedido >= utc_s,
+            Pedido.fecha_pedido <= utc_e,
+            Pedido.estado.in_(estados_venta),
+        )
+
+    if cliente_id:
+        query = query.where(Pedido.customer_id == cliente_id)
+    if canal:
+        from sqlalchemy import or_
+        canal_map = {"POS": "Mostrador", "Claudia": "WhatsApp"}
+        db_canales = [canal_map.get(c.strip(), c.strip()) for c in canal.split(",")]
+        query = query.where(Pedido.canal.in_(db_canales))
+    if tipo:
+        from sqlalchemy import or_, and_
+        tipos = [t.strip() for t in tipo.split(",")]
+        conds = []
+        for t in tipos:
+            if t == "Funeral": conds.append(Pedido.tipo_especial == "Funeral")
+            elif t == "Mostrador": conds.append(and_(Pedido.tipo_especial.is_(None), Pedido.direccion_entrega.is_(None)))
+            elif t == "Domicilio": conds.append(and_(Pedido.tipo_especial.is_(None), Pedido.direccion_entrega.isnot(None)))
+            elif t == "Recoger": conds.append(Pedido.tipo_especial == "Recoger")
+        if conds:
+            query = query.where(or_(*conds))
+    if metodo_pago:
+        from sqlalchemy import or_
+        metodos = [m.strip() for m in metodo_pago.split(",")]
+        query = query.where(or_(*[Pedido.forma_pago.ilike(f"%{m}%") for m in metodos]))
+
+    result = await db.execute(query)
+    pedidos = result.scalars().all()
+
+    total = 0
+    por_metodo = {}
+    for p in pedidos:
+        total += p.total or 0
+        for m in (p.forma_pago or "").split(","):
+            m = m.strip()
+            if m:
+                por_metodo[m] = por_metodo.get(m, 0) + (p.total or 0)
+
+    # Period label
+    dias = ["DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB"]
+    meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+    labels = {
+        "hoy": f"Hoy · {dias[hoy.weekday()]} {hoy.day} {meses[hoy.month-1]} {hoy.year}",
+        "ayer": f"Ayer · {dias[(hoy - timedelta(days=1)).weekday()]} {(hoy - timedelta(days=1)).day} {meses[(hoy - timedelta(days=1)).month-1]} {(hoy - timedelta(days=1)).year}",
+        "semana": "Esta semana",
+        "semana_pasada": "Semana pasada",
+        "mes": "Este mes",
+        "mes_pasado": "Mes pasado",
+        "todos": "Todos",
+    }
+    periodo_label = labels.get(periodo, f"{fecha_inicio} — {fecha_fin}" if fecha_inicio else periodo)
+
+    return {
+        "periodo": periodo_label,
+        "total_transacciones": len(pedidos),
+        "total": round(total / 100, 2),
+        "por_metodo": {k: round(v / 100, 2) for k, v in por_metodo.items()},
+    }
+
+
 @router.patch("/pedido/{pedido_id}/cancelar")
 async def pos_cancelar_pedido(
     pedido_id: int,

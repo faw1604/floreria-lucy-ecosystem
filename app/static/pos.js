@@ -1665,6 +1665,73 @@ async function confirmarCancelarTrans() {
 }
 
 // ═══════════════════════════════════════════
+// CORTE DE CAJA
+// ═══════════════════════════════════════════
+let lastCorteData = null;
+
+async function abrirCorteCaja() {
+  document.getElementById('corte-content').innerHTML = '<div style="padding:20px;color:var(--texto2)">Cargando...</div>';
+  document.getElementById('modal-corte').classList.add('active');
+  try {
+    let url = '/pos/corte-caja?periodo=' + transFilterPeriodo;
+    const params = getFilterParams();
+    if (params) url += '&' + params;
+    if (transFilterPeriodo === 'rango') {
+      const fi = document.getElementById('fp-fecha-ini').value;
+      const ff = document.getElementById('fp-fecha-fin').value;
+      if (fi) url += '&fecha_inicio=' + fi;
+      if (ff) url += '&fecha_fin=' + ff;
+    }
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('Error ' + r.status);
+    const d = await r.json();
+    lastCorteData = d;
+    const fP = (v) => '$' + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    let h = '';
+    h += `<div style="font-size:16px;font-weight:700;color:var(--verde);margin-bottom:4px">CORTE DE CAJA</div>`;
+    h += `<div style="font-size:13px;color:var(--texto2);margin-bottom:12px">${d.periodo}</div>`;
+    h += `<div style="font-size:12px;color:var(--texto2);margin-bottom:12px">${d.total_transacciones} transaccion${d.total_transacciones !== 1 ? 'es' : ''}</div>`;
+    h += '<div style="text-align:left;background:var(--crema);border-radius:8px;padding:12px;font-size:13px">';
+    h += '<div style="border-bottom:1px solid var(--borde);padding-bottom:6px;margin-bottom:6px">';
+    for (const [metodo, monto] of Object.entries(d.por_metodo || {})) {
+      if (monto > 0) h += `<div style="display:flex;justify-content:space-between;padding:3px 0"><span>${metodo}</span><span style="font-weight:600">${fP(monto)}</span></div>`;
+    }
+    h += '</div>';
+    h += `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:15px;font-weight:700;color:var(--verde)"><span>TOTAL</span><span>${fP(d.total)}</span></div>`;
+    h += '</div>';
+    document.getElementById('corte-content').innerHTML = h;
+  } catch(e) {
+    document.getElementById('corte-content').innerHTML = `<div style="color:var(--rojo);padding:20px">Error: ${e.message}</div>`;
+  }
+}
+
+function imprimirCorte() {
+  if (!lastCorteData) return;
+  const d = lastCorteData;
+  const S = sanitizarTexto;
+  const fP = (v) => '$' + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const L = [];
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline tk-header"><strong>FLORERIA LUCY</strong></div>');
+  L.push('<div class="dsep"></div>');
+  L.push('<div class="tline tk-comprobante"><strong>CORTE DE CAJA</strong></div>');
+  L.push(`<div class="tline tk-fecha">${S(d.periodo)}</div>`);
+  L.push('<div class="dsep"></div>');
+  L.push(`<div>${d.total_transacciones} TRANSACCIONES</div>`);
+  L.push('<div class="sep"></div>');
+  for (const [metodo, monto] of Object.entries(d.por_metodo || {})) {
+    if (monto > 0) L.push(`<div class="irow"><span>${S(metodo)}</span><span class="r">${fP(monto)}</span></div>`);
+  }
+  L.push('<div class="dsep"></div>');
+  L.push(`<div class="irow"><span class="med">TOTAL</span><span class="r med">${fP(d.total)}</span></div>`);
+  L.push('<div class="dsep"></div>');
+  L.push(`<div class="tline tk-fecha">${fechaLargaHoy()}</div>`);
+  L.push('<div class="dsep"></div>');
+  document.getElementById('print-frame').innerHTML = L.join('\n');
+  setTimeout(() => window.print(), 100);
+}
+
+// ═══════════════════════════════════════════
 // CLIENTES SECTION
 // ═══════════════════════════════════════════
 function debounceBuscarClientes() {
