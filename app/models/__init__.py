@@ -8,6 +8,7 @@ from app.models.configuracion import ConfiguracionNegocio, HorarioEspecifico, Co
 from app.models.usuarios import Usuario
 from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso, CategoriaGasto
 from app.models.banners import BannerCatalogo
+from app.models.cuentas import CuentaTransferencia
 
 __all__ = [
     "Cliente",
@@ -28,6 +29,7 @@ __all__ = [
     "MetodoPagoEgreso",
     "OtroIngreso",
     "CategoriaGasto",
+    "CuentaTransferencia",
     "BannerCatalogo",
     "Categoria",
     "ProductoVariante",

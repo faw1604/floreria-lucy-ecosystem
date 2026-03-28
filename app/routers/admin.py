@@ -15,6 +15,7 @@ from app.models.configuracion import CodigoDescuento
 from app.models.usuarios import Usuario
 from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso, CategoriaGasto
 from app.models.banners import BannerCatalogo
+from app.models.cuentas import CuentaTransferencia
 
 router = APIRouter()
 
@@ -686,6 +687,58 @@ async def eliminar_banner(
     await db.delete(b)
     await db.commit()
     return {"ok": True}
+
+
+# ══════ CUENTAS TRANSFERENCIA ══════
+
+@router.get("/cuentas-transferencia")
+async def listar_cuentas(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(CuentaTransferencia).order_by(CuentaTransferencia.id))
+    return [{"id":c.id,"banco":c.banco,"titular":c.titular,"tarjeta":c.tarjeta,"clabe":c.clabe,"activa":c.activa} for c in result.scalars().all()]
+
+@router.post("/cuentas-transferencia")
+async def crear_cuenta(request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    data = await request.json()
+    c = CuentaTransferencia(banco=data["banco"], titular=data.get("titular",""), tarjeta=data.get("tarjeta",""), clabe=data.get("clabe",""), activa=False)
+    db.add(c)
+    await db.commit()
+    await db.refresh(c)
+    return {"ok":True,"id":c.id}
+
+@router.put("/cuentas-transferencia/{cuenta_id}")
+async def actualizar_cuenta(cuenta_id: int, request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(CuentaTransferencia).where(CuentaTransferencia.id == cuenta_id))
+    c = result.scalar_one_or_none()
+    if not c: raise HTTPException(status_code=404, detail="No encontrada")
+    data = await request.json()
+    for k in ["banco","titular","tarjeta","clabe"]:
+        if k in data: setattr(c, k, data[k])
+    await db.commit()
+    return {"ok":True}
+
+@router.post("/cuentas-transferencia/{cuenta_id}/activar")
+async def activar_cuenta(cuenta_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    # Deactivate all first
+    await db.execute(text("UPDATE cuentas_transferencia SET activa = false"))
+    # Activate selected
+    await db.execute(text("UPDATE cuentas_transferencia SET activa = true WHERE id = :id"), {"id": cuenta_id})
+    await db.commit()
+    return {"ok":True}
+
+@router.delete("/cuentas-transferencia/{cuenta_id}")
+async def eliminar_cuenta(cuenta_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(CuentaTransferencia).where(CuentaTransferencia.id == cuenta_id))
+    c = result.scalar_one_or_none()
+    if not c: raise HTTPException(status_code=404, detail="No encontrada")
+    if c.activa: raise HTTPException(status_code=400, detail="No se puede eliminar la cuenta activa")
+    await db.delete(c)
+    await db.commit()
+    return {"ok":True}
 
 
 # ══════ ESTADÍSTICAS ══════

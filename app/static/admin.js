@@ -1732,13 +1732,7 @@ async function loadConfig() {
       {k:'negocio_email',l:'Email'},
       {k:'negocio_rfc',l:'RFC'},
     ], cfg);
-    renderCfgSection('cfg-banco', [
-      {k:'banco_nombre',l:'Banco'},
-      {k:'banco_titular',l:'Titular'},
-      {k:'banco_cuenta',l:'Número de cuenta',secret:true},
-      {k:'banco_clabe',l:'CLABE',secret:true},
-      {k:'banco_concepto',l:'Concepto sugerido'},
-    ], cfg);
+    renderCfgBancarios(cfg);
     renderCfgSection('cfg-ticket', [
       {k:'ticket_mostrar_rfc',l:'Mostrar RFC en tickets',type:'toggle'},
       {k:'ticket_mensaje_footer',l:'Footer ticket digital'},
@@ -1761,6 +1755,91 @@ async function loadConfig() {
       {k:'catalogo_fecha_minima_dias',l:'Días mínimos anticipación',type:'number'},
     ], cfg);
   } catch(e) {}
+}
+
+async function renderCfgBancarios(cfg) {
+  const el = document.getElementById('cfg-banco-content');
+  // Load cuentas
+  let cuentas = [];
+  try { const r = await fetch(API+'/api/admin/cuentas-transferencia',{credentials:'include'}); cuentas = await r.json(); } catch(e) {}
+
+  let html = '<div style="max-width:700px">';
+  // SECTION 1: Cuentas transferencia
+  html += '<h4 style="font-size:14px;color:var(--verde);margin-bottom:12px">Cuentas de transferencia</h4>';
+  cuentas.forEach(c => {
+    html += `<div style="border:1px solid ${c.activa?'var(--dorado)':'var(--borde)'};border-radius:10px;padding:14px;margin-bottom:10px;${c.activa?'background:#faf8f5':''}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="cuenta-activa" ${c.activa?'checked':''} onchange="activarCuenta(${c.id})"> ${c.activa?'<strong style="color:var(--dorado)">Cuenta activa</strong>':'Activar'}</label>
+        <span style="flex:1"></span>
+        ${!c.activa ? `<button class="btn-danger" style="font-size:11px;padding:4px 8px" onclick="eliminarCuenta(${c.id})">Eliminar</button>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="config-field"><label>Banco</label><input value="${esc(c.banco)}" id="ct-banco-${c.id}"></div>
+        <div class="config-field"><label>Titular</label><input value="${esc(c.titular)}" id="ct-titular-${c.id}"></div>
+        <div class="config-field"><label>No. tarjeta</label><input value="${esc(c.tarjeta)}" id="ct-tarjeta-${c.id}"></div>
+        <div class="config-field"><label>CLABE</label><input value="${esc(c.clabe)}" id="ct-clabe-${c.id}"></div>
+      </div>
+      <button class="btn-sm" onclick="guardarCuenta(${c.id})" style="margin-top:8px">Guardar cambios</button>
+    </div>`;
+  });
+  html += '<button class="btn-primary" onclick="nuevaCuenta()" style="margin-top:4px">+ Agregar cuenta</button>';
+
+  // SECTION 2: OXXO
+  html += '<h4 style="font-size:14px;color:var(--verde);margin:24px 0 12px;padding-top:16px;border-top:2px solid var(--borde)">OXXO</h4>';
+  html += `<div class="toggle-row"><label>OXXO activo</label><input type="checkbox" id="oxxo-toggle" ${cfg.oxxo_activo==='true'?'checked':''} onchange="saveConfigField('oxxo_activo',String(this.checked))"></div>
+    <div class="config-field"><label>Nombre (ej. Spin By Oxxo)</label><input id="oxxo-nom" value="${esc(cfg.oxxo_nombre||'')}"></div>
+    <div class="config-field"><label>Número de tarjeta</label><input id="oxxo-tar" value="${esc(cfg.oxxo_tarjeta||'')}"></div>
+    <button class="btn-sm" onclick="guardarOxxo()" style="margin-top:4px">Guardar OXXO</button>`;
+
+  // SECTION 3: Mensajes de instrucciones de pago
+  html += '<h4 style="font-size:14px;color:var(--verde);margin:24px 0 12px;padding-top:16px;border-top:2px solid var(--borde)">Instrucciones de pago</h4>';
+  html += `<div class="config-field"><label>Instrucciones pedido normal</label><textarea id="msg-normal" rows="4">${esc(cfg.mensaje_pago_normal||'')}</textarea></div>
+    <div class="config-field"><label>Instrucciones pedido funeral</label><textarea id="msg-funeral" rows="4">${esc(cfg.mensaje_pago_funeral||'')}</textarea></div>
+    <button class="btn-sm" onclick="guardarMensajesPago()" style="margin-top:4px">Guardar instrucciones</button>`;
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function activarCuenta(id) {
+  await fetch(API+'/api/admin/cuentas-transferencia/'+id+'/activar',{method:'POST',credentials:'include'});
+  showToast('Cuenta activada');
+  loadConfig();
+}
+
+async function guardarCuenta(id) {
+  const body = {
+    banco: document.getElementById('ct-banco-'+id)?.value||'',
+    titular: document.getElementById('ct-titular-'+id)?.value||'',
+    tarjeta: document.getElementById('ct-tarjeta-'+id)?.value||'',
+    clabe: document.getElementById('ct-clabe-'+id)?.value||'',
+  };
+  await fetch(API+'/api/admin/cuentas-transferencia/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)});
+  showToast('Cuenta guardada');
+}
+
+async function nuevaCuenta() {
+  await fetch(API+'/api/admin/cuentas-transferencia',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({banco:'',titular:'',tarjeta:'',clabe:''})});
+  loadConfig();
+}
+
+async function eliminarCuenta(id) {
+  if (!confirm('Eliminar esta cuenta?')) return;
+  const r = await fetch(API+'/api/admin/cuentas-transferencia/'+id,{method:'DELETE',credentials:'include'});
+  if (!r.ok) { const e = await r.json(); alert(e.detail||'Error'); return; }
+  loadConfig();
+}
+
+async function guardarOxxo() {
+  await saveConfigField('oxxo_nombre', document.getElementById('oxxo-nom').value);
+  await saveConfigField('oxxo_tarjeta', document.getElementById('oxxo-tar').value);
+  showToast('OXXO guardado');
+}
+
+async function guardarMensajesPago() {
+  await saveConfigField('mensaje_pago_normal', document.getElementById('msg-normal').value);
+  await saveConfigField('mensaje_pago_funeral', document.getElementById('msg-funeral').value);
+  showToast('Instrucciones guardadas');
 }
 
 function renderCfgSection(id, fields, cfg) {
