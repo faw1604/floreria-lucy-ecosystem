@@ -1543,23 +1543,40 @@ function removeFuneralNon() {
   renderStep3Fields();
 }
 
+function getChihuahuaNow() {
+  return new Date(new Date().toLocaleString('en-US', {timeZone: 'America/Chihuahua'}));
+}
+
+function calcMinDate() {
+  const now = getChihuahuaNow();
+  const day = now.getDay(); // 0=Sun
+  const hour = now.getHours() + now.getMinutes() / 60;
+  // Restricciones: Dom todo el día, Lun-Vie después 18h, Sáb después 16:30
+  let todayBlocked = false;
+  if (day === 0) todayBlocked = true; // Domingo
+  else if (day === 6 && hour >= 16.5) todayBlocked = true; // Sábado 16:30+
+  else if (day >= 1 && day <= 5 && hour >= 18) todayBlocked = true; // Lun-Vie 18+
+  const min = new Date(now);
+  if (todayBlocked) {
+    min.setDate(min.getDate() + 1);
+  }
+  return {minDate: min.toISOString().split('T')[0], todayBlocked};
+}
+
 function renderStep3Fields() {
   const tipo = pedidoWeb.tipo;
   const titles = {domicilio: 'Datos de envío', recoger: 'Datos de recogida', funeral: 'Datos del funeral'};
   document.getElementById('order-form-title').textContent = titles[tipo] || 'Datos del pedido';
 
-  // Tomorrow minimum date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const minDate = tomorrow.toISOString().split('T')[0];
+  const {minDate, todayBlocked} = calcMinDate();
 
-  // Time slots
+  // Time slots (fallback for recoger/funeral)
   const timeOpts = [];
   for (let h = 9; h <= 21; h++) {
     timeOpts.push(`${String(h).padStart(2,'0')}:00`);
     if (h < 21) timeOpts.push(`${String(h).padStart(2,'0')}:30`);
   }
-  const timeSelect = `<select id="of-hora-especifica" style="display:none"><option value="">Selecciona hora</option>${timeOpts.map(t => `<option value="${t}">${t}</option>`).join('')}</select>`;
+  const timeSelect = `<select id="of-hora-especifica" style="display:none"><option value="">Cargando horas...</option></select>`;
 
   let html = `
     <div class="order-field"><label>Nombre <span class="required">*</span></label><input type="text" id="of-nombre" value="${pedidoWeb.cliente_nombre||''}" placeholder="Tu nombre completo"></div>
@@ -1583,20 +1600,22 @@ function renderStep3Fields() {
     </div>
     <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje para la tarjeta...">${pedidoWeb.dedicatoria||''}</textarea></div>
     <div class="order-field"><label>Notas para el repartidor</label><input type="text" id="of-notas" value="${pedidoWeb.notas_entrega||''}" placeholder="Ej: Portón negro, tocar timbre"></div>
-    <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}"></div>
-    <div class="order-field"><label>Horario <span class="required">*</span></label>
+    <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}" onchange="onFechaChange()"></div>
+    <div id="of-wa-restriction" style="display:none"></div>
+    <div class="order-field" id="of-horario-field"><label>Horario <span class="required">*</span></label>
       <div class="order-horario-grid" id="of-horario-grid">
         <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='manana'?'selected':''}" onclick="selectHorario('manana')">Mañana 9-2pm</button>
         <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='tarde'?'selected':''}" onclick="selectHorario('tarde')">Tarde 2-6pm</button>
         <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='noche'?'selected':''}" onclick="selectHorario('noche')">Noche 6-9pm</button>
-        <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='hora_especifica'?'selected':''}" onclick="selectHorario('hora_especifica')">Hora específica</button>
+        <button type="button" class="order-horario-btn" id="of-hora-esp-btn" onclick="selectHorario('hora_especifica')" style="display:none">Hora específica</button>
       </div>
       ${timeSelect}
       <div class="hint" id="of-hora-hint" style="display:none">Mínimo 2 horas de anticipación</div>
     </div>`;
   } else if (tipo === 'recoger') {
     html += `
-    <div class="order-field"><label>Fecha de recogida <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}"></div>
+    <div class="order-field"><label>Fecha de recogida <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}" onchange="onFechaChange()"></div>
+    <div id="of-wa-restriction" style="display:none"></div>
     <div class="order-field"><label>Hora de recogida <span class="required">*</span></label>
       <select id="of-hora-recoger"><option value="">Selecciona hora</option>${timeOpts.map(t => `<option value="${t}" ${pedidoWeb.hora_especifica===t?'selected':''}>${t}</option>`).join('')}</select>
     </div>`;
@@ -1607,13 +1626,18 @@ function renderStep3Fields() {
     <div class="order-field"><label>Sala</label><input type="text" id="of-sala" value="${pedidoWeb.sala||''}" placeholder="Número o nombre de sala"></div>
     <div class="order-field"><label>Texto de la banda</label><input type="text" id="of-banda" value="${pedidoWeb.banda||''}" placeholder="Texto para la banda"></div>
     <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje...">${pedidoWeb.dedicatoria||''}</textarea></div>
-    <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}"></div>
+    <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}" onchange="onFechaChange()"></div>
+    <div id="of-wa-restriction" style="display:none"></div>
     <div class="order-field"><label>Horario velación</label>
       <select id="of-velacion"><option value="">Selecciona</option><option value="Ya inició" ${pedidoWeb.horario_velacion==='Ya inició'?'selected':''}>Ya inició</option>${timeOpts.map(t => `<option value="Inicia a las ${t}" ${pedidoWeb.horario_velacion===('Inicia a las '+t)?'selected':''}>Inicia a las ${t}</option>`).join('')}</select>
     </div>`;
   }
 
   document.getElementById('order-form-fields').innerHTML = html;
+  // Trigger fecha change to update hora específica availability
+  if (document.getElementById('of-fecha')?.value) {
+    setTimeout(() => onFechaChange(), 50);
+  }
 }
 
 function selectHorario(h) {
@@ -1624,6 +1648,68 @@ function selectHorario(h) {
   const hintEl = document.getElementById('of-hora-hint');
   if (h === 'hora_especifica') { horaEl.style.display = ''; hintEl.style.display = ''; }
   else { horaEl.style.display = 'none'; hintEl.style.display = 'none'; }
+}
+
+async function onFechaChange() {
+  const fecha = document.getElementById('of-fecha')?.value;
+  if (!fecha) return;
+  const now = getChihuahuaNow();
+  const hoy = now.toISOString().split('T')[0];
+  const isToday = fecha === hoy;
+  const isFuture = fecha > hoy;
+
+  // WhatsApp restriction for today (shouldn't happen if minDate is correct, but just in case)
+  const waDiv = document.getElementById('of-wa-restriction');
+  if (waDiv) {
+    if (isToday) {
+      const {todayBlocked} = calcMinDate();
+      if (todayBlocked) {
+        waDiv.style.display = '';
+        waDiv.innerHTML = '<div style="background:#fff3cd;color:#856404;padding:14px;border-radius:10px;margin:10px 0;text-align:center;font-size:14px">Para pedidos de hoy contáctanos por WhatsApp 💬<br><a href="https://wa.me/5216143349392" target="_blank" style="display:inline-block;margin-top:8px;padding:8px 20px;background:#25d366;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Abrir WhatsApp</a></div>';
+        return;
+      }
+    }
+    waDiv.style.display = 'none';
+  }
+
+  // Hora específica: only for tomorrow or later
+  const espBtn = document.getElementById('of-hora-esp-btn');
+  const horaSelect = document.getElementById('of-hora-especifica');
+  if (!espBtn) return; // not domicilio
+
+  if (!isFuture || isToday) {
+    // Today or somehow past — hide hora específica
+    espBtn.style.display = 'none';
+    if (horaSelect) horaSelect.style.display = 'none';
+    if (pedidoWeb.horario_entrega === 'hora_especifica') {
+      pedidoWeb.horario_entrega = null;
+      document.querySelectorAll('#of-horario-grid .order-horario-btn').forEach(b => b.classList.remove('selected'));
+    }
+    return;
+  }
+
+  // Fetch available hours for this date
+  try {
+    const r = await fetch(`${API}/catalogo/horarios-disponibles?fecha=${fecha}`);
+    const horas = await r.json();
+    if (!horas.length) {
+      // No hours configured for this day — hide option
+      espBtn.style.display = 'none';
+      if (horaSelect) horaSelect.style.display = 'none';
+      if (pedidoWeb.horario_entrega === 'hora_especifica') {
+        pedidoWeb.horario_entrega = null;
+        document.querySelectorAll('#of-horario-grid .order-horario-btn').forEach(b => b.classList.remove('selected'));
+      }
+    } else {
+      espBtn.style.display = '';
+      if (horaSelect) {
+        horaSelect.innerHTML = '<option value="">Selecciona hora</option>' +
+          horas.map(h => `<option value="${h.hora}" ${!h.disponible ? 'disabled' : ''}>${h.hora}${!h.disponible ? ' — No disponible' : ''}</option>`).join('');
+      }
+    }
+  } catch(e) {
+    espBtn.style.display = 'none';
+  }
 }
 
 function verifyMaps() {

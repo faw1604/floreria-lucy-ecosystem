@@ -4,7 +4,7 @@ from app.models.flores import TipoFlor, ProductoFlor
 from app.models.funerarias import Funeraria
 from app.models.pagos import MetodoPago
 from app.models.pedidos import Pedido, ItemPedido, NotificacionLog
-from app.models.configuracion import ConfiguracionNegocio
+from app.models.configuracion import ConfiguracionNegocio, HorarioEspecifico
 
 __all__ = [
     "Cliente",
@@ -17,4 +17,5 @@ __all__ = [
     "ItemPedido",
     "NotificacionLog",
     "ConfiguracionNegocio",
+    "HorarioEspecifico",
 ]

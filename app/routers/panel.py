@@ -9,6 +9,7 @@ from app.core.config import TZ
 from app.routers.auth import verificar_sesion
 from app.models.pedidos import Pedido
 from app.models.clientes import Cliente
+from app.models.configuracion import HorarioEspecifico
 
 router = APIRouter()
 
@@ -448,3 +449,63 @@ async def pagos_pendientes(
             "canal": p.canal,
         })
     return items
+
+
+# --- Horarios específicos ---
+
+@router.get("/horarios-especificos")
+async def listar_horarios_especificos(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(
+        select(HorarioEspecifico)
+        .where(HorarioEspecifico.activo == True)
+        .order_by(HorarioEspecifico.dia_semana, HorarioEspecifico.hora)
+    )
+    horarios = result.scalars().all()
+    return [
+        {"id": h.id, "dia_semana": h.dia_semana, "hora": h.hora}
+        for h in horarios
+    ]
+
+
+@router.post("/horarios-especificos")
+async def agregar_horario_especifico(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    data = await request.json()
+    dia = data.get("dia_semana")
+    hora = data.get("hora", "").strip()
+    if dia is None or not hora:
+        raise HTTPException(status_code=400, detail="dia_semana y hora son requeridos")
+    h = HorarioEspecifico(dia_semana=dia, hora=hora, activo=True)
+    db.add(h)
+    await db.commit()
+    await db.refresh(h)
+    return {"ok": True, "id": h.id, "dia_semana": h.dia_semana, "hora": h.hora}
+
+
+@router.delete("/horarios-especificos/{horario_id}")
+async def eliminar_horario_especifico(
+    horario_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(
+        select(HorarioEspecifico).where(HorarioEspecifico.id == horario_id)
+    )
+    h = result.scalar_one_or_none()
+    if not h:
+        raise HTTPException(status_code=404, detail="Horario no encontrado")
+    await db.delete(h)
+    await db.commit()
+    return {"ok": True}

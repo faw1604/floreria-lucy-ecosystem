@@ -8,7 +8,9 @@ from app.database import get_db
 from app.models.productos import Producto
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
+from app.models.configuracion import HorarioEspecifico
 from app.core.config import TZ
+from datetime import date as date_type
 
 logger = logging.getLogger("floreria")
 
@@ -92,6 +94,33 @@ async def catalogo_productos(
         }
         for p in productos
     ]
+
+
+@router.get("/horarios-disponibles")
+async def horarios_disponibles(
+    fecha: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Retorna horas específicas disponibles para una fecha dada."""
+    try:
+        fecha_dt = date_type.fromisoformat(fecha)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido (YYYY-MM-DD)")
+
+    hoy = datetime.now(TZ).date()
+    if fecha_dt <= hoy:
+        return []  # Solo mañana o después
+
+    # Python weekday: 0=Monday..6=Sunday — coincide con nuestro esquema
+    dia_semana = fecha_dt.weekday()
+
+    result = await db.execute(
+        select(HorarioEspecifico)
+        .where(HorarioEspecifico.dia_semana == dia_semana, HorarioEspecifico.activo == True)
+        .order_by(HorarioEspecifico.hora)
+    )
+    horarios = result.scalars().all()
+    return [{"hora": h.hora, "disponible": True} for h in horarios]
 
 
 async def _generar_numero_pedido(db: AsyncSession) -> str:
