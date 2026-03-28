@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.productos import Producto
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
-from app.models.configuracion import HorarioEspecifico
+from app.models.configuracion import HorarioEspecifico, CodigoDescuento
 from app.core.config import TZ
 from datetime import date as date_type
 
@@ -121,6 +121,35 @@ async def horarios_disponibles(
     )
     horarios = result.scalars().all()
     return [{"hora": h.hora, "disponible": True} for h in horarios]
+
+
+@router.get("/validar-descuento")
+async def validar_descuento(
+    codigo: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Valida un código de descuento."""
+    codigo_upper = codigo.strip().upper()
+    result = await db.execute(
+        select(CodigoDescuento).where(CodigoDescuento.codigo == codigo_upper)
+    )
+    desc = result.scalar_one_or_none()
+    if not desc or not desc.activo:
+        return {"valido": False}
+    # Verificar expiración
+    if desc.fecha_expiracion:
+        hoy = datetime.now(TZ).date()
+        if hoy > desc.fecha_expiracion:
+            return {"valido": False}
+    # Verificar usos
+    if desc.usos_maximos is not None and desc.usos_actuales >= desc.usos_maximos:
+        return {"valido": False}
+    return {
+        "valido": True,
+        "tipo": desc.tipo,
+        "valor": desc.valor,
+        "descripcion": desc.descripcion or f"{desc.valor}{'%' if desc.tipo == 'porcentaje' else ' pesos'} de descuento",
+    }
 
 
 async def _generar_numero_pedido(db: AsyncSession) -> str:

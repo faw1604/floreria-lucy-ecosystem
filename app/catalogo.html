@@ -413,6 +413,14 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
       <div class="order-sub">Revisa los productos seleccionados</div>
       <div id="order-items-list"></div>
       <div class="order-subtotal" id="order-subtotal"></div>
+      <div class="order-field" style="margin-top:12px">
+        <label>¿Tienes un código de descuento?</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="of-discount-code" placeholder="Ingresa tu código" style="flex:1;text-transform:uppercase">
+          <button class="order-btn primary" style="flex:none;padding:10px 16px" onclick="applyDiscountCode()">Aplicar</button>
+        </div>
+        <div id="of-discount-result"></div>
+      </div>
       <div class="order-btn-row">
         <button class="order-btn secondary" onclick="orderBack(0)">Modificar carrito</button>
         <button class="order-btn primary" onclick="orderGoStep(2)">Continuar</button>
@@ -550,7 +558,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     <!-- Step 2: register form -->
     <div id="reg-step-form" style="display:none">
       <h2>Regístrate</h2>
-      <div class="sub">Obtén 10% de descuento en tu primera compra</div>
+      <div class="sub">Regístrate para obtener descuentos y promociones</div>
       <div class="reg-field"><label>Nombre completo *</label><input type="text" id="reg-nombre" placeholder="Ana García"></div>
       <div class="reg-field"><label>Teléfono *</label><input type="tel" id="reg-tel" maxlength="10" placeholder="6141234567"></div>
       <div class="reg-field"><label>Correo electrónico</label><input type="email" id="reg-email" placeholder="ana@gmail.com"></div>
@@ -1355,10 +1363,7 @@ async function regVerify() {
       document.getElementById('reg-msg').textContent = `¡Hola ${data.nombre.split(' ')[0]}!`;
       document.getElementById('reg-code-display').textContent = data.codigo_referido || '—';
       const discountEl = document.getElementById('reg-discount-msg');
-      if (data.descuento_primera_compra) {
-        discountEl.textContent = 'Tienes 10% de descuento disponible en esta compra';
-        discountEl.style.display = '';
-      } else if (data.descuento_referido > 0) {
+      if (data.descuento_referido > 0) {
         discountEl.textContent = `Tienes $${data.descuento_referido / 100} de descuento por referidos`;
         discountEl.style.display = '';
       } else {
@@ -1418,10 +1423,7 @@ async function regSubmit() {
       document.getElementById('reg-msg').textContent = data.mensaje;
       document.getElementById('reg-code-display').textContent = data.codigo_referido;
       const discountEl = document.getElementById('reg-discount-msg');
-      if (data.descuento_primera_compra) {
-        discountEl.textContent = '¡Tienes 10% de descuento en tu primera compra!';
-        discountEl.style.display = '';
-      } else { discountEl.style.display = 'none'; }
+      discountEl.style.display = 'none';
     }
   } catch(e) { regSkip(); }
 }
@@ -1441,24 +1443,98 @@ function regFinish() {
   if (!regPendingAction) return;
   if (regPendingAction.type === 'single') {
     const p = regPendingAction.product;
-    let msg;
-    if (regClienteData && regClienteData.descuento_primera_compra) {
-      msg = `Hola, me interesa el ${p.nombre} 🌸\n(Tengo descuento de primera compra — código cliente: ${regClienteData.codigo_referido})`;
-    } else {
-      msg = `Hola, me interesa el ${p.nombre} que vi en su catálogo 🌸`;
-    }
+    const msg = `Hola, me interesa el ${p.nombre} que vi en su catálogo 🌸`;
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
   } else if (regPendingAction.type === 'all') {
     let list = cart.map(p => `- ${p.nombre} (${getDisplayPrice(p)})`).join('\n');
-    let msg;
-    if (regClienteData && regClienteData.descuento_primera_compra) {
-      msg = `Hola, me interesan estos arreglos que vi en su catálogo 🌸\n\n${list}\n\n(Tengo descuento de primera compra — código cliente: ${regClienteData.codigo_referido})\n\n¿Me pueden ayudar?`;
-    } else {
-      msg = `Hola, me interesan estos arreglos que vi en su catálogo 🌸\n\n${list}\n\n¿Me pueden ayudar?`;
-    }
+    const msg = `Hola, me interesan estos arreglos que vi en su catálogo 🌸\n\n${list}\n\n¿Me pueden ayudar?`;
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
   }
   regPendingAction = null;
+}
+
+// ====== COUNTRY CODES ======
+const COUNTRY_CODES = [
+  {code:'+52',flag:'🇲🇽',name:'México'},
+  {code:'+1',flag:'🇺🇸',name:'Estados Unidos'},
+  {code:'+1CA',flag:'🇨🇦',name:'Canadá',dial:'+1'},
+  {code:'---',flag:'',name:'───────────'},
+  {code:'+54',flag:'🇦🇷',name:'Argentina'},
+  {code:'+591',flag:'🇧🇴',name:'Bolivia'},
+  {code:'+55',flag:'🇧🇷',name:'Brasil'},
+  {code:'+56',flag:'🇨🇱',name:'Chile'},
+  {code:'+57',flag:'🇨🇴',name:'Colombia'},
+  {code:'+506',flag:'🇨🇷',name:'Costa Rica'},
+  {code:'+53',flag:'🇨🇺',name:'Cuba'},
+  {code:'+593',flag:'🇪🇨',name:'Ecuador'},
+  {code:'+503',flag:'🇸🇻',name:'El Salvador'},
+  {code:'+34',flag:'🇪🇸',name:'España'},
+  {code:'+33',flag:'🇫🇷',name:'Francia'},
+  {code:'+502',flag:'🇬🇹',name:'Guatemala'},
+  {code:'+504',flag:'🇭🇳',name:'Honduras'},
+  {code:'+39',flag:'🇮🇹',name:'Italia'},
+  {code:'+505',flag:'🇳🇮',name:'Nicaragua'},
+  {code:'+507',flag:'🇵🇦',name:'Panamá'},
+  {code:'+595',flag:'🇵🇾',name:'Paraguay'},
+  {code:'+51',flag:'🇵🇪',name:'Perú'},
+  {code:'+44',flag:'🇬🇧',name:'Reino Unido'},
+  {code:'+1PR',flag:'🇵🇷',name:'Puerto Rico',dial:'+1'},
+  {code:'+809',flag:'🇩🇴',name:'Rep. Dominicana'},
+  {code:'+598',flag:'🇺🇾',name:'Uruguay'},
+  {code:'+58',flag:'🇻🇪',name:'Venezuela'},
+  {code:'+49',flag:'🇩🇪',name:'Alemania'},
+  {code:'+81',flag:'🇯🇵',name:'Japón'},
+  {code:'+86',flag:'🇨🇳',name:'China'},
+  {code:'+82',flag:'🇰🇷',name:'Corea del Sur'},
+  {code:'+91',flag:'🇮🇳',name:'India'},
+  {code:'+61',flag:'🇦🇺',name:'Australia'},
+];
+
+function countrySelectHtml(id, selected) {
+  return `<select id="${id}" style="width:auto;min-width:100px">${COUNTRY_CODES.map(c => {
+    if (c.code === '---') return '<option disabled>───────────</option>';
+    const val = c.dial || c.code;
+    const sel = (selected||'+52') === val ? 'selected' : '';
+    return `<option value="${val}" ${sel}>${c.flag} ${c.name} (${c.dial||c.code})</option>`;
+  }).join('')}</select>`;
+}
+
+function getDialCode(selectId) {
+  const sel = document.getElementById(selectId);
+  return sel ? sel.value.replace('+','') : '52';
+}
+
+// ====== DISCOUNT CODE ======
+let appliedDiscount = null; // {tipo, valor, descripcion, codigo}
+
+async function applyDiscountCode() {
+  const input = document.getElementById('of-discount-code');
+  const resultDiv = document.getElementById('of-discount-result');
+  const code = (input?.value || '').trim();
+  if (!code) return;
+  try {
+    const r = await fetch(`${API}/catalogo/validar-descuento?codigo=${encodeURIComponent(code)}`);
+    const data = await r.json();
+    if (data.valido) {
+      appliedDiscount = {tipo: data.tipo, valor: data.valor, descripcion: data.descripcion, codigo: code.toUpperCase()};
+      resultDiv.innerHTML = `<div style="color:var(--dorado);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;margin-top:6px">✓ ${data.descripcion} <button onclick="clearDiscount()" style="background:none;border:none;color:var(--texto2);font-size:16px;cursor:pointer">&times;</button></div>`;
+      renderOrderStep1();
+    } else {
+      appliedDiscount = null;
+      resultDiv.innerHTML = '<div style="color:#c0392b;font-size:13px;margin-top:6px">Código no válido</div>';
+    }
+  } catch(e) {
+    resultDiv.innerHTML = '<div style="color:#c0392b;font-size:13px;margin-top:6px">Error al validar</div>';
+  }
+}
+
+function clearDiscount() {
+  appliedDiscount = null;
+  const input = document.getElementById('of-discount-code');
+  if (input) input.value = '';
+  const resultDiv = document.getElementById('of-discount-result');
+  if (resultDiv) resultDiv.innerHTML = '';
+  renderOrderStep1();
 }
 
 // ====== ORDER FORM (T3/T4/T6) ======
@@ -1505,7 +1581,14 @@ function renderOrderStep1() {
       </div>
     </div>`;
   }).join('');
-  document.getElementById('order-subtotal').textContent = `Subtotal: $${(sub/100).toLocaleString()}`;
+  let discHtml = '';
+  if (appliedDiscount) {
+    let descAmt = 0;
+    if (appliedDiscount.tipo === 'porcentaje') descAmt = Math.round(sub * appliedDiscount.valor / 100);
+    else descAmt = appliedDiscount.valor;
+    discHtml = `<div style="text-align:right;font-size:14px;color:var(--dorado);font-weight:600">Descuento: -$${(descAmt/100).toLocaleString()}</div>`;
+  }
+  document.getElementById('order-subtotal').innerHTML = `Subtotal: $${(sub/100).toLocaleString()}${discHtml}`;
 }
 
 function selectOrderType(tipo) {
@@ -1582,8 +1665,8 @@ function renderStep3Fields() {
     <div class="order-field"><label>Nombre <span class="required">*</span></label><input type="text" id="of-nombre" value="${pedidoWeb.cliente_nombre||''}" placeholder="Tu nombre completo"></div>
     <div class="order-field"><label>Teléfono <span class="required">*</span></label>
       <div class="order-phone-row">
-        <select id="of-pais"><option value="+52" selected>+52 MX</option><option value="+1">+1 USA</option></select>
-        <input type="tel" id="of-telefono" value="${pedidoWeb.cliente_telefono||''}" placeholder="10 dígitos" maxlength="10">
+        ${countrySelectHtml('of-pais', pedidoWeb.pais_cliente)}
+        <input type="tel" id="of-telefono" value="${pedidoWeb.cliente_telefono||''}" placeholder="10 dígitos" maxlength="15">
       </div>
     </div>
     <div class="order-field"><label>Correo electrónico</label><input type="email" id="of-email" value="${pedidoWeb.cliente_email||''}" placeholder="tu@email.com"></div>`;
@@ -1591,7 +1674,12 @@ function renderStep3Fields() {
   if (tipo === 'domicilio') {
     html += `
     <div class="order-field"><label>Nombre de quien recibe <span class="required">*</span></label><input type="text" id="of-destinatario" value="${pedidoWeb.nombre_destinatario||''}" placeholder="Nombre del destinatario"></div>
-    <div class="order-field"><label>Teléfono de quien recibe <span class="required">*</span></label><input type="tel" id="of-tel-dest" value="${pedidoWeb.telefono_destinatario||''}" placeholder="10 dígitos" maxlength="10"></div>
+    <div class="order-field"><label>Teléfono de quien recibe <span class="required">*</span></label>
+      <div class="order-phone-row">
+        ${countrySelectHtml('of-pais-dest', pedidoWeb.pais_destinatario)}
+        <input type="tel" id="of-tel-dest" value="${pedidoWeb.telefono_destinatario||''}" placeholder="10 dígitos" maxlength="15">
+      </div>
+    </div>
     <div class="order-field"><label>Dirección de entrega <span class="required">*</span></label><input type="text" id="of-direccion" value="${pedidoWeb.direccion_entrega||''}" placeholder="Calle, número, colonia">
       <div class="order-verify-row">
         <a href="#" id="of-maps-link" onclick="verifyMaps()" target="_blank">📍 Verificar en Maps</a>
@@ -1743,14 +1831,15 @@ function saveStep3Data() {
   const tipo = pedidoWeb.tipo;
   pedidoWeb.cliente_nombre = (document.getElementById('of-nombre')?.value || '').trim();
   pedidoWeb.cliente_telefono = (document.getElementById('of-telefono')?.value || '').trim();
-  const pais = document.getElementById('of-pais')?.value || '+52';
-  pedidoWeb.telefono_completo = pais.replace('+','') + pedidoWeb.cliente_telefono;
+  pedidoWeb.pais_cliente = document.getElementById('of-pais')?.value || '+52';
+  pedidoWeb.telefono_completo = pedidoWeb.pais_cliente.replace('+','') + pedidoWeb.cliente_telefono;
   pedidoWeb.cliente_email = (document.getElementById('of-email')?.value || '').trim();
   pedidoWeb.fecha_entrega = document.getElementById('of-fecha')?.value || '';
 
   if (tipo === 'domicilio') {
     pedidoWeb.nombre_destinatario = (document.getElementById('of-destinatario')?.value || '').trim();
     pedidoWeb.telefono_destinatario = (document.getElementById('of-tel-dest')?.value || '').trim();
+    pedidoWeb.pais_destinatario = document.getElementById('of-pais-dest')?.value || '+52';
     pedidoWeb.direccion_entrega = (document.getElementById('of-direccion')?.value || '').trim();
     pedidoWeb.dedicatoria = (document.getElementById('of-dedicatoria')?.value || '').trim();
     pedidoWeb.notas_entrega = (document.getElementById('of-notas')?.value || '').trim();
@@ -1800,7 +1889,15 @@ function renderOrderStep4() {
     sub += precio;
     html += `<div style="font-size:13px;color:var(--texto2);margin-bottom:4px">• ${p.nombre} — $${(precio/100).toLocaleString()}</div>`;
   });
-  html += `<div style="text-align:right;font-size:16px;font-weight:600;color:var(--verde);margin:10px 0;padding-top:8px;border-top:1px solid var(--borde)">Total estimado: $${(sub/100).toLocaleString()}</div>`;
+  if (appliedDiscount) {
+    let descAmt = 0;
+    if (appliedDiscount.tipo === 'porcentaje') descAmt = Math.round(sub * appliedDiscount.valor / 100);
+    else descAmt = appliedDiscount.valor;
+    html += `<div style="text-align:right;font-size:13px;color:var(--dorado);font-weight:600;margin-top:6px">Descuento (${appliedDiscount.codigo}): -$${(descAmt/100).toLocaleString()}</div>`;
+    html += `<div style="text-align:right;font-size:16px;font-weight:600;color:var(--verde);margin:4px 0;padding-top:8px;border-top:1px solid var(--borde)">Total estimado: $${((sub-descAmt)/100).toLocaleString()}</div>`;
+  } else {
+    html += `<div style="text-align:right;font-size:16px;font-weight:600;color:var(--verde);margin:10px 0;padding-top:8px;border-top:1px solid var(--borde)">Total estimado: $${(sub/100).toLocaleString()}</div>`;
+  }
   html += `<div style="font-size:14px;font-weight:600;margin:12px 0 6px">Tipo: ${tipoLabels[tipo]}</div>`;
   html += `<div style="font-size:13px;color:var(--texto2)">Cliente: ${pedidoWeb.cliente_nombre}<br>Tel: ${pedidoWeb.cliente_telefono}</div>`;
   if (tipo === 'domicilio') {
@@ -1826,7 +1923,7 @@ async function submitOrder() {
       cliente_telefono: pedidoWeb.telefono_completo,
       cliente_email: pedidoWeb.cliente_email || null,
       nombre_destinatario: pedidoWeb.nombre_destinatario || null,
-      telefono_destinatario: pedidoWeb.telefono_destinatario ? '52' + pedidoWeb.telefono_destinatario : null,
+      telefono_destinatario: pedidoWeb.telefono_destinatario ? (pedidoWeb.pais_destinatario||'+52').replace('+','') + pedidoWeb.telefono_destinatario : null,
       direccion_entrega: pedidoWeb.direccion_entrega || null,
       dedicatoria: pedidoWeb.dedicatoria || null,
       notas_entrega: pedidoWeb.notas_entrega || null,
@@ -1838,6 +1935,7 @@ async function submitOrder() {
       sala: pedidoWeb.sala || null,
       banda: pedidoWeb.banda || null,
       horario_velacion: pedidoWeb.horario_velacion || null,
+      codigo_descuento: appliedDiscount ? appliedDiscount.codigo : null,
     };
     const r = await fetch(`${API}/catalogo/pedido`, {
       method: 'POST',

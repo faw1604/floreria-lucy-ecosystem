@@ -331,12 +331,8 @@ function buildW3Form() {
     if (clienteSel) {
       html += `<div class="client-sel">
         <div><div class="cname">${clienteSel.nombre}</div><div class="cphone">${clienteSel.telefono}</div></div>
-        ${clienteSel.primera_compra ? '<span class="badge-1">10% primera compra</span>' : ''}
         <button class="cbtn" onclick="abrirBuscarCliente()">Cambiar</button>
       </div>`;
-      if (clienteSel.primera_compra && !descGlobal) {
-        html += `<button onclick="aplicarDescPrimera()" style="margin-top:8px;padding:6px 12px;background:var(--dorado);color:var(--verde);border:none;border-radius:6px;font-size:11px;font-weight:600">Aplicar 10% primera compra</button>`;
-      }
     } else {
       html += `<div class="client-box" onclick="abrirBuscarCliente()">Seleccionar o registrar cliente</div>`;
     }
@@ -535,9 +531,8 @@ async function buscarClientesModal() {
     const r = await fetch('/pos/clientes/buscar?q=' + encodeURIComponent(q));
     const clientes = await r.json();
     document.getElementById('modal-cli-results').innerHTML = clientes.map(c =>
-      `<div class="modal-item" onclick="selCliente(${c.id},'${esc(c.nombre)}','${c.telefono}',${c.primera_compra})">
+      `<div class="modal-item" onclick="selCliente(${c.id},'${esc(c.nombre)}','${c.telefono}',false)">
         <strong>${c.nombre}</strong> — ${c.telefono}
-        ${c.primera_compra ? '<span style="color:var(--dorado);font-size:11px;margin-left:4px">10% primera compra</span>' : ''}
       </div>`
     ).join('') || '<div style="padding:10px;color:var(--texto2);font-size:12px">Sin resultados</div>';
   } catch(e) { console.error(e); }
@@ -587,7 +582,7 @@ async function registrarCliente() {
       return;
     }
     const cli = await r.json();
-    clienteSel = {id: cli.id, nombre: cli.nombre, telefono: cli.telefono, primera_compra: true};
+    clienteSel = {id: cli.id, nombre: cli.nombre, telefono: cli.telefono, primera_compra: false};
     document.getElementById('modal-registro').classList.remove('active');
     document.getElementById('modal-cliente').classList.remove('active');
     buildW3Form();
@@ -1753,13 +1748,13 @@ async function buscarClientesSec() {
           <div>
             <div class="cli-name">${c.nombre}</div>
             <div class="cli-phone">${c.telefono} ${c.email ? '— ' + c.email : ''}</div>
-            ${c.primera_compra ? '<div class="cli-orders" style="color:var(--dorado)">Primera compra — 10% descuento</div>' : '<div class="cli-orders">Cliente recurrente</div>'}
+            <div class="cli-orders">${c.total_pedidos > 0 ? 'Cliente recurrente' : 'Cliente nuevo'}</div>
           </div>
         </div>
         <div style="display:flex;gap:6px;margin-top:8px">
           ${c.telefono ? `<button onclick="abrirWaCli('${esc(c.nombre)}','${c.telefono}')" style="padding:5px 10px;border:1px solid #25D366;background:#fff;color:#25D366;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💬 WhatsApp</button>` : ''}
           <button onclick="verPedidosCliente(${c.id},'${esc(c.nombre)}')" style="padding:5px 10px;border:1px solid var(--borde);background:#fff;color:var(--texto);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📋 Ver pedidos</button>
-          <button onclick="nuevoPedidoCliente(${c.id},'${esc(c.nombre)}','${c.telefono}',${c.primera_compra})" style="padding:5px 10px;border:1px solid var(--verde);background:var(--verde);color:#fff;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">➕ Nuevo pedido</button>
+          <button onclick="nuevoPedidoCliente(${c.id},'${esc(c.nombre)}','${c.telefono}',false)" style="padding:5px 10px;border:1px solid var(--verde);background:var(--verde);color:#fff;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">➕ Nuevo pedido</button>
         </div>
       </div>`
     ).join('') || '<div style="padding:10px;color:var(--texto2);font-size:12px">Sin resultados</div>';
