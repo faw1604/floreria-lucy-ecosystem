@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Cookie
+from fastapi import APIRouter, Depends, HTTPException, Cookie, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -67,11 +67,42 @@ async def actualizar_producto(
     producto = result.scalar_one_or_none()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones"]:
+    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones", "imagen_url", "visible_catalogo", "codigo"]:
         if campo in request:
             setattr(producto, campo, request[campo])
     await db.commit()
     return {"id": producto.id, "nombre": producto.nombre, "precio": producto.precio}
+
+
+@router.put("/{producto_id}")
+async def actualizar_producto_put(
+    producto_id: int,
+    request: dict,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db)
+):
+    return await actualizar_producto(producto_id, request, panel_session, db)
+
+
+@router.post("/subir-imagen")
+async def subir_imagen(
+    imagen: UploadFile = File(...),
+    panel_session: str | None = Cookie(default=None),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    import cloudinary, cloudinary.uploader, os
+    from datetime import datetime
+    from app.core.config import TZ
+    cloudinary.config(
+        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", "ddku2wmpk"),
+        api_key=os.getenv("CLOUDINARY_API_KEY", "543563876228939"),
+        api_secret=os.getenv("CLOUDINARY_API_SECRET", ""),
+    )
+    contents = await imagen.read()
+    result = cloudinary.uploader.upload(contents, folder="productos")
+    return {"url": result["secure_url"]}
+
 
 @router.patch("/{producto_id}/imagen")
 async def actualizar_imagen(

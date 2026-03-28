@@ -277,6 +277,14 @@ async def taller_html(panel_session: str | None = Cookie(default=None)):
 @router.get("/", response_class=HTMLResponse)
 async def panel_html(panel_session: str | None = Cookie(default=None)):
     try:
+        with open("app/admin.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="admin.html no encontrado")
+
+@router.get("/legacy", response_class=HTMLResponse)
+async def panel_legacy(panel_session: str | None = Cookie(default=None)):
+    try:
         with open("app/panel.html", "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
     except FileNotFoundError:

@@ -18,3 +18,4 @@ class Producto(Base):
     precio_descuento: Mapped[int | None] = mapped_column(Integer, nullable=True)
     etiquetas: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array: ["rosas","romántico"]
     dimensiones: Mapped[str | None] = mapped_column(Text, nullable=True)  # ej: "30cm x 40cm"
+    visible_catalogo: Mapped[bool] = mapped_column(Boolean, default=True)

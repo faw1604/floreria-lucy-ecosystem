@@ -31,7 +31,7 @@ async def listar_clientes(
         raise HTTPException(status_code=401, detail="No autenticado")
     result = await db.execute(select(Cliente).order_by(Cliente.nombre))
     clientes = result.scalars().all()
-    return [{"id": c.id, "nombre": c.nombre, "telefono": c.telefono, "fuente": c.fuente, "codigo_referido": c.codigo_referido, "registrado_web": c.registrado_web} for c in clientes]
+    return [{"id": c.id, "nombre": c.nombre, "telefono": c.telefono, "email": c.email, "fuente": c.fuente, "codigo_referido": c.codigo_referido, "registrado_web": c.registrado_web, "direccion_default": c.direccion_default, "total_pedidos": 0, "total_gastado": 0} for c in clientes]
 
 
 @router.get("/buscar")
@@ -237,3 +237,38 @@ async def crear_cliente(
     await db.commit()
     await db.refresh(cliente)
     return {"id": cliente.id, "nombre": cliente.nombre, "telefono": cliente.telefono}
+
+
+@router.get("/{cliente_id}")
+async def obtener_cliente(
+    cliente_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Cliente).where(Cliente.id == cliente_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    return {"id": c.id, "nombre": c.nombre, "telefono": c.telefono, "email": c.email, "direccion_default": c.direccion_default, "fuente": c.fuente}
+
+
+@router.put("/{cliente_id}")
+async def actualizar_cliente(
+    cliente_id: int,
+    request: dict,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Cliente).where(Cliente.id == cliente_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    for campo in ["nombre", "telefono", "email", "direccion_default"]:
+        if campo in request:
+            setattr(c, campo, request[campo])
+    await db.commit()
+    return {"ok": True, "id": c.id}

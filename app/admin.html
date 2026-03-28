@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Florería Lucy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<div class="sidebar" id="sidebar">
+  <div class="sb-logo"><span>🌸</span>Florería<br>Lucy</div>
+  <div class="sb-nav">
+    <div class="sb-item active" onclick="navTo('ventas')" id="sb-ventas"><span class="sb-ico">🛒</span><span class="sb-label">Ventas</span></div>
+    <div class="sb-item" onclick="navTo('pendientes')" id="sb-pendientes"><span class="sb-ico">⏳<span class="badge" id="badge-pend" style="display:none">0</span></span><span class="sb-label">Pendientes</span></div>
+    <div class="sb-item" onclick="navTo('transacciones')" id="sb-transacciones"><span class="sb-ico">💰</span><span class="sb-label">Transacciones</span></div>
+    <div class="sb-item" onclick="navTo('clientes')" id="sb-clientes"><span class="sb-ico">👤</span><span class="sb-label">Clientes</span></div>
+    <div class="sb-item" onclick="navTo('productos')" id="sb-productos"><span class="sb-ico">📦</span><span class="sb-label">Productos</span></div>
+    <div class="sb-item" onclick="navTo('claudia')" id="sb-claudia"><span class="sb-ico">🤖</span><span class="sb-label">Claudia</span></div>
+    <div class="sb-item" onclick="navTo('web')" id="sb-web"><span class="sb-ico">🌐</span><span class="sb-label">Página Web</span></div>
+    <div class="sb-item" onclick="navTo('finanzas')" id="sb-finanzas"><span class="sb-ico">📊</span><span class="sb-label">Finanzas</span></div>
+    <div class="sb-item" onclick="navTo('estadisticas')" id="sb-estadisticas"><span class="sb-ico">📈</span><span class="sb-label">Estadísticas</span></div>
+    <div class="sb-item" onclick="navTo('usuarios')" id="sb-usuarios"><span class="sb-ico">🔑</span><span class="sb-label">Usuarios</span></div>
+    <div class="sb-item" onclick="navTo('config')" id="sb-config"><span class="sb-ico">⚙️</span><span class="sb-label">Config</span></div>
+  </div>
+  <div class="sb-footer">
+    <a href="/panel/pos" target="_blank">🛒 POS</a>
+    <a href="/panel/taller" target="_blank">🌸 Taller</a>
+    <a href="/panel/repartidor" target="_blank">🚚 Repartidor</a>
+    <button onclick="logout()">Salir</button>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main-content">
+
+<!-- ════════ VENTAS ════════ -->
+<div class="section active" id="sec-ventas">
+  <div class="sec-header"><h2>Ventas</h2><span class="sec-sub">Punto de venta — crea pedidos de cualquier tipo</span></div>
+  <div class="sec-body">
+    <iframe id="pos-iframe" src="/panel/pos" style="width:100%;height:calc(100vh - 80px);border:none;border-radius:12px"></iframe>
+  </div>
+</div>
+
+<!-- ════════ PENDIENTES ════════ -->
+<div class="section" id="sec-pendientes">
+  <div class="sec-header">
+    <h2>Pedidos Pendientes</h2>
+    <div class="sec-actions">
+      <select id="pend-canal-filter" onchange="loadPendientes()"><option value="">Todos los canales</option><option value="Mostrador">POS</option><option value="Web">Web</option><option value="WhatsApp">WhatsApp</option></select>
+      <select id="pend-estado-filter" onchange="loadPendientes()"><option value="">Todos los estados</option><option value="esperando_validacion">Esperando validación</option><option value="pendiente_pago">Pendiente pago</option><option value="comprobante_recibido">Comprobante recibido</option></select>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="table-wrap"><table class="data-table" id="pend-table">
+      <thead><tr><th>Folio</th><th>Cliente</th><th>Canal</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+      <tbody id="pend-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ TRANSACCIONES ════════ -->
+<div class="section" id="sec-transacciones">
+  <div class="sec-header">
+    <h2>Transacciones</h2>
+    <div class="sec-actions">
+      <select id="trans-periodo" onchange="loadTransacciones()"><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option></select>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="kpi-row" id="trans-kpis"></div>
+    <div class="table-wrap"><table class="data-table" id="trans-table">
+      <thead><tr><th>Folio</th><th>Cliente</th><th>Canal</th><th>Total</th><th>Pago</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+      <tbody id="trans-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ CLIENTES ════════ -->
+<div class="section" id="sec-clientes">
+  <div class="sec-header">
+    <h2>Clientes</h2>
+    <div class="sec-actions">
+      <input type="text" id="cli-search" placeholder="Buscar por nombre, teléfono..." oninput="debounceCliSearch()" class="search-input">
+      <button class="btn-primary" onclick="exportarClientes()">📥 Exportar CSV</button>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="table-wrap"><table class="data-table" id="cli-table">
+      <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Pedidos</th><th>Total gastado</th><th>Última compra</th><th>Acciones</th></tr></thead>
+      <tbody id="cli-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ PRODUCTOS ════════ -->
+<div class="section" id="sec-productos">
+  <div class="sec-header">
+    <h2>Productos</h2>
+    <div class="sec-actions">
+      <input type="text" id="prod-search" placeholder="Buscar producto..." oninput="debounceProdSearch()" class="search-input">
+      <select id="prod-cat-filter" onchange="loadProductos()"><option value="">Todas las categorías</option></select>
+      <select id="prod-status-filter" onchange="loadProductos()"><option value="">Todos</option><option value="1">Activos</option><option value="0">Inactivos</option></select>
+      <button class="btn-primary" onclick="abrirModalProducto()">+ Nuevo producto</button>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="table-wrap"><table class="data-table" id="prod-table">
+      <thead><tr><th><input type="checkbox" id="prod-check-all" onchange="toggleAllProds()"></th><th>Imagen</th><th>Nombre</th><th>SKU</th><th>Categoría</th><th>Precio</th><th>Activo</th><th>Web</th><th>Acciones</th></tr></thead>
+      <tbody id="prod-tbody"></tbody>
+    </table></div>
+    <div style="margin-top:10px;display:flex;gap:8px">
+      <button class="btn-sm" onclick="masivoProd('activar')">Activar seleccionados</button>
+      <button class="btn-sm" onclick="masivoProd('desactivar')">Desactivar seleccionados</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ CLAUDIA ════════ -->
+<div class="section" id="sec-claudia">
+  <div class="sec-header"><h2>Claudia — Bot WhatsApp</h2></div>
+  <div class="sec-body">
+    <div class="placeholder-card">
+      <div class="placeholder-icon">🤖</div>
+      <h3>Claudia — Asistente WhatsApp</h3>
+      <div class="toggle-row">
+        <label>Bot activo</label>
+        <input type="checkbox" id="claudia-toggle" onchange="toggleConfig('claudia_activa', this.checked)">
+      </div>
+      <div class="toggle-row">
+        <label>Temporada alta (envíos $99)</label>
+        <input type="checkbox" id="claudia-temp" onchange="toggleConfig('claudia_temporada_alta', this.checked)">
+      </div>
+      <div class="config-field" style="margin-top:16px">
+        <label>Mensaje de bienvenida</label>
+        <textarea id="claudia-msg" rows="3" onchange="saveConfigField('claudia_mensaje_bienvenida', this.value)"></textarea>
+      </div>
+      <div class="banner-info" style="margin-top:20px">
+        <span>ℹ️</span> Integración completa disponible en Fase 2
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ PÁGINA WEB ════════ -->
+<div class="section" id="sec-web">
+  <div class="sec-header"><h2>Página Web — CMS Catálogo</h2></div>
+  <div class="sec-body">
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="webSubTab('web-productos')">Productos visibles</button>
+      <button class="sub-tab" onclick="webSubTab('web-banners')">Banners</button>
+      <button class="sub-tab" onclick="webSubTab('web-textos')">Textos</button>
+      <button class="sub-tab" onclick="webSubTab('web-horarios')">Horarios</button>
+      <button class="sub-tab" onclick="webSubTab('web-descuentos')">Descuentos</button>
+    </div>
+    <div class="sub-content" id="web-productos-content"></div>
+    <div class="sub-content" id="web-banners-content" style="display:none"></div>
+    <div class="sub-content" id="web-textos-content" style="display:none"></div>
+    <div class="sub-content" id="web-horarios-content" style="display:none"></div>
+    <div class="sub-content" id="web-descuentos-content" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ════════ FINANZAS ════════ -->
+<div class="section" id="sec-finanzas">
+  <div class="sec-header">
+    <h2>Finanzas</h2>
+    <div class="sec-actions">
+      <select id="fin-periodo" onchange="loadFinanzas()"><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option></select>
+      <button class="btn-sm" onclick="exportarFinanzas('ingresos')">📥 Exportar ingresos</button>
+      <button class="btn-sm" onclick="exportarFinanzas('egresos')">📥 Exportar egresos</button>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="finSubTab('fin-ingresos')">Ingresos</button>
+      <button class="sub-tab" onclick="finSubTab('fin-egresos')">Egresos</button>
+      <button class="sub-tab" onclick="finSubTab('fin-utilidad')">Utilidad</button>
+      <button class="sub-tab" onclick="finSubTab('fin-cortes')">Cortes de caja</button>
+    </div>
+    <div class="sub-content" id="fin-ingresos-content"><div class="kpi-row" id="fin-kpis"></div><canvas id="fin-chart" height="250"></canvas></div>
+    <div class="sub-content" id="fin-egresos-content" style="display:none">
+      <button class="btn-primary" onclick="abrirModalEgreso()" style="margin-bottom:12px">+ Registrar gasto</button>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Monto</th><th>Acciones</th></tr></thead><tbody id="egresos-tbody"></tbody></table></div>
+    </div>
+    <div class="sub-content" id="fin-utilidad-content" style="display:none"><div id="utilidad-card"></div></div>
+    <div class="sub-content" id="fin-cortes-content" style="display:none"><div id="cortes-list"></div></div>
+  </div>
+</div>
+
+<!-- ════════ ESTADÍSTICAS ════════ -->
+<div class="section" id="sec-estadisticas">
+  <div class="sec-header">
+    <h2>Estadísticas</h2>
+    <div class="sec-actions">
+      <select id="est-periodo" onchange="loadEstadisticas()"><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="anio">Este año</option></select>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="kpi-row" id="est-kpis"></div>
+    <div class="charts-grid">
+      <div class="chart-card"><h4>Ventas por día</h4><canvas id="chart-ventas-dia"></canvas></div>
+      <div class="chart-card"><h4>Productos más vendidos</h4><canvas id="chart-productos-top"></canvas></div>
+      <div class="chart-card"><h4>Canal de venta</h4><canvas id="chart-canales"></canvas></div>
+      <div class="chart-card"><h4>Zonas de entrega</h4><canvas id="chart-zonas"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ USUARIOS ════════ -->
+<div class="section" id="sec-usuarios">
+  <div class="sec-header">
+    <h2>Usuarios</h2>
+    <div class="sec-actions">
+      <button class="btn-primary" onclick="abrirModalUsuario()">+ Nuevo usuario</button>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th><th>Creado</th><th>Acciones</th></tr></thead>
+      <tbody id="usuarios-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════ CONFIGURACIONES ════════ -->
+<div class="section" id="sec-config">
+  <div class="sec-header"><h2>Configuraciones</h2></div>
+  <div class="sec-body">
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="cfgSubTab('cfg-negocio')">Negocio</button>
+      <button class="sub-tab" onclick="cfgSubTab('cfg-banco')">Bancarios</button>
+      <button class="sub-tab" onclick="cfgSubTab('cfg-ticket')">Ticket / POS</button>
+      <button class="sub-tab" onclick="cfgSubTab('cfg-whatsapp')">WhatsApp</button>
+      <button class="sub-tab" onclick="cfgSubTab('cfg-catalogo')">Catálogo</button>
+    </div>
+    <div class="sub-content" id="cfg-negocio-content"></div>
+    <div class="sub-content" id="cfg-banco-content" style="display:none"></div>
+    <div class="sub-content" id="cfg-ticket-content" style="display:none"></div>
+    <div class="sub-content" id="cfg-whatsapp-content" style="display:none"></div>
+    <div class="sub-content" id="cfg-catalogo-content" style="display:none"></div>
+  </div>
+</div>
+
+</div><!-- /main-content -->
+
+<!-- ═══ MODALS ═══ -->
+<div class="modal-bg" id="modal-producto" onclick="if(event.target===this)cerrarModal('modal-producto')">
+  <div class="modal"><button class="modal-close" onclick="cerrarModal('modal-producto')">&times;</button>
+    <h3 id="modal-prod-title">Nuevo producto</h3>
+    <div id="modal-prod-body"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-usuario" onclick="if(event.target===this)cerrarModal('modal-usuario')">
+  <div class="modal"><button class="modal-close" onclick="cerrarModal('modal-usuario')">&times;</button>
+    <h3 id="modal-user-title">Nuevo usuario</h3>
+    <div id="modal-user-body"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-egreso" onclick="if(event.target===this)cerrarModal('modal-egreso')">
+  <div class="modal"><button class="modal-close" onclick="cerrarModal('modal-egreso')">&times;</button>
+    <h3>Registrar gasto</h3>
+    <div id="modal-egreso-body"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-cliente" onclick="if(event.target===this)cerrarModal('modal-cliente')">
+  <div class="modal modal-lg"><button class="modal-close" onclick="cerrarModal('modal-cliente')">&times;</button>
+    <h3 id="modal-cli-title">Cliente</h3>
+    <div id="modal-cli-body"></div>
+  </div>
+</div>
+
+<script src="/static/admin.js"></script>
+</body>
+</html>

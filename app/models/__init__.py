@@ -5,6 +5,9 @@ from app.models.funerarias import Funeraria
 from app.models.pagos import MetodoPago
 from app.models.pedidos import Pedido, ItemPedido, NotificacionLog
 from app.models.configuracion import ConfiguracionNegocio, HorarioEspecifico, CodigoDescuento
+from app.models.usuarios import Usuario
+from app.models.egresos import Egreso
+from app.models.banners import BannerCatalogo
 
 __all__ = [
     "Cliente",
@@ -19,4 +22,7 @@ __all__ = [
     "ConfiguracionNegocio",
     "HorarioEspecifico",
     "CodigoDescuento",
+    "Usuario",
+    "Egreso",
+    "BannerCatalogo",
 ]
