@@ -1864,7 +1864,7 @@ function buildTicketDigital(info) {
   let h = '';
   // Header
   h += '<div style="background:#193a2c;padding:18px 20px 14px;text-align:center">';
-  h += '<div style="font-size:20px;font-weight:700;color:#d4a843;font-family:Inter,sans-serif">FLORERIA LUCY</div>';
+  h += '<img src="/static/img/logo.png" style="max-height:80px;width:auto;display:block;margin:0 auto;">';
   h += '<div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;font-style:italic">La expresion del amor</div>';
   h += '</div>';
 
