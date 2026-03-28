@@ -1065,7 +1065,8 @@ async function loadFinanzas() {
   } catch(e) { console.error(e); }
 }
 
-function abrirModalOtroIngreso() {
+async function abrirModalOtroIngreso() {
+  await loadMetodosPago();
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('modal-egreso-body').innerHTML = `
     <h4 style="margin-bottom:12px">Registrar otro ingreso</h4>
@@ -1125,7 +1126,8 @@ function mpOptions(selected) {
   return metodosPagoEgreso.filter(m=>m.activo).map(m => `<option value="${esc(m.nombre)}" ${selected===m.nombre?'selected':''}>${esc(m.nombre)}</option>`).join('');
 }
 
-function abrirModalEgreso(eg) {
+async function abrirModalEgreso(eg) {
+  await loadMetodosPago();
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('modal-egreso-body').innerHTML = `
     <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${eg?.fecha||hoy}"></div>
