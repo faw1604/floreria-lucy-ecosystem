@@ -1032,6 +1032,7 @@ function openDetail(index, source) {
     <div class="detail-cat">${p.categoria}</div>
     <div class="detail-price-row">${renderPrice(p, 'detail-price')}</div>
     ${p.dimensiones ? `<div class="detail-dims">📐 Dimensiones: ${p.dimensiones}</div>` : ''}
+    ${(p.medida_alto || p.medida_ancho) ? `<div class="detail-dims">📐 Medidas aproximadas: ${p.medida_alto ? p.medida_alto+' cm alto' : ''}${p.medida_alto && p.medida_ancho ? ' × ' : ''}${p.medida_ancho ? p.medida_ancho+' cm ancho' : ''}</div>` : ''}
     ${tagsHtml}
     ${p.descripcion ? `<div class="detail-desc">${p.descripcion}</div>` : ''}
     ${p.codigo ? `<div class="detail-code">Código: ${p.codigo}</div>` : ''}

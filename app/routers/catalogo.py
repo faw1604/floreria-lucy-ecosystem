@@ -91,6 +91,8 @@ async def catalogo_productos(
             "disponible_hoy": p.disponible_hoy,
             "etiquetas": p.etiquetas,
             "dimensiones": p.dimensiones,
+            "medida_alto": float(p.medida_alto) if p.medida_alto else None,
+            "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None,
         }
         for p in productos
     ]
