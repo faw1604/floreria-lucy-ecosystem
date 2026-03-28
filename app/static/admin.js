@@ -16,9 +16,6 @@ function navTo(sec) {
   location.hash = sec;
   // Load data for section
   const loaders = {
-    pendientes: loadPendientes,
-    transacciones: loadTransacciones,
-    clientes: loadClientes,
     productos: loadProductos,
     claudia: loadClaudia,
     web: loadWeb,

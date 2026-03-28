@@ -40,61 +40,22 @@
 
 <!-- ════════ VENTAS ════════ -->
 <div class="section active" id="sec-ventas">
-  <div class="sec-header"><h2>Ventas</h2><span class="sec-sub">Punto de venta — crea pedidos de cualquier tipo</span></div>
-  <div class="sec-body">
-    <iframe id="pos-iframe" src="/panel/pos" style="width:100%;height:calc(100vh - 80px);border:none;border-radius:12px"></iframe>
-  </div>
+  <iframe class="embed-iframe" src="/panel/pos?embed=true#ventas"></iframe>
 </div>
 
 <!-- ════════ PENDIENTES ════════ -->
 <div class="section" id="sec-pendientes">
-  <div class="sec-header">
-    <h2>Pedidos Pendientes</h2>
-    <div class="sec-actions">
-      <select id="pend-canal-filter" onchange="loadPendientes()"><option value="">Todos los canales</option><option value="Mostrador">POS</option><option value="Web">Web</option><option value="WhatsApp">WhatsApp</option></select>
-      <select id="pend-estado-filter" onchange="loadPendientes()"><option value="">Todos los estados</option><option value="esperando_validacion">Esperando validación</option><option value="pendiente_pago">Pendiente pago</option><option value="comprobante_recibido">Comprobante recibido</option></select>
-    </div>
-  </div>
-  <div class="sec-body">
-    <div class="table-wrap"><table class="data-table" id="pend-table">
-      <thead><tr><th>Folio</th><th>Cliente</th><th>Canal</th><th>Items</th><th>Total</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
-      <tbody id="pend-tbody"></tbody>
-    </table></div>
-  </div>
+  <iframe class="embed-iframe" src="/panel/pos?embed=true#pendientes"></iframe>
 </div>
 
 <!-- ════════ TRANSACCIONES ════════ -->
 <div class="section" id="sec-transacciones">
-  <div class="sec-header">
-    <h2>Transacciones</h2>
-    <div class="sec-actions">
-      <select id="trans-periodo" onchange="loadTransacciones()"><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option></select>
-    </div>
-  </div>
-  <div class="sec-body">
-    <div class="kpi-row" id="trans-kpis"></div>
-    <div class="table-wrap"><table class="data-table" id="trans-table">
-      <thead><tr><th>Folio</th><th>Cliente</th><th>Canal</th><th>Total</th><th>Pago</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
-      <tbody id="trans-tbody"></tbody>
-    </table></div>
-  </div>
+  <iframe class="embed-iframe" src="/panel/pos?embed=true#transacciones"></iframe>
 </div>
 
 <!-- ════════ CLIENTES ════════ -->
 <div class="section" id="sec-clientes">
-  <div class="sec-header">
-    <h2>Clientes</h2>
-    <div class="sec-actions">
-      <input type="text" id="cli-search" placeholder="Buscar por nombre, teléfono..." oninput="debounceCliSearch()" class="search-input">
-      <button class="btn-primary" onclick="exportarClientes()">📥 Exportar CSV</button>
-    </div>
-  </div>
-  <div class="sec-body">
-    <div class="table-wrap"><table class="data-table" id="cli-table">
-      <thead><tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Pedidos</th><th>Total gastado</th><th>Última compra</th><th>Acciones</th></tr></thead>
-      <tbody id="cli-tbody"></tbody>
-    </table></div>
-  </div>
+  <iframe class="embed-iframe" src="/panel/pos?embed=true#clientes"></iframe>
 </div>
 
 <!-- ════════ PRODUCTOS ════════ -->

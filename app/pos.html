@@ -7,8 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link rel="stylesheet" href="/static/pos.css">
+<style id="embed-style"></style>
 </head>
 <body>
+<script>
+if (new URLSearchParams(window.location.search).get('embed') === 'true') {
+  document.getElementById('embed-style').textContent = '.sidebar{display:none!important}.main{margin-left:0!important;width:100%!important}';
+}
+</script>
 
 <!-- ═══ SIDEBAR ═══ -->
 <div class="sidebar">
