@@ -13,7 +13,7 @@ logger = logging.getLogger("floreria")
 from app.models.clientes import Cliente
 from app.models.configuracion import CodigoDescuento
 from app.models.usuarios import Usuario
-from app.models.egresos import Egreso
+from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso
 from app.models.banners import BannerCatalogo
 
 router = APIRouter()
@@ -139,14 +139,21 @@ async def cambiar_password(
 
 @router.get("/egresos")
 async def listar_egresos(
+    desde: str | None = None, hasta: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(select(Egreso).order_by(Egreso.fecha.desc()).limit(200))
+    query = select(Egreso).order_by(Egreso.fecha.desc())
+    if desde:
+        query = query.where(Egreso.fecha >= desde)
+    if hasta:
+        query = query.where(Egreso.fecha <= hasta)
+    result = await db.execute(query.limit(500))
     return [
         {"id": e.id, "fecha": str(e.fecha), "concepto": e.concepto,
-         "categoria": e.categoria, "monto": e.monto, "notas": e.notas}
+         "categoria": e.categoria, "monto": e.monto, "metodo_pago": e.metodo_pago,
+         "notas": e.notas, "es_recurrente": e.es_recurrente}
         for e in result.scalars().all()
     ]
 
@@ -164,12 +171,34 @@ async def crear_egreso(
         concepto=data["concepto"],
         categoria=data.get("categoria", "otro"),
         monto=data.get("monto", 0),
+        metodo_pago=data.get("metodo_pago"),
         notas=data.get("notas"),
+        es_recurrente=data.get("es_recurrente", False),
     )
     db.add(e)
     await db.commit()
     await db.refresh(e)
     return {"ok": True, "id": e.id}
+
+
+@router.put("/egresos/{egreso_id}")
+async def actualizar_egreso(
+    egreso_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(Egreso).where(Egreso.id == egreso_id))
+    e = result.scalar_one_or_none()
+    if not e:
+        raise HTTPException(status_code=404, detail="Egreso no encontrado")
+    data = await request.json()
+    for k in ["fecha", "concepto", "categoria", "monto", "metodo_pago", "notas"]:
+        if k in data:
+            setattr(e, k, data[k])
+    await db.commit()
+    return {"ok": True}
 
 
 @router.delete("/egresos/{egreso_id}")
@@ -186,6 +215,192 @@ async def eliminar_egreso(
     await db.delete(e)
     await db.commit()
     return {"ok": True}
+
+
+# --- Gastos recurrentes ---
+
+@router.get("/gastos-recurrentes")
+async def listar_gastos_recurrentes(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(GastoRecurrente).order_by(GastoRecurrente.nombre))
+    return [
+        {"id": g.id, "nombre": g.nombre, "categoria": g.categoria,
+         "frecuencia": g.frecuencia, "monto_sugerido": g.monto_sugerido, "activo": g.activo}
+        for g in result.scalars().all()
+    ]
+
+
+@router.post("/gastos-recurrentes")
+async def crear_gasto_recurrente(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    g = GastoRecurrente(
+        nombre=data["nombre"], categoria=data.get("categoria", "otro"),
+        frecuencia=data.get("frecuencia", "mensual"),
+        monto_sugerido=data.get("monto_sugerido", 0), activo=True,
+    )
+    db.add(g)
+    await db.commit()
+    await db.refresh(g)
+    return {"ok": True, "id": g.id}
+
+
+@router.put("/gastos-recurrentes/{gasto_id}")
+async def actualizar_gasto_recurrente(
+    gasto_id: int, request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(GastoRecurrente).where(GastoRecurrente.id == gasto_id))
+    g = result.scalar_one_or_none()
+    if not g:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    data = await request.json()
+    for k in ["nombre", "categoria", "frecuencia", "monto_sugerido", "activo"]:
+        if k in data:
+            setattr(g, k, data[k])
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/gastos-recurrentes/{gasto_id}")
+async def eliminar_gasto_recurrente(
+    gasto_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(GastoRecurrente).where(GastoRecurrente.id == gasto_id))
+    g = result.scalar_one_or_none()
+    if not g:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    await db.delete(g)
+    await db.commit()
+    return {"ok": True}
+
+
+# --- Métodos de pago egresos ---
+
+@router.get("/metodos-pago-egreso")
+async def listar_metodos_pago_egreso(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(MetodoPagoEgreso).order_by(MetodoPagoEgreso.nombre))
+    return [{"id": m.id, "nombre": m.nombre, "activo": m.activo} for m in result.scalars().all()]
+
+
+@router.post("/metodos-pago-egreso")
+async def crear_metodo_pago_egreso(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    m = MetodoPagoEgreso(nombre=data["nombre"], activo=True)
+    db.add(m)
+    await db.commit()
+    await db.refresh(m)
+    return {"ok": True, "id": m.id}
+
+
+@router.put("/metodos-pago-egreso/{mp_id}")
+async def actualizar_metodo_pago_egreso(
+    mp_id: int, request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(MetodoPagoEgreso).where(MetodoPagoEgreso.id == mp_id))
+    m = result.scalar_one_or_none()
+    if not m:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    data = await request.json()
+    if "nombre" in data: m.nombre = data["nombre"]
+    if "activo" in data: m.activo = data["activo"]
+    await db.commit()
+    return {"ok": True}
+
+
+# --- Exportar egresos Excel ---
+
+@router.get("/egresos/exportar")
+async def exportar_egresos(
+    desde: str | None = None, hasta: str | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    from fastapi.responses import StreamingResponse
+    import io, openpyxl
+    query = select(Egreso).order_by(Egreso.fecha.desc())
+    if desde: query = query.where(Egreso.fecha >= desde)
+    if hasta: query = query.where(Egreso.fecha <= hasta)
+    result = await db.execute(query)
+    egresos = result.scalars().all()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Egresos"
+    headers = ["Fecha", "Concepto", "Categoría", "Método de pago", "Monto", "Notas"]
+    ws.append(headers)
+    for c in range(1, len(headers)+1): ws.cell(row=1, column=c).font = openpyxl.styles.Font(bold=True)
+    for e in egresos:
+        ws.append([str(e.fecha), e.concepto, e.categoria, e.metodo_pago or "", round(e.monto/100, 2), e.notas or ""])
+    buf = io.BytesIO(); wb.save(buf); buf.seek(0)
+    hoy = datetime.now(TZ).strftime("%Y-%m-%d")
+    return StreamingResponse(buf, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=egresos_{hoy}.xlsx"})
+
+
+# --- Flujo de caja ---
+
+@router.get("/finanzas/flujo-caja")
+async def flujo_caja(
+    desde: str, hasta: str,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    # Ingresos por día
+    ingresos = await db.execute(text("""
+        SELECT fecha_entrega::date as fecha, COALESCE(SUM(total),0) as total
+        FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h
+          AND estado NOT IN ('Cancelado','rechazado') AND pago_confirmado = true
+        GROUP BY fecha_entrega::date ORDER BY fecha
+    """), {"d": desde, "h": hasta})
+    ing_map = {str(r[0]): r[1] for r in ingresos.fetchall()}
+    # Egresos por día
+    egresos = await db.execute(text("""
+        SELECT fecha::date as fecha, COALESCE(SUM(monto),0) as total
+        FROM egresos WHERE fecha BETWEEN :d AND :h
+        GROUP BY fecha::date ORDER BY fecha
+    """), {"d": desde, "h": hasta})
+    egr_map = {str(r[0]): r[1] for r in egresos.fetchall()}
+    # Build day-by-day
+    from datetime import date as dt_date
+    d = dt_date.fromisoformat(desde)
+    h = dt_date.fromisoformat(hasta)
+    days = []
+    acum = 0
+    while d <= h:
+        ds = str(d)
+        ing = ing_map.get(ds, 0)
+        egr = egr_map.get(ds, 0)
+        saldo = ing - egr
+        acum += saldo
+        days.append({"fecha": ds, "ingresos": ing, "egresos": egr, "saldo": saldo, "acumulado": acum})
+        d += timedelta(days=1)
+    return days
 
 
 # ══════ DESCUENTOS ══════

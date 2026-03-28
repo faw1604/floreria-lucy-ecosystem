@@ -992,81 +992,333 @@ async function eliminarDescuento(id) {
 }
 
 // ══════ FINANZAS ══════
-let finChart = null;
+let finCharts = {};
+let finData = {ingresos: null, egresos: null, flujo: null};
+
+function getFinDates() {
+  const p = document.getElementById('fin-periodo').value;
+  const now = new Date();
+  const hoy = now.toISOString().split('T')[0];
+  if (p === 'rango') return {desde: document.getElementById('fin-desde').value || hoy, hasta: document.getElementById('fin-hasta').value || hoy};
+  if (p === 'hoy') return {desde: hoy, hasta: hoy};
+  if (p === 'semana') { const d = new Date(now); d.setDate(d.getDate() - d.getDay()); return {desde: d.toISOString().split('T')[0], hasta: hoy}; }
+  if (p === 'mes') return {desde: hoy.substring(0,8)+'01', hasta: hoy};
+  return {desde: hoy, hasta: hoy};
+}
+
+function onFinPeriodoChange() {
+  const isRango = document.getElementById('fin-periodo').value === 'rango';
+  document.getElementById('fin-desde').style.display = isRango ? '' : 'none';
+  document.getElementById('fin-hasta').style.display = isRango ? '' : 'none';
+  if (!isRango) loadFinanzas();
+}
+
+function finSubTab(id) {
+  switchSubTab('fin', id);
+  if (id === 'fin-egresos') loadEgresos();
+  if (id === 'fin-utilidad') loadUtilidad();
+  if (id === 'fin-flujo') loadFlujo();
+  if (id === 'fin-cortes') loadCortes();
+}
+
 async function loadFinanzas() {
+  const {desde, hasta} = getFinDates();
   try {
     const periodo = document.getElementById('fin-periodo').value;
-    const r = await fetch(API + '/pos/pedidos-hoy?periodo=' + periodo, {credentials:'include'});
+    const r = await fetch(API + '/pos/pedidos-hoy?periodo=' + (periodo === 'rango' ? 'rango&fecha_inicio=' + desde + '&fecha_fin=' + hasta : periodo), {credentials:'include'});
     if (!r.ok) return;
     const data = await r.json();
-    const resumen = data.resumen || {};
-    document.getElementById('fin-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Ingresos</div><div class="kpi-value">${fmt$(resumen.total_vendido)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${resumen.num_finalizados||0}</div></div>
-    `;
-    loadEgresos();
-  } catch(e) {}
+    finData.ingresos = data;
+    const res = data.resumen || {};
+    const rows = data.finalizados || [];
+    const ticket = res.num_finalizados ? Math.round(res.total_vendido / res.num_finalizados) : 0;
+    // KPIs
+    let kpis = `<div class="kpi-card"><div class="kpi-label">Total ingresos</div><div class="kpi-value">${fmt$(res.total_vendido)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${res.num_finalizados||0}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Ticket promedio</div><div class="kpi-value">${fmt$(ticket)}</div></div>`;
+    // Desglose método pago
+    for (const [m,v] of Object.entries(res.desglose_pago||{})) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
+    // Desglose canal
+    const canales = {};
+    rows.forEach(p => { canales[p.canal] = (canales[p.canal]||0) + (p.total||0); });
+    for (const [c,v] of Object.entries(canales)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
+    document.getElementById('fin-kpis').innerHTML = kpis;
+    // Table
+    const tbody = document.getElementById('fin-ing-tbody');
+    tbody.innerHTML = rows.slice(0,200).map(p => `<tr><td>${fmtDate(p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin transacciones</td></tr>';
+  } catch(e) { console.error(e); }
+}
+
+// --- EGRESOS ---
+let metodosPagoEgreso = [];
+
+async function loadMetodosPago() {
+  try { const r = await fetch(API+'/api/admin/metodos-pago-egreso',{credentials:'include'}); metodosPagoEgreso = await r.json(); } catch(e) {}
 }
 
 async function loadEgresos() {
+  await loadMetodosPago();
+  const {desde, hasta} = getFinDates();
   try {
-    const r = await fetch(API + '/api/admin/egresos', {credentials:'include'});
-    if (!r.ok) { document.getElementById('egresos-tbody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos registrados</td></tr>'; return; }
+    const r = await fetch(API + '/api/admin/egresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+    if (!r.ok) return;
     const data = await r.json();
-    document.getElementById('egresos-tbody').innerHTML = data.map(e => `<tr>
+    finData.egresos = data;
+    const tbody = document.getElementById('egresos-tbody');
+    tbody.innerHTML = data.map(e => `<tr>
       <td>${fmtDate(e.fecha)}</td>
-      <td>${esc(e.concepto)}</td>
+      <td>${esc(e.concepto)}${e.es_recurrente ? ' <span style="color:var(--dorado);font-size:10px">RECURRENTE</span>' : ''}</td>
       <td>${esc(e.categoria)}</td>
+      <td>${esc(e.metodo_pago||'—')}</td>
       <td style="font-weight:600">${fmt$(e.monto)}</td>
       <td><button class="btn-sm" onclick="eliminarEgreso(${e.id})">🗑</button></td>
-    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos</td></tr>';
   } catch(e) {}
 }
 
-function abrirModalEgreso() {
+function mpOptions(selected) {
+  return metodosPagoEgreso.filter(m=>m.activo).map(m => `<option value="${esc(m.nombre)}" ${selected===m.nombre?'selected':''}>${esc(m.nombre)}</option>`).join('');
+}
+
+function abrirModalEgreso(eg) {
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('modal-egreso-body').innerHTML = `
-    <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${hoy}"></div>
-    <div class="field"><label>Concepto *</label><input id="eg-concepto"></div>
-    <div class="field"><label>Categoría</label><select id="eg-cat"><option value="insumos">Insumos</option><option value="nomina">Nómina</option><option value="servicios">Servicios</option><option value="mantenimiento">Mantenimiento</option><option value="otro">Otro</option></select></div>
-    <div class="field"><label>Monto * (pesos)</label><input type="number" id="eg-monto" step="0.01"></div>
-    <div class="field"><label>Notas</label><textarea id="eg-notas"></textarea></div>
-    <button class="btn-primary" onclick="guardarEgreso()" style="width:100%;margin-top:8px">Guardar</button>
+    <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${eg?.fecha||hoy}"></div>
+    <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
+    <div class="field"><label>Categoría</label><select id="eg-cat"><option value="insumos" ${eg?.categoria==='insumos'?'selected':''}>Insumos</option><option value="nomina" ${eg?.categoria==='nomina'?'selected':''}>Nómina</option><option value="servicios" ${eg?.categoria==='servicios'?'selected':''}>Servicios</option><option value="mantenimiento" ${eg?.categoria==='mantenimiento'?'selected':''}>Mantenimiento</option><option value="otro" ${eg?.categoria==='otro'?'selected':''}>Otro</option></select></div>
+    <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
+    <div class="field"><label>Monto * (pesos)</label><input type="number" id="eg-monto" step="0.01" value="${eg ? (eg.monto/100).toFixed(2) : ''}"></div>
+    <div class="field"><label>Notas</label><textarea id="eg-notas">${esc(eg?.notas||'')}</textarea></div>
+    <button class="btn-primary" onclick="guardarEgreso(${eg?.id||'null'})" style="width:100%;margin-top:8px">Guardar</button>
   `;
   document.getElementById('modal-egreso').classList.add('active');
 }
 
-async function guardarEgreso() {
+async function guardarEgreso(id) {
   const body = {
     fecha: document.getElementById('eg-fecha').value,
     concepto: document.getElementById('eg-concepto').value.trim(),
     categoria: document.getElementById('eg-cat').value,
+    metodo_pago: document.getElementById('eg-mp').value || null,
     monto: Math.round(parseFloat(document.getElementById('eg-monto').value || 0) * 100),
     notas: document.getElementById('eg-notas').value.trim() || null,
   };
   if (!body.fecha || !body.concepto || !body.monto) return alert('Fecha, concepto y monto son obligatorios');
-  await fetch(API + '/api/admin/egresos', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+  const url = id ? API+'/api/admin/egresos/'+id : API+'/api/admin/egresos';
+  const method = id ? 'PUT' : 'POST';
+  await fetch(url, {method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
   cerrarModal('modal-egreso');
-  showToast('Gasto registrado ✓');
+  showToast('Gasto guardado ✓');
   loadEgresos();
 }
 
 async function eliminarEgreso(id) {
   if (!confirm('¿Eliminar este gasto?')) return;
-  await fetch(API + '/api/admin/egresos/' + id, {method:'DELETE', credentials:'include'});
+  await fetch(API+'/api/admin/egresos/'+id, {method:'DELETE', credentials:'include'});
   loadEgresos();
 }
 
-async function exportarFinanzas(tipo) {
-  showToast('Exportando ' + tipo + '...');
-  // Simple CSV export from current data
-  if (tipo === 'ingresos') {
-    const periodo = document.getElementById('fin-periodo').value;
-    const r = await fetch(API + '/pos/pedidos-hoy?periodo=' + periodo, {credentials:'include'});
+// --- Gastos recurrentes ---
+async function abrirGastosRecurrentes() {
+  await loadMetodosPago();
+  try {
+    const r = await fetch(API+'/api/admin/gastos-recurrentes', {credentials:'include'});
     const data = await r.json();
-    let csv = 'Folio,Cliente,Canal,Total,Pago,Estado,Fecha\n';
-    (data.finalizados||[]).forEach(p => { csv += `"${p.folio}","${p.cliente_nombre||''}","${p.canal}",${(p.total||0)/100},"${p.forma_pago||''}","${p.estado}","${p.fecha_entrega||''}"\n`; });
-    downloadCSV(csv, 'ingresos.csv');
+    const {desde, hasta} = getFinDates();
+    // Check which are paid in period
+    const er = await fetch(API+'/api/admin/egresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+    const egs = await er.json();
+    const paidNames = new Set(egs.filter(e=>e.es_recurrente).map(e=>e.concepto));
+
+    document.getElementById('modal-egreso-body').innerHTML = `
+      <h4 style="margin-bottom:12px">Gastos recurrentes</h4>
+      ${data.filter(g=>g.activo).map(g => {
+        const paid = paidNames.has(g.nombre);
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--borde)">
+          <div style="flex:1"><strong>${esc(g.nombre)}</strong><br><span style="font-size:11px;color:var(--texto2)">${g.categoria} · ${g.frecuencia} · ${fmt$(g.monto_sugerido)}</span></div>
+          ${paid ? '<span style="color:var(--verde);font-size:12px;font-weight:600">Pagado ✓</span>' : `<button class="btn-dorado" onclick="pagarRecurrente(${g.id},'${esc(g.nombre)}',${g.monto_sugerido},'${esc(g.categoria)}')">Marcar pagado</button>`}
+          <button class="btn-sm" onclick="eliminarGastoRec(${g.id})" style="font-size:11px">🗑</button>
+        </div>`;
+      }).join('') || '<div style="color:var(--texto2);padding:12px">Sin gastos recurrentes</div>'}
+      <div style="border-top:1px solid var(--borde);margin-top:12px;padding-top:12px">
+        <strong style="font-size:13px">Agregar gasto recurrente</strong>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+          <input id="gr-nombre" placeholder="Nombre" style="padding:6px 8px;border:1px solid var(--borde);border-radius:6px;font-size:12px">
+          <select id="gr-cat" style="padding:6px;font-size:12px"><option value="servicios">Servicios</option><option value="nomina">Nómina</option><option value="insumos">Insumos</option><option value="mantenimiento">Mantenimiento</option><option value="otro">Otro</option></select>
+          <select id="gr-freq" style="padding:6px;font-size:12px"><option value="mensual">Mensual</option><option value="quincenal">Quincenal</option><option value="semanal">Semanal</option></select>
+          <input type="number" id="gr-monto" placeholder="Monto sugerido" step="0.01" style="padding:6px 8px;border:1px solid var(--borde);border-radius:6px;font-size:12px">
+        </div>
+        <button class="btn-primary" onclick="crearGastoRec()" style="margin-top:8px;width:100%">Agregar</button>
+      </div>
+    `;
+    document.getElementById('modal-egreso').classList.add('active');
+  } catch(e) {}
+}
+
+async function pagarRecurrente(id, nombre, monto, categoria) {
+  await loadMetodosPago();
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4>Pagar: ${esc(nombre)}</h4>
+    <div class="field"><label>Monto real (pesos)</label><input type="number" id="pr-monto" value="${(monto/100).toFixed(2)}" step="0.01"></div>
+    <div class="field"><label>Método de pago *</label><select id="pr-mp"><option value="">Selecciona...</option>${mpOptions()}</select></div>
+    <div class="field"><label>Fecha de pago</label><input type="date" id="pr-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
+    <div class="field"><label>Notas</label><input id="pr-notas"></div>
+    <button class="btn-primary" onclick="confirmarPagoRec('${esc(nombre)}','${esc(categoria)}')" style="width:100%;margin-top:8px">Confirmar pago</button>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function confirmarPagoRec(nombre, categoria) {
+  const body = {
+    fecha: document.getElementById('pr-fecha').value,
+    concepto: nombre,
+    categoria: categoria,
+    metodo_pago: document.getElementById('pr-mp').value || null,
+    monto: Math.round(parseFloat(document.getElementById('pr-monto').value||0)*100),
+    notas: document.getElementById('pr-notas').value.trim() || null,
+    es_recurrente: true,
+  };
+  if (!body.monto) return alert('Monto es obligatorio');
+  await fetch(API+'/api/admin/egresos', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+  cerrarModal('modal-egreso');
+  showToast('Pago registrado ✓');
+  loadEgresos();
+}
+
+async function crearGastoRec() {
+  const nombre = document.getElementById('gr-nombre').value.trim();
+  if (!nombre) return alert('Nombre requerido');
+  await fetch(API+'/api/admin/gastos-recurrentes', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({nombre, categoria: document.getElementById('gr-cat').value, frecuencia: document.getElementById('gr-freq').value, monto_sugerido: Math.round(parseFloat(document.getElementById('gr-monto').value||0)*100)})
+  });
+  abrirGastosRecurrentes();
+}
+
+async function eliminarGastoRec(id) {
+  if (!confirm('¿Eliminar?')) return;
+  await fetch(API+'/api/admin/gastos-recurrentes/'+id, {method:'DELETE', credentials:'include'});
+  abrirGastosRecurrentes();
+}
+
+// --- Métodos de pago egresos ---
+async function abrirMetodosPagoEgreso() {
+  await loadMetodosPago();
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4>Métodos de pago para egresos</h4>
+    ${metodosPagoEgreso.map(m => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--borde)">
+      <span style="flex:1;font-size:13px">${esc(m.nombre)}</span>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" ${m.activo?'checked':''} onchange="toggleMPE(${m.id},this.checked)"> Activo</label>
+    </div>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:12px">
+      <input id="mpe-nuevo" placeholder="Nuevo método" style="flex:1;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+      <button class="btn-primary" onclick="crearMPE()">Agregar</button>
+    </div>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function toggleMPE(id, activo) {
+  await fetch(API+'/api/admin/metodos-pago-egreso/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({activo})});
+}
+
+async function crearMPE() {
+  const nombre = document.getElementById('mpe-nuevo').value.trim();
+  if (!nombre) return;
+  await fetch(API+'/api/admin/metodos-pago-egreso', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({nombre})});
+  abrirMetodosPagoEgreso();
+}
+
+// --- UTILIDAD ---
+async function loadUtilidad() {
+  const {desde, hasta} = getFinDates();
+  let totalIng = 0, totalEgr = 0;
+  try {
+    if (!finData.ingresos) await loadFinanzas();
+    totalIng = finData.ingresos?.resumen?.total_vendido || 0;
+    const r = await fetch(API+'/api/admin/egresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+    const egs = await r.json();
+    totalEgr = egs.reduce((s,e) => s + (e.monto||0), 0);
+  } catch(e) {}
+  const util = totalIng - totalEgr;
+  const color = util >= 0 ? 'var(--verde)' : 'var(--rojo)';
+  document.getElementById('utilidad-card').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="kpi-label">Ingresos</div><div class="kpi-value" style="color:var(--verde)">${fmt$(totalIng)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Egresos</div><div class="kpi-value" style="color:var(--rojo)">${fmt$(totalEgr)}</div></div>
+      <div class="kpi-card" style="border-color:${color}"><div class="kpi-label">Utilidad bruta</div><div class="kpi-value" style="color:${color}">${fmt$(util)}</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--texto2);margin-top:8px">Cálculo estimado. No incluye impuestos ni depreciaciones.</div>
+  `;
+  // Chart
+  try {
+    const r = await fetch(API+'/api/admin/finanzas/flujo-caja?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+    const days = await r.json();
+    if (finCharts.utilidad) finCharts.utilidad.destroy();
+    finCharts.utilidad = new Chart(document.getElementById('utilidad-chart'), {
+      type:'bar', data:{labels:days.map(d=>d.fecha), datasets:[
+        {label:'Ingresos',data:days.map(d=>d.ingresos/100),backgroundColor:'#193a2c'},
+        {label:'Egresos',data:days.map(d=>d.egresos/100),backgroundColor:'#ef4444'},
+      ]}, options:{responsive:true,plugins:{legend:{position:'bottom'}}}
+    });
+  } catch(e) {}
+}
+
+// --- FLUJO DE CAJA ---
+async function loadFlujo() {
+  const {desde, hasta} = getFinDates();
+  try {
+    const r = await fetch(API+'/api/admin/finanzas/flujo-caja?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+    finData.flujo = await r.json();
+    const days = finData.flujo;
+    // Chart
+    if (finCharts.flujo) finCharts.flujo.destroy();
+    finCharts.flujo = new Chart(document.getElementById('flujo-chart'), {
+      type:'line', data:{labels:days.map(d=>d.fecha), datasets:[
+        {label:'Ingresos',data:days.map(d=>d.ingresos/100),borderColor:'#193a2c',backgroundColor:'rgba(25,58,44,.1)',fill:true,tension:.3},
+        {label:'Egresos',data:days.map(d=>d.egresos/100),borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.1)',fill:true,tension:.3},
+      ]}, options:{responsive:true,plugins:{legend:{position:'bottom'}}}
+    });
+    // Table
+    document.getElementById('flujo-tbody').innerHTML = days.map(d => `<tr>
+      <td>${d.fecha}</td>
+      <td style="color:var(--verde)">${fmt$(d.ingresos)}</td>
+      <td style="color:var(--rojo)">${fmt$(d.egresos)}</td>
+      <td style="font-weight:600;color:${d.saldo>=0?'var(--verde)':'var(--rojo)'}">${fmt$(d.saldo)}</td>
+      <td style="font-weight:600">${fmt$(d.acumulado)}</td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+async function exportarFlujo() {
+  if (!finData.flujo) return;
+  let csv = 'Fecha,Ingresos,Egresos,Saldo,Acumulado\n';
+  finData.flujo.forEach(d => { csv += `${d.fecha},${(d.ingresos/100).toFixed(2)},${(d.egresos/100).toFixed(2)},${(d.saldo/100).toFixed(2)},${(d.acumulado/100).toFixed(2)}\n`; });
+  downloadCSV(csv, 'flujo_caja.csv');
+}
+
+// --- CORTES DE CAJA ---
+async function loadCortes() {
+  document.getElementById('cortes-list').innerHTML = '<div style="color:var(--texto2);font-size:13px;padding:20px;text-align:center">Cortes de caja disponibles en el POS → Transacciones → Corte de caja</div>';
+}
+
+// --- EXPORTAR ---
+async function exportarFinanzas(tipo) {
+  const {desde, hasta} = getFinDates();
+  if (tipo === 'ingresos') {
+    try {
+      const r = await fetch(API+'/api/admin/productos/exportar'.replace('productos/exportar','') + 'pos/pedidos-hoy?periodo=rango&fecha_inicio='+desde+'&fecha_fin='+hasta, {credentials:'include'});
+      const data = await r.json();
+      let csv = 'Fecha,Folio,Cliente,Canal,Metodo Pago,Total\n';
+      (data.finalizados||[]).forEach(p => { csv += `"${p.fecha_entrega||''}","${p.folio}","${p.cliente_nombre||''}","${p.canal}","${p.forma_pago||''}",${(p.total||0)/100}\n`; });
+      downloadCSV(csv, 'ingresos_'+desde+'_'+hasta+'.csv');
+    } catch(e) {}
+  } else {
+    try {
+      const r = await fetch(API+'/api/admin/egresos/exportar?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'egresos_'+desde+'_'+hasta+'.xlsx'; a.click();
+    } catch(e) {}
   }
 }
 
