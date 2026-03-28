@@ -11,9 +11,16 @@
 </head>
 <body>
 <script>
-if (new URLSearchParams(window.location.search).get('embed') === 'true') {
-  document.getElementById('embed-style').textContent = '.sidebar{display:none!important}.main{margin-left:0!important;width:100%!important}';
-}
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('embed') === 'true') {
+    document.getElementById('embed-style').textContent = '.sidebar{display:none!important}.main{margin-left:0!important;width:100%!important}';
+  }
+  var tab = params.get('tab');
+  if (tab) {
+    window.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ if(typeof navTo==='function') navTo(tab); }, 100); });
+  }
+})();
 </script>
 
 <!-- ═══ SIDEBAR ═══ -->
