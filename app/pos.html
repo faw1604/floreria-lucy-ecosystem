@@ -275,10 +275,10 @@
 
 <!-- Modal: Post-venta -->
 <div class="modal-bg" id="modal-creado">
-  <div class="modal" style="max-width:440px;padding:0;overflow:hidden">
+  <div class="modal modal-ticket" style="max-width:440px">
     <button class="close" onclick="cerrarModalCreado()" style="position:absolute;top:8px;right:12px;z-index:5;color:#fff;font-size:22px;background:none;border:none;cursor:pointer">&times;</button>
-    <div id="creado-ticket-digital"></div>
-    <div style="padding:12px 16px;display:flex;gap:8px;border-top:1px solid var(--borde)">
+    <div class="ticket-scroll" id="creado-ticket-digital"></div>
+    <div class="ticket-btns">
       <button onclick="imprimirTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Imprimir</button>
       <button onclick="enviarWhatsApp()" id="btn-wa" style="display:none;flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>
       <div id="wa-note" style="display:none;font-size:11px;margin-top:4px"></div>
@@ -356,10 +356,10 @@
 
 <!-- Modal: Ver ticket detalle -->
 <div class="modal-bg" id="modal-ticket" onclick="if(event.target===this)this.classList.remove('active')">
-  <div class="modal" style="max-width:440px;padding:0;overflow:hidden">
+  <div class="modal modal-ticket" style="max-width:440px">
     <button class="close" onclick="document.getElementById('modal-ticket').classList.remove('active')" style="position:absolute;top:8px;right:12px;z-index:5;color:#fff;font-size:22px;background:none;border:none;cursor:pointer">&times;</button>
-    <div id="ticket-content"></div>
-    <div id="ticket-buttons" style="padding:12px 16px;display:flex;gap:8px;border-top:1px solid var(--borde)"></div>
+    <div class="ticket-scroll" id="ticket-content"></div>
+    <div class="ticket-btns" id="ticket-buttons"></div>
   </div>
 </div>
 

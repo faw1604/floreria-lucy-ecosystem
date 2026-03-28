@@ -956,16 +956,16 @@ function buildTicketCompleto(info) {
   const L = [];
   // Header
   L.push('<div class="dsep"></div>');
-  L.push('<div class="tline" style="font-size:20px"><strong>FLORERIA LUCY</strong></div>');
-  L.push('<div class="tline" style="font-size:10px"><strong>- LA FLORE CHOCOLATIER -</strong></div>');
+  L.push('<div class="tline tk-header"><strong>FLORERIA LUCY</strong></div>');
+  L.push('<div class="tline tk-subheader"><strong>- LA FLORE CHOCOLATIER -</strong></div>');
   L.push('<div class="tline sm">C. SABINO 610, LAS GRANJAS</div>');
   L.push('<div class="tline sm">CHIHUAHUA, CHIH., MEXICO</div>');
   L.push('<div class="tline sm">TEL. 614 334 9392</div>');
   L.push('<div class="tline sm">florerialucychihuahua@gmail.com</div>');
   L.push('<div class="dsep"></div>');
-  L.push('<div class="tline"><strong>COMPROBANTE DE COMPRA</strong></div>');
-  L.push(`<div class="tline big">${info.folio||''}</div>`);
-  L.push(`<div class="tline sm">${fechaTicket(info.fecha || new Date().toISOString())}</div>`);
+  L.push('<div class="tline tk-comprobante"><strong>COMPROBANTE DE COMPRA</strong></div>');
+  L.push(`<div class="tline tk-folio">${info.folio||''}</div>`);
+  L.push(`<div class="tline tk-fecha">${fechaTicket(info.fecha || new Date().toISOString())}</div>`);
   L.push('<div class="dsep"></div>');
   // Client
   if (info.cliente_nombre) {
@@ -1027,14 +1027,14 @@ function buildTicketCompleto(info) {
   L.push(`<div class="irow"><span class="med">TOTAL</span><span class="r med">${fmtPrecioTk(info.total||0)}</span></div>`);
   L.push('<div class="sep"></div>');
   // Payment
-  L.push('<div><strong>FORMA DE PAGO:</strong></div>');
+  L.push('<div class="tk-pago-hdr"><strong>FORMA DE PAGO:</strong></div>');
   if (info.pagos && info.pagos.length) {
     for (const p of info.pagos) L.push(`<div class="irow"><span>${S(p.nombre||'')}</span><span class="r">${fmtPrecioTk(p.monto||0)}</span></div>`);
   } else if (info.forma_pago) {
     L.push(`<div>${S(info.forma_pago)}</div>`);
   }
   L.push('<div class="dsep"></div>');
-  L.push('<div class="tline"><strong>GRACIAS POR SU PREFERENCIA</strong></div>');
+  L.push('<div class="tline tk-gracias"><strong>GRACIAS POR SU PREFERENCIA</strong></div>');
   L.push(`<div class="tline sm">${fechaLargaHoy()}</div>`);
   L.push('<div class="dsep"></div>');
   return L.join('\n');
