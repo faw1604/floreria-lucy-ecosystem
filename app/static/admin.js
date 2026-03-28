@@ -1097,9 +1097,18 @@ async function guardarOtroIngreso() {
 
 // --- EGRESOS ---
 let metodosPagoEgreso = [];
+let categoriasGasto = [];
 
 async function loadMetodosPago() {
   try { const r = await fetch(API+'/api/admin/metodos-pago-egreso',{credentials:'include'}); metodosPagoEgreso = await r.json(); } catch(e) {}
+}
+
+async function loadCategoriasGasto() {
+  try { const r = await fetch(API+'/api/admin/categorias-gasto',{credentials:'include'}); categoriasGasto = await r.json(); } catch(e) {}
+}
+
+function catGastoOptions(selected) {
+  return categoriasGasto.filter(c=>c.activo).map(c => `<option value="${esc(c.nombre)}" ${selected===c.nombre?'selected':''}>${esc(c.nombre)}</option>`).join('');
 }
 
 async function loadEgresos() {
@@ -1128,11 +1137,12 @@ function mpOptions(selected) {
 
 async function abrirModalEgreso(eg) {
   await loadMetodosPago();
+  await loadCategoriasGasto();
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('modal-egreso-body').innerHTML = `
     <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${eg?.fecha||hoy}"></div>
     <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
-    <div class="field"><label>Categoría</label><select id="eg-cat"><option value="insumos" ${eg?.categoria==='insumos'?'selected':''}>Insumos</option><option value="nomina" ${eg?.categoria==='nomina'?'selected':''}>Nómina</option><option value="servicios" ${eg?.categoria==='servicios'?'selected':''}>Servicios</option><option value="mantenimiento" ${eg?.categoria==='mantenimiento'?'selected':''}>Mantenimiento</option><option value="otro" ${eg?.categoria==='otro'?'selected':''}>Otro</option></select></div>
+    <div class="field"><label>Categoría</label><select id="eg-cat"><option value="">Selecciona...</option>${catGastoOptions(eg?.categoria)}</select></div>
     <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
     <div class="field"><label>Monto * (pesos)</label><input type="number" id="eg-monto" step="0.01" value="${eg ? (eg.monto/100).toFixed(2) : ''}"></div>
     <div class="field"><label>Notas</label><textarea id="eg-notas">${esc(eg?.notas||'')}</textarea></div>
@@ -1247,6 +1257,50 @@ async function eliminarGastoRec(id) {
   if (!confirm('¿Eliminar?')) return;
   await fetch(API+'/api/admin/gastos-recurrentes/'+id, {method:'DELETE', credentials:'include'});
   abrirGastosRecurrentes();
+}
+
+// --- Categorías de gasto ---
+async function abrirCategoriasGasto() {
+  await loadCategoriasGasto();
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4>Categorías de gasto</h4>
+    ${categoriasGasto.map(c => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--borde)">
+      <input value="${esc(c.nombre)}" id="cg-name-${c.id}" style="flex:1;padding:4px 8px;border:1px solid var(--borde);border-radius:4px;font-size:12px">
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" ${c.activo?'checked':''} onchange="toggleCG(${c.id},this.checked)"> Activo</label>
+      <button class="btn-sm" onclick="guardarCG(${c.id})" style="font-size:11px">Guardar</button>
+      ${c.egresos === 0 ? `<button class="btn-danger" style="font-size:11px;padding:4px 6px" onclick="eliminarCG(${c.id})">Eliminar</button>` : `<span style="font-size:10px;color:var(--texto2)" title="${c.egresos} egresos">${c.egresos} usos</span>`}
+    </div>`).join('')}
+    <div style="display:flex;gap:6px;margin-top:12px">
+      <input id="cg-nuevo" placeholder="Nueva categoría" style="flex:1;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+      <button class="btn-primary" onclick="crearCG()">Agregar</button>
+    </div>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function guardarCG(id) {
+  const nombre = document.getElementById('cg-name-'+id)?.value?.trim();
+  if (!nombre) return;
+  await fetch(API+'/api/admin/categorias-gasto/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({nombre})});
+  showToast('Guardado');
+}
+
+async function toggleCG(id, activo) {
+  await fetch(API+'/api/admin/categorias-gasto/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({activo})});
+}
+
+async function eliminarCG(id) {
+  if (!confirm('Eliminar?')) return;
+  const r = await fetch(API+'/api/admin/categorias-gasto/'+id, {method:'DELETE', credentials:'include'});
+  if (!r.ok) { const e = await r.json(); alert(e.detail||'Error'); return; }
+  abrirCategoriasGasto();
+}
+
+async function crearCG() {
+  const nombre = document.getElementById('cg-nuevo').value.trim();
+  if (!nombre) return;
+  await fetch(API+'/api/admin/categorias-gasto', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({nombre})});
+  abrirCategoriasGasto();
 }
 
 // --- Métodos de pago egresos ---

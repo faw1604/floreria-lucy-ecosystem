@@ -13,7 +13,7 @@ logger = logging.getLogger("floreria")
 from app.models.clientes import Cliente
 from app.models.configuracion import CodigoDescuento
 from app.models.usuarios import Usuario
-from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso
+from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso, CategoriaGasto
 from app.models.banners import BannerCatalogo
 
 router = APIRouter()
@@ -297,6 +297,65 @@ async def eliminar_gasto_recurrente(
     await db.commit()
     return {"ok": True}
 
+
+# --- Categorías de gasto ---
+
+@router.get("/categorias-gasto")
+async def listar_categorias_gasto(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(CategoriaGasto).order_by(CategoriaGasto.nombre))
+    cats = result.scalars().all()
+    items = []
+    for c in cats:
+        cnt = await db.execute(text("SELECT COUNT(*) FROM egresos WHERE categoria = :n"), {"n": c.nombre})
+        items.append({"id": c.id, "nombre": c.nombre, "activo": c.activo, "egresos": cnt.scalar() or 0})
+    return items
+
+@router.post("/categorias-gasto")
+async def crear_categoria_gasto(request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    data = await request.json()
+    c = CategoriaGasto(nombre=data["nombre"].strip(), activo=True)
+    db.add(c)
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Ya existe")
+    return {"ok": True, "id": c.id}
+
+@router.put("/categorias-gasto/{cat_id}")
+async def actualizar_categoria_gasto(cat_id: int, request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(CategoriaGasto).where(CategoriaGasto.id == cat_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="No encontrada")
+    data = await request.json()
+    old_name = c.nombre
+    if "nombre" in data:
+        c.nombre = data["nombre"].strip()
+        # Update egresos with old name
+        if c.nombre != old_name:
+            await db.execute(text("UPDATE egresos SET categoria = :new WHERE categoria = :old"), {"new": c.nombre, "old": old_name})
+    if "activo" in data:
+        c.activo = data["activo"]
+    await db.commit()
+    return {"ok": True}
+
+@router.delete("/categorias-gasto/{cat_id}")
+async def eliminar_categoria_gasto(cat_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(CategoriaGasto).where(CategoriaGasto.id == cat_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="No encontrada")
+    cnt = await db.execute(text("SELECT COUNT(*) FROM egresos WHERE categoria = :n"), {"n": c.nombre})
+    if (cnt.scalar() or 0) > 0:
+        raise HTTPException(status_code=400, detail="Tiene egresos asociados")
+    await db.delete(c)
+    await db.commit()
+    return {"ok": True}
 
 # --- Métodos de pago egresos ---
 
@@ -712,7 +771,7 @@ async def est_ganancia(desde: str, hasta: str, panel_session: str | None = Cooki
 @router.get("/estadisticas/medios-pago")
 async def est_medios(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
-    r = await db.execute(text(f"SELECT COALESCE(forma_pago,'Sin info') as mp, COUNT(*) as c, COALESCE(SUM(total),0) as t FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} GROUP BY forma_pago ORDER BY t DESC"), _dp(desde,hasta))
+    r = await db.execute(text(f"SELECT COALESCE(forma_pago,'Sin info') as mp, COUNT(*) as c, COALESCE(SUM(total),0) as t FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} AND forma_pago IS NOT NULL AND forma_pago != '' AND forma_pago != '0' GROUP BY forma_pago ORDER BY t DESC"), _dp(desde,hasta))
     rows = [{"metodo":r[0],"count":r[1],"total":r[2]} for r in r.fetchall()]
     grand = sum(r["total"] for r in rows) or 1
     for r in rows: r["porcentaje"] = round(r["total"]/grand*100,1)

@@ -6,6 +6,14 @@ from app.database import Base
 from app.core.config import TZ
 
 
+class CategoriaGasto(Base):
+    __tablename__ = "categorias_gasto"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nombre: Mapped[str] = mapped_column(String(100), unique=True)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
 class MetodoPagoEgreso(Base):
     __tablename__ = "metodos_pago_egreso"
 
