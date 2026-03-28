@@ -997,13 +997,17 @@ async function eliminarDescuento(id) {
 let finCharts = {};
 let finData = {ingresos: null, egresos: null, flujo: null};
 
+function chihuahuaHoy() {
+  const now = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Chihuahua'}));
+  return {now, hoy: now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')};
+}
+
 function getFinDates() {
   const p = document.getElementById('fin-periodo').value;
-  const now = new Date();
-  const hoy = now.toISOString().split('T')[0];
+  const {now, hoy} = chihuahuaHoy();
   if (p === 'rango') return {desde: document.getElementById('fin-desde').value || hoy, hasta: document.getElementById('fin-hasta').value || hoy};
   if (p === 'hoy') return {desde: hoy, hasta: hoy};
-  if (p === 'semana') { const d = new Date(now); d.setDate(d.getDate() - d.getDay()); return {desde: d.toISOString().split('T')[0], hasta: hoy}; }
+  if (p === 'semana') { const d = new Date(now); d.setDate(d.getDate()-d.getDay()); const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); return {desde:ds, hasta:hoy}; }
   if (p === 'mes') return {desde: hoy.substring(0,8)+'01', hasta: hoy};
   return {desde: hoy, hasta: hoy};
 }
@@ -1454,10 +1458,12 @@ let estActiveKpi = 'facturacion';
 let estCache = {};
 
 function getEstDates() {
-  const now = new Date(); const hoy = now.toISOString().split('T')[0];
+  // Use Chihuahua timezone for date calculations
+  const now = new Date(new Date().toLocaleString('en-US',{timeZone:'America/Chihuahua'}));
+  const hoy = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   if (estPeriodo === 'rango') return {desde: document.getElementById('est-desde').value||hoy, hasta: document.getElementById('est-hasta').value||hoy};
   if (estPeriodo === 'hoy') return {desde:hoy, hasta:hoy};
-  if (estPeriodo === 'semana') { const d = new Date(now); d.setDate(d.getDate()-d.getDay()); return {desde:d.toISOString().split('T')[0], hasta:hoy}; }
+  if (estPeriodo === 'semana') { const d = new Date(now); d.setDate(d.getDate()-d.getDay()); const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); return {desde:ds, hasta:hoy}; }
   if (estPeriodo === 'mes') return {desde:hoy.substring(0,8)+'01', hasta:hoy};
   if (estPeriodo === 'anio') return {desde:hoy.substring(0,5)+'01-01', hasta:hoy};
   return {desde:hoy, hasta:hoy};
