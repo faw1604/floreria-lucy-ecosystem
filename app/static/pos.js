@@ -1197,11 +1197,11 @@ let pendRefreshTimer = null;
 
 function estadoClass(estado) {
   if (!estado) return '';
-  const map = {'Pendiente pago':'pendiente_pago','pendiente_pago':'pendiente_pago','Listo':'pagado','Pagado':'pagado','Listo taller':'listo_taller','En camino':'en_camino','Entregado':'entregado','Cancelado':'cancelado'};
+  const map = {'Pendiente pago':'pendiente_pago','pendiente_pago':'pendiente_pago','comprobante_recibido':'comprobante_recibido','esperando_validacion':'esperando_validacion','pagado':'pagado','Listo':'pagado','Pagado':'pagado','Listo taller':'listo_taller','En camino':'en_camino','Entregado':'entregado','Cancelado':'cancelado','rechazado':'cancelado'};
   return map[estado] || '';
 }
 function estadoLabel(estado) {
-  const map = {'Pendiente pago':'Pendiente pago','pendiente_pago':'Pendiente pago','Listo':'Pagado','Pagado':'Pagado','Listo taller':'Listo taller','En camino':'En camino','Entregado':'Entregado','Cancelado':'Cancelado'};
+  const map = {'Pendiente pago':'Pendiente pago','pendiente_pago':'Pendiente pago','comprobante_recibido':'Comprobante recibido','esperando_validacion':'Esperando validacion','pagado':'Pagado','Listo':'Pagado','Pagado':'Pagado','Listo taller':'Listo taller','En camino':'En camino','Entregado':'Entregado','Cancelado':'Cancelado','rechazado':'Rechazado'};
   return map[estado] || estado;
 }
 function tipoIcon(p) {
@@ -1275,6 +1275,8 @@ function renderPendTable(rows) {
       <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
       <td class="pend-actions">
         <button class="btn-edit" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
+        ${ec === 'comprobante_recibido' ? `<button class="btn-fin" style="background:#e67e22" onclick="confirmarPagoPos(${p.id})">Confirmar pago</button>` : ''}
+        ${ec === 'comprobante_recibido' && p.comprobante_pago_url ? `<a href="${p.comprobante_pago_url}" target="_blank" class="btn-edit" style="text-decoration:none">Ver comprobante</a>` : ''}
         ${ec === 'pendiente_pago' ? `<button class="btn-fin" onclick="finalizarPendiente(${p.id},${p.total})">Finalizar</button>` : ''}
         ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelar(${p.id},'${esc(p.folio)}')">Cancelar</button>` : ''}
       </td>
@@ -2128,3 +2130,17 @@ async function updateBadgePend() {
 }
 updateBadgePend();
 setInterval(updateBadgePend, 60000);
+
+async function confirmarPagoPos(id) {
+  if (!confirm('Confirmar que el pago fue verificado?')) return;
+  try {
+    const r = await fetch(`/pedidos/${id}/confirmar-pago`, {method:'POST', credentials:'include'});
+    if (r.ok) {
+      loadPendientes();
+      updateBadgePend();
+    } else {
+      const err = await r.json().catch(() => ({}));
+      alert(err.detail || 'Error al confirmar pago');
+    }
+  } catch(e) { alert('Error de conexion'); }
+}

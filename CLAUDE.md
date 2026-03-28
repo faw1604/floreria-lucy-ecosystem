@@ -17,7 +17,7 @@ Fer maneja casi todo solo con un asistente part-time. El objetivo del proyecto e
 - **Fer descarga el CLAUDE.md** → lo copia a la raíz del repo `floreria-lucy-ecosystem`
 - **Claude Code lee y ejecuta:** `Lee el CLAUDE.md completo y ejecuta todas las tareas en orden`
 - **Fer reporta resultados** → yo actualizo y genero el siguiente CLAUDE.md
-- **Para evitar aprobaciones manuales:** claude --dangerously-skip-permissions ya está configurado en la terminal abierta
+- **Para evitar aprobaciones manuales:** claude --dangerously-skip-permissions. Cuando pida aprobación presionar 2.
 
 ### Reglas de comunicación con Fer
 - Respuestas directas y concisas — Fer está ocupado operando el negocio
@@ -41,7 +41,7 @@ Fer maneja casi todo solo con un asistente part-time. El objetivo del proyecto e
 
 ## Repos GitHub
 - **Ecosistema:** github.com/faw1604/floreria-lucy-ecosystem ← aquí trabajamos
-- **Claudia:** github.com/faw1604/whatsapp-agentkit ← NO TOCAR
+- **Claudia:** github.com/faw1604/whatsapp-agentkit ← NO TOCAR hasta indicación de Fer
 
 ---
 
@@ -51,7 +51,8 @@ Fer maneja casi todo solo con un asistente part-time. El objetivo del proyecto e
 - **Runtime:** Python 3.12
 - **Timezone:** America/Chihuahua — SIEMPRE usar `TZ` de `app/core/config.py`, NUNCA UTC
 - **Auth:** Cookie session SHA256
-- **IA panel:** Claude claude-sonnet-4-6 vía httpx
+- **IA panel:** Claude claude-sonnet-4-6 (Anthropic) vía httpx
+- **WhatsApp:** Whapi.cloud — WHAPI_TOKEN en variables de entorno
 - **Imágenes:** Cloudinary (cloud: ddku2wmpk, API key: 543563876228939)
 - **Deploy:** Railway con Nixpacks, auto-deploy desde GitHub main
 - **PC desarrollo:** C:\Users\EQUIPO\floreria-lucy-ecosystem
@@ -73,40 +74,48 @@ WHAPI_TOKEN=[configurado en Railway]
 
 ---
 
-## Identidad visual
+## Flujo de venta por WhatsApp (contexto crítico)
 
-- Verde oscuro: #193a2c | Verde medio: #2d5a3d | Dorado: #d4a843
-- Fondo crema: #faf8f5 | Texto: #1a1a1a
-- Tipografía: Inter (todo el POS — sin Playfair)
-- Botón primario: fondo #193a2c, texto blanco
-- Botón secundario: fondo blanco, borde #193a2c, texto #193a2c
-- Descuentos y primera compra: #d4a843
+El flujo completo con dos puntos de control humano:
+
+1. Cliente contacta → Claudia identifica necesidad, muestra catálogo
+2. Cliente escoge → Claudia recopila todos los datos del pedido
+3. Claudia crea pedido en ecosistema → estado `esperando_validacion`
+   - Manda resumen al cliente por WhatsApp
+   - Notifica al florista en panel del taller
+4. Florista valida en pestaña "Nuevos pedidos" del taller:
+   - Aceptar → pedido pasa a `pendiente_pago`
+   - Modificar/Cambio → Claudia notifica al cliente, cliente acepta o rechaza
+   - Rechazar → Claudia sugiere alternativas al cliente
+5. Al pasar a `pendiente_pago` → Claudia manda ticket + datos de pago al cliente
+   ⚠️ NUNCA mandar datos de pago antes de validación del florista
+6. Cliente paga → manda comprobante por WhatsApp a Claudia
+7. Claudia notifica a Fer: "Comprobante de pago pendiente de verificar"
+   - Badge rojo aparece en POS (Pedidos pendientes) y Panel admin (sección Pagos)
+8. Fer verifica en su banco → confirma pago en ecosistema
+9. Pedido pasa a `pagado` → aparece en taller para producción
 
 ---
 
 ## Reglas de negocio críticas
 
-### Zonas de envío y tarifas
-- Morada: $99 | Azul: $159 | Verde: $199
-- Funeraria Miranda Villa Juárez = Azul $159 | Resto funerarias = Morada $99
-- En temporada alta: todas las zonas = $99
+### Horario (America/Chihuahua — NUNCA UTC)
+- Lun–Vie: 9–19 | Sáb: 10–18 | Dom: 11–15
+- Semana: domingo a sábado
 
-### Horarios entrega
-- Mañana: 9am–2pm | Tarde: 2pm–6pm | Noche: 6pm–9pm
+### Zonas de envío
+- Morada: $99 | Azul: $159 | Verde: $199
+- Temporada alta: todas $99
 
 ### Impuestos
-- IVA 16%: se SUMA al subtotal de productos (no al envío)
-- IEPS 8%: ya está implícito en el precio — solo se DESGLOSA, NO se suma
-- Sin impuesto: N/A
+- IVA 16%: SE SUMA al subtotal
+- IEPS 8%: ya implícito — solo SE DESGLOSA
+- Hora específica: +$80
+- Link de pago: +4% comisión
 
 ### Pedidos funeral
-- Solo productos de categoría funeral — sin excepción
-- Sin ruta asignada, tarifa fija según funeraria
-
-### Métodos de pago
-- Efectivo, Tarjeta crédito, Tarjeta débito, Transferencia, Link de pago, OXXO
-- Combinables — la suma debe = total
-- Link de pago: +4% comisión sumada al total
+- Solo productos categoría funeral — sin excepción
+- Sin ruta asignada
 
 ---
 
@@ -116,376 +125,239 @@ WHAPI_TOKEN=[configurado en Railway]
 2. BD poblada (613 productos, 4,045 clientes, 15 funerarias)
 3. Panel admin con asistente IA
 4. Catálogo web completo
-5. Pantalla del taller v2
-6. Tickets 80mm (3 variantes) + mini tickets + endpoint digital
-7. Panel del repartidor completo con rutas
-8. Asignación automática de ruta (shapely + Nominatim)
-9. Asignación automática de zona de envío (KML polígonos reales)
-10. Endpoint POST /pedidos/desde-claudia
-11. POS v1 funcionando (se va a rediseñar completamente en estas tareas)
+5. Panel del taller (5 pestañas, flujo de aprobación completo)
+6. Tickets 80mm (3 variantes) + mini tickets
+7. Panel del repartidor completo con rutas y zonas
+8. Asignación automática de zona y ruta (shapely + KML reales)
+9. POS completo (Ventas, Pedidos pendientes, Transacciones, Clientes, Claudia placeholder)
+10. Ticket digital elegante + ticket térmico (Helvetica, mayúsculas, sin acentos)
+11. Corte de caja en Transacciones
+12. Endpoint POST /pedidos/desde-claudia (puente listo)
+13. Soporte flujo WhatsApp en ecosistema (9 tareas completadas):
+    - Nuevos estados (esperando_validacion, comprobante_recibido, pagado, rechazado)
+    - Campos WhatsApp en Pedido + migración ejecutada en Railway
+    - Endpoints: confirmar-pago, subir-comprobante, estado-para-claudia, webhook-estado
+    - Tabla configuracion_negocio con CRUD en panel admin
+    - Sección "Pagos pendientes" en panel admin con polling 60s
+    - Pedidos comprobante_recibido visibles en POS con botón confirmar
+    - Taller: soporte esperando_validacion, badge WhatsApp, aceptar→pendiente_pago
 
 ---
 
-## TAREAS PENDIENTES INMEDIATAS — Rediseño completo del POS
+## TAREAS PENDIENTES INMEDIATAS — Soporte para flujo WhatsApp
 
 ### Contexto
-El POS actual (app/pos.html) se rediseña completamente con una nueva arquitectura
-de flujo por ventanas/pasos, sidebar izquierdo de navegación, y UX inspirada en Kyte
-pero con identidad Florería Lucy.
-
-El archivo `app/pos.html` se reescribe desde cero. El router `app/routers/pos.py`
-se mantiene y extiende con los nuevos endpoints necesarios.
+Preparar el ecosistema para cuando Claudia se conecte. Todo el trabajo
+es en el ecosistema (NO tocar whatsapp-agentkit todavía).
 
 ---
 
-### ARQUITECTURA GENERAL
+### TAREA 1 — Nuevos estados en el modelo Pedido
 
-```
-┌──────────┬────────────────────────────────────────────┐
-│ SIDEBAR  │  CONTENIDO PRINCIPAL                       │
-│ izquierdo│                                            │
-│          │  [Ventana activa según sección y paso]     │
-│ Ventas   │                                            │
-│ Pedidos  │                                            │
-│ pendientes│                                           │
-│Transacc. │                                            │
-│ Clientes │                                            │
-│ Claudia  │                                            │
-└──────────┴────────────────────────────────────────────┘
-```
+En `app/models/pedidos.py`, los nuevos valores de estado que el flujo de WhatsApp necesita:
+- `esperando_validacion` — pedido creado por Claudia, esperando que el florista valide
+- `pendiente_pago` — florista validó, esperando que el cliente pague (ya existe pero confirmar)
+- `comprobante_recibido` — cliente mandó comprobante, Fer debe verificar
+- `pagado` — Fer confirmó el pago, pasa a producción (ya existe pero confirmar)
 
-**Sidebar izquierdo** (fijo, siempre visible):
-- Fondo #193a2c, iconos y texto blanco
-- Ítem activo: fondo #d4a843, texto #193a2c
-- Ítems: Ventas (🛒) | Pedidos pendientes (⏳) | Transacciones (💰) | Clientes (👤) | Claudia (🤖)
-- Logo "Florería Lucy" arriba del sidebar
-- Enlace "← Panel" al fondo del sidebar
+Verificar que estos estados están contemplados en todos los filtros existentes
+(taller, repartidor, POS) y agregarlos donde falten.
 
 ---
 
-### SECCIÓN 1 — VENTAS (flujo de 3 ventanas)
+### TAREA 2 — Campos adicionales en Pedido para flujo WhatsApp
 
-La sección de Ventas tiene 3 ventanas/pasos secuenciales. Siempre se puede regresar
-al paso anterior con un botón "← Regresar". El estado del pedido en curso se mantiene
-en memoria JS mientras se navega entre pasos.
-
----
-
-#### VENTANA 1 — Selección de productos
-
-**Layout:**
-```
-┌─────────────────────────────┬──────────────────────┐
-│  CATÁLOGO                   │  CARRITO             │
-│                             │                      │
-│  [🔍 Buscar] [Categorías ▼] │  items...            │
-│  [☰ Lista] [⊞ Grid]  [⚡]  │                      │
-│                             │  ─────────────────   │
-│  productos...               │  SUBTOTAL    $X,XXX  │
-│                             │  IVA 16% [×] $XXX    │
-│                             │  IEPS 8%  [×] —      │
-│                             │  ─────────────────   │
-│                             │  TOTAL       $X,XXX  │
-│                             │                      │
-│                             │  [Continuar orden →] │
-└─────────────────────────────┴──────────────────────┘
+En `app/models/pedidos.py`, agregar campos:
+```python
+canal: Mapped[str] = mapped_column(default="POS")  # "POS" | "WhatsApp" | "Web"
+comprobante_pago_url: Mapped[Optional[str]] = mapped_column(nullable=True)
+comprobante_pago_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+pago_confirmado_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+pago_confirmado_por: Mapped[Optional[str]] = mapped_column(nullable=True)  # "admin"
+nota_validacion: Mapped[Optional[str]] = mapped_column(nullable=True)  # nota del florista
 ```
 
-**Catálogo (columna izquierda ~65%):**
-- Toggle vista: Grid (⊞) o Lista (☰) — el operador elige, persiste en localStorage
-- Grid: 3 columnas, tarjetas con imagen cuadrada, nombre (2 líneas), precio
-  - Si tiene precio_descuento: precio normal tachado + precio oferta en dorado
-  - Sin stock: overlay gris "Sin stock", no clickeable
-  - Solo mostrar productos CON imagen_url
-- Lista: tabla compacta con imagen pequeña (40x40), nombre, código, precio, botón [+]
-- Buscador en tiempo real (fetch a /pos/productos?q=)
-- Dropdown de categorías (fetch a /pos/productos/categorias)
-- Click en producto → agregar al carrito con animación
-
-**Botón rayo ⚡ (producto no registrado):**
-- Icono ⚡ junto al buscador
-- Al click: modal pequeño con campos:
-  - Nombre del item (obligatorio)
-  - Precio (obligatorio, numérico)
-  - Observaciones (opcional, textarea pequeño)
-  - Botón "Agregar al carrito"
-- El item se agrega al carrito como producto custom (sin producto_id, con nombre y precio manual)
-- Se incluye en el pedido como item especial
-
-**Carrito (columna derecha ~35%):**
-- Lista de items con:
-  - Nombre + código si existe
-  - Controles cantidad: [−] [N] [+]
-  - Precio unitario × cantidad = subtotal item
-  - Botón [×] eliminar
-  - Botón "Descuento" por item → input de % o $ con botón Aplicar
-    - Al aplicar: mostrar precio tachado + precio con descuento en dorado
-    - Botón [×] para quitar descuento del item
-- Si carrito vacío: "Selecciona productos del catálogo" con ícono
-
-**Sección de totales al fondo del carrito:**
-```
-N items                      Subtotal: $X,XXX
-                    [ × IVA (16%): $XXX  ]   ← chip toggleable
-                    [ × IEPS (8%): $XXX  ]   ← chip toggleable, solo desglosa
-                    Dar descuento ↗           ← descuento global
-──────────────────────────────────────────
-                             TOTAL: $X,XXX
-```
-- IVA: chip con ×, al activar SUMA 16% al subtotal, al desactivar lo quita
-- IEPS: chip con ×, al activar DESGLOSA 8% (no suma), al desactivar lo quita
-- Ambos pueden estar activos o inactivos independientemente
-- "Dar descuento": input de % o $ con botón Aplicar, aparece como línea en dorado
-- Botón grande "Continuar orden →" en verde #193a2c
+Crear script `scripts/migrate_whatsapp_flow.py` con ALTER TABLE para los nuevos campos
+y ejecutarlo contra Railway.
 
 ---
 
-#### VENTANA 2 — Tipo de pedido
+### TAREA 3 — Endpoint para confirmar pago (Fer)
 
-**Layout:**
-```
-← Regresar
-
-¿Cómo es este pedido?
-
-┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-│  🏪          │ │  🚚          │ │  🛍          │ │  🌹          │
-│   Mostrador  │ │  Domicilio   │ │   Recoger    │ │   Funeral    │
-└──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘
-```
-- 4 botones grandes, centrados, con ícono y texto
-- Al seleccionar uno → ir a Ventana 3 con el tipo seleccionado
-- Botón "← Regresar" regresa a Ventana 1 (carrito se preserva)
-
----
-
-#### VENTANA 3 — Datos del pedido (según tipo)
-
-**Layout general:**
-```
-← Regresar          [Tipo de pedido]
-
-┌─────────────────────────────┬──────────────────────┐
-│  FORMULARIO (scroll)        │  RESUMEN DEL PEDIDO  │
-│                             │  (fijo, siempre      │
-│  [cajas según tipo]         │   visible)           │
-│                             │                      │
-│                             │  Subtotal: $X,XXX    │
-│                             │  IVA:      $XXX      │
-│                             │  Envío:    $XX       │
-│                             │  Descuento:-$XX      │
-│                             │  ────────────────    │
-│                             │  TOTAL:    $X,XXX    │
-│                             │                      │
-│  [Descartar] [Guardar] [Finalizar]                 │
-└─────────────────────────────┴──────────────────────┘
-```
-
-El resumen del pedido en la columna derecha se actualiza en tiempo real conforme
-el operador llena los datos (zona de envío afecta el total, etc.).
-
-**Botones de acción (fijo al fondo, siempre visibles):**
-- "Descartar venta" (gris) → confirmar con modal "¿Descartar esta venta?" → limpiar todo
-- "Guardar pedido" (blanco con borde) → POST /pos/pedido estado="pendiente_pago" → modal ticket
-- "Finalizar venta" (verde #193a2c) → validar campos obligatorios → POST /pos/pedido estado="pagado" → modal ticket
-
-**Modal post-venta (al guardar o finalizar):**
-- Título: folio del pedido en grande
-- Resumen: total, método de pago
-- Botones:
-  - "🖨 Imprimir ticket" → window.print() con ticket 80mm
-  - "💬 Enviar por WhatsApp" → solo si hay cliente con teléfono → POST /pos/enviar-ticket-whatsapp
-    (genera imagen con html2canvas y la envía vía Whapi)
-- Botón "✕ Cerrar" en esquina superior derecha → limpia todo y vuelve a Ventana 1
-
----
-
-#### VENTANA 3A — Mostrador
-
-Cajas/secciones en el formulario:
-1. **Método de pago** — igual que Kyte: radio buttons con ícono, al seleccionar muestra campo de monto.
-   Opciones: Efectivo | Tarjeta débito | Tarjeta crédito | Transferencia | Link de pago | OXXO
-   - Combinables: al seleccionar uno se puede agregar otro
-   - Si Link de pago: mostrar "+4% = $X" en el resumen
-   - Validar que suma de pagos = total
-
----
-
-#### VENTANA 3B — Domicilio
-
-Cajas/secciones:
-1. **Cliente** — buscar por nombre/tel/código referido con autocompletado
-   - Si no existe: botón "Registrar nuevo cliente" → modal con formulario (persona física o empresa)
-   - Si tiene flag primera_compra = true: mostrar botón sugerencia "Aplicar 10% primera compra"
-     (no automático — el operador decide aplicarlo)
-2. **Datos de entrega**
-   - Nombre de quien recibe (obligatorio)
-   - Teléfono de quien recibe (obligatorio)
-   - Dirección (obligatorio) + botón "📍 Verificar en Maps" → abre Google Maps en nueva pestaña
-     - Checkbox "✓ Dirección verificada" (manual)
-     - Al marcar verificada: fetch a /pos/geocodificar → badge de ruta + auto-asignación de zona
-   - Notas para el repartidor (opcional)
-   - Dedicatoria (opcional)
-3. **Fecha y horario**
-   - Date picker (obligatorio, mínimo hoy)
-   - Selector horario: Mañana (9-2pm) | Tarde (2-6pm) | Noche (6-9pm) | Hora específica
-   - Si Hora específica: input hora + nota "Mínimo 2 hrs anticipación"
-4. **Zona de envío**
-   - Auto-asignada si se verificó en Maps
-   - Si no: selector manual (Morada $99 / Azul $159 / Verde $199)
-   - En temporada alta: todas $99
-5. **Método de pago** — igual que Mostrador
-
----
-
-#### VENTANA 3C — Recoger (Pick up)
-
-Cajas/secciones:
-1. **Cliente** — igual que Domicilio
-2. **Fecha y hora de recogida**
-   - Date picker (obligatorio, mínimo hoy)
-   - Time picker (obligatorio)
-   - Label: "¿Cuándo pasa a recoger?"
-3. **Método de pago** — igual que Mostrador
-
----
-
-#### VENTANA 3D — Funeral
-
-Cajas/secciones:
-1. **Cliente** — igual que Domicilio (quien encarga)
-2. **Datos del funeral**
-   - Funeraria: input con autocompletado (/funerarias/buscar) (obligatorio)
-   - Nombre del fallecido (obligatorio)
-   - Sala (opcional)
-   - Texto banda (opcional)
-   - Dedicatoria (opcional)
-   - Fecha de entrega: date picker (obligatorio)
-   - Horario velación: radio "Ya inició" | "Inicia a las [selector hora]"
-   - Validar: todos los productos deben ser categoría funeral
-3. **Método de pago** — igual que Mostrador
-
----
-
-### SECCIÓN 2 — PEDIDOS PENDIENTES
-
-Lista de pedidos con estado = "pendiente_pago".
-Fetch a GET /pos/pedidos-hoy (tab pendientes).
-Cada pedido en tarjeta con:
-- Folio, tipo, cliente o "Mostrador", productos (resumen), total
-- Botón "Finalizar" → abre la Ventana 3 del tipo correspondiente con datos pre-cargados
-- Botón "Ver detalle" → expandir tarjeta con todos los datos
-
----
-
-### SECCIÓN 3 — TRANSACCIONES
-
-Lista de pedidos con estado = "pagado" o "listo_taller" del día.
-Fetch a GET /pos/pedidos-hoy (tab finalizados).
-Cada pedido en tarjeta con folio, cliente, productos, total, método de pago.
-- Botón "Editar" → modal con campos no críticos editables
-- Botón "Reimprimir"
-Al fondo: resumen del día con total por método de pago y total general.
-
----
-
-### SECCIÓN 4 — CLIENTES
-
-Buscador de clientes con autocompletado.
-Lista de resultados con nombre, teléfono, número de pedidos.
-Click en cliente → ver detalle (historial de pedidos, fechas especiales, código referido).
-Botón "Nuevo cliente" → mismo modal de registro que en Ventas.
-
----
-
-### SECCIÓN 5 — CLAUDIA
-
-iframe o panel que muestra el panel de Claudia / chats activos.
-URL: la del panel de WhatsApp ya existente en el ecosistema.
-Si no hay URL directa disponible, mostrar placeholder "Próximamente".
-
----
-
-### VALIDACIONES OBLIGATORIAS (antes de Finalizar)
-
-**Mostrador:** al menos 1 producto, pagos cuadran con total
-**Domicilio:** cliente, nombre destinatario, teléfono destinatario, dirección, fecha, horario, zona, pagos cuadran
-**Recoger:** cliente, fecha recogida, hora recogida, pagos cuadran
-**Funeral:** cliente, funeraria, nombre fallecido, fecha entrega, todos productos son categoría funeral, pagos cuadran
-
-Al hacer click en "Finalizar": recorrer validaciones, marcar campos faltantes en rojo con mensaje,
-hacer scroll al primer error. No proceder hasta que todo esté completo.
-"Guardar pedido" no valida — guarda sin importar campos faltantes.
-
----
-
-### ENDPOINTS NUEVOS O MODIFICADOS en app/routers/pos.py
-
-Los endpoints existentes se mantienen. Agregar o modificar:
+En `app/routers/pedidos.py`, agregar:
 
 ```
-GET  /pos/pedidos-pendientes     → pedidos estado="pendiente_pago" del día
-PATCH /pos/pedido/{id}/completar → finalizar un pedido pendiente con pagos
+POST /pedidos/{id}/confirmar-pago
+```
+- Requiere auth (solo admin)
+- Cambia estado de `comprobante_recibido` a `pagado`
+- Guarda `pago_confirmado_at = now()` y `pago_confirmado_por = "admin"`
+- Retorna `{ "ok": true, "folio": "FL-2026-XXXX" }`
+
+```
+POST /pedidos/{id}/subir-comprobante
+```
+- Público (sin auth) — lo llama Claudia cuando el cliente manda el comprobante
+- Requiere `CLAUDIA_API_KEY` en header `X-API-Key`
+- Body: multipart/form-data con campo `comprobante` (imagen)
+- Sube imagen a Cloudinary carpeta `comprobantes/`
+- Guarda `comprobante_pago_url` y `comprobante_pago_at`
+- Cambia estado a `comprobante_recibido`
+- Retorna `{ "ok": true, "url": "..." }`
+
+---
+
+### TAREA 4 — Sección "Pagos pendientes" en panel admin
+
+En `app/panel.html`, agregar una sección o pestaña "Pagos pendientes":
+- Badge rojo con número de pedidos en estado `comprobante_recibido`
+- Lista de pedidos con: folio, cliente, total, fecha comprobante, link al comprobante (imagen)
+- Botón "✓ Confirmar pago" en cada pedido → POST /pedidos/{id}/confirmar-pago
+- Al confirmar: pedido desaparece de la lista, badge se actualiza
+- Polling cada 60 segundos para detectar nuevos comprobantes
+
+---
+
+### TAREA 5 — Sección "Pagos pendientes" en POS
+
+En `app/pos.html`, en la sección "Pedidos pendientes":
+- Filtrar también pedidos con estado `comprobante_recibido`
+- Mostrarlos con badge especial "💳 Comprobante recibido" en naranja
+- Botón "✓ Confirmar pago" en esos pedidos → POST /pedidos/{id}/confirmar-pago
+- Badge rojo del sidebar debe incluir también los pedidos con comprobante recibido
+
+---
+
+### TAREA 6 — Pestaña "Nuevos pedidos" del taller — soporte para WhatsApp
+
+En `app/taller.html`, pestaña "Nuevos pedidos":
+- Los pedidos en estado `esperando_validacion` deben aparecer aquí
+- Mostrar badge o etiqueta "WhatsApp" en los pedidos que vienen de ese canal
+- Los botones Aceptar/Modificar/Cambio/Rechazar ya funcionan — verificar que
+  al hacer Aceptar un pedido en `esperando_validacion` pase a `pendiente_pago`
+- Al hacer Rechazar: cambiar estado a `rechazado` (nuevo estado)
+
+---
+
+### TAREA 7 — Endpoint de notificación para Claudia
+
+En `app/routers/pedidos.py`, agregar:
+
+```
+GET /pedidos/{id}/estado-para-claudia
+```
+- Requiere `CLAUDIA_API_KEY` en header `X-API-Key`
+- Retorna el estado actual del pedido y datos relevantes para que Claudia
+  notifique al cliente:
+```json
+{
+  "folio": "FL-2026-XXXX",
+  "estado": "pendiente_pago",
+  "estado_label": "Validado por el florista",
+  "cliente_telefono": "526141234567",
+  "total": 1299,
+  "nota_validacion": "Solo tenemos rosas rojas disponibles",
+  "datos_pago": {
+    "banco": "BBVA",
+    "cuenta": "...",
+    "clabe": "...",
+    "titular": "Fernando Abaroa"
+  }
+}
+```
+- Los datos de pago solo se incluyen cuando estado = `pendiente_pago`
+- En cualquier otro estado, datos_pago = null
+
+**IMPORTANTE:** Los datos bancarios se obtienen de la configuración del negocio
+en BD (tabla `configuracion` o similar). NO hardcodear datos bancarios en el código.
+Si no existe tabla de configuración, crearla con campos básicos del negocio.
+
+---
+
+### TAREA 8 — Tabla de configuración del negocio
+
+Crear modelo `app/models/configuracion.py`:
+```python
+class ConfiguracionNegocio(Base):
+    __tablename__ = "configuracion_negocio"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    clave: Mapped[str] = mapped_column(unique=True)  # ej: "banco_nombre"
+    valor: Mapped[str] = mapped_column()
+    descripcion: Mapped[Optional[str]] = mapped_column(nullable=True)
 ```
 
-El endpoint POST /pos/pedido existente ya maneja todo lo demás.
+Insertar valores iniciales con script:
+- `banco_nombre`: "BBVA"
+- `banco_titular`: "Fernando Abaroa"
+- `banco_cuenta`: "[Fer completa esto]"
+- `banco_clabe`: "[Fer completa esto]"
+- `banco_concepto`: "Pedido Florería Lucy"
+- `negocio_nombre`: "Florería Lucy"
+- `negocio_direccion`: "C. Sabino 610, Las Granjas, Chihuahua"
+- `negocio_telefono`: "6143349392"
+- `negocio_email`: "florerialucychihuahua@gmail.com"
+
+Agregar endpoint en panel admin para editar estos valores (CRUD simple).
 
 ---
 
-### NOTAS DE IMPLEMENTACIÓN
+### TAREA 9 — Webhook para Claudia (notificaciones de cambio de estado)
 
-1. **Estado del pedido en curso:** guardar en objeto JS `ordenActual` en memoria.
-   Persiste al navegar entre ventanas 1→2→3. Se limpia al finalizar, descartar o cerrar modal.
-2. **Productos no registrados (⚡):** incluir en items del pedido con producto_id = null,
-   nombre y precio del campo manual, y observaciones en notas del item.
-3. **Vista grid/lista:** guardar preferencia en localStorage con key "pos_vista_catalogo"
-4. **Resumen siempre visible en Ventana 3:** columna derecha fija, no hace scroll.
-   Se actualiza reactivamente con cada cambio en el formulario.
-5. **El carrito NO usa localStorage** — solo memoria JS. Se pierde al recargar.
-6. **Impresión:** window.print() con CSS @media print, mismo ticket 80mm existente.
-7. **Whapi para WhatsApp:** usar WHAPI_TOKEN de variables de entorno.
-   Endpoint existente POST /pos/enviar-ticket-whatsapp ya implementado.
-8. **No usar fetch sin try/catch** — cada llamada con manejo de error visible al usuario.
+En `app/routers/pedidos.py`, agregar:
+
+```
+POST /pedidos/{id}/webhook-estado
+```
+- Requiere `CLAUDIA_API_KEY`
+- Registra una URL de webhook que Claudia quiere recibir cuando el estado cambie
+- Body: `{ "webhook_url": "https://..." }`
+
+Cuando un pedido cambia de estado (en cualquier endpoint que modifique estado):
+- Si tiene webhook_url registrada, hacer POST a esa URL con:
+  `{ "folio": "FL-2026-XXXX", "estado_anterior": "X", "estado_nuevo": "Y" }`
+- Fire-and-forget (no esperar respuesta, no bloquear)
 
 ---
 
-## Roadmap pendiente (en orden de prioridad para mayo 10)
+## Roadmap pendiente
 
-### Crítico para mayo:
-1. ✅ Pantalla del taller
-2. ✅ Tickets + mini tickets + endpoint digital
-3. ✅ Panel del repartidor completo con rutas
-4. **POS rediseño completo ← ESTAMOS AQUÍ**
-5. Conectar Claudia al ecosistema
+### Crítico para mayo 10:
+1. ✅ Panel taller
+2. ✅ Tickets
+3. ✅ Panel repartidor con rutas
+4. ✅ POS completo
+5. ✅ Soporte flujo WhatsApp en ecosistema
+6. **Conectar Claudia al ecosistema ← SIGUIENTE**
+7. Flujo catálogo web
 
 ### Post-mayo:
-- Migración 550 fotos restantes desde Kyte
-- Historial ventas 2021–2024
-- Auth personalizada para repartidor
-- Afinar polígonos de rutas
+- Versión empleado del POS
+- Versión administrador del POS con Configuración
+- Sección Finanzas
+- Migración 550 fotos desde Kyte
+- Google Places Autocomplete
 - Apagar Kyte
 
 ---
 
-## Decisiones de diseño tomadas (no revertir)
+## Decisiones críticas (no revertir)
 
-- **POS:** flujo de 3 ventanas secuenciales, sidebar izquierdo, resumen siempre visible
-- **Carrito en JS puro** — sin localStorage
-- **IVA suma, IEPS solo desglosa** — nunca al revés
-- **10% primera compra:** sugerencia, no automático
-- **Funerales sin ruta** — no geocodificar funerarias
-- **Coordenadas:** verificación manual en Maps + Nominatim como geocodificador
-- **Sin Google Geocoding API** — tiene costo, no autorizado
+- **Datos de pago NUNCA se mandan antes de validación del florista**
+- **Semana:** domingo a sábado
+- **IVA suma, IEPS solo desglosa**
+- **Funerales:** solo productos categoría funeral, sin ruta
+- **Tickets impresos:** Helvetica/Arial, mayúsculas, sin acentos ni ñ
+- **Sin Google Geocoding API** sin aprobación de Fer
 
 ---
 
 ## LO QUE NUNCA SE DEBE HACER
 
-- Tocar repo whatsapp-agentkit hasta que Fer confirme que el ecosistema está listo
+- Tocar repo whatsapp-agentkit hasta que Fer lo indique
 - Cambiar el número de WhatsApp: 5216143349392
-- Hardcodear API keys o passwords
+- Hardcodear datos bancarios en el código — usar tabla configuracion_negocio
+- Mandar datos de pago al cliente sin validación previa del florista
 - Cambiar timezone a UTC — siempre America/Chihuahua
 - Mostrar productos sin imagen_url en catálogo o POS
 - Permitir productos no-funeral en pedidos de funeral
-- Usar Google Geocoding API sin aprobación de Fer
 - IEPS sumando al total — solo desglosa

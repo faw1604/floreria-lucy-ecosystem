@@ -7,6 +7,8 @@ import os
 from app.database import get_db
 from app.core.config import TZ
 from app.routers.auth import verificar_sesion
+from app.models.pedidos import Pedido
+from app.models.clientes import Cliente
 
 router = APIRouter()
 
@@ -412,3 +414,37 @@ INSTRUCCIONES:
         d = r.json()
         respuesta = d["content"][0]["text"] if d.get("content") else "Sin respuesta"
         return {"respuesta": respuesta}
+
+
+@router.get("/pagos-pendientes")
+async def pagos_pendientes(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lista pedidos con comprobante_recibido para verificación de pago."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(
+        select(Pedido)
+        .where(Pedido.estado == "comprobante_recibido")
+        .order_by(Pedido.comprobante_pago_at.desc())
+    )
+    pedidos = result.scalars().all()
+    items = []
+    for p in pedidos:
+        nombre_cliente = None
+        if p.customer_id:
+            cli = await db.execute(select(Cliente).where(Cliente.id == p.customer_id))
+            c = cli.scalar_one_or_none()
+            if c:
+                nombre_cliente = c.nombre
+        items.append({
+            "id": p.id,
+            "numero": p.numero,
+            "cliente": nombre_cliente or p.receptor_nombre or "Sin nombre",
+            "total": p.total,
+            "comprobante_url": p.comprobante_pago_url,
+            "comprobante_at": p.comprobante_pago_at.isoformat() if p.comprobante_pago_at else None,
+            "canal": p.canal,
+        })
+    return items

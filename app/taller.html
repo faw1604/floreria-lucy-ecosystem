@@ -343,6 +343,10 @@ document.querySelectorAll('.inv-subtab').forEach(t => {
 // ─── Estado helpers ───
 function estadoClass(estado) {
   const e = (estado||'').toLowerCase();
+  if (e === 'esperando_validacion') return 'estado-nuevo';
+  if (e === 'comprobante_recibido') return 'estado-pendiente-pago';
+  if (e === 'pagado') return 'estado-listo';
+  if (e === 'rechazado') return 'estado-cancelado';
   if (e.includes('nuevo')) return 'estado-nuevo';
   if (e.includes('producci')) return 'estado-produccion';
   if (e === 'listo') return 'estado-listo';
@@ -392,6 +396,7 @@ function renderCard(p, showActions) {
   const pagoPendiente = !p.pago_confirmado;
   const pagoIcon = p.pago_confirmado ? '✅' : '⚠️ PENDIENTE';
   let badges = '';
+  if (p.canal === 'WhatsApp') badges += '<span class="pedido-badge" style="background:#25d366;color:#fff">WHATSAPP</span>';
   if (p.tipo_especial === 'Funeral') badges += '<span class="pedido-badge badge-funeral">FUNERAL</span>';
   else if (p.tipo_especial === 'Evento') badges += '<span class="pedido-badge badge-evento">EVENTO</span>';
 
@@ -489,10 +494,12 @@ async function loadPedidos() {
     if (rHoy.status === 401) { window.location.href = '/panel/'; return; }
     const pedidosHoy = rHoy.ok ? await rHoy.json() : [];
     const pedidosManana = rManana.ok ? await rManana.json() : [];
+    window._pedidosHoy = pedidosHoy;
+    window._pedidosManana = pedidosManana;
 
     // Notification badge
-    const pendientes = pedidosHoy.filter(p => !p.estado_florista || p.estado_florista === 'pendiente_aprobacion').length
-      + pedidosManana.filter(p => !p.estado_florista || p.estado_florista === 'pendiente_aprobacion').length;
+    const pendientes = pedidosHoy.filter(p => !p.estado_florista || p.estado_florista === 'pendiente_aprobacion' || p.estado === 'esperando_validacion').length
+      + pedidosManana.filter(p => !p.estado_florista || p.estado_florista === 'pendiente_aprobacion' || p.estado === 'esperando_validacion').length;
     const badge = document.getElementById('notif-badge');
     if (pendientes > 0) { badge.textContent = pendientes; badge.style.display = ''; }
     else { badge.style.display = 'none'; }
@@ -900,12 +907,21 @@ async function updateInvStatus(id, tipo, status) {
 // ─── Acciones de pedido ───
 async function aceptarPedido(id) {
   try {
+    // Buscar el pedido para ver si viene de WhatsApp (esperando_validacion)
+    const pedido = findPedidoById(id);
+    const esWhatsApp = pedido && (pedido.estado === 'esperando_validacion' || pedido.canal === 'WhatsApp');
+    const nuevoEstado = esWhatsApp ? 'pendiente_pago' : 'En producción';
     await fetch(`${API}/pedidos/${id}/estado`, {
       method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado:'En producción', estado_florista:'aprobado'})
+      body: JSON.stringify({estado: nuevoEstado, estado_florista:'aprobado'})
     });
     loadPedidos();
   } catch(e) {}
+}
+
+function findPedidoById(id) {
+  const all = [...(window._pedidosHoy||[]), ...(window._pedidosManana||[])];
+  return all.find(p => p.id === id);
 }
 
 function abrirModificacion(id) {
@@ -993,7 +1009,7 @@ document.getElementById('rechazo-submit').addEventListener('click', async () => 
   try {
     await fetch(`${API}/pedidos/${currentModalPedidoId}/estado`, {
       method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado:'Requiere atención humana', estado_florista:'rechazado', nota_florista:razon, requiere_humano:true})
+      body: JSON.stringify({estado:'rechazado', estado_florista:'rechazado', nota_florista:razon, requiere_humano:true})
     });
     cerrarModal('modal-rechazo');
     loadPedidos();

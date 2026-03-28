@@ -356,6 +356,7 @@ async def _serializar_pedido_pos(p, db):
         "receptor_telefono": p.receptor_telefono, "dedicatoria": p.dedicatoria,
         "notas_internas": p.notas_internas, "ruta": p.ruta,
         "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
+        "comprobante_pago_url": p.comprobante_pago_url,
     }
 
 
@@ -474,7 +475,7 @@ async def pos_pedidos_hoy(
 
     # Map estado filter values to DB values
     estado_map = {
-        "pendiente_pago": ["Pendiente pago", "pendiente_pago"],
+        "pendiente_pago": ["Pendiente pago", "pendiente_pago", "comprobante_recibido", "esperando_validacion"],
         "pagado": ["Listo"],
         "listo_taller": ["Listo taller"],
         "en_camino": ["En camino"],
@@ -495,7 +496,7 @@ async def pos_pedidos_hoy(
 
         data = await _serializar_pedido_pos(p, db)
         data["fecha_pedido"] = p.fecha_pedido.strftime("%Y-%m-%d %H:%M") if p.fecha_pedido else None
-        if p.estado in ("Pendiente pago", "pendiente_pago"):
+        if p.estado in ("Pendiente pago", "pendiente_pago", "comprobante_recibido", "esperando_validacion"):
             pendientes.append(data)
         else:
             finalizados.append(data)

@@ -12,7 +12,8 @@ class Pedido(Base):
     customer_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     canal: Mapped[str] = mapped_column(String(20), default="WhatsApp")  # WhatsApp / Mostrador / Web
     estado: Mapped[str] = mapped_column(String(30), default="Nuevo")
-    # Nuevo / En producción / Listo / En camino / Entregado / Pendiente pago / Cancelado
+    # Nuevo / esperando_validacion / Pendiente pago / comprobante_recibido / pagado
+    # En producción / Listo / En camino / Entregado / Cancelado / rechazado
     fecha_pedido: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     fecha_entrega: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     horario_entrega: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)  # mañana/tarde/noche
@@ -39,6 +40,13 @@ class Pedido(Base):
     intento_fallido_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     nota_no_entrega: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     ruta: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    # Campos flujo WhatsApp
+    comprobante_pago_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    comprobante_pago_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    pago_confirmado_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    pago_confirmado_por: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    nota_validacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    webhook_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class ItemPedido(Base):

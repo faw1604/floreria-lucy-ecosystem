@@ -1,14 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException, Cookie, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Cookie, Header, Request, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
-import os
+import os, logging
+import cloudinary
+import cloudinary.uploader
 from app.database import get_db
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
 from app.models.productos import Producto
+from app.models.configuracion import ConfiguracionNegocio
 from app.core.config import TZ
 from app.routers.auth import verificar_sesion
+
+logger = logging.getLogger("floreria")
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", "ddku2wmpk"),
+    api_key=os.getenv("CLOUDINARY_API_KEY", "543563876228939"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET", ""),
+)
 
 router = APIRouter()
 
@@ -210,7 +221,7 @@ async def crear_pedido_desde_claudia(
         numero=numero,
         customer_id=cliente.id,
         canal=data.get("canal", "WhatsApp"),
-        estado="Pendiente pago",
+        estado="esperando_validacion",
         fecha_entrega=data.get("fecha_entrega"),
         horario_entrega=data.get("horario_entrega"),
         zona_entrega=zona,
@@ -512,6 +523,7 @@ async def actualizar_estado(
     pedido = result.scalar_one_or_none()
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    estado_anterior = pedido.estado
     pedido.estado = request.get("estado", pedido.estado)
     pedido.pago_confirmado = request.get("pago_confirmado", pedido.pago_confirmado)
     if "estado_florista" in request:
@@ -520,5 +532,192 @@ async def actualizar_estado(
         pedido.nota_florista = request["nota_florista"]
     if "requiere_humano" in request:
         pedido.requiere_humano = request["requiere_humano"]
+    if "nota_validacion" in request:
+        pedido.nota_validacion = request["nota_validacion"]
     await db.commit()
+    # Fire webhook si cambió el estado
+    if pedido.webhook_url and pedido.estado != estado_anterior:
+        _disparar_webhook(pedido.webhook_url, pedido.numero, estado_anterior, pedido.estado)
     return {"id": pedido.id, "numero": pedido.numero, "estado": pedido.estado, "estado_florista": pedido.estado_florista}
+
+
+def _disparar_webhook(url: str, folio: str, estado_anterior: str, estado_nuevo: str):
+    """Fire-and-forget webhook notification."""
+    import asyncio
+    import httpx
+
+    async def _send():
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(url, json={
+                    "folio": folio,
+                    "estado_anterior": estado_anterior,
+                    "estado_nuevo": estado_nuevo,
+                }, timeout=10)
+        except Exception as e:
+            logger.warning(f"Webhook falló para {folio}: {e}")
+
+    try:
+        loop = asyncio.get_event_loop()
+        loop.create_task(_send())
+    except RuntimeError:
+        pass
+
+
+# --- Endpoints flujo WhatsApp ---
+
+@router.post("/{pedido_id}/confirmar-pago")
+async def confirmar_pago(
+    pedido_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin confirma el pago de un pedido con comprobante recibido."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    if pedido.estado not in ("comprobante_recibido", "Pendiente pago", "pendiente_pago"):
+        raise HTTPException(status_code=400, detail=f"Estado actual '{pedido.estado}' no permite confirmar pago")
+
+    estado_anterior = pedido.estado
+    pedido.estado = "pagado"
+    pedido.pago_confirmado = True
+    pedido.pago_confirmado_at = datetime.now(TZ)
+    pedido.pago_confirmado_por = "admin"
+    await db.commit()
+
+    if pedido.webhook_url:
+        _disparar_webhook(pedido.webhook_url, pedido.numero, estado_anterior, "pagado")
+
+    return {"ok": True, "folio": pedido.numero}
+
+
+@router.post("/{pedido_id}/subir-comprobante")
+async def subir_comprobante(
+    pedido_id: int,
+    comprobante: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    x_api_key: str | None = Header(default=None),
+):
+    """Claudia sube comprobante de pago del cliente."""
+    expected_key = os.getenv("CLAUDIA_API_KEY", "")
+    if not expected_key or x_api_key != expected_key:
+        raise HTTPException(status_code=401, detail="API key inválida")
+
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Subir a Cloudinary
+    contents = await comprobante.read()
+    upload_result = cloudinary.uploader.upload(
+        contents,
+        folder="comprobantes",
+        public_id=f"comp_{pedido.numero}_{datetime.now(TZ).strftime('%Y%m%d%H%M%S')}",
+    )
+    url = upload_result["secure_url"]
+
+    estado_anterior = pedido.estado
+    pedido.comprobante_pago_url = url
+    pedido.comprobante_pago_at = datetime.now(TZ)
+    pedido.estado = "comprobante_recibido"
+    await db.commit()
+
+    if pedido.webhook_url:
+        _disparar_webhook(pedido.webhook_url, pedido.numero, estado_anterior, "comprobante_recibido")
+
+    return {"ok": True, "url": url}
+
+
+ESTADO_LABELS = {
+    "esperando_validacion": "Esperando validación del florista",
+    "pendiente_pago": "Validado por el florista",
+    "Pendiente pago": "Validado por el florista",
+    "comprobante_recibido": "Comprobante de pago recibido",
+    "pagado": "Pago confirmado",
+    "En producción": "En producción",
+    "Listo": "Listo para entrega",
+    "En camino": "En camino",
+    "Entregado": "Entregado",
+    "rechazado": "Rechazado por el florista",
+    "Cancelado": "Cancelado",
+}
+
+
+@router.get("/{pedido_id}/estado-para-claudia")
+async def estado_para_claudia(
+    pedido_id: int,
+    db: AsyncSession = Depends(get_db),
+    x_api_key: str | None = Header(default=None),
+):
+    """Claudia consulta estado del pedido para notificar al cliente."""
+    expected_key = os.getenv("CLAUDIA_API_KEY", "")
+    if not expected_key or x_api_key != expected_key:
+        raise HTTPException(status_code=401, detail="API key inválida")
+
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Obtener teléfono del cliente
+    telefono = None
+    if pedido.customer_id:
+        cli_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cliente = cli_result.scalar_one_or_none()
+        if cliente:
+            telefono = cliente.telefono
+
+    # Datos de pago solo cuando estado = pendiente_pago
+    datos_pago = None
+    if pedido.estado in ("pendiente_pago", "Pendiente pago"):
+        from app.routers.configuracion import obtener_config_dict
+        config = await obtener_config_dict(db)
+        datos_pago = {
+            "banco": config.get("banco_nombre", ""),
+            "cuenta": config.get("banco_cuenta", ""),
+            "clabe": config.get("banco_clabe", ""),
+            "titular": config.get("banco_titular", ""),
+            "concepto": config.get("banco_concepto", ""),
+        }
+
+    return {
+        "folio": pedido.numero,
+        "estado": pedido.estado,
+        "estado_label": ESTADO_LABELS.get(pedido.estado, pedido.estado),
+        "cliente_telefono": telefono,
+        "total": pedido.total,
+        "nota_validacion": pedido.nota_validacion,
+        "datos_pago": datos_pago,
+    }
+
+
+@router.post("/{pedido_id}/webhook-estado")
+async def registrar_webhook(
+    pedido_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_api_key: str | None = Header(default=None),
+):
+    """Claudia registra URL de webhook para recibir cambios de estado."""
+    expected_key = os.getenv("CLAUDIA_API_KEY", "")
+    if not expected_key or x_api_key != expected_key:
+        raise HTTPException(status_code=401, detail="API key inválida")
+
+    data = await request.json()
+    webhook_url = data.get("webhook_url")
+    if not webhook_url:
+        raise HTTPException(status_code=400, detail="webhook_url requerido")
+
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    pedido.webhook_url = webhook_url
+    await db.commit()
+    return {"ok": True, "folio": pedido.numero}

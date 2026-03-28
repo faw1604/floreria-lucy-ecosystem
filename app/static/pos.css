@@ -242,6 +242,8 @@ input,select,textarea{font-family:inherit;font-size:13px}
 .badge-estado.en_camino{background:#ffe0b2;color:#e65100}
 .badge-estado.entregado{background:#e0e0e0;color:#616161}
 .badge-estado.cancelado{background:#fce4e4;color:var(--rojo)}
+.badge-estado.comprobante_recibido{background:#ffe0b2;color:#e65100}
+.badge-estado.esperando_validacion{background:#e1bee7;color:#6a1b9a}
 .pend-actions{display:flex;gap:4px}
 .pend-actions button{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;border:none;cursor:pointer;white-space:nowrap}
 .pend-actions .btn-edit{background:var(--dorado);color:var(--verde)}

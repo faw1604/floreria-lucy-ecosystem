@@ -1,0 +1,89 @@
+from fastapi import APIRouter, Depends, HTTPException, Cookie
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.database import get_db
+from app.models.configuracion import ConfiguracionNegocio
+from app.routers.auth import verificar_sesion
+
+router = APIRouter()
+
+
+async def obtener_config_dict(db: AsyncSession) -> dict:
+    """Retorna todas las configs como dict {clave: valor}."""
+    result = await db.execute(select(ConfiguracionNegocio))
+    return {c.clave: c.valor for c in result.scalars().all()}
+
+
+@router.get("/")
+async def listar_configuracion(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(ConfiguracionNegocio).order_by(ConfiguracionNegocio.clave))
+    configs = result.scalars().all()
+    return [
+        {"id": c.id, "clave": c.clave, "valor": c.valor, "descripcion": c.descripcion}
+        for c in configs
+    ]
+
+
+@router.put("/{clave}")
+async def actualizar_configuracion(
+    clave: str,
+    request: dict,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(
+        select(ConfiguracionNegocio).where(ConfiguracionNegocio.clave == clave)
+    )
+    config = result.scalar_one_or_none()
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuración no encontrada")
+    config.valor = request.get("valor", config.valor)
+    if "descripcion" in request:
+        config.descripcion = request["descripcion"]
+    await db.commit()
+    return {"ok": True, "clave": config.clave, "valor": config.valor}
+
+
+@router.post("/")
+async def crear_configuracion(
+    request: dict,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    config = ConfiguracionNegocio(
+        clave=request["clave"],
+        valor=request.get("valor", ""),
+        descripcion=request.get("descripcion"),
+    )
+    db.add(config)
+    await db.commit()
+    await db.refresh(config)
+    return {"ok": True, "id": config.id, "clave": config.clave}
+
+
+@router.delete("/{clave}")
+async def eliminar_configuracion(
+    clave: str,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(
+        select(ConfiguracionNegocio).where(ConfiguracionNegocio.clave == clave)
+    )
+    config = result.scalar_one_or_none()
+    if not config:
+        raise HTTPException(status_code=404, detail="Configuración no encontrada")
+    await db.delete(config)
+    await db.commit()
+    return {"ok": True}
