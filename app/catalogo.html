@@ -249,6 +249,55 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .empty-msg{text-align:center;padding:60px 20px;color:var(--texto2);font-size:14px;line-height:1.6}
 .empty-msg .icon{font-size:40px;margin-bottom:12px}
 .empty-wa-btn{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 20px;background:var(--verde);color:var(--blanco);border:none;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif}
+
+/* ====== ORDER FORM ====== */
+.order-screen{padding:16px;max-width:500px;margin:0 auto}
+.order-title{font-family:'Playfair Display',serif;font-size:22px;text-align:center;margin-bottom:4px;color:var(--verde)}
+.order-sub{text-align:center;font-size:13px;color:var(--texto2);margin-bottom:20px}
+.order-step{display:none}
+.order-step.active{display:block}
+.order-summary-item{display:flex;gap:10px;align-items:center;background:var(--blanco);border-radius:12px;padding:10px;margin-bottom:8px;box-shadow:var(--sombra)}
+.order-summary-item img{width:56px;height:56px;border-radius:8px;object-fit:cover}
+.order-summary-info{flex:1;min-width:0}
+.order-summary-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-summary-price{font-size:15px;font-weight:600;color:var(--verde)}
+.order-subtotal{text-align:right;font-size:18px;font-weight:600;color:var(--verde);margin:12px 0;padding:8px 0;border-top:1px solid var(--borde)}
+.order-tipo-grid{display:flex;flex-direction:column;gap:10px;margin:16px 0}
+.order-tipo-btn{padding:18px;background:var(--blanco);border:2px solid var(--borde);border-radius:14px;cursor:pointer;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:var(--texto);text-align:center;transition:all .15s}
+.order-tipo-btn:hover{border-color:var(--verde-c)}
+.order-tipo-btn.selected{border-color:var(--verde);background:#e8f5ec}
+.order-field{margin-bottom:14px}
+.order-field label{display:block;font-size:12px;font-weight:500;color:var(--texto2);margin-bottom:4px}
+.order-field input,.order-field textarea,.order-field select{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;background:var(--blanco)}
+.order-field input:focus,.order-field textarea:focus,.order-field select:focus{border-color:var(--verde-c)}
+.order-field textarea{resize:vertical;min-height:60px}
+.order-field .required{color:#c0392b}
+.order-field .hint{font-size:11px;color:var(--texto2);margin-top:2px}
+.order-phone-row{display:flex;gap:6px}
+.order-phone-row select{width:80px;flex-shrink:0}
+.order-phone-row input{flex:1}
+.order-verify-row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.order-verify-row a{font-size:12px;color:var(--verde);text-decoration:none;padding:6px 12px;border:1px solid var(--verde);border-radius:8px}
+.order-verify-row label{font-size:12px;color:var(--texto2);display:flex;align-items:center;gap:4px}
+.order-horario-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.order-horario-btn{padding:10px 16px;border:1px solid var(--borde);border-radius:10px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;background:var(--blanco);color:var(--texto);transition:all .15s}
+.order-horario-btn.selected{border-color:var(--verde);background:#e8f5ec;color:var(--verde);font-weight:600}
+.order-btn-row{display:flex;gap:10px;margin-top:20px}
+.order-btn{flex:1;padding:14px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;border:none;transition:all .15s;text-align:center}
+.order-btn.primary{background:var(--verde);color:var(--blanco)}
+.order-btn.primary:hover{background:var(--verde-m)}
+.order-btn.primary:disabled{opacity:.5;cursor:not-allowed}
+.order-btn.secondary{background:none;color:var(--texto2);border:1px solid var(--borde)}
+.order-funeral-warn{background:#fff3cd;color:#856404;padding:12px;border-radius:10px;font-size:13px;margin-bottom:14px}
+.order-funeral-warn button{margin-top:8px;padding:8px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:500}
+
+/* Confirmation screen */
+.order-confirm-screen{text-align:center;padding:40px 20px}
+.order-confirm-icon{font-size:48px;margin-bottom:16px}
+.order-confirm-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--verde);margin-bottom:8px}
+.order-confirm-folio{font-size:20px;font-weight:700;color:var(--dorado);margin:12px 0}
+.order-confirm-text{font-size:14px;color:var(--texto2);line-height:1.6;margin-bottom:24px}
+.order-confirm-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -326,9 +375,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     <div class="cart-hint">Desliza a la izquierda o presiona X para quitar</div>
     <div class="cart-list" id="cart-list"></div>
     <div class="cart-actions" id="cart-actions" style="display:none">
-      <button class="cart-order-btn" onclick="orderAll()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        Pedir todo por WhatsApp
+      <button class="cart-order-btn" onclick="showOrderForm()">
+        Hacer pedido
       </button>
       <button class="cart-back-btn" onclick="backFromCart()">Seguir viendo</button>
     </div>
@@ -352,6 +400,73 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
       <div class="skeleton" style="height:200px"></div>
       <div class="skeleton" style="height:200px"></div>
       <div class="skeleton" style="height:200px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER FORM VIEW -->
+<div class="view" id="view-order">
+  <div class="order-screen">
+    <!-- STEP 1: Cart summary -->
+    <div class="order-step active" id="order-step-1">
+      <div class="order-title">Tu pedido</div>
+      <div class="order-sub">Revisa los productos seleccionados</div>
+      <div id="order-items-list"></div>
+      <div class="order-subtotal" id="order-subtotal"></div>
+      <div class="order-btn-row">
+        <button class="order-btn secondary" onclick="orderBack(0)">Modificar carrito</button>
+        <button class="order-btn primary" onclick="orderGoStep(2)">Continuar</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Order type -->
+    <div class="order-step" id="order-step-2">
+      <div class="order-title">Tipo de pedido</div>
+      <div class="order-sub">¿Cómo quieres recibir tu pedido?</div>
+      <div class="order-tipo-grid">
+        <button class="order-tipo-btn" onclick="selectOrderType('domicilio')">🚚 Envío a domicilio</button>
+        <button class="order-tipo-btn" onclick="selectOrderType('recoger')">🏪 Recoger en tienda</button>
+        <button class="order-tipo-btn" onclick="selectOrderType('funeral')">🌹 Funeral</button>
+      </div>
+      <div id="order-funeral-warn" style="display:none"></div>
+      <div class="order-btn-row">
+        <button class="order-btn secondary" onclick="orderGoStep(1)">Regresar</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Data form -->
+    <div class="order-step" id="order-step-3">
+      <div class="order-title" id="order-form-title">Datos del pedido</div>
+      <div id="order-form-fields"></div>
+      <div class="order-btn-row">
+        <button class="order-btn secondary" onclick="orderGoStep(2)">Regresar</button>
+        <button class="order-btn primary" onclick="orderGoStep(4)">Continuar</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Confirmation -->
+    <div class="order-step" id="order-step-4">
+      <div class="order-title">Confirmar pedido</div>
+      <div id="order-review"></div>
+      <div style="font-size:12px;color:var(--texto2);text-align:center;margin:12px 0">El costo de envío se confirmará junto con tu pedido</div>
+      <div class="order-btn-row">
+        <button class="order-btn secondary" onclick="orderGoStep(3)">Regresar</button>
+        <button class="order-btn primary" id="order-confirm-btn" onclick="submitOrder()">Confirmar pedido</button>
+      </div>
+    </div>
+
+    <!-- STEP 5: Success -->
+    <div class="order-step" id="order-step-5">
+      <div class="order-confirm-screen">
+        <div class="order-confirm-icon">🌸</div>
+        <div class="order-confirm-title">¡Pedido recibido!</div>
+        <div class="order-confirm-folio" id="order-success-folio"></div>
+        <div class="order-confirm-text" id="order-success-text"></div>
+        <div class="order-confirm-btns">
+          <button class="order-btn primary" onclick="orderSuccessBack()">Ver más productos</button>
+          <button class="order-btn secondary" onclick="location.href='/catalogo/'">Ir al inicio</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -399,7 +514,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     </div>
     <div class="tutorial-step" data-step="2">
       <div class="tutorial-icon">👆</div>
-      <div class="tutorial-text">Desliza <strong>hacia arriba</strong> para pedirlo directo por WhatsApp</div>
+      <div class="tutorial-text">Desliza <strong>hacia arriba</strong> para ordenarlo de inmediato</div>
     </div>
     <div class="tutorial-dots">
       <div class="tutorial-dot active"></div>
@@ -808,9 +923,12 @@ function dynAction(action) {
   } else if (action === 'want') {
     card.classList.remove('swiping');
     card.classList.add('exit-up');
+    // Destello dorado
+    card.style.boxShadow = '0 0 40px #d4a843, 0 0 80px rgba(212,168,67,.4)';
     addToCart(p);
     trackLike(p);
-    openWhatsApp(p);
+    setTimeout(() => showOrderForm(), 350);
+    return; // No avanzar a renderDynCard automáticamente
   }
   dynIndex++;
   setTimeout(renderDynCard, 300);
@@ -1091,6 +1209,7 @@ function renderClassicGrid() {
         <div class="prod-card-name">${p.nombre}</div>
         <div class="prod-card-price">${renderPrice(p, 'prod-card-price')}</div>
         <button class="prod-card-btn" onclick="event.stopPropagation();addToCart(allProducts[${globalIdx}])">Agregar al carrito</button>
+        <button class="prod-card-btn" style="margin-top:6px;background:#193a2c;color:#d4a843" onclick="event.stopPropagation();addToCart(allProducts[${globalIdx}]);showOrderForm()">Ordenar ahora</button>
       </div>
     </div>`;
   }).join('');
@@ -1340,6 +1459,330 @@ function regFinish() {
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
   }
   regPendingAction = null;
+}
+
+// ====== ORDER FORM (T3/T4/T6) ======
+let pedidoWeb = {};
+let orderStep = 1;
+
+function showOrderForm() {
+  if (!cart.length) { showCart(); return; }
+  pedidoWeb = {};
+  orderStep = 1;
+  showView('order');
+  renderOrderStep1();
+  orderGoStep(1);
+}
+
+function orderGoStep(step) {
+  if (step === 3 && !pedidoWeb.tipo) return;
+  if (step === 4) {
+    if (!validateStep3()) return;
+    renderOrderStep4();
+  }
+  document.querySelectorAll('.order-step').forEach(s => s.classList.remove('active'));
+  document.getElementById(`order-step-${step}`).classList.add('active');
+  orderStep = step;
+  window.scrollTo(0, 0);
+}
+
+function orderBack(step) {
+  if (step === 0) { showCart(); return; }
+  orderGoStep(step);
+}
+
+function renderOrderStep1() {
+  const list = document.getElementById('order-items-list');
+  let sub = 0;
+  list.innerHTML = cart.map(p => {
+    const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
+    sub += precio;
+    return `<div class="order-summary-item">
+      <img src="${p.imagen_url}" alt="${p.nombre}">
+      <div class="order-summary-info">
+        <div class="order-summary-name">${p.nombre}</div>
+        <div class="order-summary-price">$${(precio/100).toLocaleString()}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('order-subtotal').textContent = `Subtotal: $${(sub/100).toLocaleString()}`;
+}
+
+function selectOrderType(tipo) {
+  pedidoWeb.tipo = tipo;
+  document.querySelectorAll('.order-tipo-btn').forEach(b => b.classList.remove('selected'));
+  event.target.closest('.order-tipo-btn').classList.add('selected');
+
+  // Funeral validation (T6)
+  if (tipo === 'funeral') {
+    const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
+    const nonFuneral = cart.filter(p => !funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
+    if (nonFuneral.length > 0) {
+      const warn = document.getElementById('order-funeral-warn');
+      warn.style.display = '';
+      warn.innerHTML = `<div class="order-funeral-warn">
+        ⚠ Solo puedes incluir arreglos de funeral en este tipo de pedido.<br>
+        Los siguientes productos serán removidos: <strong>${nonFuneral.map(p=>p.nombre).join(', ')}</strong>
+        <br>
+        <button style="background:var(--verde);color:#fff" onclick="removeFuneralNon();orderGoStep(3)">Remover y continuar</button>
+        <button style="background:var(--borde);color:var(--texto)" onclick="pedidoWeb.tipo=null;document.querySelectorAll('.order-tipo-btn').forEach(b=>b.classList.remove('selected'));document.getElementById('order-funeral-warn').style.display='none'">Cancelar</button>
+      </div>`;
+      return;
+    }
+  }
+  document.getElementById('order-funeral-warn').style.display = 'none';
+  setTimeout(() => { renderStep3Fields(); orderGoStep(3); }, 150);
+}
+
+function removeFuneralNon() {
+  const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
+  cart = cart.filter(p => funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
+  saveCart();
+  document.getElementById('order-funeral-warn').style.display = 'none';
+  renderOrderStep1();
+  renderStep3Fields();
+}
+
+function renderStep3Fields() {
+  const tipo = pedidoWeb.tipo;
+  const titles = {domicilio: 'Datos de envío', recoger: 'Datos de recogida', funeral: 'Datos del funeral'};
+  document.getElementById('order-form-title').textContent = titles[tipo] || 'Datos del pedido';
+
+  // Tomorrow minimum date
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const minDate = tomorrow.toISOString().split('T')[0];
+
+  // Time slots
+  const timeOpts = [];
+  for (let h = 9; h <= 21; h++) {
+    timeOpts.push(`${String(h).padStart(2,'0')}:00`);
+    if (h < 21) timeOpts.push(`${String(h).padStart(2,'0')}:30`);
+  }
+  const timeSelect = `<select id="of-hora-especifica" style="display:none"><option value="">Selecciona hora</option>${timeOpts.map(t => `<option value="${t}">${t}</option>`).join('')}</select>`;
+
+  let html = `
+    <div class="order-field"><label>Nombre <span class="required">*</span></label><input type="text" id="of-nombre" value="${pedidoWeb.cliente_nombre||''}" placeholder="Tu nombre completo"></div>
+    <div class="order-field"><label>Teléfono <span class="required">*</span></label>
+      <div class="order-phone-row">
+        <select id="of-pais"><option value="+52" selected>+52 MX</option><option value="+1">+1 USA</option></select>
+        <input type="tel" id="of-telefono" value="${pedidoWeb.cliente_telefono||''}" placeholder="10 dígitos" maxlength="10">
+      </div>
+    </div>
+    <div class="order-field"><label>Correo electrónico</label><input type="email" id="of-email" value="${pedidoWeb.cliente_email||''}" placeholder="tu@email.com"></div>`;
+
+  if (tipo === 'domicilio') {
+    html += `
+    <div class="order-field"><label>Nombre de quien recibe <span class="required">*</span></label><input type="text" id="of-destinatario" value="${pedidoWeb.nombre_destinatario||''}" placeholder="Nombre del destinatario"></div>
+    <div class="order-field"><label>Teléfono de quien recibe <span class="required">*</span></label><input type="tel" id="of-tel-dest" value="${pedidoWeb.telefono_destinatario||''}" placeholder="10 dígitos" maxlength="10"></div>
+    <div class="order-field"><label>Dirección de entrega <span class="required">*</span></label><input type="text" id="of-direccion" value="${pedidoWeb.direccion_entrega||''}" placeholder="Calle, número, colonia">
+      <div class="order-verify-row">
+        <a href="#" id="of-maps-link" onclick="verifyMaps()" target="_blank">📍 Verificar en Maps</a>
+        <label><input type="checkbox" id="of-dir-verified" ${pedidoWeb.dir_verified?'checked':''}> Dirección verificada</label>
+      </div>
+    </div>
+    <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje para la tarjeta...">${pedidoWeb.dedicatoria||''}</textarea></div>
+    <div class="order-field"><label>Notas para el repartidor</label><input type="text" id="of-notas" value="${pedidoWeb.notas_entrega||''}" placeholder="Ej: Portón negro, tocar timbre"></div>
+    <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}"></div>
+    <div class="order-field"><label>Horario <span class="required">*</span></label>
+      <div class="order-horario-grid" id="of-horario-grid">
+        <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='manana'?'selected':''}" onclick="selectHorario('manana')">Mañana 9-2pm</button>
+        <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='tarde'?'selected':''}" onclick="selectHorario('tarde')">Tarde 2-6pm</button>
+        <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='noche'?'selected':''}" onclick="selectHorario('noche')">Noche 6-9pm</button>
+        <button type="button" class="order-horario-btn ${pedidoWeb.horario_entrega==='hora_especifica'?'selected':''}" onclick="selectHorario('hora_especifica')">Hora específica</button>
+      </div>
+      ${timeSelect}
+      <div class="hint" id="of-hora-hint" style="display:none">Mínimo 2 horas de anticipación</div>
+    </div>`;
+  } else if (tipo === 'recoger') {
+    html += `
+    <div class="order-field"><label>Fecha de recogida <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}"></div>
+    <div class="order-field"><label>Hora de recogida <span class="required">*</span></label>
+      <select id="of-hora-recoger"><option value="">Selecciona hora</option>${timeOpts.map(t => `<option value="${t}" ${pedidoWeb.hora_especifica===t?'selected':''}>${t}</option>`).join('')}</select>
+    </div>`;
+  } else if (tipo === 'funeral') {
+    html += `
+    <div class="order-field"><label>Funeraria</label><input type="text" id="of-funeraria" value="${pedidoWeb.funeraria_nombre||''}" placeholder="Buscar funeraria..." oninput="searchFuneraria()"><div id="of-funeraria-results" style="font-size:12px;color:var(--texto2)"></div></div>
+    <div class="order-field"><label>Nombre del fallecido <span class="required">*</span></label><input type="text" id="of-fallecido" value="${pedidoWeb.nombre_fallecido||''}" placeholder="Nombre completo"></div>
+    <div class="order-field"><label>Sala</label><input type="text" id="of-sala" value="${pedidoWeb.sala||''}" placeholder="Número o nombre de sala"></div>
+    <div class="order-field"><label>Texto de la banda</label><input type="text" id="of-banda" value="${pedidoWeb.banda||''}" placeholder="Texto para la banda"></div>
+    <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje...">${pedidoWeb.dedicatoria||''}</textarea></div>
+    <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}"></div>
+    <div class="order-field"><label>Horario velación</label>
+      <select id="of-velacion"><option value="">Selecciona</option><option value="Ya inició" ${pedidoWeb.horario_velacion==='Ya inició'?'selected':''}>Ya inició</option>${timeOpts.map(t => `<option value="Inicia a las ${t}" ${pedidoWeb.horario_velacion===('Inicia a las '+t)?'selected':''}>Inicia a las ${t}</option>`).join('')}</select>
+    </div>`;
+  }
+
+  document.getElementById('order-form-fields').innerHTML = html;
+}
+
+function selectHorario(h) {
+  pedidoWeb.horario_entrega = h;
+  document.querySelectorAll('#of-horario-grid .order-horario-btn').forEach(b => b.classList.remove('selected'));
+  event.target.classList.add('selected');
+  const horaEl = document.getElementById('of-hora-especifica');
+  const hintEl = document.getElementById('of-hora-hint');
+  if (h === 'hora_especifica') { horaEl.style.display = ''; hintEl.style.display = ''; }
+  else { horaEl.style.display = 'none'; hintEl.style.display = 'none'; }
+}
+
+function verifyMaps() {
+  const dir = document.getElementById('of-direccion').value.trim();
+  if (dir) window.open(`https://www.google.com/maps/search/${encodeURIComponent(dir + ', Chihuahua, México')}`, '_blank');
+}
+
+let funerariaTimeout = null;
+async function searchFuneraria() {
+  clearTimeout(funerariaTimeout);
+  const q = document.getElementById('of-funeraria').value.trim();
+  if (q.length < 2) { document.getElementById('of-funeraria-results').innerHTML = ''; return; }
+  funerariaTimeout = setTimeout(async () => {
+    try {
+      const r = await fetch(`${API}/funerarias/buscar?nombre=${encodeURIComponent(q)}`);
+      if (r.ok) {
+        const f = await r.json();
+        pedidoWeb.funeraria_id = f.id;
+        pedidoWeb.funeraria_nombre = f.nombre;
+        document.getElementById('of-funeraria').value = f.nombre;
+        document.getElementById('of-funeraria-results').innerHTML = `<span style="color:var(--verde)">✓ ${f.nombre} — ${f.direccion||''}</span>`;
+      } else {
+        pedidoWeb.funeraria_id = null;
+        document.getElementById('of-funeraria-results').innerHTML = 'No encontrada — puedes escribir el nombre';
+      }
+    } catch(e) {}
+  }, 400);
+}
+
+function saveStep3Data() {
+  const tipo = pedidoWeb.tipo;
+  pedidoWeb.cliente_nombre = (document.getElementById('of-nombre')?.value || '').trim();
+  pedidoWeb.cliente_telefono = (document.getElementById('of-telefono')?.value || '').trim();
+  const pais = document.getElementById('of-pais')?.value || '+52';
+  pedidoWeb.telefono_completo = pais.replace('+','') + pedidoWeb.cliente_telefono;
+  pedidoWeb.cliente_email = (document.getElementById('of-email')?.value || '').trim();
+  pedidoWeb.fecha_entrega = document.getElementById('of-fecha')?.value || '';
+
+  if (tipo === 'domicilio') {
+    pedidoWeb.nombre_destinatario = (document.getElementById('of-destinatario')?.value || '').trim();
+    pedidoWeb.telefono_destinatario = (document.getElementById('of-tel-dest')?.value || '').trim();
+    pedidoWeb.direccion_entrega = (document.getElementById('of-direccion')?.value || '').trim();
+    pedidoWeb.dedicatoria = (document.getElementById('of-dedicatoria')?.value || '').trim();
+    pedidoWeb.notas_entrega = (document.getElementById('of-notas')?.value || '').trim();
+    if (pedidoWeb.horario_entrega === 'hora_especifica') {
+      pedidoWeb.hora_especifica = document.getElementById('of-hora-especifica')?.value || '';
+    }
+  } else if (tipo === 'recoger') {
+    pedidoWeb.hora_especifica = document.getElementById('of-hora-recoger')?.value || '';
+  } else if (tipo === 'funeral') {
+    pedidoWeb.nombre_fallecido = (document.getElementById('of-fallecido')?.value || '').trim();
+    pedidoWeb.sala = (document.getElementById('of-sala')?.value || '').trim();
+    pedidoWeb.banda = (document.getElementById('of-banda')?.value || '').trim();
+    pedidoWeb.dedicatoria = (document.getElementById('of-dedicatoria')?.value || '').trim();
+    pedidoWeb.horario_velacion = document.getElementById('of-velacion')?.value || '';
+  }
+}
+
+function validateStep3() {
+  saveStep3Data();
+  const tipo = pedidoWeb.tipo;
+  if (!pedidoWeb.cliente_nombre || pedidoWeb.cliente_nombre.length < 3) { alert('Nombre es obligatorio (mínimo 3 caracteres)'); return false; }
+  if (!pedidoWeb.cliente_telefono || pedidoWeb.cliente_telefono.length < 10) { alert('Teléfono es obligatorio (10 dígitos)'); return false; }
+  if (!pedidoWeb.fecha_entrega) { alert('Fecha de entrega es obligatoria'); return false; }
+  if (tipo === 'domicilio') {
+    if (!pedidoWeb.nombre_destinatario) { alert('Nombre de quien recibe es obligatorio'); return false; }
+    if (!pedidoWeb.telefono_destinatario || pedidoWeb.telefono_destinatario.length < 10) { alert('Teléfono de quien recibe es obligatorio'); return false; }
+    if (!pedidoWeb.direccion_entrega) { alert('Dirección de entrega es obligatoria'); return false; }
+    if (!pedidoWeb.horario_entrega) { alert('Selecciona un horario de entrega'); return false; }
+    if (pedidoWeb.horario_entrega === 'hora_especifica' && !pedidoWeb.hora_especifica) { alert('Selecciona la hora específica'); return false; }
+  }
+  if (tipo === 'recoger') {
+    if (!pedidoWeb.hora_especifica) { alert('Selecciona hora de recogida'); return false; }
+  }
+  if (tipo === 'funeral') {
+    if (!pedidoWeb.nombre_fallecido) { alert('Nombre del fallecido es obligatorio'); return false; }
+  }
+  return true;
+}
+
+function renderOrderStep4() {
+  const tipo = pedidoWeb.tipo;
+  const tipoLabels = {domicilio:'Envío a domicilio', recoger:'Recoger en tienda', funeral:'Funeral'};
+  let sub = 0;
+  let html = `<div style="font-size:14px;font-weight:600;margin-bottom:8px">Productos:</div>`;
+  cart.forEach(p => {
+    const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
+    sub += precio;
+    html += `<div style="font-size:13px;color:var(--texto2);margin-bottom:4px">• ${p.nombre} — $${(precio/100).toLocaleString()}</div>`;
+  });
+  html += `<div style="text-align:right;font-size:16px;font-weight:600;color:var(--verde);margin:10px 0;padding-top:8px;border-top:1px solid var(--borde)">Total estimado: $${(sub/100).toLocaleString()}</div>`;
+  html += `<div style="font-size:14px;font-weight:600;margin:12px 0 6px">Tipo: ${tipoLabels[tipo]}</div>`;
+  html += `<div style="font-size:13px;color:var(--texto2)">Cliente: ${pedidoWeb.cliente_nombre}<br>Tel: ${pedidoWeb.cliente_telefono}</div>`;
+  if (tipo === 'domicilio') {
+    html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Recibe: ${pedidoWeb.nombre_destinatario}<br>Dirección: ${pedidoWeb.direccion_entrega}<br>Fecha: ${pedidoWeb.fecha_entrega} — ${pedidoWeb.horario_entrega === 'hora_especifica' ? pedidoWeb.hora_especifica : pedidoWeb.horario_entrega}</div>`;
+    if (pedidoWeb.dedicatoria) html += `<div style="font-size:13px;color:var(--texto2);margin-top:4px;font-style:italic">"${pedidoWeb.dedicatoria}"</div>`;
+  } else if (tipo === 'recoger') {
+    html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Fecha: ${pedidoWeb.fecha_entrega} — ${pedidoWeb.hora_especifica}</div>`;
+  } else if (tipo === 'funeral') {
+    html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Fallecido: ${pedidoWeb.nombre_fallecido}${pedidoWeb.funeraria_nombre ? '<br>Funeraria: '+pedidoWeb.funeraria_nombre : ''}${pedidoWeb.sala ? '<br>Sala: '+pedidoWeb.sala : ''}<br>Fecha: ${pedidoWeb.fecha_entrega}</div>`;
+  }
+  document.getElementById('order-review').innerHTML = html;
+}
+
+async function submitOrder() {
+  const btn = document.getElementById('order-confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Procesando...';
+  try {
+    const body = {
+      tipo: pedidoWeb.tipo,
+      items: cart.map(p => ({producto_id: p.id, cantidad: 1})),
+      cliente_nombre: pedidoWeb.cliente_nombre,
+      cliente_telefono: pedidoWeb.telefono_completo,
+      cliente_email: pedidoWeb.cliente_email || null,
+      nombre_destinatario: pedidoWeb.nombre_destinatario || null,
+      telefono_destinatario: pedidoWeb.telefono_destinatario ? '52' + pedidoWeb.telefono_destinatario : null,
+      direccion_entrega: pedidoWeb.direccion_entrega || null,
+      dedicatoria: pedidoWeb.dedicatoria || null,
+      notas_entrega: pedidoWeb.notas_entrega || null,
+      fecha_entrega: pedidoWeb.fecha_entrega,
+      horario_entrega: pedidoWeb.horario_entrega || null,
+      hora_especifica: pedidoWeb.hora_especifica || null,
+      funeraria_id: pedidoWeb.funeraria_id || null,
+      nombre_fallecido: pedidoWeb.nombre_fallecido || null,
+      sala: pedidoWeb.sala || null,
+      banda: pedidoWeb.banda || null,
+      horario_velacion: pedidoWeb.horario_velacion || null,
+    };
+    const r = await fetch(`${API}/catalogo/pedido`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (r.ok && data.ok) {
+      // Success — show confirmation (T4)
+      document.getElementById('order-success-folio').textContent = `Pedido ${data.folio}`;
+      const telDisplay = pedidoWeb.cliente_telefono.slice(-4);
+      document.getElementById('order-success-text').innerHTML = `Tu pedido está siendo revisado.<br><br>En cuanto verifiquemos disponibilidad te contactaremos por WhatsApp al número ***${telDisplay} con los datos para el pago.<br><br>¡Gracias por confiar en Florería Lucy!`;
+      // Clear cart
+      cart = [];
+      saveCart();
+      orderGoStep(5);
+    } else {
+      alert(data.detail || 'Error al crear el pedido');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar pedido';
+    }
+  } catch(e) {
+    alert('Error de conexión. Intenta de nuevo.');
+    btn.disabled = false;
+    btn.textContent = 'Confirmar pedido';
+  }
+}
+
+function orderSuccessBack() {
+  if (currentMode === 'classic') { showView('classic'); }
+  else { showView('dynamic'); dynIndex = 0; dynQueue = buildQueue(); renderDynCard(); }
 }
 
 // ====== NAV DRAWER ======
