@@ -236,13 +236,13 @@ async function loadProductos() {
     const q = (document.getElementById('prod-search')?.value || '').trim();
     const cat = document.getElementById('prod-cat-filter')?.value || '';
     const status = document.getElementById('prod-status-filter')?.value || '';
-    const r = await fetch(API + '/productos/', {credentials:'include'});
+    // Pass activo filter to backend
+    let url = API + '/productos/?activo=' + (status === '1' ? '1' : status === '0' ? '0' : 'all');
+    if (cat) url += '&categoria=' + encodeURIComponent(cat);
+    const r = await fetch(url, {credentials:'include'});
     if (!r.ok) return;
     let data = await r.json();
     if (q) { const ql = q.toLowerCase(); data = data.filter(p => p.nombre.toLowerCase().includes(ql) || (p.codigo||'').toLowerCase().includes(ql)); }
-    if (cat) data = data.filter(p => p.categoria === cat);
-    if (status === '1') data = data.filter(p => p.activo);
-    if (status === '0') data = data.filter(p => !p.activo);
     // Populate category filter once
     const allCats = [...new Set(data.map(p => p.categoria))].sort();
     const catSel = document.getElementById('prod-cat-filter');
@@ -403,7 +403,7 @@ async function abrirModalProducto(prod) {
 }
 
 function renderVarianteRow(v) {
-  const id = v.id || 'new-' + Math.random().toString(36).substr(2,6);
+  const uid = 'vr-' + Math.random().toString(36).substr(2,6);
   return `<div class="var-row" data-var-id="${v.id||''}" data-tipo="${v.tipo}" style="background:var(--crema);border-radius:8px;padding:10px;margin-bottom:6px;position:relative">
     <button onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:6px;background:none;border:none;color:var(--rojo);font-size:16px;cursor:pointer">&times;</button>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -411,8 +411,9 @@ function renderVarianteRow(v) {
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Código</label><input class="vr-codigo" value="${esc(v.codigo||'')}" style="font-size:12px;padding:6px 8px"></div>
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Precio</label><input type="number" class="vr-precio" value="${v.precio ? (v.precio/100).toFixed(2) : ''}" step="0.01" style="font-size:12px;padding:6px 8px"></div>
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Precio oferta</label><input type="number" class="vr-precio-desc" value="${v.precio_descuento ? (v.precio_descuento/100).toFixed(2) : ''}" step="0.01" style="font-size:12px;padding:6px 8px"></div>
-      <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Stock</label><input type="number" class="vr-stock" value="${v.stock||0}" min="0" style="font-size:12px;padding:6px 8px"></div>
-      <div class="field" style="margin-bottom:0"><label style="font-size:11px">Foto</label><input type="file" class="vr-img-file" accept="image/*" style="font-size:11px"><input type="hidden" class="vr-img" value="${esc(v.imagen_url||'')}"></div>
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px;display:flex;align-items:center;gap:4px">Controlar stock <input type="checkbox" class="vr-stock-activo" ${v.stock_activo ? 'checked' : ''} onchange="this.closest('.var-row').querySelector('.vr-stock-wrap').style.display=this.checked?'':'none'"></label></div>
+      <div class="field vr-stock-wrap" style="margin-bottom:6px;${v.stock_activo ? '' : 'display:none'}"><label style="font-size:11px">Stock</label><input type="number" class="vr-stock" value="${v.stock||0}" min="0" style="font-size:12px;padding:6px 8px"></div>
+      <div class="field" style="margin-bottom:0;grid-column:1/-1"><label style="font-size:11px">Foto</label><input type="file" class="vr-img-file" accept="image/*" style="font-size:11px"><input type="hidden" class="vr-img" value="${esc(v.imagen_url||'')}"></div>
     </div>
   </div>`;
 }
@@ -543,6 +544,7 @@ async function saveAllVariantes(prodId) {
       codigo: row.querySelector('.vr-codigo')?.value?.trim() || null,
       precio: Math.round(parseFloat(row.querySelector('.vr-precio')?.value || 0) * 100),
       precio_descuento: row.querySelector('.vr-precio-desc')?.value ? Math.round(parseFloat(row.querySelector('.vr-precio-desc').value) * 100) : null,
+      stock_activo: row.querySelector('.vr-stock-activo')?.checked || false,
       stock: parseInt(row.querySelector('.vr-stock')?.value || 0),
       imagen_url: row.querySelector('.vr-img')?.value || null,
       activo: true,
@@ -633,6 +635,30 @@ async function crearCat() {
   });
   showToast('Categoría creada ✓');
   abrirModalCategorias();
+}
+
+// --- EXPORTAR / IMPORTAR ---
+function exportarProductos() {
+  window.location.href = API + '/api/admin/productos/exportar';
+}
+
+async function importarProductos(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('archivo', file);
+  showToast('Importando...');
+  try {
+    const r = await fetch(API + '/api/admin/productos/importar', {method:'POST', body:fd, credentials:'include'});
+    const data = await r.json();
+    if (data.ok) {
+      alert(`Importación completada:\n${data.actualizados} productos actualizados\n${data.creados} productos creados\n${data.errores} errores`);
+      loadProductos();
+    } else {
+      alert('Error en la importación');
+    }
+  } catch(e) { alert('Error al importar'); }
+  input.value = '';
 }
 
 // ══════ CLAUDIA ══════

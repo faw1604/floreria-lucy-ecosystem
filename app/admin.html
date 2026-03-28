@@ -67,6 +67,9 @@
       <select id="prod-cat-filter" onchange="loadProductos()"><option value="">Todas las categorías</option></select>
       <select id="prod-status-filter" onchange="loadProductos()"><option value="">Todos</option><option value="1">Activos</option><option value="0">Inactivos</option></select>
       <button class="btn-sm" onclick="abrirModalCategorias()">Gestionar categorías</button>
+      <button class="btn-sm" onclick="exportarProductos()">📥 Exportar Excel</button>
+      <button class="btn-sm" onclick="document.getElementById('import-file').click()">📤 Importar Excel</button>
+      <input type="file" id="import-file" accept=".xlsx" style="display:none" onchange="importarProductos(this)">
       <button class="btn-primary" onclick="abrirModalProducto()">+ Nuevo producto</button>
     </div>
   </div>

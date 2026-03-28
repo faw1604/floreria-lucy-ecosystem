@@ -11,9 +11,19 @@ router = APIRouter()
 async def listar_productos(
     categoria: str | None = None,
     solo_disponibles: bool = False,
+    activo: str | None = None,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Producto).where(Producto.activo == True)
+    query = select(Producto)
+    # Filter by active status — default: only active (backward compat)
+    if activo == "0":
+        query = query.where(Producto.activo == False)
+    elif activo == "1":
+        query = query.where(Producto.activo == True)
+    elif activo == "all":
+        pass  # no filter
+    else:
+        query = query.where(Producto.activo == True)
     if categoria:
         query = query.where(Producto.categoria == categoria)
     if solo_disponibles:

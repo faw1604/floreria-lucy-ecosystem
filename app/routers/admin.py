@@ -8,6 +8,8 @@ from app.core.config import TZ
 from app.routers.auth import verificar_sesion
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.productos import Producto, Categoria, ProductoVariante
+import logging
+logger = logging.getLogger("floreria")
 from app.models.clientes import Cliente
 from app.models.configuracion import CodigoDescuento
 from app.models.usuarios import Usuario
@@ -412,6 +414,126 @@ async def subir_imagen_producto(
     return {"url": result["secure_url"]}
 
 
+# ══════ EXPORTAR / IMPORTAR PRODUCTOS ══════
+
+@router.get("/productos/exportar")
+async def exportar_productos(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    from fastapi.responses import StreamingResponse
+    import io, openpyxl
+
+    result = await db.execute(select(Producto).order_by(Producto.categoria, Producto.nombre))
+    productos = result.scalars().all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Productos"
+    headers = ["Nombre", "Categoría", "Código", "Descripción", "Precio",
+               "Precio de promoción", "Mostrar en el catálogo", "Controlar stock", "Stock actual"]
+    ws.append(headers)
+    for col in range(1, len(headers) + 1):
+        ws.cell(row=1, column=col).font = openpyxl.styles.Font(bold=True)
+
+    for p in productos:
+        ws.append([
+            p.nombre,
+            p.categoria,
+            p.codigo or "",
+            p.descripcion or "",
+            round(p.precio / 100, 2) if p.precio else 0,
+            round(p.precio_descuento / 100, 2) if p.precio_descuento else "",
+            "S" if p.visible_catalogo else "N",
+            "S" if p.stock_activo else "N",
+            p.stock if p.stock_activo else "",
+        ])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    hoy = datetime.now(TZ).strftime("%Y-%m-%d")
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=productos_floreria_lucy_{hoy}.xlsx"},
+    )
+
+
+@router.post("/productos/importar")
+async def importar_productos(
+    archivo: UploadFile = File(...),
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    import openpyxl, io
+
+    contents = await archivo.read()
+    wb = openpyxl.load_workbook(io.BytesIO(contents))
+    ws = wb.active
+
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    actualizados = 0
+    creados = 0
+    errores = 0
+
+    for row in rows:
+        try:
+            if len(row) < 5:
+                errores += 1
+                continue
+            nombre = str(row[0] or "").strip()
+            categoria = str(row[1] or "").strip()
+            codigo = str(row[2] or "").strip()
+            descripcion = str(row[3] or "").strip() or None
+            precio = int(round(float(row[4] or 0) * 100))
+            precio_desc = int(round(float(row[5]) * 100)) if row[5] not in (None, "", "N/A") else None
+            visible = str(row[6] or "S").strip().upper() == "S" if len(row) > 6 else True
+            stock_activo = str(row[7] or "N").strip().upper() == "S" if len(row) > 7 else False
+            stock_val = int(row[8] or 0) if len(row) > 8 and row[8] not in (None, "") else 0
+
+            if not nombre or not codigo:
+                errores += 1
+                continue
+
+            # Ensure category exists
+            cat_result = await db.execute(select(Categoria).where(Categoria.nombre == categoria))
+            if not cat_result.scalar_one_or_none():
+                db.add(Categoria(nombre=categoria, tipo="normal", orden=0))
+                await db.flush()
+
+            # Find by codigo
+            result = await db.execute(select(Producto).where(Producto.codigo == codigo))
+            prod = result.scalar_one_or_none()
+
+            if prod:
+                prod.nombre = nombre
+                prod.categoria = categoria
+                prod.descripcion = descripcion
+                prod.precio = precio
+                prod.precio_descuento = precio_desc
+                prod.visible_catalogo = visible
+                prod.stock_activo = stock_activo
+                prod.stock = stock_val
+                actualizados += 1
+            else:
+                prod = Producto(
+                    nombre=nombre, categoria=categoria, codigo=codigo,
+                    descripcion=descripcion, precio=precio, precio_descuento=precio_desc,
+                    visible_catalogo=visible, stock_activo=stock_activo, stock=stock_val,
+                    activo=True, disponible_hoy=True,
+                )
+                db.add(prod)
+                creados += 1
+        except Exception:
+            errores += 1
+
+    await db.commit()
+    return {"ok": True, "actualizados": actualizados, "creados": creados, "errores": errores}
+
+
 # ══════ CATEGORÍAS ══════
 
 @router.get("/categorias")
@@ -522,7 +644,8 @@ async def listar_variantes(
     return [
         {"id": v.id, "producto_id": v.producto_id, "tipo": v.tipo, "nombre": v.nombre,
          "codigo": v.codigo, "imagen_url": v.imagen_url, "precio": v.precio,
-         "precio_descuento": v.precio_descuento, "stock": v.stock, "activo": v.activo}
+         "precio_descuento": v.precio_descuento, "stock_activo": v.stock_activo,
+         "stock": v.stock, "activo": v.activo}
         for v in result.scalars().all()
     ]
 
@@ -544,6 +667,7 @@ async def crear_variante(
         imagen_url=data.get("imagen_url"),
         precio=data.get("precio", 0),
         precio_descuento=data.get("precio_descuento"),
+        stock_activo=data.get("stock_activo", False),
         stock=data.get("stock", 0),
         activo=data.get("activo", True),
     )
@@ -566,7 +690,7 @@ async def actualizar_variante(
     if not v:
         raise HTTPException(status_code=404, detail="Variante no encontrada")
     data = await request.json()
-    for k in ["tipo", "nombre", "codigo", "imagen_url", "precio", "precio_descuento", "stock", "activo"]:
+    for k in ["tipo", "nombre", "codigo", "imagen_url", "precio", "precio_descuento", "stock_activo", "stock", "activo"]:
         if k in data:
             setattr(v, k, data[k])
     await db.commit()

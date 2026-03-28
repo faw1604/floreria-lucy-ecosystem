@@ -45,5 +45,6 @@ class ProductoVariante(Base):
     imagen_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     precio: Mapped[int] = mapped_column(Integer)  # centavos
     precio_descuento: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    stock_activo: Mapped[bool] = mapped_column(Boolean, default=False)
     stock: Mapped[int] = mapped_column(Integer, default=0)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
