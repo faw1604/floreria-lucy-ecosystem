@@ -24,7 +24,20 @@ class Egreso(Base):
     monto: Mapped[int] = mapped_column(Integer)  # en centavos
     metodo_pago: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     notas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    referencia: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     es_recurrente: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TZ))
+
+
+class OtroIngreso(Base):
+    __tablename__ = "otros_ingresos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    fecha: Mapped[date] = mapped_column(Date)
+    concepto: Mapped[str] = mapped_column(String(200))
+    monto: Mapped[int] = mapped_column(Integer)  # centavos
+    metodo_pago: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    notas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TZ))
 
 

@@ -13,7 +13,7 @@ logger = logging.getLogger("floreria")
 from app.models.clientes import Cliente
 from app.models.configuracion import CodigoDescuento
 from app.models.usuarios import Usuario
-from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso
+from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso
 from app.models.banners import BannerCatalogo
 
 router = APIRouter()
@@ -153,7 +153,7 @@ async def listar_egresos(
     return [
         {"id": e.id, "fecha": str(e.fecha), "concepto": e.concepto,
          "categoria": e.categoria, "monto": e.monto, "metodo_pago": e.metodo_pago,
-         "notas": e.notas, "es_recurrente": e.es_recurrente}
+         "notas": e.notas, "referencia": e.referencia, "es_recurrente": e.es_recurrente}
         for e in result.scalars().all()
     ]
 
@@ -173,6 +173,7 @@ async def crear_egreso(
         monto=data.get("monto", 0),
         metodo_pago=data.get("metodo_pago"),
         notas=data.get("notas"),
+        referencia=data.get("referencia"),
         es_recurrente=data.get("es_recurrente", False),
     )
     db.add(e)
@@ -194,7 +195,7 @@ async def actualizar_egreso(
     if not e:
         raise HTTPException(status_code=404, detail="Egreso no encontrado")
     data = await request.json()
-    for k in ["fecha", "concepto", "categoria", "monto", "metodo_pago", "notas"]:
+    for k in ["fecha", "concepto", "categoria", "monto", "metodo_pago", "notas", "referencia"]:
         if k in data:
             setattr(e, k, data[k])
     await db.commit()
@@ -332,6 +333,26 @@ async def actualizar_metodo_pago_egreso(
     return {"ok": True}
 
 
+@router.delete("/metodos-pago-egreso/{mp_id}")
+async def eliminar_metodo_pago_egreso(
+    mp_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(MetodoPagoEgreso).where(MetodoPagoEgreso.id == mp_id))
+    m = result.scalar_one_or_none()
+    if not m:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    # Check if has associated egresos
+    count = await db.execute(select(func.count(Egreso.id)).where(Egreso.metodo_pago == m.nombre))
+    if (count.scalar() or 0) > 0:
+        raise HTTPException(status_code=400, detail="Tiene egresos registrados — desactívalo en vez de eliminar")
+    await db.delete(m)
+    await db.commit()
+    return {"ok": True}
+
+
 # --- Exportar egresos Excel ---
 
 @router.get("/egresos/exportar")
@@ -362,6 +383,61 @@ async def exportar_egresos(
         headers={"Content-Disposition": f"attachment; filename=egresos_{hoy}.xlsx"})
 
 
+# --- Otros ingresos ---
+
+@router.get("/otros-ingresos")
+async def listar_otros_ingresos(
+    desde: str | None = None, hasta: str | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    query = select(OtroIngreso).order_by(OtroIngreso.fecha.desc())
+    if desde: query = query.where(OtroIngreso.fecha >= desde)
+    if hasta: query = query.where(OtroIngreso.fecha <= hasta)
+    result = await db.execute(query)
+    return [
+        {"id": o.id, "fecha": str(o.fecha), "concepto": o.concepto,
+         "monto": o.monto, "metodo_pago": o.metodo_pago, "notas": o.notas}
+        for o in result.scalars().all()
+    ]
+
+
+@router.post("/otros-ingresos")
+async def crear_otro_ingreso(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    o = OtroIngreso(
+        fecha=data["fecha"], concepto=data["concepto"],
+        monto=data.get("monto", 0), metodo_pago=data.get("metodo_pago"),
+        notas=data.get("notas"),
+    )
+    db.add(o)
+    await db.commit()
+    await db.refresh(o)
+    return {"ok": True, "id": o.id}
+
+
+@router.delete("/otros-ingresos/{oi_id}")
+async def eliminar_otro_ingreso(
+    oi_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(OtroIngreso).where(OtroIngreso.id == oi_id))
+    o = result.scalar_one_or_none()
+    if not o:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    await db.delete(o)
+    await db.commit()
+    return {"ok": True}
+
+
 # --- Flujo de caja ---
 
 @router.get("/finanzas/flujo-caja")
@@ -379,6 +455,14 @@ async def flujo_caja(
         GROUP BY fecha_entrega::date ORDER BY fecha
     """), {"d": desde, "h": hasta})
     ing_map = {str(r[0]): r[1] for r in ingresos.fetchall()}
+    # Otros ingresos por día
+    otros = await db.execute(text("""
+        SELECT fecha::date as fecha, COALESCE(SUM(monto),0) as total
+        FROM otros_ingresos WHERE fecha BETWEEN :d AND :h
+        GROUP BY fecha::date ORDER BY fecha
+    """), {"d": desde, "h": hasta})
+    for r in otros.fetchall():
+        ing_map[str(r[0])] = ing_map.get(str(r[0]), 0) + r[1]
     # Egresos por día
     egresos = await db.execute(text("""
         SELECT fecha::date as fecha, COALESCE(SUM(monto),0) as total

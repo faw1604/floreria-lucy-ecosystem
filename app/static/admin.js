@@ -55,8 +55,6 @@ function fmt$(cents) { return '$' + ((cents||0)/100).toLocaleString(); }
 function fmtDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('es-MX', {timeZone:'America/Chihuahua', day:'2-digit', month:'short', year:'numeric'}); }
 
 // Sub-tab helpers
-function webSubTab(id) { switchSubTab('web', id); }
-function finSubTab(id) { switchSubTab('fin', id); }
 function cfgSubTab(id) { switchSubTab('cfg', id); }
 
 function switchSubTab(prefix, id) {
@@ -1035,22 +1033,65 @@ async function loadFinanzas() {
     finData.ingresos = data;
     const res = data.resumen || {};
     const rows = data.finalizados || [];
-    const ticket = res.num_finalizados ? Math.round(res.total_vendido / res.num_finalizados) : 0;
+    // Load otros ingresos
+    let otrosRows = [];
+    let otrosTotal = 0;
+    try {
+      const or2 = await fetch(API+'/api/admin/otros-ingresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+      if (or2.ok) { otrosRows = await or2.json(); otrosTotal = otrosRows.reduce((s,o) => s + (o.monto||0), 0); }
+    } catch(e) {}
+    const totalIngresos = (res.total_vendido||0) + otrosTotal;
+    const totalTrans = (res.num_finalizados||0) + otrosRows.length;
+    const ticket = totalTrans ? Math.round(totalIngresos / totalTrans) : 0;
+    finData.otrosIngresos = otrosRows;
+    finData.totalIngresos = totalIngresos;
     // KPIs
-    let kpis = `<div class="kpi-card"><div class="kpi-label">Total ingresos</div><div class="kpi-value">${fmt$(res.total_vendido)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${res.num_finalizados||0}</div></div>
+    let kpis = `<div class="kpi-card"><div class="kpi-label">Total ingresos</div><div class="kpi-value">${fmt$(totalIngresos)}</div>${otrosTotal ? '<div class="kpi-sub">Incluye '+fmt$(otrosTotal)+' de otros ingresos</div>' : ''}</div>
+      <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${totalTrans}</div></div>
       <div class="kpi-card"><div class="kpi-label">Ticket promedio</div><div class="kpi-value">${fmt$(ticket)}</div></div>`;
-    // Desglose método pago
     for (const [m,v] of Object.entries(res.desglose_pago||{})) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
-    // Desglose canal
     const canales = {};
     rows.forEach(p => { canales[p.canal] = (canales[p.canal]||0) + (p.total||0); });
+    if (otrosTotal) canales['Otros'] = otrosTotal;
     for (const [c,v] of Object.entries(canales)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
     document.getElementById('fin-kpis').innerHTML = kpis;
-    // Table
+    // Table — merge ventas + otros
     const tbody = document.getElementById('fin-ing-tbody');
-    tbody.innerHTML = rows.slice(0,200).map(p => `<tr><td>${fmtDate(p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin transacciones</td></tr>';
+    let allRows = rows.slice(0,200).map(p => `<tr><td>${fmtDate(p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`);
+    otrosRows.forEach(o => {
+      allRows.push(`<tr><td>${fmtDate(o.fecha)}</td><td><span style="background:var(--dorado);color:var(--verde);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">OTRO</span></td><td>${esc(o.concepto)}</td><td>—</td><td>${esc(o.metodo_pago||'—')}</td><td style="font-weight:600">${fmt$(o.monto)}</td></tr>`);
+    });
+    tbody.innerHTML = allRows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin ingresos</td></tr>';
   } catch(e) { console.error(e); }
+}
+
+function abrirModalOtroIngreso() {
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4 style="margin-bottom:12px">Registrar otro ingreso</h4>
+    <div class="field"><label>Fecha *</label><input type="date" id="oi-fecha" value="${hoy}"></div>
+    <div class="field"><label>Concepto *</label><input id="oi-concepto" placeholder="Ej: Clase de arreglos florales"></div>
+    <div class="field"><label>Monto * (pesos)</label><input type="number" id="oi-monto" step="0.01"></div>
+    <div class="field"><label>Método de pago</label><select id="oi-mp"><option value="">Selecciona...</option>${mpOptions()}</select></div>
+    <div class="field"><label>Notas</label><textarea id="oi-notas"></textarea></div>
+    <button class="btn-primary" onclick="guardarOtroIngreso()" style="width:100%;margin-top:8px">Guardar</button>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function guardarOtroIngreso() {
+  const body = {
+    fecha: document.getElementById('oi-fecha').value,
+    concepto: document.getElementById('oi-concepto').value.trim(),
+    monto: Math.round(parseFloat(document.getElementById('oi-monto').value||0)*100),
+    metodo_pago: document.getElementById('oi-mp').value || null,
+    notas: document.getElementById('oi-notas').value.trim() || null,
+  };
+  if (!body.fecha || !body.concepto || !body.monto) return alert('Fecha, concepto y monto son obligatorios');
+  await fetch(API+'/api/admin/otros-ingresos', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify(body)});
+  cerrarModal('modal-egreso');
+  showToast('Ingreso registrado ✓');
+  loadFinanzas();
 }
 
 // --- EGRESOS ---
@@ -1093,6 +1134,7 @@ function abrirModalEgreso(eg) {
     <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
     <div class="field"><label>Monto * (pesos)</label><input type="number" id="eg-monto" step="0.01" value="${eg ? (eg.monto/100).toFixed(2) : ''}"></div>
     <div class="field"><label>Notas</label><textarea id="eg-notas">${esc(eg?.notas||'')}</textarea></div>
+    <div class="field"><label># Factura / Nota de referencia</label><input id="eg-ref" value="${esc(eg?.referencia||'')}" placeholder="Opcional"></div>
     <button class="btn-primary" onclick="guardarEgreso(${eg?.id||'null'})" style="width:100%;margin-top:8px">Guardar</button>
   `;
   document.getElementById('modal-egreso').classList.add('active');
@@ -1106,6 +1148,7 @@ async function guardarEgreso(id) {
     metodo_pago: document.getElementById('eg-mp').value || null,
     monto: Math.round(parseFloat(document.getElementById('eg-monto').value || 0) * 100),
     notas: document.getElementById('eg-notas').value.trim() || null,
+    referencia: document.getElementById('eg-ref')?.value?.trim() || null,
   };
   if (!body.fecha || !body.concepto || !body.monto) return alert('Fecha, concepto y monto son obligatorios');
   const url = id ? API+'/api/admin/egresos/'+id : API+'/api/admin/egresos';
@@ -1209,9 +1252,11 @@ async function abrirMetodosPagoEgreso() {
   await loadMetodosPago();
   document.getElementById('modal-egreso-body').innerHTML = `
     <h4>Métodos de pago para egresos</h4>
-    ${metodosPagoEgreso.map(m => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--borde)">
-      <span style="flex:1;font-size:13px">${esc(m.nombre)}</span>
+    ${metodosPagoEgreso.map(m => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--borde)" id="mpe-row-${m.id}">
+      <input value="${esc(m.nombre)}" id="mpe-name-${m.id}" style="flex:1;padding:4px 8px;border:1px solid var(--borde);border-radius:4px;font-size:12px">
       <label style="font-size:12px;display:flex;align-items:center;gap:4px"><input type="checkbox" ${m.activo?'checked':''} onchange="toggleMPE(${m.id},this.checked)"> Activo</label>
+      <button class="btn-sm" onclick="guardarMPE(${m.id})" style="font-size:11px">Guardar</button>
+      <button class="btn-danger" style="font-size:11px;padding:4px 6px" onclick="eliminarMPE(${m.id})" title="Eliminar">🗑</button>
     </div>`).join('')}
     <div style="display:flex;gap:6px;margin-top:12px">
       <input id="mpe-nuevo" placeholder="Nuevo método" style="flex:1;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
@@ -1223,6 +1268,20 @@ async function abrirMetodosPagoEgreso() {
 
 async function toggleMPE(id, activo) {
   await fetch(API+'/api/admin/metodos-pago-egreso/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({activo})});
+}
+
+async function guardarMPE(id) {
+  const nombre = document.getElementById('mpe-name-'+id)?.value?.trim();
+  if (!nombre) return;
+  await fetch(API+'/api/admin/metodos-pago-egreso/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({nombre})});
+  showToast('Guardado ✓');
+}
+
+async function eliminarMPE(id) {
+  if (!confirm('¿Eliminar este método de pago?')) return;
+  const r = await fetch(API+'/api/admin/metodos-pago-egreso/'+id, {method:'DELETE', credentials:'include'});
+  if (!r.ok) { const e = await r.json(); alert(e.detail||'No se puede eliminar'); return; }
+  abrirMetodosPagoEgreso();
 }
 
 async function crearMPE() {
@@ -1238,7 +1297,7 @@ async function loadUtilidad() {
   let totalIng = 0, totalEgr = 0;
   try {
     if (!finData.ingresos) await loadFinanzas();
-    totalIng = finData.ingresos?.resumen?.total_vendido || 0;
+    totalIng = finData.totalIngresos || finData.ingresos?.resumen?.total_vendido || 0;
     const r = await fetch(API+'/api/admin/egresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
     const egs = await r.json();
     totalEgr = egs.reduce((s,e) => s + (e.monto||0), 0);

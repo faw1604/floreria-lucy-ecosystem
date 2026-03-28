@@ -6,7 +6,7 @@ from app.models.pagos import MetodoPago
 from app.models.pedidos import Pedido, ItemPedido, NotificacionLog
 from app.models.configuracion import ConfiguracionNegocio, HorarioEspecifico, CodigoDescuento
 from app.models.usuarios import Usuario
-from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso
+from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso
 from app.models.banners import BannerCatalogo
 
 __all__ = [
@@ -26,6 +26,7 @@ __all__ = [
     "Egreso",
     "GastoRecurrente",
     "MetodoPagoEgreso",
+    "OtroIngreso",
     "BannerCatalogo",
     "Categoria",
     "ProductoVariante",
