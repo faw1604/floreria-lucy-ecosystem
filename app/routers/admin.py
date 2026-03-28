@@ -149,10 +149,10 @@ async def listar_egresos(
     wheres = []
     if desde:
         wheres.append("fecha >= :desde")
-        params["desde"] = desde
+        params["desde"] = date.fromisoformat(desde)
     if hasta:
         wheres.append("fecha <= :hasta")
-        params["hasta"] = hasta
+        params["hasta"] = date.fromisoformat(hasta)
     if wheres:
         sql += " WHERE " + " AND ".join(wheres)
     sql += " ORDER BY fecha DESC LIMIT 500"
