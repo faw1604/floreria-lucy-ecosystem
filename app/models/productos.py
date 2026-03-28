@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text, Integer, Boolean, ForeignKey
+from sqlalchemy import String, Text, Integer, Boolean, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional
 from app.database import Base
@@ -32,6 +32,8 @@ class Producto(Base):
     visible_catalogo: Mapped[bool] = mapped_column(Boolean, default=True)
     stock_activo: Mapped[bool] = mapped_column(Boolean, default=False)
     stock: Mapped[int] = mapped_column(Integer, default=0)
+    medida_alto: Mapped[Optional[float]] = mapped_column(Numeric(6, 1), nullable=True)
+    medida_ancho: Mapped[Optional[float]] = mapped_column(Numeric(6, 1), nullable=True)
 
 
 class ProductoVariante(Base):

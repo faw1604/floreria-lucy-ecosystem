@@ -403,6 +403,15 @@ async function abrirModalProducto(prod) {
         <span id="pf-ia-spinner" style="display:none;font-size:12px;color:var(--texto2)">Generando...</span>
       </div>
     </div>
+    <!-- MEDIDAS -->
+    <div style="margin:14px 0">
+      <label style="font-size:12px;font-weight:500;color:var(--texto2);display:block;margin-bottom:6px">Medidas aproximadas</label>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1;margin-bottom:0"><label style="font-size:11px">Alto (cm)</label><input type="number" id="pf-alto" value="${prod?.medida_alto||''}" step="0.1" min="0" placeholder="Ej: 45"></div>
+        <div class="field" style="flex:1;margin-bottom:0"><label style="font-size:11px">Ancho (cm)</label><input type="number" id="pf-ancho" value="${prod?.medida_ancho||''}" step="0.1" min="0" placeholder="Ej: 30"></div>
+      </div>
+      <div style="font-size:10px;color:var(--texto2);margin-top:4px">Medidas aproximadas — se muestran al cliente en el catálogo web.</div>
+    </div>
     <div style="display:flex;gap:12px;margin:12px 0">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-activo" ${prod?.activo !== false ? 'checked' : ''}> Activo</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-web" ${prod?.visible_catalogo !== false ? 'checked' : ''}> Visible en web</label>
@@ -556,6 +565,8 @@ async function guardarProducto(id) {
     visible_catalogo: document.getElementById('pf-web').checked,
     stock_activo: document.getElementById('pf-stock-activo').checked,
     stock: parseInt(document.getElementById('pf-stock')?.value || 0),
+    medida_alto: document.getElementById('pf-alto')?.value ? parseFloat(document.getElementById('pf-alto').value) : null,
+    medida_ancho: document.getElementById('pf-ancho')?.value ? parseFloat(document.getElementById('pf-ancho').value) : null,
   };
   if (!body.nombre || !body.categoria || !body.precio) return alert('Nombre, categoría y precio son obligatorios');
   const url = id ? API + '/productos/' + id : API + '/productos/';
