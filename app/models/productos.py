@@ -34,6 +34,7 @@ class Producto(Base):
     stock: Mapped[int] = mapped_column(Integer, default=0)
     medida_alto: Mapped[Optional[float]] = mapped_column(Numeric(6, 1), nullable=True)
     medida_ancho: Mapped[Optional[float]] = mapped_column(Numeric(6, 1), nullable=True)
+    costo_unitario: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
 
 
 class ProductoVariante(Base):

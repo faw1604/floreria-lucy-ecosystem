@@ -650,7 +650,7 @@ async def exportar_productos(
     ws.title = "Productos"
     headers = ["Nombre", "Categoría", "Código", "Descripción", "Precio",
                "Precio de promoción", "Mostrar en el catálogo", "Controlar stock", "Stock actual",
-               "Alto (cm)", "Ancho (cm)"]
+               "Costo unitario", "Alto (cm)", "Ancho (cm)"]
     ws.append(headers)
     for col in range(1, len(headers) + 1):
         ws.cell(row=1, column=col).font = openpyxl.styles.Font(bold=True)
@@ -666,6 +666,7 @@ async def exportar_productos(
             "S" if p.visible_catalogo else "N",
             "S" if p.stock_activo else "N",
             p.stock if p.stock_activo else "",
+            float(p.costo_unitario) if p.costo_unitario else "",
             float(p.medida_alto) if p.medida_alto else "",
             float(p.medida_ancho) if p.medida_ancho else "",
         ])
@@ -713,8 +714,9 @@ async def importar_productos(
             visible = str(row[6] or "S").strip().upper() == "S" if len(row) > 6 else True
             stock_activo = str(row[7] or "N").strip().upper() == "S" if len(row) > 7 else False
             stock_val = int(row[8] or 0) if len(row) > 8 and row[8] not in (None, "") else 0
-            m_alto = float(row[9]) if len(row) > 9 and row[9] not in (None, "") else None
-            m_ancho = float(row[10]) if len(row) > 10 and row[10] not in (None, "") else None
+            costo_u = float(row[9]) if len(row) > 9 and row[9] not in (None, "") else None
+            m_alto = float(row[10]) if len(row) > 10 and row[10] not in (None, "") else None
+            m_ancho = float(row[11]) if len(row) > 11 and row[11] not in (None, "") else None
 
             if not nombre or not codigo:
                 errores += 1
@@ -739,6 +741,7 @@ async def importar_productos(
                 prod.visible_catalogo = visible
                 prod.stock_activo = stock_activo
                 prod.stock = stock_val
+                prod.costo_unitario = costo_u
                 prod.medida_alto = m_alto
                 prod.medida_ancho = m_ancho
                 actualizados += 1
@@ -747,7 +750,7 @@ async def importar_productos(
                     nombre=nombre, categoria=categoria, codigo=codigo,
                     descripcion=descripcion, precio=precio, precio_descuento=precio_desc,
                     visible_catalogo=visible, stock_activo=stock_activo, stock=stock_val,
-                    medida_alto=m_alto, medida_ancho=m_ancho,
+                    costo_unitario=costo_u, medida_alto=m_alto, medida_ancho=m_ancho,
                     activo=True, disponible_hoy=True,
                 )
                 db.add(prod)

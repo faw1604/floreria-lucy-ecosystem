@@ -43,7 +43,7 @@ async def listar_productos(
         query = query.limit(limit)
     result = await db.execute(query)
     productos = result.scalars().all()
-    return [{"id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria, "precio": p.precio, "precio_descuento": p.precio_descuento, "disponible_hoy": p.disponible_hoy, "imagen_url": p.imagen_url, "etiquetas": p.etiquetas, "dimensiones": p.dimensiones, "activo": p.activo, "visible_catalogo": p.visible_catalogo, "stock_activo": p.stock_activo, "stock": p.stock, "medida_alto": float(p.medida_alto) if p.medida_alto else None, "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None} for p in productos]
+    return [{"id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria, "precio": p.precio, "precio_descuento": p.precio_descuento, "disponible_hoy": p.disponible_hoy, "imagen_url": p.imagen_url, "etiquetas": p.etiquetas, "dimensiones": p.dimensiones, "activo": p.activo, "visible_catalogo": p.visible_catalogo, "stock_activo": p.stock_activo, "stock": p.stock, "medida_alto": float(p.medida_alto) if p.medida_alto else None, "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None, "costo_unitario": float(p.costo_unitario) if p.costo_unitario else None} for p in productos]
 
 @router.get("/{producto_id}")
 async def obtener_producto(producto_id: int, db: AsyncSession = Depends(get_db)):
@@ -89,7 +89,7 @@ async def actualizar_producto(
     producto = result.scalar_one_or_none()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones", "imagen_url", "visible_catalogo", "codigo", "stock_activo", "stock", "medida_alto", "medida_ancho"]:
+    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones", "imagen_url", "visible_catalogo", "codigo", "stock_activo", "stock", "medida_alto", "medida_ancho", "costo_unitario"]:
         if campo in request:
             setattr(producto, campo, request[campo])
     await db.commit()

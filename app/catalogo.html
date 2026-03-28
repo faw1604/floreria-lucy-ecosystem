@@ -457,6 +457,11 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
       <div class="order-title">Confirmar pedido</div>
       <div id="order-review"></div>
       <div style="font-size:12px;color:var(--texto2);text-align:center;margin:12px 0">El costo de envío se confirmará junto con tu pedido</div>
+      <label style="display:flex;align-items:center;gap:8px;justify-content:center;margin:14px 0;font-size:14px;cursor:pointer">
+        <input type="checkbox" id="of-factura" onchange="toggleFactura()" style="width:18px;height:18px;accent-color:var(--verde)">
+        Requiero factura
+      </label>
+      <div id="of-factura-desglose" style="display:none;text-align:center;font-size:13px;color:var(--texto2);margin-bottom:10px"></div>
       <div class="order-btn-row">
         <button class="order-btn secondary" onclick="orderGoStep(3)">Regresar</button>
         <button class="order-btn primary" id="order-confirm-btn" onclick="submitOrder()">Confirmar pedido</button>
@@ -2050,6 +2055,29 @@ function renderOrderStep4() {
     html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Fallecido: ${pedidoWeb.nombre_fallecido}${pedidoWeb.funeraria_nombre ? '<br>Funeraria: '+pedidoWeb.funeraria_nombre : ''}${pedidoWeb.sala ? '<br>Sala: '+pedidoWeb.sala : ''}<br>Fecha: ${pedidoWeb.fecha_entrega}</div>`;
   }
   document.getElementById('order-review').innerHTML = html;
+  // Reset factura checkbox
+  const fc = document.getElementById('of-factura');
+  if (fc) fc.checked = false;
+  document.getElementById('of-factura-desglose').style.display = 'none';
+}
+
+function toggleFactura() {
+  const checked = document.getElementById('of-factura').checked;
+  const desglose = document.getElementById('of-factura-desglose');
+  if (checked) {
+    let sub = 0;
+    cart.forEach(p => { sub += (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio; });
+    if (appliedDiscount) {
+      if (appliedDiscount.tipo === 'porcentaje') sub -= Math.round(sub * appliedDiscount.valor / 100);
+      else sub -= appliedDiscount.valor;
+    }
+    const iva = Math.round(sub * 0.16);
+    const total = sub + iva;
+    desglose.style.display = '';
+    desglose.innerHTML = `<div>Subtotal: $${(sub/100).toLocaleString()}</div><div>IVA (16%): $${(iva/100).toLocaleString()}</div><div style="font-weight:600;color:var(--verde);font-size:15px;margin-top:4px">Total con factura: $${(total/100).toLocaleString()}</div>`;
+  } else {
+    desglose.style.display = 'none';
+  }
 }
 
 async function submitOrder() {
@@ -2077,6 +2105,7 @@ async function submitOrder() {
       banda: pedidoWeb.banda || null,
       horario_velacion: pedidoWeb.horario_velacion || null,
       codigo_descuento: appliedDiscount ? appliedDiscount.codigo : null,
+      requiere_factura: document.getElementById('of-factura')?.checked || false,
     };
     const r = await fetch(`${API}/catalogo/pedido`, {
       method: 'POST',

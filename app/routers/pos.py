@@ -357,6 +357,7 @@ async def _serializar_pedido_pos(p, db):
         "notas_internas": p.notas_internas, "ruta": p.ruta,
         "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
         "comprobante_pago_url": p.comprobante_pago_url,
+        "requiere_factura": p.requiere_factura,
     }
 
 

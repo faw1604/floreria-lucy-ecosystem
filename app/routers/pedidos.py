@@ -50,6 +50,7 @@ async def _serializar_pedido_con_items(p, db):
         "tipo_especial": p.tipo_especial, "pago_confirmado": p.pago_confirmado,
         "zona_entrega": p.zona_entrega, "forma_pago": p.forma_pago,
         "estado_florista": p.estado_florista, "nota_florista": p.nota_florista,
+        "requiere_factura": p.requiere_factura,
         "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
         "items": items,
     }

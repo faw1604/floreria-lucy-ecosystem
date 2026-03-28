@@ -397,6 +397,7 @@ function renderCard(p, showActions) {
   const pagoIcon = p.pago_confirmado ? '✅' : '⚠️ PENDIENTE';
   let badges = '';
   if (p.canal === 'WhatsApp') badges += '<span class="pedido-badge" style="background:#25d366;color:#fff">WHATSAPP</span>';
+  if (p.requiere_factura) badges += '<span class="pedido-badge" style="background:#d4a843;color:#193a2c">FACTURA</span>';
   if (p.tipo_especial === 'Funeral') badges += '<span class="pedido-badge badge-funeral">FUNERAL</span>';
   else if (p.tipo_especial === 'Evento') badges += '<span class="pedido-badge badge-evento">EVENTO</span>';
 

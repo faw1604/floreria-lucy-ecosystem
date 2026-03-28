@@ -1260,7 +1260,7 @@ function renderPendTable(rows) {
     const fecha = formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
     const ec = estadoClass(p.estado);
     return `<tr>
-      <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}</td>
+      <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}${p.requiere_factura ? ' <span style="background:#d4a843;color:#193a2c;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:700;vertical-align:middle">FACTURA</span>' : ''}</td>
       <td style="white-space:nowrap;font-size:11px">${fecha}</td>
       <td>${p.cliente_nombre || 'Mostrador'}</td>
       <td>${canalLabel(p.canal)}</td>

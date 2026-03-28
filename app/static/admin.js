@@ -387,10 +387,13 @@ async function abrirModalProducto(prod) {
     <div class="field"><label>Nombre *</label><input id="pf-nombre" value="${esc(prod?.nombre||'')}"></div>
     <div class="field"><label>Categoría *</label><select id="pf-cat" onchange="onCatChange()"><option value="">Selecciona...</option>${catOptions}</select></div>
     <div class="field"><label>Código *</label><input id="pf-sku" value="${esc(prod?.codigo||'')}"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
       <div class="field"><label>Precio *</label><input type="number" id="pf-precio" value="${prod ? (prod.precio/100).toFixed(2) : ''}" step="0.01"></div>
       <div class="field"><label>Precio de oferta</label><input type="number" id="pf-precio-desc" value="${prod?.precio_descuento ? (prod.precio_descuento/100).toFixed(2) : ''}" step="0.01">
-        <div style="font-size:10px;color:var(--texto2)">Si tiene valor, el precio normal aparece tachado</div>
+        <div style="font-size:10px;color:var(--texto2)">Precio normal aparece tachado</div>
+      </div>
+      <div class="field"><label>Costo unitario</label><input type="number" id="pf-costo" value="${prod?.costo_unitario || ''}" step="0.01">
+        <div style="font-size:10px;color:var(--texto2)">Solo visible en admin</div>
       </div>
     </div>
     <!-- DESCRIPCIÓN + IA -->
@@ -565,6 +568,7 @@ async function guardarProducto(id) {
     visible_catalogo: document.getElementById('pf-web').checked,
     stock_activo: document.getElementById('pf-stock-activo').checked,
     stock: parseInt(document.getElementById('pf-stock')?.value || 0),
+    costo_unitario: document.getElementById('pf-costo')?.value ? parseFloat(document.getElementById('pf-costo').value) : null,
     medida_alto: document.getElementById('pf-alto')?.value ? parseFloat(document.getElementById('pf-alto').value) : null,
     medida_ancho: document.getElementById('pf-ancho')?.value ? parseFloat(document.getElementById('pf-ancho').value) : null,
   };
