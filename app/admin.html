@@ -66,12 +66,13 @@
       <input type="text" id="prod-search" placeholder="Buscar producto..." oninput="debounceProdSearch()" class="search-input">
       <select id="prod-cat-filter" onchange="loadProductos()"><option value="">Todas las categorías</option></select>
       <select id="prod-status-filter" onchange="loadProductos()"><option value="">Todos</option><option value="1">Activos</option><option value="0">Inactivos</option></select>
+      <button class="btn-sm" onclick="abrirModalCategorias()">Gestionar categorías</button>
       <button class="btn-primary" onclick="abrirModalProducto()">+ Nuevo producto</button>
     </div>
   </div>
   <div class="sec-body">
     <div class="table-wrap"><table class="data-table" id="prod-table">
-      <thead><tr><th><input type="checkbox" id="prod-check-all" onchange="toggleAllProds()"></th><th>Imagen</th><th>Nombre</th><th>SKU</th><th>Categoría</th><th>Precio</th><th>Activo</th><th>Web</th><th>Acciones</th></tr></thead>
+      <thead><tr><th><input type="checkbox" id="prod-check-all" onchange="toggleAllProds()"></th><th>Imagen</th><th>Nombre</th><th>SKU</th><th>Categoría</th><th>Precio</th><th>Activo</th><th>Web</th><th>Variantes</th><th>Acciones</th></tr></thead>
       <tbody id="prod-tbody"></tbody>
     </table></div>
     <div style="margin-top:10px;display:flex;gap:8px">
@@ -214,6 +215,13 @@
   <div class="modal"><button class="modal-close" onclick="cerrarModal('modal-producto')">&times;</button>
     <h3 id="modal-prod-title">Nuevo producto</h3>
     <div id="modal-prod-body"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-categorias" onclick="if(event.target===this)cerrarModal('modal-categorias')">
+  <div class="modal"><button class="modal-close" onclick="cerrarModal('modal-categorias')">&times;</button>
+    <h3>Gestionar categorías</h3>
+    <div id="modal-cat-body"></div>
   </div>
 </div>
 

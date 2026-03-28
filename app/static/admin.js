@@ -228,6 +228,7 @@ async function exportarClientes() {
 
 // ══════ PRODUCTOS ══════
 let prodSearchTimeout = null;
+let prodVariantesCache = {}; // {prodId: [variantes]}
 function debounceProdSearch() { clearTimeout(prodSearchTimeout); prodSearchTimeout = setTimeout(loadProductos, 300); }
 
 async function loadProductos() {
@@ -238,31 +239,50 @@ async function loadProductos() {
     const r = await fetch(API + '/productos/', {credentials:'include'});
     if (!r.ok) return;
     let data = await r.json();
-    // Client-side filter
     if (q) { const ql = q.toLowerCase(); data = data.filter(p => p.nombre.toLowerCase().includes(ql) || (p.codigo||'').toLowerCase().includes(ql)); }
     if (cat) data = data.filter(p => p.categoria === cat);
     if (status === '1') data = data.filter(p => p.activo);
     if (status === '0') data = data.filter(p => !p.activo);
-    // Populate category filter
-    const cats = [...new Set(data.map(p => p.categoria))].sort();
+    // Populate category filter once
+    const allCats = [...new Set(data.map(p => p.categoria))].sort();
     const catSel = document.getElementById('prod-cat-filter');
     if (catSel.options.length <= 1) {
-      cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
+      allCats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
     }
     const tbody = document.getElementById('prod-tbody');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:40px">Sin productos</td></tr>'; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:40px">Sin productos</td></tr>'; return; }
     tbody.innerHTML = data.slice(0, 200).map(p => `<tr>
       <td><input type="checkbox" class="prod-check" data-id="${p.id}"></td>
       <td>${p.imagen_url ? '<img src="'+esc(p.imagen_url)+'" class="thumb">' : '—'}</td>
-      <td style="font-weight:500">${esc(p.nombre)}</td>
+      <td style="font-weight:500">${esc(p.nombre)}${p.precio_descuento ? ' <span style="color:var(--dorado);font-size:10px">OFERTA</span>' : ''}</td>
       <td style="color:var(--texto2)">${esc(p.codigo||'—')}</td>
       <td>${esc(p.categoria)}</td>
-      <td style="font-weight:600">${fmt$(p.precio)}</td>
+      <td style="font-weight:600">${p.precio_descuento ? '<span style="text-decoration:line-through;color:#999;font-weight:400">'+fmt$(p.precio)+'</span> '+fmt$(p.precio_descuento) : fmt$(p.precio)}</td>
       <td>${p.activo ? '<span style="color:var(--verde)">Si</span>' : '<span style="color:var(--rojo)">No</span>'}</td>
-      <td>${p.visible_catalogo !== false ? '🌐' : '—'}</td>
+      <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProdQuick(${p.id}, this.checked)" title="Visible en catálogo web"></td>
+      <td id="var-badge-${p.id}"></td>
       <td><button class="btn-sm" onclick="editarProducto(${p.id})">Editar</button></td>
     </tr>`).join('');
+    // Load variantes badge async
+    data.slice(0, 200).forEach(p => loadVariantesBadge(p.id));
   } catch(e) { console.error(e); }
+}
+
+async function loadVariantesBadge(prodId) {
+  try {
+    const r = await fetch(API + '/api/admin/variantes/' + prodId, {credentials:'include'});
+    if (!r.ok) return;
+    const vars = await r.json();
+    prodVariantesCache[prodId] = vars;
+    const el = document.getElementById('var-badge-' + prodId);
+    if (el && vars.filter(v => v.activo).length > 0) {
+      el.innerHTML = '<span style="background:var(--dorado);color:var(--verde);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600">Variantes</span>';
+    }
+  } catch(e) {}
+}
+
+async function toggleWebProdQuick(id, visible) {
+  await fetch(API + '/productos/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({visible_catalogo: visible})});
 }
 
 function toggleAllProds() {
@@ -274,42 +294,166 @@ async function masivoProd(accion) {
   const ids = [...document.querySelectorAll('.prod-check:checked')].map(c => parseInt(c.dataset.id));
   if (!ids.length) return alert('Selecciona al menos un producto');
   for (const id of ids) {
-    await fetch(API + '/productos/' + id, {
-      method: 'PUT', headers: {'Content-Type':'application/json'}, credentials: 'include',
-      body: JSON.stringify({activo: accion === 'activar'})
-    });
+    await fetch(API + '/productos/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({activo: accion === 'activar'})});
   }
-  showToast(`${ids.length} productos ${accion === 'activar' ? 'activados' : 'desactivados'} ✓`);
+  showToast(`${ids.length} productos ${accion === 'activar' ? 'activados' : 'desactivados'}`);
   loadProductos();
 }
 
-function abrirModalProducto(prod) {
+// --- MODAL PRODUCTO ---
+let editingProdId = null;
+let editingVariantes = [];
+
+async function abrirModalProducto(prod) {
+  editingProdId = prod?.id || null;
+  editingVariantes = [];
   document.getElementById('modal-prod-title').textContent = prod ? 'Editar producto' : 'Nuevo producto';
+
+  // Load categories for select
+  let catOptions = '';
+  try {
+    const r = await fetch(API + '/api/admin/categorias', {credentials:'include'});
+    const cats = await r.json();
+    catOptions = cats.map(c => `<option value="${esc(c.nombre)}" ${prod?.categoria === c.nombre ? 'selected' : ''} data-tipo="${c.tipo}">${esc(c.nombre)}</option>`).join('');
+  } catch(e) {}
+
+  // Load variantes if editing
+  if (prod?.id) {
+    try {
+      const r = await fetch(API + '/api/admin/variantes/' + prod.id, {credentials:'include'});
+      editingVariantes = await r.json();
+    } catch(e) {}
+  }
+
+  const hasActiveVariants = editingVariantes.filter(v => v.activo).length > 0;
+
   document.getElementById('modal-prod-body').innerHTML = `
-    <div class="field"><label>Nombre *</label><input id="pf-nombre" value="${esc(prod?.nombre||'')}"></div>
-    <div class="field"><label>Descripción</label><textarea id="pf-desc">${esc(prod?.descripcion||'')}</textarea></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="field"><label>SKU</label><input id="pf-sku" value="${esc(prod?.codigo||'')}"></div>
-      <div class="field"><label>Categoría *</label><input id="pf-cat" value="${esc(prod?.categoria||'')}" list="cat-list"><datalist id="cat-list"></datalist></div>
-      <div class="field"><label>Precio *</label><input type="number" id="pf-precio" value="${prod ? (prod.precio/100).toFixed(2) : ''}" step="0.01"></div>
-      <div class="field"><label>Precio descuento</label><input type="number" id="pf-precio-desc" value="${prod?.precio_descuento ? (prod.precio_descuento/100).toFixed(2) : ''}" step="0.01"></div>
+    <!-- FOTO -->
+    <div class="field">
+      <label>Foto del producto</label>
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div id="pf-img-preview" style="width:100px;height:100px;border-radius:10px;background:var(--borde);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">
+          ${prod?.imagen_url ? '<img src="'+esc(prod.imagen_url)+'" style="width:100%;height:100%;object-fit:cover">' : '<span style="color:var(--texto2);font-size:24px">📷</span>'}
+        </div>
+        <div style="flex:1">
+          <input type="file" id="pf-img-file" accept="image/*" onchange="subirImagenProd()">
+          <input type="hidden" id="pf-img" value="${esc(prod?.imagen_url||'')}">
+          <div id="pf-img-status" style="font-size:11px;color:var(--texto2);margin-top:4px"></div>
+        </div>
+      </div>
     </div>
-    <div class="field"><label>URL imagen</label><input id="pf-img" value="${esc(prod?.imagen_url||'')}">
-      <input type="file" id="pf-img-file" accept="image/*" style="margin-top:6px" onchange="subirImagenProd()">
-      ${prod?.imagen_url ? '<img src="'+esc(prod.imagen_url)+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;margin-top:6px">' : ''}
+    <!-- BÁSICO -->
+    <div class="field"><label>Nombre *</label><input id="pf-nombre" value="${esc(prod?.nombre||'')}"></div>
+    <div class="field"><label>Categoría *</label><select id="pf-cat" onchange="onCatChange()"><option value="">Selecciona...</option>${catOptions}</select></div>
+    <div class="field"><label>Código *</label><input id="pf-sku" value="${esc(prod?.codigo||'')}"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="field"><label>Precio *</label><input type="number" id="pf-precio" value="${prod ? (prod.precio/100).toFixed(2) : ''}" step="0.01"></div>
+      <div class="field"><label>Precio de oferta</label><input type="number" id="pf-precio-desc" value="${prod?.precio_descuento ? (prod.precio_descuento/100).toFixed(2) : ''}" step="0.01">
+        <div style="font-size:10px;color:var(--texto2)">Si tiene valor, el precio normal aparece tachado</div>
+      </div>
+    </div>
+    <!-- DESCRIPCIÓN + IA -->
+    <div class="field">
+      <label>Descripción</label>
+      <textarea id="pf-desc" rows="3">${esc(prod?.descripcion||'')}</textarea>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn-sm" onclick="generarDescIA(false)" id="pf-ia-gen">Generar con IA</button>
+        <button class="btn-sm" onclick="generarDescIA(true)" id="pf-ia-mej">Mejorar con IA</button>
+        <span id="pf-ia-spinner" style="display:none;font-size:12px;color:var(--texto2)">Generando...</span>
+      </div>
     </div>
     <div style="display:flex;gap:12px;margin:12px 0">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-activo" ${prod?.activo !== false ? 'checked' : ''}> Activo</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-web" ${prod?.visible_catalogo !== false ? 'checked' : ''}> Visible en web</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;display:none" id="pf-funeral-wrap"><input type="checkbox" id="pf-funeral"> Es funeral</label>
     </div>
-    <button class="btn-primary" onclick="guardarProducto(${prod?.id||'null'})" style="width:100%;margin-top:8px">Guardar</button>
+    <!-- STOCK -->
+    <div style="border:1px solid var(--borde);border-radius:10px;padding:14px;margin:14px 0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="font-size:13px;font-weight:600">Control de stock</label>
+        <input type="checkbox" id="pf-stock-activo" ${prod?.stock_activo ? 'checked' : ''} onchange="onStockToggle()" ${hasActiveVariants ? 'disabled' : ''}>
+      </div>
+      ${hasActiveVariants ? '<div style="font-size:11px;color:var(--naranja);margin-bottom:6px">El stock lo controla cada variante</div>' : '<div style="font-size:11px;color:var(--texto2);margin-bottom:6px">Stock desactivado = siempre disponible. Actívalo para controlar piezas limitadas.</div>'}
+      <div id="pf-stock-field" style="${prod?.stock_activo && !hasActiveVariants ? '' : 'display:none'}">
+        <div class="field"><label>Unidades en stock</label><input type="number" id="pf-stock" value="${prod?.stock||0}" min="0"></div>
+      </div>
+    </div>
+    <!-- VARIANTES -->
+    <div style="border:1px solid var(--borde);border-radius:10px;padding:14px;margin:14px 0">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px">Variantes</div>
+      ${['color','tamaño','estilo'].map(tipo => {
+        const vars = editingVariantes.filter(v => v.tipo === tipo);
+        const hasVars = vars.length > 0;
+        return `<div style="border-bottom:1px solid var(--borde);padding:8px 0">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <label style="font-size:13px;font-weight:500;text-transform:capitalize">${tipo}</label>
+            <input type="checkbox" class="var-toggle" data-tipo="${tipo}" ${hasVars ? 'checked' : ''} onchange="toggleVarianteTipo('${tipo}', this.checked)">
+          </div>
+          <div id="var-${tipo}-list" style="${hasVars ? '' : 'display:none'};margin-top:8px">
+            ${vars.map(v => renderVarianteRow(v)).join('')}
+            <button class="btn-sm" onclick="addVarianteRow('${tipo}')" style="margin-top:6px">+ Agregar ${tipo}</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn-primary" onclick="guardarProducto(${prod?.id||'null'})" style="width:100%;margin-top:12px">Guardar producto</button>
   `;
-  // Populate datalist
-  fetch(API + '/productos/', {credentials:'include'}).then(r => r.json()).then(data => {
-    const cats = [...new Set(data.map(p => p.categoria))].sort();
-    document.getElementById('cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
-  });
+  onCatChange();
   document.getElementById('modal-producto').classList.add('active');
+}
+
+function renderVarianteRow(v) {
+  const id = v.id || 'new-' + Math.random().toString(36).substr(2,6);
+  return `<div class="var-row" data-var-id="${v.id||''}" data-tipo="${v.tipo}" style="background:var(--crema);border-radius:8px;padding:10px;margin-bottom:6px;position:relative">
+    <button onclick="this.parentElement.remove()" style="position:absolute;top:4px;right:6px;background:none;border:none;color:var(--rojo);font-size:16px;cursor:pointer">&times;</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Nombre</label><input class="vr-nombre" value="${esc(v.nombre||'')}" style="font-size:12px;padding:6px 8px"></div>
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Código</label><input class="vr-codigo" value="${esc(v.codigo||'')}" style="font-size:12px;padding:6px 8px"></div>
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Precio</label><input type="number" class="vr-precio" value="${v.precio ? (v.precio/100).toFixed(2) : ''}" step="0.01" style="font-size:12px;padding:6px 8px"></div>
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Precio oferta</label><input type="number" class="vr-precio-desc" value="${v.precio_descuento ? (v.precio_descuento/100).toFixed(2) : ''}" step="0.01" style="font-size:12px;padding:6px 8px"></div>
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Stock</label><input type="number" class="vr-stock" value="${v.stock||0}" min="0" style="font-size:12px;padding:6px 8px"></div>
+      <div class="field" style="margin-bottom:0"><label style="font-size:11px">Foto</label><input type="file" class="vr-img-file" accept="image/*" style="font-size:11px"><input type="hidden" class="vr-img" value="${esc(v.imagen_url||'')}"></div>
+    </div>
+  </div>`;
+}
+
+function addVarianteRow(tipo) {
+  const list = document.getElementById('var-' + tipo + '-list');
+  const codigo = document.getElementById('pf-sku')?.value || '';
+  const btn = list.querySelector('button');
+  const row = document.createElement('div');
+  row.innerHTML = renderVarianteRow({tipo, nombre:'', codigo: codigo ? codigo + '-' : '', precio:0, stock:0});
+  btn.before(row.firstElementChild);
+}
+
+function toggleVarianteTipo(tipo, checked) {
+  const list = document.getElementById('var-' + tipo + '-list');
+  list.style.display = checked ? '' : 'none';
+  if (checked && !list.querySelector('.var-row')) addVarianteRow(tipo);
+  updateStockByVariantes();
+}
+
+function updateStockByVariantes() {
+  const hasActiveVars = document.querySelectorAll('.var-row').length > 0;
+  const stockToggle = document.getElementById('pf-stock-activo');
+  if (hasActiveVars) {
+    stockToggle.checked = false;
+    stockToggle.disabled = true;
+    document.getElementById('pf-stock-field').style.display = 'none';
+  } else {
+    stockToggle.disabled = false;
+  }
+}
+
+function onStockToggle() {
+  document.getElementById('pf-stock-field').style.display = document.getElementById('pf-stock-activo').checked ? '' : 'none';
+}
+
+function onCatChange() {
+  const sel = document.getElementById('pf-cat');
+  const opt = sel?.options[sel.selectedIndex];
+  const wrap = document.getElementById('pf-funeral-wrap');
+  if (wrap) wrap.style.display = opt?.dataset?.tipo === 'funeral' ? 'flex' : 'none';
 }
 
 async function editarProducto(id) {
@@ -322,6 +466,7 @@ async function editarProducto(id) {
 async function subirImagenProd() {
   const file = document.getElementById('pf-img-file').files[0];
   if (!file) return;
+  document.getElementById('pf-img-status').textContent = 'Subiendo...';
   const fd = new FormData();
   fd.append('imagen', file);
   try {
@@ -329,9 +474,31 @@ async function subirImagenProd() {
     const data = await r.json();
     if (data.url) {
       document.getElementById('pf-img').value = data.url;
-      showToast('Imagen subida ✓');
+      document.getElementById('pf-img-preview').innerHTML = '<img src="'+data.url+'" style="width:100%;height:100%;object-fit:cover">';
+      document.getElementById('pf-img-status').textContent = 'Imagen subida ✓';
     }
-  } catch(e) { alert('Error al subir imagen'); }
+  } catch(e) { document.getElementById('pf-img-status').textContent = 'Error al subir'; }
+}
+
+async function generarDescIA(mejorar) {
+  const nombre = document.getElementById('pf-nombre').value.trim();
+  const cat = document.getElementById('pf-cat').value;
+  const descBase = document.getElementById('pf-desc').value.trim();
+  if (!nombre) return alert('Escribe el nombre del producto primero');
+  document.getElementById('pf-ia-spinner').style.display = '';
+  document.getElementById('pf-ia-gen').disabled = true;
+  document.getElementById('pf-ia-mej').disabled = true;
+  try {
+    const r = await fetch(API + '/api/admin/productos/generar-descripcion', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({nombre, categoria: cat, descripcion_base: mejorar ? descBase : ''})
+    });
+    const data = await r.json();
+    if (data.descripcion) document.getElementById('pf-desc').value = data.descripcion;
+  } catch(e) { alert('Error al generar descripción'); }
+  document.getElementById('pf-ia-spinner').style.display = 'none';
+  document.getElementById('pf-ia-gen').disabled = false;
+  document.getElementById('pf-ia-mej').disabled = false;
 }
 
 async function guardarProducto(id) {
@@ -345,14 +512,127 @@ async function guardarProducto(id) {
     imagen_url: document.getElementById('pf-img').value.trim() || null,
     activo: document.getElementById('pf-activo').checked,
     visible_catalogo: document.getElementById('pf-web').checked,
+    stock_activo: document.getElementById('pf-stock-activo').checked,
+    stock: parseInt(document.getElementById('pf-stock')?.value || 0),
   };
   if (!body.nombre || !body.categoria || !body.precio) return alert('Nombre, categoría y precio son obligatorios');
   const url = id ? API + '/productos/' + id : API + '/productos/';
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, {method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+  const result = await r.json();
+  const prodId = id || result.id;
+  // Save variantes
+  await saveAllVariantes(prodId);
   cerrarModal('modal-producto');
   showToast('Producto guardado ✓');
   loadProductos();
+}
+
+async function saveAllVariantes(prodId) {
+  // Collect all variante rows from DOM
+  const rows = document.querySelectorAll('.var-row');
+  const existingIds = new Set();
+  for (const row of rows) {
+    const varId = row.dataset.varId;
+    const tipo = row.dataset.tipo;
+    const nombre = row.querySelector('.vr-nombre')?.value?.trim();
+    if (!nombre) continue;
+    const data = {
+      tipo,
+      nombre,
+      codigo: row.querySelector('.vr-codigo')?.value?.trim() || null,
+      precio: Math.round(parseFloat(row.querySelector('.vr-precio')?.value || 0) * 100),
+      precio_descuento: row.querySelector('.vr-precio-desc')?.value ? Math.round(parseFloat(row.querySelector('.vr-precio-desc').value) * 100) : null,
+      stock: parseInt(row.querySelector('.vr-stock')?.value || 0),
+      imagen_url: row.querySelector('.vr-img')?.value || null,
+      activo: true,
+    };
+    // Upload image if file selected
+    const fileInput = row.querySelector('.vr-img-file');
+    if (fileInput?.files?.length) {
+      const fd = new FormData(); fd.append('imagen', fileInput.files[0]);
+      try {
+        const ur = await fetch(API + '/productos/subir-imagen', {method:'POST', body:fd, credentials:'include'});
+        const ud = await ur.json();
+        if (ud.url) data.imagen_url = ud.url;
+      } catch(e) {}
+    }
+    if (varId && varId !== '') {
+      await fetch(API + '/api/admin/variantes/' + varId, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(data)});
+      existingIds.add(parseInt(varId));
+    } else {
+      await fetch(API + '/api/admin/variantes/' + prodId, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(data)});
+    }
+  }
+  // Delete removed variantes
+  for (const v of editingVariantes) {
+    if (!existingIds.has(v.id) && !document.querySelector(`.var-row[data-var-id="${v.id}"]`)) {
+      await fetch(API + '/api/admin/variantes/' + v.id, {method:'DELETE', credentials:'include'});
+    }
+  }
+}
+
+// --- CATEGORÍAS ---
+async function abrirModalCategorias() {
+  document.getElementById('modal-cat-body').innerHTML = '<div style="text-align:center;color:var(--texto2)">Cargando...</div>';
+  document.getElementById('modal-categorias').classList.add('active');
+  try {
+    const r = await fetch(API + '/api/admin/categorias', {credentials:'include'});
+    const cats = await r.json();
+    let html = '<table class="data-table" style="margin-bottom:16px"><thead><tr><th>Nombre</th><th>Tipo</th><th>Orden</th><th>Productos</th><th></th></tr></thead><tbody>';
+    cats.forEach(c => {
+      html += `<tr id="cat-row-${c.id}">
+        <td><input value="${esc(c.nombre)}" id="cat-nombre-${c.id}" style="width:100%;padding:4px 8px;border:1px solid var(--borde);border-radius:4px;font-size:12px"></td>
+        <td><select id="cat-tipo-${c.id}" style="padding:4px;font-size:12px"><option value="normal" ${c.tipo==='normal'?'selected':''}>Normal</option><option value="funeral" ${c.tipo==='funeral'?'selected':''}>Funeral</option></select></td>
+        <td><input type="number" value="${c.orden}" id="cat-orden-${c.id}" style="width:50px;padding:4px;font-size:12px;border:1px solid var(--borde);border-radius:4px"></td>
+        <td style="color:var(--texto2)">${c.productos_activos}</td>
+        <td>
+          <button class="btn-sm" onclick="guardarCat(${c.id})">Guardar</button>
+          ${c.productos_activos === 0 ? `<button class="btn-danger" style="font-size:11px;padding:4px 8px" onclick="eliminarCat(${c.id})">Eliminar</button>` : `<span style="font-size:10px;color:var(--texto2)" title="Tiene ${c.productos_activos} productos activos">No eliminable</span>`}
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    html += `<div style="border-top:1px solid var(--borde);padding-top:12px"><strong style="font-size:13px">Nueva categoría</strong>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input id="cat-new-nombre" placeholder="Nombre" style="flex:1;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+        <select id="cat-new-tipo" style="padding:6px;font-size:12px"><option value="normal">Normal</option><option value="funeral">Funeral</option></select>
+        <input type="number" id="cat-new-orden" placeholder="Orden" value="0" style="width:60px;padding:6px;border:1px solid var(--borde);border-radius:6px;font-size:12px">
+        <button class="btn-primary" onclick="crearCat()">Agregar</button>
+      </div>
+    </div>`;
+    document.getElementById('modal-cat-body').innerHTML = html;
+  } catch(e) { document.getElementById('modal-cat-body').innerHTML = '<div style="color:var(--rojo)">Error al cargar categorías</div>'; }
+}
+
+async function guardarCat(id) {
+  await fetch(API + '/api/admin/categorias/' + id, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({
+      nombre: document.getElementById('cat-nombre-' + id).value.trim(),
+      tipo: document.getElementById('cat-tipo-' + id).value,
+      orden: parseInt(document.getElementById('cat-orden-' + id).value || 0),
+    })
+  });
+  showToast('Categoría actualizada ✓');
+}
+
+async function eliminarCat(id) {
+  if (!confirm('¿Eliminar esta categoría?')) return;
+  const r = await fetch(API + '/api/admin/categorias/' + id, {method:'DELETE', credentials:'include'});
+  if (!r.ok) { const e = await r.json(); return alert(e.detail || 'Error'); }
+  abrirModalCategorias();
+}
+
+async function crearCat() {
+  const nombre = document.getElementById('cat-new-nombre').value.trim();
+  if (!nombre) return alert('Nombre requerido');
+  await fetch(API + '/api/admin/categorias', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({nombre, tipo: document.getElementById('cat-new-tipo').value, orden: parseInt(document.getElementById('cat-new-orden').value || 0)})
+  });
+  showToast('Categoría creada ✓');
+  abrirModalCategorias();
 }
 
 // ══════ CLAUDIA ══════

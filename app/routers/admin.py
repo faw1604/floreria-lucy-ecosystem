@@ -7,7 +7,7 @@ from app.database import get_db
 from app.core.config import TZ
 from app.routers.auth import verificar_sesion
 from app.models.pedidos import Pedido, ItemPedido
-from app.models.productos import Producto
+from app.models.productos import Producto, Categoria, ProductoVariante
 from app.models.clientes import Cliente
 from app.models.configuracion import CodigoDescuento
 from app.models.usuarios import Usuario
@@ -410,3 +410,226 @@ async def subir_imagen_producto(
         public_id=f"prod_{datetime.now(TZ).strftime('%Y%m%d%H%M%S')}",
     )
     return {"url": result["secure_url"]}
+
+
+# ══════ CATEGORÍAS ══════
+
+@router.get("/categorias")
+async def listar_categorias(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(Categoria).order_by(Categoria.orden, Categoria.nombre))
+    cats = result.scalars().all()
+    items = []
+    for c in cats:
+        count = await db.execute(
+            select(func.count(Producto.id)).where(Producto.categoria == c.nombre, Producto.activo == True)
+        )
+        items.append({
+            "id": c.id, "nombre": c.nombre, "tipo": c.tipo,
+            "orden": c.orden, "productos_activos": count.scalar() or 0,
+        })
+    return items
+
+
+@router.post("/categorias")
+async def crear_categoria(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    c = Categoria(
+        nombre=data["nombre"].strip(),
+        tipo=data.get("tipo", "normal"),
+        orden=data.get("orden", 0),
+    )
+    db.add(c)
+    try:
+        await db.commit()
+        await db.refresh(c)
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Categoría ya existe")
+    return {"ok": True, "id": c.id}
+
+
+@router.put("/categorias/{cat_id}")
+async def actualizar_categoria(
+    cat_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(Categoria).where(Categoria.id == cat_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    data = await request.json()
+    old_nombre = c.nombre
+    for k in ["nombre", "tipo", "orden"]:
+        if k in data:
+            setattr(c, k, data[k])
+    # Update products if category name changed
+    if "nombre" in data and data["nombre"] != old_nombre:
+        await db.execute(
+            text("UPDATE productos SET categoria = :new WHERE categoria = :old"),
+            {"new": data["nombre"], "old": old_nombre},
+        )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/categorias/{cat_id}")
+async def eliminar_categoria(
+    cat_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(Categoria).where(Categoria.id == cat_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    count = await db.execute(
+        select(func.count(Producto.id)).where(Producto.categoria == c.nombre, Producto.activo == True)
+    )
+    if (count.scalar() or 0) > 0:
+        raise HTTPException(status_code=400, detail="No se puede eliminar: tiene productos activos")
+    await db.delete(c)
+    await db.commit()
+    return {"ok": True}
+
+
+# ══════ VARIANTES ══════
+
+@router.get("/variantes/{producto_id}")
+async def listar_variantes(
+    producto_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(
+        select(ProductoVariante)
+        .where(ProductoVariante.producto_id == producto_id)
+        .order_by(ProductoVariante.tipo, ProductoVariante.nombre)
+    )
+    return [
+        {"id": v.id, "producto_id": v.producto_id, "tipo": v.tipo, "nombre": v.nombre,
+         "codigo": v.codigo, "imagen_url": v.imagen_url, "precio": v.precio,
+         "precio_descuento": v.precio_descuento, "stock": v.stock, "activo": v.activo}
+        for v in result.scalars().all()
+    ]
+
+
+@router.post("/variantes/{producto_id}")
+async def crear_variante(
+    producto_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    v = ProductoVariante(
+        producto_id=producto_id,
+        tipo=data["tipo"],
+        nombre=data["nombre"],
+        codigo=data.get("codigo"),
+        imagen_url=data.get("imagen_url"),
+        precio=data.get("precio", 0),
+        precio_descuento=data.get("precio_descuento"),
+        stock=data.get("stock", 0),
+        activo=data.get("activo", True),
+    )
+    db.add(v)
+    await db.commit()
+    await db.refresh(v)
+    return {"ok": True, "id": v.id}
+
+
+@router.put("/variantes/{variante_id}")
+async def actualizar_variante(
+    variante_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(ProductoVariante).where(ProductoVariante.id == variante_id))
+    v = result.scalar_one_or_none()
+    if not v:
+        raise HTTPException(status_code=404, detail="Variante no encontrada")
+    data = await request.json()
+    for k in ["tipo", "nombre", "codigo", "imagen_url", "precio", "precio_descuento", "stock", "activo"]:
+        if k in data:
+            setattr(v, k, data[k])
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/variantes/{variante_id}")
+async def eliminar_variante(
+    variante_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(select(ProductoVariante).where(ProductoVariante.id == variante_id))
+    v = result.scalar_one_or_none()
+    if not v:
+        raise HTTPException(status_code=404, detail="Variante no encontrada")
+    await db.delete(v)
+    await db.commit()
+    return {"ok": True}
+
+
+# ══════ GENERAR DESCRIPCIÓN IA ══════
+
+@router.post("/productos/generar-descripcion")
+async def generar_descripcion(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+):
+    _auth(panel_session)
+    import httpx
+    data = await request.json()
+    nombre = data.get("nombre", "")
+    categoria = data.get("categoria", "")
+    desc_base = data.get("descripcion_base", "")
+
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(status_code=500, detail="API key de Anthropic no configurada")
+
+    if desc_base:
+        system = "Mejora y expande esta descripción de producto para una florería boutique. Mantén el tono elegante. Máximo 3 oraciones. Responde solo con la descripción mejorada."
+        user_msg = f"Producto: {nombre} ({categoria})\nDescripción actual: {desc_base}"
+    else:
+        system = "Eres el asistente de Florería Lucy, una florería boutique en Chihuahua, México. Genera una descripción de producto corta, elegante y atractiva (máximo 3 oraciones) para uso en catálogo online. Responde solo con la descripción, sin comillas ni prefijos."
+        user_msg = f"Producto: {nombre}\nCategoría: {categoria}"
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": "claude-sonnet-4-6",
+                "max_tokens": 300,
+                "system": system,
+                "messages": [{"role": "user", "content": user_msg}],
+            },
+            timeout=30,
+        )
+        d = r.json()
+        descripcion = d["content"][0]["text"] if d.get("content") else ""
+        return {"descripcion": descripcion}

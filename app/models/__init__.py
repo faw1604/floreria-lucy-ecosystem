@@ -1,5 +1,5 @@
 from app.models.clientes import Cliente
-from app.models.productos import Producto
+from app.models.productos import Producto, Categoria, ProductoVariante
 from app.models.flores import TipoFlor, ProductoFlor
 from app.models.funerarias import Funeraria
 from app.models.pagos import MetodoPago
@@ -25,4 +25,6 @@ __all__ = [
     "Usuario",
     "Egreso",
     "BannerCatalogo",
+    "Categoria",
+    "ProductoVariante",
 ]
