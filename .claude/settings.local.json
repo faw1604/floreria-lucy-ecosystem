@@ -9,7 +9,10 @@
       "Bash(pip install:*)",
       "Bash(python3 -m pip --version)",
       "Bash(source /c/Users/EQUIPO/floreria-lucy-ecosystem/venv/Scripts/activate)",
-      "Bash(railway logs:*)"
+      "Bash(railway logs:*)",
+      "Bash(cd:*)",
+      "Bash(sed -i '369s|<script>|<script src=\"\"/static/pos.js\"\"></script>|' app/pos.html)",
+      "Bash(sed -i '370,2433d' app/pos.html)"
     ]
   }
 }
