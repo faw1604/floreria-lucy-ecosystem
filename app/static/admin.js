@@ -1394,93 +1394,183 @@ function downloadCSV(csv, filename) {
 }
 
 // ══════ ESTADÍSTICAS ══════
-let charts = {};
+let estChart = null;
+let estPeriodo = 'semana';
+let estActiveKpi = 'facturacion';
+let estCache = {};
+
+function getEstDates() {
+  const now = new Date(); const hoy = now.toISOString().split('T')[0];
+  if (estPeriodo === 'rango') return {desde: document.getElementById('est-desde').value||hoy, hasta: document.getElementById('est-hasta').value||hoy};
+  if (estPeriodo === 'hoy') return {desde:hoy, hasta:hoy};
+  if (estPeriodo === 'semana') { const d = new Date(now); d.setDate(d.getDate()-d.getDay()); return {desde:d.toISOString().split('T')[0], hasta:hoy}; }
+  if (estPeriodo === 'mes') return {desde:hoy.substring(0,8)+'01', hasta:hoy};
+  if (estPeriodo === 'anio') return {desde:hoy.substring(0,5)+'01-01', hasta:hoy};
+  return {desde:hoy, hasta:hoy};
+}
+
+function setEstPeriodo(p) {
+  estPeriodo = p;
+  document.querySelectorAll('.est-per-btn').forEach(b => { b.style.background=''; b.style.color=''; });
+  const btn = document.querySelector(`.est-per-btn[data-per="${p}"]`);
+  if (btn) { btn.style.background='var(--verde)'; btn.style.color='#fff'; }
+  document.getElementById('est-desde').style.display = p==='rango' ? '' : 'none';
+  document.getElementById('est-hasta').style.display = p==='rango' ? '' : 'none';
+  if (p !== 'rango') loadEstadisticas();
+}
+
+const EST_KPIS = [
+  {id:'facturacion', label:'Facturación', icon:'💰'},
+  {id:'ventas', label:'Ventas', icon:'🛒'},
+  {id:'ticket', label:'Ticket medio', icon:'🧾'},
+  {id:'ganancia', label:'Ganancia', icon:'📈'},
+  {id:'medios', label:'Medio de pago', icon:'💳'},
+  {id:'productos', label:'Productos top', icon:'📦'},
+  {id:'clientes', label:'Mejores clientes', icon:'👤'},
+  {id:'canales', label:'Canal de venta', icon:'🌐'},
+];
+
 async function loadEstadisticas() {
-  const periodo = document.getElementById('est-periodo').value;
-  const {desde, hasta} = getPeriodoDates(periodo);
-  // KPIs
-  try {
-    const r = await fetch(API + '/pos/pedidos-hoy?periodo=' + (periodo === 'anio' ? 'mes' : periodo), {credentials:'include'});
-    const data = await r.json();
-    const resumen = data.resumen || {};
-    document.getElementById('est-kpis').innerHTML = `
-      <div class="kpi-card"><div class="kpi-label">Ventas totales</div><div class="kpi-value">${fmt$(resumen.total_vendido)}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Pedidos</div><div class="kpi-value">${resumen.num_finalizados||0}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Ticket promedio</div><div class="kpi-value">${resumen.num_finalizados ? fmt$(Math.round(resumen.total_vendido / resumen.num_finalizados)) : '$0'}</div></div>
-    `;
-  } catch(e) {}
-  // Charts
-  loadChartVentasDia(desde, hasta);
-  loadChartProductosTop(desde, hasta);
-  loadChartCanales(desde, hasta);
-  loadChartZonas(desde, hasta);
+  estCache = {};
+  const {desde, hasta} = getEstDates();
+  // Load facturacion first for sidebar KPIs
+  const sb = document.getElementById('est-sidebar');
+  sb.innerHTML = EST_KPIS.map(k => `<div class="est-kpi-card" id="est-kpi-${k.id}" onclick="selectEstKpi('${k.id}')" style="padding:12px;border-left:3px solid transparent;margin-bottom:6px;cursor:pointer;border-radius:0 8px 8px 0;transition:all .15s">
+    <div style="font-size:11px;color:var(--texto2);text-transform:uppercase">${k.icon} ${k.label}</div>
+    <div style="font-size:20px;font-weight:700;color:var(--verde)" id="est-val-${k.id}">—</div>
+    <div style="font-size:11px" id="est-vs-${k.id}"></div>
+  </div>`).join('');
+  // Load all KPI values async
+  loadEstKpiValues(desde, hasta);
+  selectEstKpi(estActiveKpi);
 }
 
-function getPeriodoDates(periodo) {
-  const now = new Date();
-  const hoy = now.toISOString().split('T')[0];
-  let desde = hoy, hasta = hoy;
-  if (periodo === 'semana') {
-    const d = new Date(now); d.setDate(d.getDate() - d.getDay());
-    desde = d.toISOString().split('T')[0];
-  } else if (periodo === 'mes') {
-    desde = hoy.substring(0, 8) + '01';
-  } else if (periodo === 'anio') {
-    desde = hoy.substring(0, 5) + '01-01';
+async function loadEstKpiValues(desde, hasta) {
+  const q = `desde=${desde}&hasta=${hasta}`;
+  // Facturación
+  try { const r = await fetch(API+'/api/admin/estadisticas/facturacion?'+q,{credentials:'include'}); const d = await r.json(); estCache.facturacion = d;
+    document.getElementById('est-val-facturacion').textContent = fmt$(d.total);
+    document.getElementById('est-vs-facturacion').innerHTML = vsHtml(d.vs_anterior);
+  } catch(e) {}
+  // Ventas = num_ventas from facturacion
+  if (estCache.facturacion) {
+    document.getElementById('est-val-ventas').textContent = estCache.facturacion.num_ventas;
   }
-  return {desde, hasta};
-}
-
-async function loadChartVentasDia(desde, hasta) {
-  try {
-    const r = await fetch(API + `/api/admin/estadisticas/ventas-por-dia?desde=${desde}&hasta=${hasta}`, {credentials:'include'});
-    if (!r.ok) return;
-    const data = await r.json();
-    if (charts.ventasDia) charts.ventasDia.destroy();
-    charts.ventasDia = new Chart(document.getElementById('chart-ventas-dia'), {
-      type: 'bar', data: { labels: data.map(d => d.fecha), datasets: [{label:'Ventas', data: data.map(d => d.total/100), backgroundColor:'#193a2c'}] },
-      options: {responsive:true, plugins:{legend:{display:false}}}
-    });
+  // Ticket medio
+  try { const r = await fetch(API+'/api/admin/estadisticas/ticket-medio?'+q,{credentials:'include'}); const d = await r.json(); estCache.ticket = d;
+    document.getElementById('est-val-ticket').textContent = fmt$(d.valor);
+    document.getElementById('est-vs-ticket').innerHTML = vsHtml(d.vs_anterior);
+  } catch(e) {}
+  // Ganancia
+  try { const r = await fetch(API+'/api/admin/estadisticas/ganancia?'+q,{credentials:'include'}); const d = await r.json(); estCache.ganancia = d;
+    document.getElementById('est-val-ganancia').textContent = fmt$(d.total);
+  } catch(e) {}
+  // Medios
+  try { const r = await fetch(API+'/api/admin/estadisticas/medios-pago?'+q,{credentials:'include'}); const d = await r.json(); estCache.medios = d;
+    document.getElementById('est-val-medios').textContent = d.mas_usado;
+  } catch(e) {}
+  // Productos
+  try { const r = await fetch(API+'/api/admin/estadisticas/productos-top?'+q,{credentials:'include'}); const d = await r.json(); estCache.productos = d;
+    document.getElementById('est-val-productos').textContent = d.por_valor?.[0]?.nombre || '—';
+  } catch(e) {}
+  // Clientes
+  try { const r = await fetch(API+'/api/admin/estadisticas/clientes-top?'+q,{credentials:'include'}); const d = await r.json(); estCache.clientes = d;
+    document.getElementById('est-val-clientes').textContent = d.por_valor?.[0]?.nombre || '—';
+  } catch(e) {}
+  // Canales
+  try { const r = await fetch(API+'/api/admin/estadisticas/canales?'+q,{credentials:'include'}); const d = await r.json(); estCache.canales = d;
+    const top = d.distribucion?.sort((a,b)=>b.total-a.total)[0];
+    document.getElementById('est-val-canales').textContent = top?.canal || '—';
   } catch(e) {}
 }
 
-async function loadChartProductosTop(desde, hasta) {
-  try {
-    const r = await fetch(API + `/api/admin/estadisticas/productos-top?desde=${desde}&hasta=${hasta}&limit=10`, {credentials:'include'});
-    if (!r.ok) return;
-    const data = await r.json();
-    if (charts.prodTop) charts.prodTop.destroy();
-    charts.prodTop = new Chart(document.getElementById('chart-productos-top'), {
-      type: 'bar', data: { labels: data.map(d => d.nombre), datasets: [{label:'Unidades', data: data.map(d => d.cantidad), backgroundColor:'#d4a843'}] },
-      options: {responsive:true, indexAxis:'y', plugins:{legend:{display:false}}}
-    });
-  } catch(e) {}
+function vsHtml(vs) {
+  if (!vs) return '';
+  const color = vs >= 0 ? 'var(--verde)' : 'var(--rojo)';
+  return `<span style="color:${color};font-weight:600">${vs >= 0 ? '+' : ''}${vs}%</span> vs anterior`;
 }
 
-async function loadChartCanales(desde, hasta) {
-  try {
-    const r = await fetch(API + `/api/admin/estadisticas/canales?desde=${desde}&hasta=${hasta}`, {credentials:'include'});
-    if (!r.ok) return;
-    const data = await r.json();
-    if (charts.canales) charts.canales.destroy();
-    charts.canales = new Chart(document.getElementById('chart-canales'), {
-      type: 'doughnut', data: { labels: data.map(d => d.canal), datasets: [{data: data.map(d => d.total), backgroundColor:['#193a2c','#d4a843','#6b9e78','#ef4444']}] },
-      options: {responsive:true}
-    });
-  } catch(e) {}
+function selectEstKpi(id) {
+  estActiveKpi = id;
+  document.querySelectorAll('.est-kpi-card').forEach(c => { c.style.borderLeftColor='transparent'; c.style.background=''; });
+  const card = document.getElementById('est-kpi-'+id);
+  if (card) { card.style.borderLeftColor='var(--dorado)'; card.style.background='var(--crema)'; }
+  renderEstChart(id);
 }
 
-async function loadChartZonas(desde, hasta) {
-  try {
-    const r = await fetch(API + `/api/admin/estadisticas/zonas?desde=${desde}&hasta=${hasta}`, {credentials:'include'});
-    if (!r.ok) return;
-    const data = await r.json();
-    if (charts.zonas) charts.zonas.destroy();
-    charts.zonas = new Chart(document.getElementById('chart-zonas'), {
-      type: 'bar', data: { labels: data.map(d => d.zona||'Sin zona'), datasets: [{label:'Pedidos', data: data.map(d => d.cantidad), backgroundColor:['#7c3aed','#3b82f6','#22c55e','#9ca3af']}] },
-      options: {responsive:true, plugins:{legend:{display:false}}}
+function renderEstChart(id) {
+  const data = estCache[id];
+  const title = EST_KPIS.find(k=>k.id===id)?.label || '';
+  document.getElementById('est-chart-title').textContent = title;
+  document.getElementById('est-chart-tabs').innerHTML = '';
+  if (estChart) { estChart.destroy(); estChart = null; }
+  const ctx = document.getElementById('est-main-chart');
+  const thead = document.getElementById('est-table-head');
+  const tbody = document.getElementById('est-table-body');
+  if (!data) { tbody.innerHTML = '<tr><td style="padding:20px;color:var(--texto2);text-align:center">Sin datos para este período</td></tr>'; thead.innerHTML = ''; return; }
+
+  if (id === 'facturacion' || id === 'ventas') {
+    const pd = data.por_dia || [];
+    const isVentas = id === 'ventas';
+    estChart = new Chart(ctx, {
+      type: isVentas ? 'bar' : 'line',
+      data: { labels: pd.map(d=>d.fecha), datasets: [{label: title, data: pd.map(d=> isVentas ? d.ventas : d.total/100), backgroundColor:'#193a2c', borderColor:'#193a2c', fill: !isVentas, tension:.3}] },
+      options: {responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}
     });
-  } catch(e) {}
+    thead.innerHTML = '<tr><th>Fecha</th><th>Facturación</th><th># Ventas</th><th>Ticket medio</th></tr>';
+    tbody.innerHTML = pd.map(d => `<tr><td>${d.fecha}</td><td>${fmt$(d.total)}</td><td>${d.ventas}</td><td>${d.ventas ? fmt$(Math.round(d.total/d.ventas)) : '—'}</td></tr>`).join('');
+  } else if (id === 'ticket') {
+    const pd = data.por_dia || [];
+    estChart = new Chart(ctx, {
+      type:'line', data:{labels:pd.map(d=>d.fecha), datasets:[{label:'Ticket medio',data:pd.map(d=>d.promedio/100),borderColor:'#193a2c',fill:false,tension:.3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+    });
+    thead.innerHTML = '<tr><th>Fecha</th><th>Promedio</th><th>Mínimo</th><th>Máximo</th></tr>';
+    tbody.innerHTML = pd.map(d => `<tr><td>${d.fecha}</td><td>${fmt$(d.promedio)}</td><td>${fmt$(d.min)}</td><td>${fmt$(d.max)}</td></tr>`).join('');
+  } else if (id === 'ganancia') {
+    const pd = data.por_dia || [];
+    estChart = new Chart(ctx, {
+      type:'bar', data:{labels:pd.map(d=>d.fecha), datasets:[{label:'Ganancia',data:pd.map(d=>d.ganancia/100),backgroundColor:'#193a2c'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+    });
+    thead.innerHTML = '<tr><th>Fecha</th><th>Facturación</th><th>Costo</th><th>Ganancia</th><th>Margen</th></tr>';
+    tbody.innerHTML = pd.map(d => `<tr><td>${d.fecha}</td><td>${fmt$(d.facturacion)}</td><td>${fmt$(d.costo)}</td><td style="color:${d.ganancia>=0?'var(--verde)':'var(--rojo)'}">${fmt$(d.ganancia)}</td><td>${d.margen}%</td></tr>`).join('');
+    if (data.productos_sin_costo) tbody.innerHTML += `<tr><td colspan="5" style="color:var(--dorado);font-size:12px;padding:8px">${data.productos_sin_costo} productos sin costo registrado — ganancia puede ser mayor</td></tr>`;
+  } else if (id === 'medios') {
+    const dist = data.distribucion || [];
+    const colors = {'Efectivo':'#193a2c','Tarjeta débito':'#2d5a3d','Tarjeta crédito':'#2d5a3d','Transferencia':'#d4a843','Link de pago':'#6b9e78'};
+    estChart = new Chart(ctx, {
+      type:'doughnut', data:{labels:dist.map(d=>d.metodo), datasets:[{data:dist.map(d=>d.total/100), backgroundColor:dist.map(d=>colors[d.metodo]||'#9ca3af')}]},
+      options:{responsive:true,maintainAspectRatio:false}
+    });
+    thead.innerHTML = '<tr><th>Método</th><th># Trans.</th><th>Total</th><th>%</th></tr>';
+    tbody.innerHTML = dist.map(d => `<tr><td>${esc(d.metodo)}</td><td>${d.count}</td><td>${fmt$(d.total)}</td><td>${d.porcentaje}%</td></tr>`).join('');
+  } else if (id === 'productos') {
+    const pv = data.por_valor || [];
+    estChart = new Chart(ctx, {
+      type:'bar', data:{labels:pv.map(d=>d.nombre), datasets:[{label:'Total',data:pv.map(d=>d.total/100),backgroundColor:'#193a2c'}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}}}
+    });
+    thead.innerHTML = '<tr><th>#</th><th>Producto</th><th>Categoría</th><th>Unidades</th><th>Total</th></tr>';
+    tbody.innerHTML = pv.map((d,i) => `<tr><td>${i+1}</td><td>${esc(d.nombre)}</td><td>${esc(d.categoria)}</td><td>${d.cantidad}</td><td>${fmt$(d.total)}</td></tr>`).join('');
+  } else if (id === 'clientes') {
+    const cv = data.por_valor || [];
+    estChart = new Chart(ctx, {
+      type:'bar', data:{labels:cv.map(d=>d.nombre), datasets:[{label:'Total',data:cv.map(d=>d.total/100),backgroundColor:'#d4a843'}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}}}
+    });
+    thead.innerHTML = '<tr><th>#</th><th>Cliente</th><th>Pedidos</th><th>Total</th><th>Ticket medio</th><th>Última</th></tr>';
+    tbody.innerHTML = cv.map((d,i) => `<tr><td>${i+1}</td><td>${esc(d.nombre)}</td><td>${d.pedidos}</td><td>${fmt$(d.total)}</td><td>${fmt$(d.ticket_medio)}</td><td>${fmtDate(d.ultima)}</td></tr>`).join('');
+  } else if (id === 'canales') {
+    const dist = data.distribucion || [];
+    const colors = {'Mostrador':'#193a2c','Web':'#d4a843','WhatsApp':'#6b9e78'};
+    estChart = new Chart(ctx, {
+      type:'doughnut', data:{labels:dist.map(d=>d.canal), datasets:[{data:dist.map(d=>d.total/100), backgroundColor:dist.map(d=>colors[d.canal]||'#9ca3af')}]},
+      options:{responsive:true,maintainAspectRatio:false}
+    });
+    thead.innerHTML = '<tr><th>Canal</th><th># Ventas</th><th>Total</th><th>%</th></tr>';
+    tbody.innerHTML = dist.map(d => `<tr><td>${esc(d.canal)}</td><td>${d.count}</td><td>${fmt$(d.total)}</td><td>${d.porcentaje}%</td></tr>`).join('');
+  }
 }
 
 // ══════ USUARIOS ══════

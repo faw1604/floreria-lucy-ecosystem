@@ -622,80 +622,138 @@ async def eliminar_banner(
 
 # ══════ ESTADÍSTICAS ══════
 
-@router.get("/estadisticas/ventas-por-dia")
-async def ventas_por_dia(
-    desde: str, hasta: str,
-    panel_session: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
-):
-    _auth(panel_session)
-    result = await db.execute(text("""
-        SELECT fecha_entrega::date as fecha, COALESCE(SUM(total), 0) as total
-        FROM pedidos
-        WHERE fecha_entrega BETWEEN :desde AND :hasta
-          AND estado NOT IN ('Cancelado', 'rechazado')
-          AND pago_confirmado = true
-        GROUP BY fecha_entrega::date
-        ORDER BY fecha
-    """), {"desde": desde, "hasta": hasta})
-    return [{"fecha": str(r[0]), "total": r[1]} for r in result.fetchall()]
+_VENTAS_WHERE = "estado NOT IN ('Cancelado','rechazado') AND pago_confirmado = true"
 
+@router.get("/estadisticas/facturacion")
+async def est_facturacion(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    # Total ventas
+    r = await db.execute(text(f"SELECT COALESCE(SUM(total),0),COUNT(*) FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}"), {"d":desde,"h":hasta})
+    total_ventas, num_ventas = r.one()
+    # Otros ingresos
+    r2 = await db.execute(text("SELECT COALESCE(SUM(monto),0) FROM otros_ingresos WHERE fecha BETWEEN :d AND :h"), {"d":desde,"h":hasta})
+    total_otros = r2.scalar() or 0
+    total = total_ventas + total_otros
+    # vs anterior
+    dias = (date.fromisoformat(hasta) - date.fromisoformat(desde)).days + 1
+    ant_hasta = (date.fromisoformat(desde) - timedelta(days=1)).isoformat()
+    ant_desde = (date.fromisoformat(desde) - timedelta(days=dias)).isoformat()
+    r3 = await db.execute(text(f"SELECT COALESCE(SUM(total),0) FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}"), {"d":ant_desde,"h":ant_hasta})
+    r3b = await db.execute(text("SELECT COALESCE(SUM(monto),0) FROM otros_ingresos WHERE fecha BETWEEN :d AND :h"), {"d":ant_desde,"h":ant_hasta})
+    total_ant = (r3.scalar() or 0) + (r3b.scalar() or 0)
+    vs = round((total - total_ant) / total_ant * 100, 1) if total_ant else 0
+    # Por día
+    rd = await db.execute(text(f"SELECT fecha_entrega::date as f, COALESCE(SUM(total),0) as t, COUNT(*) as c FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} GROUP BY f ORDER BY f"), {"d":desde,"h":hasta})
+    por_dia = [{"fecha":str(r[0]),"total":r[1],"ventas":r[2]} for r in rd.fetchall()]
+    # Por hora
+    rh = await db.execute(text(f"SELECT EXTRACT(HOUR FROM fecha_pedido) as h, COALESCE(SUM(total),0) as t, COUNT(*) as c FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} GROUP BY h ORDER BY h"), {"d":desde,"h":hasta})
+    por_hora = [{"hora":int(r[0]),"total":r[1],"ventas":r[2]} for r in rh.fetchall()]
+    return {"total":total,"total_ventas":total_ventas,"total_otros":total_otros,"num_ventas":num_ventas,"vs_anterior":vs,"por_dia":por_dia,"por_hora":por_hora}
+
+@router.get("/estadisticas/ticket-medio")
+async def est_ticket(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    r = await db.execute(text(f"SELECT COALESCE(SUM(total),0),COUNT(*) FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}"), {"d":desde,"h":hasta})
+    total, count = r.one()
+    valor = round(total / count) if count else 0
+    # vs anterior
+    dias = (date.fromisoformat(hasta) - date.fromisoformat(desde)).days + 1
+    ad = (date.fromisoformat(desde) - timedelta(days=dias)).isoformat()
+    ah = (date.fromisoformat(desde) - timedelta(days=1)).isoformat()
+    ra = await db.execute(text(f"SELECT COALESCE(SUM(total),0),COUNT(*) FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}"), {"d":ad,"h":ah})
+    ta, ca = ra.one()
+    va = round(ta/ca) if ca else 0
+    vs = round((valor-va)/va*100,1) if va else 0
+    rd = await db.execute(text(f"SELECT fecha_entrega::date as f, COALESCE(AVG(total),0)::int as avg, MIN(total) as mn, MAX(total) as mx FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} GROUP BY f ORDER BY f"), {"d":desde,"h":hasta})
+    por_dia = [{"fecha":str(r[0]),"promedio":r[1],"min":r[2],"max":r[3]} for r in rd.fetchall()]
+    return {"valor":valor,"vs_anterior":vs,"por_dia":por_dia}
+
+@router.get("/estadisticas/ganancia")
+async def est_ganancia(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    r = await db.execute(text(f"""
+        SELECT ped.fecha_entrega::date as f, ped.total as venta,
+               COALESCE(SUM(ip.cantidad * COALESCE(p.costo_unitario*100, p.costo, 0)),0)::bigint as costo_total,
+               COUNT(CASE WHEN p.costo_unitario IS NULL AND p.costo=0 THEN 1 END) as sin_costo
+        FROM pedidos ped JOIN items_pedido ip ON ip.pedido_id=ped.id
+        JOIN productos p ON p.id=ip.producto_id
+        WHERE ped.fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}
+        GROUP BY ped.id, ped.fecha_entrega, ped.total
+    """), {"d":desde,"h":hasta})
+    rows = r.fetchall()
+    total_venta = sum(r[1] for r in rows)
+    total_costo = sum(r[2] for r in rows)
+    total_ganancia = total_venta - total_costo
+    sin_costo = sum(1 for r in rows if r[3] > 0)
+    # Por día
+    dia_map = {}
+    for r in rows:
+        d = str(r[0])
+        if d not in dia_map: dia_map[d] = {"fecha":d,"facturacion":0,"costo":0,"ganancia":0}
+        dia_map[d]["facturacion"] += r[1]; dia_map[d]["costo"] += r[2]
+        dia_map[d]["ganancia"] = dia_map[d]["facturacion"] - dia_map[d]["costo"]
+    por_dia = sorted(dia_map.values(), key=lambda x: x["fecha"])
+    for d in por_dia: d["margen"] = round(d["ganancia"]/d["facturacion"]*100,1) if d["facturacion"] else 0
+    return {"total":total_ganancia,"facturacion":total_venta,"costo":total_costo,"productos_sin_costo":sin_costo,"por_dia":por_dia}
+
+@router.get("/estadisticas/medios-pago")
+async def est_medios(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    r = await db.execute(text(f"SELECT COALESCE(forma_pago,'Sin info') as mp, COUNT(*) as c, COALESCE(SUM(total),0) as t FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} GROUP BY forma_pago ORDER BY t DESC"), {"d":desde,"h":hasta})
+    rows = [{"metodo":r[0],"count":r[1],"total":r[2]} for r in r.fetchall()]
+    grand = sum(r["total"] for r in rows) or 1
+    for r in rows: r["porcentaje"] = round(r["total"]/grand*100,1)
+    mas_usado = rows[0]["metodo"] if rows else "—"
+    return {"mas_usado":mas_usado,"distribucion":rows}
 
 @router.get("/estadisticas/productos-top")
-async def productos_top(
-    desde: str, hasta: str, limit: int = 10,
-    panel_session: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
-):
+async def est_productos(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
-    result = await db.execute(text("""
-        SELECT p.nombre, SUM(ip.cantidad) as cantidad
-        FROM items_pedido ip
-        JOIN pedidos ped ON ped.id = ip.pedido_id
-        JOIN productos p ON p.id = ip.producto_id
-        WHERE ped.fecha_entrega BETWEEN :desde AND :hasta
-          AND ped.estado NOT IN ('Cancelado', 'rechazado')
-        GROUP BY p.nombre
-        ORDER BY cantidad DESC
-        LIMIT :lim
-    """), {"desde": desde, "hasta": hasta, "lim": limit})
-    return [{"nombre": r[0], "cantidad": int(r[1])} for r in result.fetchall()]
+    r = await db.execute(text(f"""
+        SELECT p.nombre, p.categoria, SUM(ip.cantidad) as qty, SUM(ip.cantidad*ip.precio_unitario) as val
+        FROM items_pedido ip JOIN pedidos ped ON ped.id=ip.pedido_id JOIN productos p ON p.id=ip.producto_id
+        WHERE ped.fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}
+        GROUP BY p.nombre, p.categoria ORDER BY val DESC LIMIT 10
+    """), {"d":desde,"h":hasta})
+    por_valor = [{"nombre":r[0],"categoria":r[1],"cantidad":int(r[2]),"total":r[3]} for r in r.fetchall()]
+    r2 = await db.execute(text(f"""
+        SELECT p.nombre, p.categoria, SUM(ip.cantidad) as qty, SUM(ip.cantidad*ip.precio_unitario) as val
+        FROM items_pedido ip JOIN pedidos ped ON ped.id=ip.pedido_id JOIN productos p ON p.id=ip.producto_id
+        WHERE ped.fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}
+        GROUP BY p.nombre, p.categoria ORDER BY qty DESC LIMIT 10
+    """), {"d":desde,"h":hasta})
+    por_cantidad = [{"nombre":r[0],"categoria":r[1],"cantidad":int(r[2]),"total":r[3]} for r in r2.fetchall()]
+    return {"por_valor":por_valor,"por_cantidad":por_cantidad}
 
+@router.get("/estadisticas/clientes-top")
+async def est_clientes(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    r = await db.execute(text(f"""
+        SELECT c.nombre, COUNT(ped.id) as n, SUM(ped.total) as t, MAX(ped.fecha_entrega) as ult
+        FROM pedidos ped JOIN clientes c ON c.id=ped.customer_id
+        WHERE ped.fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}
+        GROUP BY c.id, c.nombre ORDER BY t DESC LIMIT 10
+    """), {"d":desde,"h":hasta})
+    por_valor = [{"nombre":r[0],"pedidos":r[1],"total":r[2],"ticket_medio":round(r[2]/r[1]) if r[1] else 0,"ultima":str(r[3]) if r[3] else None} for r in r.fetchall()]
+    r2 = await db.execute(text(f"""
+        SELECT c.nombre, COUNT(ped.id) as n, SUM(ped.total) as t, MAX(ped.fecha_entrega) as ult
+        FROM pedidos ped JOIN clientes c ON c.id=ped.customer_id
+        WHERE ped.fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}
+        GROUP BY c.id, c.nombre ORDER BY n DESC LIMIT 10
+    """), {"d":desde,"h":hasta})
+    por_compras = [{"nombre":r[0],"pedidos":r[1],"total":r[2],"ticket_medio":round(r[2]/r[1]) if r[1] else 0,"ultima":str(r[3]) if r[3] else None} for r in r2.fetchall()]
+    return {"por_valor":por_valor,"por_compras":por_compras}
 
 @router.get("/estadisticas/canales")
-async def canales(
-    desde: str, hasta: str,
-    panel_session: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
-):
+async def est_canales(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
-    result = await db.execute(text("""
-        SELECT canal, COUNT(*) as total
-        FROM pedidos
-        WHERE fecha_entrega BETWEEN :desde AND :hasta
-          AND estado NOT IN ('Cancelado', 'rechazado')
-        GROUP BY canal
-    """), {"desde": desde, "hasta": hasta})
-    return [{"canal": r[0], "total": int(r[1])} for r in result.fetchall()]
-
-
-@router.get("/estadisticas/zonas")
-async def zonas(
-    desde: str, hasta: str,
-    panel_session: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
-):
-    _auth(panel_session)
-    result = await db.execute(text("""
-        SELECT COALESCE(zona_entrega, 'Sin zona') as zona, COUNT(*) as cantidad
-        FROM pedidos
-        WHERE fecha_entrega BETWEEN :desde AND :hasta
-          AND estado NOT IN ('Cancelado', 'rechazado')
-          AND direccion_entrega IS NOT NULL
-        GROUP BY zona_entrega
-        ORDER BY cantidad DESC
-    """), {"desde": desde, "hasta": hasta})
-    return [{"zona": r[0], "cantidad": int(r[1])} for r in result.fetchall()]
+    r = await db.execute(text(f"SELECT canal, COUNT(*) as c, COALESCE(SUM(total),0) as t FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} GROUP BY canal"), {"d":desde,"h":hasta})
+    rows = [{"canal":r[0],"count":r[1],"total":r[2]} for r in r.fetchall()]
+    grand = sum(r["total"] for r in rows) or 1
+    for r in rows: r["porcentaje"] = round(r["total"]/grand*100,1)
+    rd = await db.execute(text(f"SELECT fecha_entrega::date as f, canal, COUNT(*) as c FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE} GROUP BY f, canal ORDER BY f"), {"d":desde,"h":hasta})
+    por_dia = [{"fecha":str(r[0]),"canal":r[1],"count":r[2]} for r in rd.fetchall()]
+    return {"distribucion":rows,"por_dia":por_dia}
 
 
 # ══════ SUBIDA IMÁGENES ══════
