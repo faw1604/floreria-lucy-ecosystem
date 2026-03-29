@@ -1146,7 +1146,7 @@ async function loadEgresos() {
       <td>${esc(e.metodo_pago||'—')}</td>
       <td>${esc(e.proveedor||'—')}</td>
       <td style="font-weight:600">${fmt$(e.monto)}</td>
-      <td><button class="btn-sm" onclick="eliminarEgreso(${e.id})">🗑</button></td>
+      <td><button class="btn-sm" onclick="editarEgreso(${e.id})">Editar</button> <button class="btn-sm" onclick="eliminarEgreso(${e.id})" style="color:var(--rojo)">🗑</button></td>
     </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos</td></tr>';
   } catch(e) {}
 }
@@ -1165,7 +1165,12 @@ async function abrirModalEgreso(eg) {
     <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
     <div class="field"><label>Categoría</label><select id="eg-cat"><option value="">Selecciona...</option>${catGastoOptions(eg?.categoria)}</select></div>
     <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
-    <div class="field"><label>Proveedor</label><select id="eg-prov"><option value="">Sin proveedor</option>${provOptions(eg?.proveedor)}</select></div>
+    <div class="field"><label>Proveedor</label>
+      <div style="display:flex;gap:6px">
+        <select id="eg-prov" style="flex:1"><option value="">Sin proveedor</option>${provOptions(eg?.proveedor)}</select>
+        <button type="button" class="btn-sm" onclick="agregarProvDesdeEgreso()" style="white-space:nowrap;font-size:11px">+ Nuevo</button>
+      </div>
+    </div>
     <div class="field"><label>Monto * (pesos)</label><input type="number" id="eg-monto" step="0.01" value="${eg ? (eg.monto/100).toFixed(2) : ''}"></div>
     <div class="field"><label>Notas</label><textarea id="eg-notas">${esc(eg?.notas||'')}</textarea></div>
     <div class="field"><label># Factura / Nota de referencia</label><input id="eg-ref" value="${esc(eg?.referencia||'')}" placeholder="Opcional"></div>
@@ -1201,6 +1206,35 @@ async function guardarEgreso(id) {
   } catch(e) {
     alert('Error de conexión al guardar egreso');
   }
+}
+
+async function agregarProvDesdeEgreso() {
+  const nombre = prompt('Nombre del nuevo proveedor:');
+  if (!nombre || !nombre.trim()) return;
+  try {
+    await fetch(API+'/api/admin/proveedores', {method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({nombre:nombre.trim()})});
+    await loadProveedores();
+    // Refresh the select keeping current form state
+    const sel = document.getElementById('eg-prov');
+    if (sel) {
+      sel.innerHTML = '<option value="">Sin proveedor</option>' + provOptions(nombre.trim());
+      sel.value = nombre.trim();
+    }
+    showToast('Proveedor agregado');
+  } catch(e) { alert('Error al crear proveedor'); }
+}
+
+async function editarEgreso(id) {
+  // Find egreso in finData.egresos
+  const eg = (finData.egresos || []).find(e => e.id === id);
+  if (eg) { abrirModalEgreso(eg); return; }
+  // Fallback: fetch from API
+  try {
+    const r = await fetch(API+'/api/admin/egresos', {credentials:'include'});
+    const all = await r.json();
+    const found = all.find(e => e.id === id);
+    if (found) abrirModalEgreso(found);
+  } catch(e) {}
 }
 
 async function eliminarEgreso(id) {
