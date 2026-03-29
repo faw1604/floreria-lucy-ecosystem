@@ -250,8 +250,19 @@ async def stats_semana(
         "canal_mas_usado": top_canal,
     }
 
+def _check_role(panel_session, allowed_roles):
+    from app.routers.auth import obtener_rol
+    rol = obtener_rol(panel_session)
+    if not rol:
+        return HTMLResponse('<script>location.href="/panel/"</script>')
+    if rol not in allowed_roles:
+        return HTMLResponse('<script>location.href="/panel/"</script>')
+    return None
+
 @router.get("/pos", response_class=HTMLResponse)
 async def pos_html(panel_session: str | None = Cookie(default=None)):
+    block = _check_role(panel_session, ["admin", "operador"])
+    if block: return block
     try:
         with open("app/pos.html", "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
@@ -260,6 +271,8 @@ async def pos_html(panel_session: str | None = Cookie(default=None)):
 
 @router.get("/repartidor", response_class=HTMLResponse)
 async def repartidor_html(panel_session: str | None = Cookie(default=None)):
+    block = _check_role(panel_session, ["admin", "repartidor"])
+    if block: return block
     try:
         with open("app/repartidor.html", "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
@@ -268,6 +281,8 @@ async def repartidor_html(panel_session: str | None = Cookie(default=None)):
 
 @router.get("/taller", response_class=HTMLResponse)
 async def taller_html(panel_session: str | None = Cookie(default=None)):
+    block = _check_role(panel_session, ["admin", "florista"])
+    if block: return block
     try:
         with open("app/taller.html", "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
@@ -287,6 +302,20 @@ async def reset_session():
 
 @router.get("/", response_class=HTMLResponse)
 async def panel_html(panel_session: str | None = Cookie(default=None)):
+    from app.routers.auth import obtener_rol
+    rol = obtener_rol(panel_session)
+    # Not authenticated — show login page
+    if not rol:
+        try:
+            with open("app/login.html", "r", encoding="utf-8") as f:
+                return HTMLResponse(f.read())
+        except FileNotFoundError:
+            return HTMLResponse('<h1>Login not found</h1>', status_code=500)
+    # Redirect non-admin to their panel
+    redirects = {"operador": "/panel/pos", "florista": "/panel/taller", "repartidor": "/panel/repartidor"}
+    if rol in redirects:
+        return HTMLResponse(f'<script>location.href="{redirects[rol]}"</script>')
+    # Admin — show admin panel
     try:
         with open("app/admin.html", "r", encoding="utf-8") as f:
             return HTMLResponse(f.read())
