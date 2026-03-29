@@ -1765,7 +1765,7 @@ function renderTransTable(rows) {
       <td>${obsIcon(p)}</td>
       <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:16px;cursor:pointer" title="Ver ticket">🎫</button></td>
       <td class="pend-actions">
-        ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelarTrans(${p.id},'${esc(p.folio)}')" title="Cancelar">✂️</button>` : '<span class="badge-estado cancelado">Cancelado</span>'}
+        ${ec !== 'cancelado' ? `<button class="btn-edit" onclick="editarFechaPedido(${p.id},'${esc(p.folio)}','${p.fecha_entrega||''}','${p.horario_entrega||''}','${p.hora_exacta||''}')" title="Editar fecha">📅</button><button class="btn-cancel" onclick="pedirCancelarTrans(${p.id},'${esc(p.folio)}')" title="Cancelar">✂️</button>` : '<span class="badge-estado cancelado">Cancelado</span>'}
       </td>
     </tr>`;
   }).join('');
@@ -2420,4 +2420,46 @@ function addReservaAlCarrito(id, nombre, precio, imgUrl, productoId) {
   });
   renderCart();
   document.getElementById('modal-reservas-pos').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════
+// EDITAR FECHA DE PEDIDO
+// ═══════════════════════════════════════════
+function editarFechaPedido(id, folio, fecha, horario, hora) {
+  const html = `<div class="modal-bg active" id="modal-edit-fecha" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal">
+      <button class="close" onclick="document.getElementById('modal-edit-fecha').remove()">&times;</button>
+      <h3>Editar fecha — ${folio}</h3>
+      <div class="frow"><label>Fecha de entrega</label><input type="date" id="ef-fecha" value="${fecha}"></div>
+      <div class="frow"><label>Horario</label>
+        <select id="ef-horario" onchange="document.getElementById('ef-hora-wrap').style.display=this.value==='hora_especifica'?'':'none'">
+          <option value="manana" ${horario==='manana'?'selected':''}>Mañana 9-2pm</option>
+          <option value="tarde" ${horario==='tarde'?'selected':''}>Tarde 2-6pm</option>
+          <option value="noche" ${horario==='noche'?'selected':''}>Noche 6-9pm</option>
+          <option value="hora_especifica" ${horario==='hora_especifica'||hora?'selected':''}>Hora específica</option>
+        </select>
+      </div>
+      <div class="frow" id="ef-hora-wrap" style="${horario==='hora_especifica'||hora?'':'display:none'}"><label>Hora</label><input type="time" id="ef-hora" value="${hora}"></div>
+      <button onclick="guardarFechaPedido(${id})" style="width:100%;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;margin-top:8px">Guardar cambios</button>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function guardarFechaPedido(id) {
+  const fecha = document.getElementById('ef-fecha').value;
+  const horario = document.getElementById('ef-horario').value;
+  const hora = document.getElementById('ef-hora').value;
+  if (!fecha) { alert('Selecciona una fecha'); return; }
+  try {
+    const body = {fecha_entrega: fecha, horario_entrega: horario};
+    if (horario === 'hora_especifica' && hora) body.hora_especifica = hora;
+    const r = await fetch(`/pos/pedido/${id}/editar-fecha`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.detail || 'Error'); return; }
+    document.getElementById('modal-edit-fecha').remove();
+    loadTransacciones();
+  } catch(e) { alert('Error de conexion'); }
 }

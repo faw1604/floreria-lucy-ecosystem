@@ -658,6 +658,32 @@ async def _pos_finalizar_inner(pedido_id, request, db):
     return {"ok": True, "folio": pedido.numero, "estado": pedido.estado}
 
 
+@router.patch("/pedido/{pedido_id}/editar-fecha")
+async def pos_editar_fecha(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    data = await request.json()
+    from datetime import date as date_type
+    fecha_str = data.get("fecha_entrega")
+    if fecha_str:
+        pedido.fecha_entrega = date_type.fromisoformat(fecha_str)
+    if "horario_entrega" in data:
+        pedido.horario_entrega = data["horario_entrega"]
+    if "hora_especifica" in data:
+        pedido.hora_exacta = data["hora_especifica"]
+    await db.commit()
+    return {"ok": True, "folio": pedido.numero}
+
+
 @router.patch("/pedido/{pedido_id}/editar")
 async def pos_editar_pedido(
     pedido_id: int,
