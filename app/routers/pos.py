@@ -208,11 +208,19 @@ async def pos_crear_pedido(
     # Calculate subtotal
     subtotal = sum(it["precio_unitario"] * it["cantidad"] for it in items)
 
-    # Tax — IEPS is already included in the price, does NOT add to total
+    # Tax — calculate IVA only on non-chocolate products
     tipo_impuesto = data.get("tipo_impuesto", "NA")
     impuesto = 0
     if tipo_impuesto == "IVA":
-        impuesto = int(subtotal * 0.16)
+        # Split subtotal by category: chocolates get IEPS (desglosado), rest gets IVA
+        sub_flores = 0
+        for it in items:
+            prod = (await db.execute(select(Producto).where(Producto.id == it.get("producto_id")))).scalar_one_or_none()
+            cat = (prod.categoria if prod else "").lower()
+            monto_item = it["precio_unitario"] * it["cantidad"]
+            if "chocolates gourmet" not in cat:
+                sub_flores += monto_item
+        impuesto = int(sub_flores * 0.16)
 
     # Shipping
     envio = 0
@@ -616,7 +624,15 @@ async def pos_completar_pedido(
     # Recalculate totals
     subtotal = sum(it["precio_unitario"] * it["cantidad"] for it in items)
     tipo_impuesto = data.get("tipo_impuesto", "NA")
-    impuesto = int(subtotal * 0.16) if tipo_impuesto == "IVA" else 0
+    impuesto = 0
+    if tipo_impuesto == "IVA":
+        sub_flores = 0
+        for it in items:
+            prod = (await db.execute(select(Producto).where(Producto.id == it.get("producto_id")))).scalar_one_or_none()
+            cat = (prod.categoria if prod else "").lower()
+            if "chocolates gourmet" not in cat:
+                sub_flores += it["precio_unitario"] * it["cantidad"]
+        impuesto = int(sub_flores * 0.16)
     descuento = data.get("descuento_total", 0)
     cargo_hora = data.get("cargo_hora_especifica", 0)
     comision = 0
