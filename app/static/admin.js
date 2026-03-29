@@ -1513,7 +1513,7 @@ async function loadEstadisticas() {
 async function loadEstKpiValues(desde, hasta) {
   const q = `desde=${desde}&hasta=${hasta}`;
   // Facturación
-  try { const r = await fetch(API+'/api/admin/estadisticas/facturacion?'+q,{credentials:'include'}); const d = await r.json(); estCache.facturacion = d;
+  try { const r = await fetch(API+'/api/admin/estadisticas/facturacion?'+q,{credentials:'include'}); const d = await r.json(); estCache.facturacion = d; estCache.ventas = d;
     document.getElementById('est-val-facturacion').textContent = fmt$(d.total);
     document.getElementById('est-vs-facturacion').innerHTML = vsHtml(d.vs_anterior);
   } catch(e) {}
