@@ -868,7 +868,9 @@ async function loadWebHorarios() {
   } catch(e) {}
 
   el.innerHTML = `<div style="max-width:700px">
-    <h4 style="font-size:14px;color:var(--verde);margin-bottom:12px">Horarios de hora específica</h4>
+    <div class="toggle-row"><label>Catálogo web activo</label><input type="checkbox" ${webCfg.catalogo_activo==='true'?'checked':''} onchange="saveConfigField('catalogo_activo',String(this.checked))"></div>
+    <div class="config-field" style="margin:12px 0"><label>Días mínimos de anticipación</label><input type="number" value="${esc(webCfg.catalogo_fecha_minima_dias||'1')}" min="0" style="width:80px" onchange="saveConfigField('catalogo_fecha_minima_dias',this.value)"></div>
+    <h4 style="font-size:14px;color:var(--verde);margin:20px 0 12px;padding-top:16px;border-top:2px solid var(--borde)">Horarios de hora específica</h4>
     ${horariosHtml}
 
     <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--borde)">
@@ -1746,14 +1748,7 @@ async function loadConfig() {
       {k:'claudia_temporada_alta',l:'Temporada alta',type:'toggle'},
       {k:'claudia_mensaje_bienvenida',l:'Mensaje bienvenida',type:'textarea'},
     ], cfg);
-    renderCfgSection('cfg-catalogo', [
-      {k:'catalogo_activo',l:'Catálogo web activo',type:'toggle'},
-      {k:'catalogo_titulo',l:'Título'},
-      {k:'catalogo_subtitulo',l:'Subtítulo'},
-      {k:'catalogo_whatsapp_msg',l:'Mensaje WhatsApp'},
-      {k:'catalogo_footer',l:'Footer'},
-      {k:'catalogo_fecha_minima_dias',l:'Días mínimos anticipación',type:'number'},
-    ], cfg);
+    // Catálogo config moved to Página Web sub-tabs
   } catch(e) {}
 }
 
