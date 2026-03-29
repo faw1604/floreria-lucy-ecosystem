@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import inicializar_db
 from app.core.config import settings
-from app.routers import pedidos, productos, clientes, flores, funerarias, pagos, panel, auth, catalogo, inventario, repartidor, pos, configuracion, admin
+from app.routers import pedidos, productos, clientes, flores, funerarias, pagos, panel, auth, catalogo, inventario, repartidor, pos, configuracion, admin, taller
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +46,7 @@ app.include_router(repartidor.router, prefix="/repartidor", tags=["repartidor"])
 app.include_router(pos.router, prefix="/pos", tags=["pos"])
 app.include_router(configuracion.router, prefix="/configuracion", tags=["configuracion"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(taller.router, prefix="/api/taller", tags=["taller"])
 
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 

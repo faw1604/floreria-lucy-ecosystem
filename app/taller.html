@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Floreria Lucy — Taller</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Floreria Lucy — Taller KDS</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#dc3545;--naranja:#f59e0b;--verde-c:#16a34a;--azul:#3b82f6;--gris:#9ca3af;--morado:#7c3aed;--acento:#c9956a}
+:root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#ef4444;--naranja:#f97316;--verde-c:#16a34a;--azul:#3b82f6;--gris:#9ca3af;--dorado:#d4a843;--sombra:0 2px 12px rgba(0,0,0,.06)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh}
 
@@ -14,156 +14,128 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .header{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--verde);color:var(--blanco);padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
 .header-logo{font-family:'Playfair Display',serif;font-size:18px;font-weight:600}
 .header-logo span{opacity:.7;font-family:'Inter',sans-serif;font-size:13px;font-weight:400;margin-left:8px}
-.header-right{display:flex;align-items:center;gap:16px;font-size:13px}
+.header-right{display:flex;align-items:center;gap:14px;font-size:13px}
 .header-time{opacity:.8}
 .header-btn{font-size:12px;background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;text-decoration:none}
 .header-btn:hover{background:rgba(255,255,255,.25)}
-.notif-badge{background:var(--rojo);color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 
-/* Tabs */
-.tabs{position:fixed;top:48px;left:0;right:0;z-index:40;background:var(--blanco);border-bottom:1px solid var(--borde);display:flex;overflow-x:auto;padding:0 12px}
-.tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--texto2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit}
+/* Tabs with iOS-style badges */
+.tabs{position:fixed;top:48px;left:0;right:0;z-index:40;background:var(--blanco);border-bottom:1px solid var(--borde);display:flex;overflow-x:auto;padding:0 8px;gap:2px}
+.tab{padding:10px 14px;font-size:13px;font-weight:600;color:var(--texto2);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-family:inherit;position:relative;display:flex;align-items:center;gap:6px;transition:all .15s}
 .tab:hover{color:var(--texto)}
-.tab.active{color:var(--verde);border-bottom-color:var(--verde);font-weight:600}
-.tab.hidden{display:none}
+.tab.active{color:var(--verde);border-bottom-color:var(--verde)}
+.tab.disabled{opacity:.4;cursor:not-allowed}
+.tab-badge{background:var(--rojo);color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;padding:0 5px;border-radius:9px;display:flex;align-items:center;justify-content:center;animation:pulse 2s infinite}
+.tab-badge:empty,.tab-badge[data-count="0"]{display:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
 /* Main */
-.main{padding:96px 16px 24px;max-width:1200px;margin:0 auto}
+.main{padding:100px 16px 24px;max-width:1400px;margin:0 auto}
 .tab-content{display:none}
 .tab-content.active{display:block}
 
-/* Section */
-.section{margin-bottom:28px}
-.section-title{font-size:15px;font-weight:600;color:var(--texto2);margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.section-count{font-size:12px;background:var(--borde);color:var(--texto2);padding:2px 8px;border-radius:10px}
-.day-label{font-size:17px;font-weight:700;color:var(--verde);margin:20px 0 12px;padding-bottom:6px;border-bottom:2px solid var(--verde)}
+/* Sub-tabs */
+.sub-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--blanco);border-radius:10px;border:1px solid var(--borde);overflow:hidden;width:fit-content}
+.sub-tab{padding:8px 20px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;font-family:inherit;color:var(--texto2);transition:all .15s}
+.sub-tab.active{background:var(--verde);color:#fff}
 
 /* Grid */
-.pedidos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
+.kds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px}
 
-/* Card */
-.pedido-card{background:var(--blanco);border-radius:14px;padding:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);border-left:5px solid var(--borde);position:relative}
-.pedido-card.pago-pendiente{border-color:var(--rojo);background:#fff5f5}
-.pedido-card .pago-warn{background:var(--rojo);color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;margin-bottom:10px;display:inline-block}
-.pedido-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.pedido-num{font-size:20px;font-weight:700;color:var(--verde);letter-spacing:-.02em}
-.pedido-producto{font-size:16px;font-weight:700;color:var(--texto);margin-bottom:6px}
-.pedido-producto-code{font-size:11px;color:var(--texto2);font-weight:400;margin-left:6px}
-.badge-personalizado{background:var(--naranja);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-block;margin-bottom:4px}
-.pedido-producto-obs{font-style:italic;font-size:12px;color:var(--texto2);margin-bottom:4px}
-.pedido-estado{font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;text-transform:uppercase}
-.estado-nuevo{background:#fee2e2;color:#991b1b}
-.estado-produccion{background:#fef3c7;color:#92400e}
-.estado-listo{background:#dcfce7;color:#166534}
-.estado-camino{background:#dbeafe;color:#1e40af}
-.estado-entregado{background:#f3f4f6;color:#6b7280}
-.estado-cancelado{background:#f3f4f6;color:#9ca3af;text-decoration:line-through}
-.estado-pendiente-pago{background:#fef3c7;color:#92400e}
-
-.pedido-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;margin-bottom:6px;display:inline-block;margin-right:4px}
+/* KDS Card — Nuevos */
+.kds-card{background:var(--blanco);border-radius:16px;box-shadow:var(--sombra);overflow:hidden;transition:all .2s;border-left:5px solid var(--borde)}
+.kds-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
+.kds-card-head{padding:14px 16px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.kds-num{font-size:22px;font-weight:800;color:var(--verde);letter-spacing:-.02em}
+.kds-tipo{font-size:22px;flex-shrink:0}
+.kds-timer{font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px;white-space:nowrap}
+.timer-up{background:#fee2e2;color:var(--rojo)}
+.timer-down{background:#dcfce7;color:var(--verde-c)}
+.timer-warn{background:#fff7ed;color:var(--naranja)}
+.timer-danger{background:#fee2e2;color:var(--rojo);animation:pulse 1.5s infinite}
+.kds-body{padding:0 16px 12px}
+.kds-badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.kds-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+.badge-factura{background:var(--dorado);color:var(--verde)}
 .badge-funeral{background:#1a1a1a;color:#fff}
-.badge-evento{background:var(--morado);color:#fff}
-.badge-florista{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;display:inline-block;margin-bottom:6px}
-.badge-esperando{background:#fef3c7;color:#92400e}
-.badge-cambio{background:#fed7aa;color:#9a3412}
-.badge-rechazado{background:#fee2e2;color:#991b1b}
-
-.pedido-receptor{font-size:14px;font-weight:600;margin-bottom:4px}
-.pedido-detail{font-size:12px;color:var(--texto2);margin-bottom:3px;display:flex;align-items:flex-start;gap:6px}
-.pedido-dedicatoria{font-style:italic;color:var(--verde-m);background:#f0f7f2;padding:8px 10px;border-radius:8px;font-size:12px;margin:8px 0;line-height:1.4}
-.pedido-notas{background:#fef9e7;border-left:3px solid var(--naranja);padding:8px 10px;font-size:12px;margin:8px 0;line-height:1.4;color:#92400e}
-.pedido-pago{font-size:12px;margin:8px 0;font-weight:500}
-.funeral-timer{font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;display:inline-block;margin-bottom:6px}
-.timer-green{background:#dcfce7;color:#166534}
-.timer-yellow{background:#fef3c7;color:#92400e}
-.timer-red{background:#fee2e2;color:#991b1b;animation:pulse 1s infinite}
-
-/* Action buttons */
-.pedido-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
-.action-btn{padding:9px 14px;border:none;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
-.action-btn:active{transform:scale(.96)}
-.btn-aceptar{background:var(--verde-c);color:#fff}
-.btn-aceptar:hover{background:#15803d}
-.btn-modificar{background:var(--naranja);color:#fff}
-.btn-modificar:hover{background:#d97706}
-.btn-cambio{background:var(--azul);color:#fff}
-.btn-cambio:hover{background:#2563eb}
-.btn-rechazar{background:var(--rojo);color:#fff}
-.btn-rechazar:hover{background:#b91c1c}
-.btn-listo{background:var(--verde-c);color:#fff}
+.badge-whatsapp{background:#25d366;color:#fff}
+.badge-web{background:var(--azul);color:#fff}
+.badge-mostrador{background:#8b5cf6;color:#fff}
+.badge-recoger{background:#0891b2;color:#fff}
+.kds-cliente{font-size:16px;font-weight:700;margin-bottom:4px}
+.kds-items{font-size:14px;color:var(--texto2);margin-bottom:6px;line-height:1.5}
+.kds-detail{font-size:12px;color:var(--texto2);margin-bottom:2px;display:flex;align-items:flex-start;gap:5px}
+.kds-dedicatoria{font-style:italic;color:var(--verde-m);background:#f0f7f2;padding:8px 10px;border-radius:8px;font-size:12px;margin:6px 0;line-height:1.4}
+.kds-notas{background:#fef9e7;border-left:3px solid var(--naranja);padding:8px 10px;font-size:12px;margin:6px 0;line-height:1.4;color:#92400e}
+.kds-hora-big{font-size:18px;font-weight:800;color:var(--verde);margin:8px 0 4px;display:flex;align-items:center;gap:8px}
+.kds-countdown-big{font-size:16px;font-weight:700;padding:6px 12px;border-radius:8px}
+.kds-actions{padding:10px 16px 14px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--borde)}
+.act-btn{padding:10px 16px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .12s;display:flex;align-items:center;gap:5px}
+.act-btn:active{transform:scale(.95)}
+.btn-accept{background:var(--verde);color:#fff;flex:1}
+.btn-accept:hover{background:var(--verde-m)}
+.btn-edit{background:var(--azul);color:#fff}
+.btn-edit:hover{background:#2563eb}
+.btn-warn{background:var(--naranja);color:#fff}
+.btn-warn:hover{background:#ea580c}
+.btn-cancel{background:var(--rojo);color:#fff}
+.btn-cancel:hover{background:#dc2626}
+.btn-listo{background:var(--verde-c);color:#fff;flex:1;font-size:15px;padding:14px 20px;justify-content:center}
 .btn-listo:hover{background:#15803d}
-.btn-imprimir{background:var(--blanco);color:var(--texto);border:1px solid var(--borde)}
-.btn-imprimir:hover{border-color:var(--verde);color:var(--verde)}
-.btn-foto{background:var(--blanco);color:var(--texto2);border:1px solid var(--borde);font-size:11px;padding:8px 10px}
-.btn-foto:hover{border-color:var(--verde);color:var(--verde)}
+.btn-secondary{background:var(--blanco);color:var(--texto2);border:1px solid var(--borde);font-size:12px}
+.btn-secondary:hover{border-color:var(--verde);color:var(--verde)}
+.btn-entregado{background:var(--verde);color:#fff;padding:8px 16px}
 
-.empty{text-align:center;padding:30px;color:var(--texto2);font-size:13px;opacity:.6}
+/* Urgency card borders */
+.kds-card.urgente{border-left-color:var(--rojo);background:#fff5f5}
+.kds-card.atencion{border-left-color:var(--naranja);background:#fffbf0}
+.kds-card.mostrador-activo{border-left-color:var(--rojo);background:#fee2e2;animation:pulseCard 2s infinite}
+@keyframes pulseCard{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)}50%{box-shadow:0 0 20px 4px rgba(239,68,68,.15)}}
+
+/* Por Recoger — table-like */
+.recoger-table{width:100%;border-collapse:collapse;font-size:14px}
+.recoger-table th{text-align:left;padding:12px 16px;background:var(--verde);color:#fff;font-weight:600;font-size:12px;position:sticky;top:100px;z-index:10}
+.recoger-table td{padding:12px 16px;border-bottom:1px solid var(--borde);vertical-align:middle}
+.recoger-table tr:hover td{background:var(--crema)}
+.recoger-search{width:100%;max-width:400px;padding:10px 16px;border:1px solid var(--borde);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:12px;outline:none}
+.recoger-search:focus{border-color:var(--verde)}
+
+/* Proximos — grouped by date */
+.date-group{margin-bottom:24px}
+.date-group-label{font-size:17px;font-weight:700;color:var(--verde);padding:10px 0;border-bottom:2px solid var(--verde);margin-bottom:12px}
+
+/* Realizados */
+.realizado-tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px}
+.tag-mostrador{background:#f3e8ff;color:#7c3aed}
+.tag-recogido{background:#dcfce7;color:var(--verde-c)}
+.tag-enviado{background:#dbeafe;color:var(--azul)}
+
+/* Empty */
+.empty{text-align:center;padding:40px;color:var(--texto2);font-size:14px}
+
+/* Print toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar-title{font-size:17px;font-weight:700;color:var(--verde);flex:1}
 
 /* Modal */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center}
 .modal-overlay.active{display:flex}
 .modal-box{background:var(--blanco);border-radius:16px;padding:24px;max-width:500px;width:90%;max-height:85vh;overflow-y:auto;position:relative}
 .modal-close{position:absolute;top:10px;right:14px;font-size:22px;background:none;border:none;cursor:pointer;color:var(--texto2);line-height:1}
-.modal-close:hover{color:var(--texto)}
-.modal-title{font-size:16px;font-weight:600;margin-bottom:16px;color:var(--verde)}
-.modal-input{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px}
-.modal-input:focus{outline:none;border-color:var(--verde)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--verde)}
+.modal-input{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;outline:none}
+.modal-input:focus{border-color:var(--verde)}
 .modal-select{width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;background:var(--blanco)}
-.modal-submit{padding:10px 20px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
-.modal-submit:hover{background:var(--verde-m)}
-
-/* Product search results */
-.search-results{max-height:200px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;margin-bottom:12px}
-.search-item{padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between}
-.search-item:last-child{border-bottom:none}
-.search-item:hover{background:var(--crema)}
-.search-item.selected{background:#dcfce7}
+.modal-submit{padding:10px 20px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
 
 /* Foto modal */
 .producto-item{margin-bottom:16px;text-align:center;border-bottom:1px solid var(--borde);padding-bottom:16px}
-.producto-item:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
-.producto-img{max-width:100%;max-height:280px;border-radius:10px;object-fit:contain;background:#f5f5f5}
+.producto-item:last-child{border-bottom:none}
+.producto-img{max-width:100%;max-height:320px;border-radius:12px;object-fit:contain;background:#f5f5f5}
 .producto-nombre{font-size:14px;font-weight:600;margin-top:8px}
-.producto-codigo{font-size:12px;color:var(--texto2)}
-.producto-sin-foto{padding:30px;color:var(--texto2);font-size:13px}
+.producto-sin-foto{padding:40px;color:var(--texto2);font-size:36px}
 
-/* Inventario */
-.inv-section{margin-bottom:20px}
-.inv-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--verde);color:#fff;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600}
-.inv-header:hover{background:var(--verde-m)}
-.inv-body{padding:8px 0}
-.inv-body.collapsed{display:none}
-.inv-colors.collapsed{display:none}
-.inv-family{border-bottom:1px solid var(--borde)}
-.inv-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--borde);font-size:13px}
-.inv-row:last-child{border-bottom:none}
-.inv-name{flex:1;font-weight:500}
-.inv-name .auto-badge{font-size:9px;color:var(--naranja);margin-left:4px}
-.inv-qty{display:flex;align-items:center;gap:6px}
-.inv-qty button{width:28px;height:28px;border:1px solid var(--borde);border-radius:6px;background:var(--blanco);cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center}
-.inv-qty button:hover{border-color:var(--verde);color:var(--verde)}
-.inv-qty span{width:36px;text-align:center;font-weight:600;font-size:14px}
-.inv-status select{padding:4px 8px;border:1px solid var(--borde);border-radius:6px;font-size:11px;font-family:inherit}
-.inv-subtabs{display:flex;gap:8px;margin-bottom:16px}
-.inv-subtab{padding:8px 16px;border:1px solid var(--borde);border-radius:8px;background:var(--blanco);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit}
-.inv-subtab.active{background:var(--verde);color:#fff;border-color:var(--verde)}
-.inv-note{font-size:12px;color:var(--texto2);margin-top:16px;padding:10px;background:var(--blanco);border-radius:8px;border-left:3px solid var(--naranja)}
-
-/* Collapsible cards */
-.card-collapsible{cursor:pointer;transition:box-shadow .15s}
-.card-collapsible:hover{box-shadow:0 2px 12px rgba(0,0,0,.1)}
-.card-collapsible .card-expand{display:none;margin-top:12px;border-top:1px solid var(--borde);padding-top:12px}
-.card-collapsible.expanded .card-expand{display:block}
-.card-collapsible .card-items{font-size:13px;color:var(--texto2);margin-top:4px;line-height:1.5}
-
-/* Agendados table */
-.agenda-table{width:100%;border-collapse:collapse;font-size:13px}
-.agenda-table th{text-align:left;padding:10px 12px;background:var(--verde);color:#fff;font-weight:600;font-size:12px}
-.agenda-table td{padding:10px 12px;border-bottom:1px solid var(--borde)}
-.agenda-table tr:hover td{background:var(--crema)}
-
-/* Print — Ticket 80mm */
+/* Print frame */
 #print-frame{display:none}
 @media print{
   @page{size:80mm auto;margin:4mm}
@@ -173,73 +145,98 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   #print-frame{font-family:'Courier New',monospace;font-size:10px;width:72mm;color:#000;line-height:1.5;text-transform:uppercase}
   #print-frame *{text-transform:uppercase}
   #print-frame .tline{text-align:center}
-  #print-frame .rline{text-align:right}
   #print-frame .sep{border-top:1px dashed #000;margin:4px 0}
-  #print-frame .dsep{margin:4px 0;font-size:10px;text-align:center;letter-spacing:1px}
+  #print-frame .dsep{margin:4px 0;text-align:center;letter-spacing:1px}
   #print-frame .dsep::after{content:'══════════════════════════════════';display:block}
-  #print-frame .psep{margin:4px 0;font-size:10px;text-align:center;letter-spacing:1px}
-  #print-frame .psep::after{content:'· · · · · · · · · · · · · · · · ·';display:block}
   #print-frame .hdr{font-weight:700;border-bottom:1px solid #000;padding-bottom:2px;margin:6px 0 4px}
   #print-frame .irow{display:flex;justify-content:space-between}
-  #print-frame .irow .r{font-weight:400;text-align:right}
   #print-frame .big{font-size:18px;font-weight:700}
   #print-frame .med{font-size:14px;font-weight:700}
-  #print-frame .sm{font-size:9px}
   #print-frame .mini-ticket{page-break-after:always;padding:4px 0}
   #print-frame .mini-ticket:last-child{page-break-after:avoid}
 }
+
+/* Inventario (preserved) */
+.inv-subtabs{display:flex;gap:8px;margin-bottom:16px}
+.inv-subtab{padding:8px 16px;border:1px solid var(--borde);border-radius:8px;background:var(--blanco);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit}
+.inv-subtab.active{background:var(--verde);color:#fff;border-color:var(--verde)}
+.inv-section{margin-bottom:20px}
+.inv-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--verde);color:#fff;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600}
+.inv-header:hover{background:var(--verde-m)}
+.inv-body{padding:8px 0}.inv-body.collapsed{display:none}
+.inv-colors.collapsed{display:none}
+.inv-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--borde);font-size:13px}
+.inv-row:last-child{border-bottom:none}
+.inv-name{flex:1;font-weight:500}
+.inv-name .auto-badge{font-size:9px;color:var(--naranja);margin-left:4px}
+.inv-qty{display:flex;align-items:center;gap:6px}
+.inv-qty button{width:28px;height:28px;border:1px solid var(--borde);border-radius:6px;background:var(--blanco);cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.inv-qty button:hover{border-color:var(--verde);color:var(--verde)}
+.inv-qty span{width:36px;text-align:center;font-weight:600;font-size:14px}
+.inv-status select{padding:4px 8px;border:1px solid var(--borde);border-radius:6px;font-size:11px;font-family:inherit}
+.inv-note{font-size:12px;color:var(--texto2);margin-top:16px;padding:10px;background:var(--blanco);border-radius:8px;border-left:3px solid var(--naranja)}
+
+/* Fecha Fuerte Lotes */
+.lote-card{background:var(--blanco);border-radius:14px;padding:20px;box-shadow:var(--sombra);margin-bottom:14px}
+.lote-title{font-size:18px;font-weight:800;color:var(--verde);margin-bottom:8px}
+.lote-stats{font-size:14px;color:var(--texto2);margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap}
+.lote-stat{font-weight:600}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="header-logo">Floreria Lucy<span>Taller</span></div>
+  <div class="header-logo">Floreria Lucy<span>Taller KDS</span></div>
   <div class="header-right">
     <span class="header-time" id="hdr-date"></span>
     <span class="header-time" id="hdr-time"></span>
-    <span class="notif-badge" id="notif-badge" style="display:none" title="Pedidos pendientes de aprobacion">0</span>
     <a class="header-btn" href="/panel/">Volver al panel</a>
     <a class="header-btn" href="/auth/logout" style="background:rgba(248,113,113,.3)">Salir</a>
   </div>
 </div>
 
 <div class="tabs">
-  <button class="tab active" data-tab="nuevos">Nuevos pedidos</button>
-  <button class="tab" data-tab="produccion">Pedidos</button>
-  <button class="tab" data-tab="agendados">Proximos pedidos</button>
-  <button class="tab hidden" data-tab="fecha-fuerte" id="tab-fecha-fuerte">Produccion Fecha Fuerte</button>
-  <button class="tab" data-tab="realizados">Pedidos Realizados</button>
+  <button class="tab active" data-tab="nuevos">🔴 Nuevos <span class="tab-badge" id="badge-nuevos"></span></button>
+  <button class="tab" data-tab="produccion">🔴 Produccion <span class="tab-badge" id="badge-produccion"></span></button>
+  <button class="tab" data-tab="recoger">🔴 Por Recoger <span class="tab-badge" id="badge-recoger"></span></button>
+  <button class="tab" data-tab="proximos">Proximos</button>
+  <button class="tab" data-tab="realizados">Realizados</button>
   <button class="tab" data-tab="inventario">Inventario</button>
 </div>
 
 <div class="main">
-  <!-- TAB: Nuevos pedidos -->
+  <!-- NUEVOS -->
   <div class="tab-content active" id="content-nuevos">
-    <div id="pedidos-hoy"></div>
-    <div id="pedidos-manana"></div>
+    <div id="nuevos-body"><div class="empty">Cargando...</div></div>
   </div>
 
-  <!-- TAB: Pedidos (en produccion) -->
+  <!-- PRODUCCION -->
   <div class="tab-content" id="content-produccion">
-    <div id="produccion-body"></div>
+    <div class="sub-tabs" id="prod-subtabs">
+      <button class="sub-tab active" data-sub="hoy" onclick="setProdSub('hoy')">Hoy</button>
+      <button class="sub-tab" data-sub="manana" onclick="setProdSub('manana')">Manana</button>
+    </div>
+    <div id="produccion-hoy-body"></div>
+    <div id="produccion-manana-body" style="display:none"></div>
   </div>
 
-  <!-- TAB: Proximos pedidos -->
-  <div class="tab-content" id="content-agendados">
-    <div id="agendados-body"></div>
+  <!-- POR RECOGER -->
+  <div class="tab-content" id="content-recoger">
+    <input type="text" class="recoger-search" id="recoger-search" placeholder="Buscar por nombre de cliente..." oninput="filterRecoger()">
+    <div id="recoger-body"></div>
   </div>
 
-  <!-- TAB: Fecha Fuerte -->
-  <div class="tab-content" id="content-fecha-fuerte">
-    <div id="fecha-fuerte-body"><div class="empty">Cargando...</div></div>
+  <!-- PROXIMOS -->
+  <div class="tab-content" id="content-proximos">
+    <div id="proximos-body"><div class="empty">Cargando...</div></div>
   </div>
 
-  <!-- TAB: Realizados -->
+  <!-- REALIZADOS -->
   <div class="tab-content" id="content-realizados">
-    <div id="realizados-body"></div>
+    <div id="realizados-body"><div class="empty">Cargando...</div></div>
   </div>
 
-  <!-- TAB: Inventario -->
+  <!-- INVENTARIO -->
   <div class="tab-content" id="content-inventario">
     <div class="inv-subtabs">
       <button class="inv-subtab active" data-inv="floral">Insumos Florales</button>
@@ -251,33 +248,23 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   </div>
 </div>
 
-<!-- Modal: Modificacion -->
-<div class="modal-overlay" id="modal-modificacion" onclick="if(event.target===this)cerrarModal('modal-modificacion')">
+<!-- Modal: Nota modificacion -->
+<div class="modal-overlay" id="modal-nota" onclick="if(event.target===this)closeModal('modal-nota')">
   <div class="modal-box">
-    <button class="modal-close" onclick="cerrarModal('modal-modificacion')">&times;</button>
-    <div class="modal-title">Aceptar con modificacion</div>
-    <textarea class="modal-input" id="mod-texto" rows="3" placeholder="¿Cual es la modificacion?"></textarea>
-    <button class="modal-submit" id="mod-submit">Confirmar modificacion</button>
+    <button class="modal-close" onclick="closeModal('modal-nota')">&times;</button>
+    <div class="modal-title" id="modal-nota-title">Nota</div>
+    <textarea class="modal-input" id="modal-nota-text" rows="3" placeholder="Escribe la nota..."></textarea>
+    <button class="modal-submit" id="modal-nota-submit">Confirmar</button>
   </div>
 </div>
 
-<!-- Modal: Sugerir cambio -->
-<div class="modal-overlay" id="modal-cambio" onclick="if(event.target===this)cerrarModal('modal-cambio')">
+<!-- Modal: Cancelar -->
+<div class="modal-overlay" id="modal-cancelar" onclick="if(event.target===this)closeModal('modal-cancelar')">
   <div class="modal-box">
-    <button class="modal-close" onclick="cerrarModal('modal-cambio')">&times;</button>
-    <div class="modal-title">Sugerir cambio de arreglo</div>
-    <input class="modal-input" id="cambio-buscar" placeholder="Buscar producto..." oninput="buscarProductos()">
-    <div class="search-results" id="cambio-results"></div>
-    <button class="modal-submit" id="cambio-submit" disabled>Confirmar sugerencia</button>
-  </div>
-</div>
-
-<!-- Modal: Rechazar -->
-<div class="modal-overlay" id="modal-rechazo" onclick="if(event.target===this)cerrarModal('modal-rechazo')">
-  <div class="modal-box">
-    <button class="modal-close" onclick="cerrarModal('modal-rechazo')">&times;</button>
-    <div class="modal-title">Razon del rechazo</div>
-    <select class="modal-select" id="rechazo-razon" onchange="toggleRechazoOtro()">
+    <button class="modal-close" onclick="closeModal('modal-cancelar')">&times;</button>
+    <div class="modal-title">Cancelar pedido</div>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:12px">¿Estas seguro? Esta accion no se puede deshacer.</p>
+    <select class="modal-select" id="cancel-razon" onchange="document.getElementById('cancel-otro').style.display=this.value==='otros'?'':'none'">
       <option value="">Seleccionar razon...</option>
       <option value="No tenemos ese producto en stock">No tenemos ese producto en stock</option>
       <option value="No podemos entregar en ese horario">No podemos entregar en ese horario</option>
@@ -285,17 +272,17 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
       <option value="Condiciones de pago no cumplidas">Condiciones de pago no cumplidas</option>
       <option value="otros">Otros</option>
     </select>
-    <textarea class="modal-input" id="rechazo-otro" rows="2" placeholder="Especificar razon..." style="display:none"></textarea>
-    <button class="modal-submit" id="rechazo-submit">Confirmar rechazo</button>
+    <textarea class="modal-input" id="cancel-otro" rows="2" placeholder="Especificar razon..." style="display:none"></textarea>
+    <button class="modal-submit" id="cancel-submit">Confirmar cancelacion</button>
   </div>
 </div>
 
 <!-- Modal: Fotos -->
-<div class="modal-overlay" id="foto-modal" onclick="if(event.target===this)cerrarModal('foto-modal')">
-  <div class="modal-box">
-    <button class="modal-close" onclick="cerrarModal('foto-modal')">&times;</button>
-    <div class="modal-title" id="foto-modal-title">Productos del pedido</div>
-    <div id="foto-modal-body"></div>
+<div class="modal-overlay" id="modal-foto" onclick="if(event.target===this)closeModal('modal-foto')">
+  <div class="modal-box" style="max-width:600px">
+    <button class="modal-close" onclick="closeModal('modal-foto')">&times;</button>
+    <div class="modal-title" id="foto-title">Productos</div>
+    <div id="foto-body"></div>
   </div>
 </div>
 
@@ -303,35 +290,573 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
 <script>
 const API = '';
-let prevCountHoy = -1;
-let currentModalPedidoId = null;
-let selectedProducto = null;
-let allProductos = [];
-let temporadaActiva = false;
+const TALLER_API = '/api/taller';
+let currentTab = 'nuevos';
+let prodSub = 'hoy';
+let currentModalId = null;
+let recogerData = [];
 
 // ─── Clock ───
 function updateClock() {
   const now = new Date();
-  const opts = {timeZone:'America/Chihuahua'};
-  document.getElementById('hdr-date').textContent = now.toLocaleDateString('es-MX',{...opts,weekday:'long',day:'numeric',month:'long'});
-  document.getElementById('hdr-time').textContent = now.toLocaleTimeString('es-MX',{...opts,hour:'2-digit',minute:'2-digit'});
+  const o = {timeZone:'America/Chihuahua'};
+  document.getElementById('hdr-date').textContent = now.toLocaleDateString('es-MX',{...o,weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('hdr-time').textContent = now.toLocaleTimeString('es-MX',{...o,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ─── Chihuahua now ───
+function chiNow() {
+  return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Chihuahua'}));
 }
 
 // ─── Tabs ───
 document.querySelectorAll('.tab').forEach(t => {
   t.addEventListener('click', () => {
+    if (t.classList.contains('disabled')) return;
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
     t.classList.add('active');
-    document.getElementById('content-' + t.dataset.tab).classList.add('active');
-    if (t.dataset.tab === 'produccion') loadProduccion();
-    if (t.dataset.tab === 'agendados') loadAgendados();
-    if (t.dataset.tab === 'realizados') loadRealizados();
-    if (t.dataset.tab === 'inventario') loadInventario();
+    currentTab = t.dataset.tab;
+    document.getElementById('content-' + currentTab).classList.add('active');
+    refreshTab(currentTab);
   });
 });
 
-// ─── Inv subtabs ───
+function refreshTab(tab) {
+  if (tab === 'nuevos') loadNuevos();
+  else if (tab === 'produccion') loadProduccion();
+  else if (tab === 'recoger') loadRecoger();
+  else if (tab === 'proximos') loadProximos();
+  else if (tab === 'realizados') loadRealizados();
+  else if (tab === 'inventario') loadInventario();
+}
+
+// ─── Sub-tabs Produccion ───
+function setProdSub(sub) {
+  prodSub = sub;
+  document.querySelectorAll('#prod-subtabs .sub-tab').forEach(s => s.classList.toggle('active', s.dataset.sub === sub));
+  document.getElementById('produccion-hoy-body').style.display = sub === 'hoy' ? '' : 'none';
+  document.getElementById('produccion-manana-body').style.display = sub === 'manana' ? '' : 'none';
+  loadProduccion();
+}
+
+// ─── Badges (every 15s) ───
+async function loadBadges() {
+  try {
+    const r = await fetch(`${TALLER_API}/badges`, {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    setBadge('badge-nuevos', d.nuevos);
+    setBadge('badge-produccion', d.produccion);
+    setBadge('badge-recoger', d.por_recoger);
+  } catch(e) {}
+}
+function setBadge(id, count) {
+  const el = document.getElementById(id);
+  el.textContent = count > 0 ? count : '';
+  el.dataset.count = count;
+  el.style.display = count > 0 ? 'flex' : 'none';
+}
+
+// ─── Helpers ───
+function tipoIcon(p) {
+  const m = p.metodo_entrega || '';
+  if (m === 'mostrador') return '🏪';
+  if (m === 'recoger' || m === 'funeral_recoger') return '📦';
+  if (m === 'funeral_envio') return '⚰️';
+  if (m === 'envio') return '🚗';
+  // Fallback
+  if (p.tipo_especial === 'Funeral') return '⚰️';
+  if (!p.direccion_entrega && !p.zona_entrega) return '📦';
+  return '🚗';
+}
+
+function tipoBadge(p) {
+  const m = p.metodo_entrega || '';
+  if (m === 'mostrador') return '<span class="kds-badge badge-mostrador">MOSTRADOR</span>';
+  if (m === 'recoger') return '<span class="kds-badge badge-recoger">RECOGER</span>';
+  if (m === 'funeral_envio' || m === 'funeral_recoger') return '<span class="kds-badge badge-funeral">FUNERAL</span>';
+  return '';
+}
+
+function canalBadge(p) {
+  if (p.canal === 'WhatsApp') return '<span class="kds-badge badge-whatsapp">WHATSAPP</span>';
+  if (p.canal === 'Web') return '<span class="kds-badge badge-web">WEB</span>';
+  if (p.canal === 'Mostrador') return '<span class="kds-badge badge-mostrador">MOSTRADOR</span>';
+  return '';
+}
+
+function tiempoDesde(iso) {
+  if (!iso) return '';
+  const then = new Date(iso);
+  const diff = Math.floor((chiNow() - then) / 60000);
+  if (diff < 1) return 'hace un momento';
+  if (diff < 60) return `hace ${diff} min`;
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+  return `hace ${h}h ${m}m`;
+}
+
+function itemsCompacto(items) {
+  if (!items || !items.length) return '<span style="opacity:.5">Sin productos</span>';
+  return items.map(it => {
+    const n = it.es_personalizado ? (it.nombre_personalizado || it.nombre) : it.nombre;
+    return `${it.cantidad > 1 ? it.cantidad + 'x ' : ''}${n}`;
+  }).join(', ');
+}
+
+function itemsDetalle(items) {
+  if (!items || !items.length) return '';
+  return items.map(it => {
+    const n = it.es_personalizado ? `⚡ ${it.nombre_personalizado || it.nombre}` : it.nombre;
+    let s = `<div style="font-size:14px;font-weight:600">${it.cantidad > 1 ? it.cantidad + 'x ' : ''}${n}${it.codigo ? ` <span style="font-size:11px;color:var(--texto2)">${it.codigo}</span>` : ''}</div>`;
+    if (it.observaciones) s += `<div style="font-size:12px;font-style:italic;color:var(--texto2)">${it.observaciones}</div>`;
+    return s;
+  }).join('');
+}
+
+function horarioLabel(h, hora) {
+  if (hora) return hora;
+  const map = {manana:'Manana 9-2pm','mañana':'Manana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm',hora_exacta:'Hora especifica'};
+  return map[(h||'').toLowerCase()] || h || '';
+}
+
+// ─── Timer calculations ───
+function calcCountdown(p) {
+  const now = chiNow();
+  const m = p.metodo_entrega || '';
+  const h = (p.horario_entrega || '').toLowerCase();
+  const fechaStr = p.fecha_entrega;
+  if (!fechaStr) return null;
+
+  // Parse target time
+  let targetH = null, targetM = 0;
+  if (p.hora_exacta) {
+    const parts = p.hora_exacta.match(/(\d+):(\d+)/);
+    if (parts) { targetH = parseInt(parts[1]); targetM = parseInt(parts[2]); }
+  } else if (h.includes('manana') || h.includes('mañana')) { targetH = 14; }
+  else if (h.includes('tarde')) { targetH = 18; }
+  else if (h.includes('noche')) { targetH = 21; }
+
+  if (targetH === null) return null;
+
+  const target = new Date(fechaStr + 'T00:00:00');
+  target.setHours(targetH, targetM, 0, 0);
+
+  // Adjust for pickup: ready 20 min before
+  if (m === 'recoger' || m === 'funeral_recoger') {
+    target.setMinutes(target.getMinutes() - 20);
+  }
+
+  const diffMs = target - now;
+  const diffMin = Math.floor(diffMs / 60000);
+  return { diffMin, target, diffMs };
+}
+
+function urgencyClass(p) {
+  const m = p.metodo_entrega || '';
+  if (m === 'mostrador') return 'mostrador-activo';
+  const cd = calcCountdown(p);
+  if (!cd) return '';
+  if (cd.diffMin <= 0) return 'urgente';
+  if (m === 'envio' || m === 'funeral_envio') {
+    if (cd.diffMin <= 15) return 'urgente';
+    if (cd.diffMin <= 45) return 'atencion';
+  } else {
+    if (cd.diffMin <= 0) return 'urgente';
+    if (cd.diffMin <= 20) return 'atencion';
+  }
+  return '';
+}
+
+function countdownHtml(p) {
+  const m = p.metodo_entrega || '';
+  if (m === 'mostrador') {
+    const t = tiempoDesde(p.produccion_at || p.fecha_pedido);
+    return `<span class="kds-timer timer-danger">⏱ ${t} esperando</span>`;
+  }
+  const cd = calcCountdown(p);
+  if (!cd) return '';
+  if (cd.diffMin <= 0) {
+    const overMin = Math.abs(cd.diffMin);
+    const oh = Math.floor(overMin / 60);
+    const om = overMin % 60;
+    return `<span class="kds-timer timer-danger">⏱ -${oh > 0 ? oh+'h ':''}${om}m PASADO</span>`;
+  }
+  const h = Math.floor(cd.diffMin / 60);
+  const mins = cd.diffMin % 60;
+  let cls = 'timer-down';
+  if (cd.diffMin <= 15) cls = 'timer-danger';
+  else if (cd.diffMin <= 45) cls = 'timer-warn';
+  return `<span class="kds-timer ${cls}">⏱ ${h > 0 ? h+'h ':''}${mins}m</span>`;
+}
+
+// ─── RENDER: Card Nuevos ───
+function renderCardNuevos(p) {
+  let badges = tipoBadge(p) + canalBadge(p);
+  if (p.requiere_factura) badges += '<span class="kds-badge badge-factura">FACTURA</span>';
+  const timer = tiempoDesde(p.fecha_pedido);
+
+  return `<div class="kds-card" data-id="${p.id}">
+    <div class="kds-card-head">
+      <div>
+        <div class="kds-num">${tipoIcon(p)} ${p.numero}</div>
+      </div>
+      <span class="kds-timer timer-up">⏱ ${timer}</span>
+    </div>
+    <div class="kds-body">
+      <div class="kds-badges">${badges}</div>
+      <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
+      <div class="kds-items">${itemsDetalle(p.items)}</div>
+      ${p.fecha_entrega ? `<div class="kds-detail">📅 ${formatFecha(p.fecha_entrega)} — ${horarioLabel(p.horario_entrega, p.hora_exacta)}</div>` : ''}
+      ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.direccion_entrega}</div>` : ''}
+      ${p.dedicatoria ? `<div class="kds-dedicatoria">"${p.dedicatoria}"</div>` : ''}
+      ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
+      ${p.nota_florista ? `<div class="kds-notas" style="border-left-color:var(--azul)">Nota: ${p.nota_florista}</div>` : ''}
+    </div>
+    <div class="kds-actions">
+      <button class="act-btn btn-accept" onclick="accionAceptar(${p.id})">✅ Aceptar</button>
+      <button class="act-btn btn-edit" onclick="accionEditar(${p.id})">✏️</button>
+      <button class="act-btn btn-warn" onclick="accionAtencion(${p.id})">⚠️</button>
+      <button class="act-btn btn-cancel" onclick="accionCancelar(${p.id})">❌</button>
+    </div>
+  </div>`;
+}
+
+// ─── RENDER: Card Produccion ───
+function renderCardProduccion(p) {
+  let badges = tipoBadge(p) + canalBadge(p);
+  if (p.requiere_factura) badges += '<span class="kds-badge badge-factura">FACTURA</span>';
+  const urg = urgencyClass(p);
+  const cd = countdownHtml(p);
+  const timerProd = tiempoDesde(p.produccion_at);
+
+  return `<div class="kds-card ${urg}" data-id="${p.id}">
+    <div class="kds-card-head">
+      <div>
+        <div class="kds-num">${tipoIcon(p)} ${p.numero}</div>
+      </div>
+      ${cd}
+    </div>
+    <div class="kds-body">
+      <div class="kds-badges">${badges}</div>
+      <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
+      <div class="kds-items">${itemsDetalle(p.items)}</div>
+      ${p.fecha_entrega ? `<div class="kds-hora-big">📅 ${formatFecha(p.fecha_entrega)} — ${horarioLabel(p.horario_entrega, p.hora_exacta)}</div>` : ''}
+      ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.zona_entrega ? 'Zona '+p.zona_entrega+' — ' : ''}${p.direccion_entrega}</div>` : ''}
+      ${p.dedicatoria ? `<div class="kds-dedicatoria">"${p.dedicatoria}"</div>` : ''}
+      ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
+      ${timerProd ? `<div class="kds-detail" style="margin-top:4px">🔧 En produccion ${timerProd}</div>` : ''}
+    </div>
+    <div class="kds-actions">
+      <button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')">📷 Ver foto</button>
+      <button class="act-btn btn-secondary" onclick="imprimirEtiqueta(${p.id})">🖨 Etiqueta</button>
+      <button class="act-btn btn-listo" onclick="accionListo(${p.id})">✅ LISTO</button>
+    </div>
+  </div>`;
+}
+
+function esc(s) { return (s||'').replace(/'/g,"\\'"); }
+
+function formatFecha(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'});
+}
+
+// ─── LOAD: Nuevos ───
+async function loadNuevos() {
+  try {
+    const r = await fetch(`${TALLER_API}/nuevos`, {credentials:'include'});
+    if (r.status === 401) { window.location.href = '/panel/'; return; }
+    if (!r.ok) return;
+    const data = await r.json();
+    const el = document.getElementById('nuevos-body');
+    if (!data.length) { el.innerHTML = '<div class="empty">🌸 No hay pedidos nuevos</div>'; return; }
+    el.innerHTML = '<div class="kds-grid">' + data.map(renderCardNuevos).join('') + '</div>';
+  } catch(e) { console.error(e); }
+}
+
+// ─── LOAD: Produccion ───
+async function loadProduccion() {
+  try {
+    const url = prodSub === 'hoy' ? `${TALLER_API}/produccion/hoy` : `${TALLER_API}/produccion/manana`;
+    const r = await fetch(url, {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const bodyId = prodSub === 'hoy' ? 'produccion-hoy-body' : 'produccion-manana-body';
+    const el = document.getElementById(bodyId);
+
+    if (prodSub === 'manana') {
+      // Manana: calm view + print all button
+      if (!data.length) { el.innerHTML = '<div class="empty">Sin pedidos para manana</div>'; return; }
+      el.innerHTML = `<div class="toolbar">
+        <div class="toolbar-title">Pedidos de manana (${data.length})</div>
+        <button class="act-btn btn-secondary" onclick="imprimirEtiquetasManana()" style="font-size:14px;padding:10px 20px">🖨 Imprimir etiquetas de manana</button>
+      </div>
+      <div class="kds-grid">${data.map(p => renderCardProduccion(p)).join('')}</div>`;
+      return;
+    }
+
+    // Hoy: sorted by urgency (mostrador first, then by countdown)
+    data.sort((a, b) => {
+      const ua = urgencyOrder(a), ub = urgencyOrder(b);
+      if (ua !== ub) return ua - ub;
+      const ca = calcCountdown(a), cb = calcCountdown(b);
+      return (ca?.diffMin ?? 9999) - (cb?.diffMin ?? 9999);
+    });
+    if (!data.length) { el.innerHTML = '<div class="empty">Sin pedidos en produccion hoy</div>'; return; }
+    el.innerHTML = '<div class="kds-grid">' + data.map(renderCardProduccion).join('') + '</div>';
+  } catch(e) { console.error(e); }
+}
+
+function urgencyOrder(p) {
+  const m = p.metodo_entrega || '';
+  if (m === 'mostrador') return 0;
+  if (m === 'recoger' || m === 'funeral_recoger') return 1;
+  if (m === 'envio' || m === 'funeral_envio') return 2;
+  return 3;
+}
+
+// ─── LOAD: Por Recoger ───
+async function loadRecoger() {
+  try {
+    const r = await fetch(`${TALLER_API}/por-recoger`, {credentials:'include'});
+    if (!r.ok) return;
+    recogerData = await r.json();
+    renderRecoger(recogerData);
+  } catch(e) {}
+}
+
+function renderRecoger(data) {
+  const el = document.getElementById('recoger-body');
+  if (!data.length) { el.innerHTML = '<div class="empty">📦 No hay pedidos por recoger</div>'; return; }
+  let html = `<table class="recoger-table"><thead><tr>
+    <th>Orden</th><th>Cliente</th><th>Productos</th><th>Hora</th><th>Tiempo</th><th>Accion</th>
+  </tr></thead><tbody>`;
+  data.forEach(p => {
+    const hora = horarioLabel(p.horario_entrega, p.hora_exacta);
+    const timer = tiempoDesde(p.listo_at || p.fecha_pedido);
+    html += `<tr>
+      <td style="font-weight:700;color:var(--verde)">${p.numero}</td>
+      <td style="font-weight:600">${p.cliente_nombre || p.receptor_nombre || '—'}</td>
+      <td style="font-size:13px;color:var(--texto2)">${itemsCompacto(p.items)}</td>
+      <td>${hora}</td>
+      <td><span class="kds-timer timer-up" style="font-size:11px">⏱ ${timer}</span></td>
+      <td><button class="act-btn btn-entregado" onclick="accionEntregado(${p.id})">✅ Entregado</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function filterRecoger() {
+  const q = (document.getElementById('recoger-search').value || '').toLowerCase().trim();
+  if (!q) { renderRecoger(recogerData); return; }
+  const filtered = recogerData.filter(p =>
+    (p.cliente_nombre || '').toLowerCase().includes(q) ||
+    (p.receptor_nombre || '').toLowerCase().includes(q) ||
+    (p.numero || '').toLowerCase().includes(q)
+  );
+  renderRecoger(filtered);
+}
+
+// ─── LOAD: Proximos ───
+async function loadProximos() {
+  try {
+    const r = await fetch(`${TALLER_API}/proximos`, {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const el = document.getElementById('proximos-body');
+    const keys = Object.keys(data).sort();
+    if (!keys.length) { el.innerHTML = '<div class="empty">Sin pedidos futuros</div>'; return; }
+    let html = '';
+    keys.forEach(fecha => {
+      const pedidos = data[fecha];
+      html += `<div class="date-group">
+        <div class="date-group-label">📅 ${formatFecha(fecha)} (${pedidos.length} pedidos)</div>
+        <div class="kds-grid">${pedidos.map(p => `
+          <div class="kds-card" style="border-left-color:var(--azul)">
+            <div class="kds-card-head">
+              <div class="kds-num">${tipoIcon(p)} ${p.numero}</div>
+            </div>
+            <div class="kds-body">
+              <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || '—'}</div>
+              <div class="kds-items" style="font-size:13px">${itemsCompacto(p.items)}</div>
+              <div class="kds-detail">${horarioLabel(p.horario_entrega, p.hora_exacta)}</div>
+              ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.direccion_entrega}</div>` : ''}
+            </div>
+          </div>`).join('')}</div>
+      </div>`;
+    });
+    el.innerHTML = html;
+  } catch(e) {}
+}
+
+// ─── LOAD: Realizados ───
+async function loadRealizados() {
+  try {
+    const r = await fetch(`${TALLER_API}/realizados`, {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const el = document.getElementById('realizados-body');
+    if (!data.length) { el.innerHTML = '<div class="empty">Sin pedidos entregados hoy</div>'; return; }
+    let html = '<div class="kds-grid">';
+    data.forEach(p => {
+      const m = p.metodo_entrega || '';
+      let tag = '<span class="realizado-tag tag-enviado">🚗 Entregado</span>';
+      if (m === 'mostrador') tag = '<span class="realizado-tag tag-mostrador">🏪 Mostrador</span>';
+      else if (m === 'recoger' || m === 'funeral_recoger') tag = '<span class="realizado-tag tag-recogido">✅ Recogido</span>';
+
+      const listoTime = p.listo_at ? new Date(p.listo_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
+      const entregadoTime = p.entregado_at ? new Date(p.entregado_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
+
+      let duracion = '';
+      if (p.produccion_at && p.entregado_at) {
+        const diff = Math.floor((new Date(p.entregado_at) - new Date(p.produccion_at)) / 60000);
+        const dh = Math.floor(diff / 60);
+        const dm = diff % 60;
+        duracion = `${dh > 0 ? dh+'h ':''}${dm}m`;
+      }
+
+      html += `<div class="kds-card" style="border-left-color:var(--gris)">
+        <div class="kds-card-head">
+          <div class="kds-num" style="font-size:16px">${p.numero}</div>
+          ${tag}
+        </div>
+        <div class="kds-body">
+          <div class="kds-cliente" style="font-size:14px">${p.cliente_nombre || p.receptor_nombre || '—'}</div>
+          <div class="kds-items" style="font-size:12px">${itemsCompacto(p.items)}</div>
+          <div class="kds-detail">🔧 Listo: ${listoTime} — 📦 Entregado: ${entregadoTime}${duracion ? ` — ⏱ ${duracion}` : ''}</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+  } catch(e) {}
+}
+
+// ─── ACCIONES ───
+async function accionAceptar(id) {
+  try {
+    await fetch(`${TALLER_API}/pedidos/${id}/aceptar`, {method:'POST', credentials:'include'});
+    loadNuevos();
+    loadBadges();
+  } catch(e) {}
+}
+
+function accionEditar(id) {
+  currentModalId = id;
+  document.getElementById('modal-nota-title').textContent = 'Aceptar con cambios';
+  document.getElementById('modal-nota-text').value = '';
+  document.getElementById('modal-nota-text').placeholder = '¿Cual es la modificacion?';
+  document.getElementById('modal-nota-submit').textContent = 'Confirmar modificacion';
+  document.getElementById('modal-nota-submit').onclick = async () => {
+    const nota = document.getElementById('modal-nota-text').value.trim();
+    if (!nota) return;
+    await fetch(`${TALLER_API}/pedidos/${currentModalId}/aceptar-con-cambios`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({nota})
+    });
+    closeModal('modal-nota');
+    loadNuevos(); loadBadges();
+  };
+  document.getElementById('modal-nota').classList.add('active');
+}
+
+async function accionAtencion(id) {
+  try {
+    await fetch(`${TALLER_API}/pedidos/${id}/requiere-atencion`, {method:'POST', credentials:'include'});
+    loadNuevos(); loadBadges();
+  } catch(e) {}
+}
+
+function accionCancelar(id) {
+  currentModalId = id;
+  document.getElementById('cancel-razon').value = '';
+  document.getElementById('cancel-otro').value = '';
+  document.getElementById('cancel-otro').style.display = 'none';
+  document.getElementById('cancel-submit').onclick = async () => {
+    let razon = document.getElementById('cancel-razon').value;
+    if (!razon) return;
+    if (razon === 'otros') razon = document.getElementById('cancel-otro').value.trim();
+    if (!razon) return;
+    await fetch(`${TALLER_API}/pedidos/${currentModalId}/cancelar`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({razon})
+    });
+    closeModal('modal-cancelar');
+    loadNuevos(); loadBadges();
+  };
+  document.getElementById('modal-cancelar').classList.add('active');
+}
+
+async function accionListo(id) {
+  try {
+    await fetch(`${TALLER_API}/pedidos/${id}/listo`, {method:'POST', credentials:'include'});
+    loadProduccion(); loadBadges();
+  } catch(e) {}
+}
+
+async function accionEntregado(id) {
+  try {
+    await fetch(`${TALLER_API}/pedidos/${id}/entregado`, {method:'POST', credentials:'include'});
+    loadRecoger(); loadBadges();
+  } catch(e) {}
+}
+
+// ─── FOTOS ───
+async function verFotos(pedidoId, numero) {
+  document.getElementById('foto-title').textContent = `Productos — ${numero}`;
+  const body = document.getElementById('foto-body');
+  body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--texto2)">Cargando...</div>';
+  document.getElementById('modal-foto').classList.add('active');
+  try {
+    const r = await fetch(`${API}/pedidos/${pedidoId}/items`, {credentials:'include'});
+    if (!r.ok) { body.innerHTML = '<div class="producto-sin-foto">Error</div>'; return; }
+    const items = await r.json();
+    if (!items.length) { body.innerHTML = '<div class="producto-sin-foto">🌸</div><p style="text-align:center;color:var(--texto2)">Sin productos</p>'; return; }
+    body.innerHTML = items.map(it => {
+      const img = it.imagen_url
+        ? `<img class="producto-img" src="${it.imagen_url}" alt="${it.nombre}" onerror="this.outerHTML='<div class=\\'producto-sin-foto\\'>🌸</div>'">`
+        : '<div class="producto-sin-foto">🌸</div>';
+      return `<div class="producto-item">${img}<div class="producto-nombre">${it.nombre}${it.cantidad>1?` (x${it.cantidad})`:''}</div>${it.codigo?`<div style="font-size:12px;color:var(--texto2)">Codigo: ${it.codigo}</div>`:''}</div>`;
+    }).join('');
+  } catch(e) { body.innerHTML = '<div class="producto-sin-foto">Error al cargar</div>'; }
+}
+
+// ─── PRINT ───
+async function imprimirEtiqueta(pedidoId) {
+  try {
+    const r = await fetch(`${TALLER_API}/imprimir-etiqueta`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({pedido_id: pedidoId})
+    });
+    const text = await r.text();
+    document.getElementById('print-frame').innerHTML = '<pre style="font-family:Courier New,monospace;font-size:10px;white-space:pre-wrap">' + text + '</pre>';
+    setTimeout(() => window.print(), 100);
+  } catch(e) { alert('Error al imprimir'); }
+}
+
+async function imprimirEtiquetasManana() {
+  try {
+    const r = await fetch(`${TALLER_API}/imprimir-etiquetas-manana`, {method:'POST', credentials:'include'});
+    const text = await r.text();
+    document.getElementById('print-frame').innerHTML = '<pre style="font-family:Courier New,monospace;font-size:10px;white-space:pre-wrap">' + text + '</pre>';
+    setTimeout(() => window.print(), 100);
+  } catch(e) { alert('Error al imprimir'); }
+}
+
+// ─── MODAL ───
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ─── INVENTARIO (preserved from original) ───
+const invExpanded = new Set();
+function toggleInvSection(key) {
+  if (invExpanded.has(key)) invExpanded.delete(key); else invExpanded.add(key);
+  document.querySelectorAll(`[data-inv-key="${key}"]`).forEach(el => el.classList.toggle('collapsed', !invExpanded.has(key)));
+}
+
 document.querySelectorAll('.inv-subtab').forEach(t => {
   t.addEventListener('click', () => {
     document.querySelectorAll('.inv-subtab').forEach(x => x.classList.remove('active'));
@@ -341,516 +866,52 @@ document.querySelectorAll('.inv-subtab').forEach(t => {
   });
 });
 
-// ─── Estado helpers ───
-function estadoClass(estado) {
-  const e = (estado||'').toLowerCase();
-  if (e === 'esperando_validacion') return 'estado-nuevo';
-  if (e === 'comprobante_recibido') return 'estado-pendiente-pago';
-  if (e === 'pagado') return 'estado-listo';
-  if (e === 'rechazado') return 'estado-cancelado';
-  if (e.includes('nuevo')) return 'estado-nuevo';
-  if (e.includes('producci')) return 'estado-produccion';
-  if (e === 'listo') return 'estado-listo';
-  if (e.includes('camino')) return 'estado-camino';
-  if (e.includes('entregado')) return 'estado-entregado';
-  if (e.includes('cancelado')) return 'estado-cancelado';
-  if (e.includes('pendiente')) return 'estado-pendiente-pago';
-  return '';
-}
-
-function classify(p) {
-  const h = (p.horario_entrega||'').toLowerCase();
-  if (!p.direccion_entrega && !p.zona_entrega) return 'tienda';
-  if (h.includes('mañana') || h.includes('manana')) return 'manana';
-  if (h.includes('tarde')) return 'tarde';
-  if (h.includes('noche')) return 'noche';
-  return 'manana';
-}
-
-// ─── Funeral timer ───
-function funeralTimer(p) {
-  if (p.tipo_especial !== 'Funeral' || !p.hora_exacta) return '';
-  try {
-    const now = new Date();
-    const chiNow = new Date(now.toLocaleString('en-US', {timeZone:'America/Chihuahua'}));
-    const [hStr, period] = p.hora_exacta.toLowerCase().split(/(am|pm)/);
-    let [h, m] = (hStr||'').split(':').map(Number);
-    if (isNaN(h)) return '';
-    if (isNaN(m)) m = 0;
-    if (period === 'pm' && h < 12) h += 12;
-    if (period === 'am' && h === 12) h = 0;
-    const target = new Date(chiNow);
-    target.setHours(h, m, 0, 0);
-    const diffMin = Math.round((target - chiNow) / 60000);
-    if (diffMin < 0) return '<span class="funeral-timer timer-red">HORA PASADA</span>';
-    const hrs = Math.floor(diffMin / 60);
-    const mins = diffMin % 60;
-    let cls = 'timer-green';
-    if (diffMin < 60) cls = 'timer-red';
-    else if (diffMin < 120) cls = 'timer-yellow';
-    return `<span class="funeral-timer ${cls}">⏱ ${hrs}h ${mins}m para velacion</span>`;
-  } catch(e) { return ''; }
-}
-
-// ─── Render card ───
-function renderCard(p, showActions) {
-  const pagoPendiente = !p.pago_confirmado;
-  const pagoIcon = p.pago_confirmado ? '✅' : '⚠️ PENDIENTE';
-  let badges = '';
-  if (p.canal === 'WhatsApp') badges += '<span class="pedido-badge" style="background:#25d366;color:#fff">WHATSAPP</span>';
-  if (p.requiere_factura) badges += '<span class="pedido-badge" style="background:#d4a843;color:#193a2c">FACTURA</span>';
-  if (p.tipo_especial === 'Funeral') badges += '<span class="pedido-badge badge-funeral">FUNERAL</span>';
-  else if (p.tipo_especial === 'Evento') badges += '<span class="pedido-badge badge-evento">EVENTO</span>';
-
-  // Florista badges
-  const ef = p.estado_florista || '';
-  if (ef === 'aprobado_con_modificacion') badges += '<span class="badge-florista badge-esperando">ESPERANDO RESPUESTA CLIENTE</span>';
-  else if (ef === 'cambio_sugerido') badges += '<span class="badge-florista badge-cambio">CAMBIO SUGERIDO — ESPERANDO CLIENTE</span>';
-  else if (ef === 'rechazado') badges += '<span class="badge-florista badge-rechazado">RECHAZADO — REQUIERE INTERVENCION</span>';
-  else if (ef === 'pendiente_pago') badges += '<span class="badge-florista" style="background:#fef3c7;color:#92400e">⚠ PEDIDO NO PAGADO — NO REALIZAR</span>';
-
-  let actions = '';
-  if (showActions) {
-    const est = (p.estado||'').toLowerCase();
-    const isPendienteAprobacion = !ef || ef === 'pendiente_aprobacion';
-    const isAprobado = ef === 'aprobado' || ef === 'aprobado_con_modificacion';
-
-    if (isPendienteAprobacion && !est.includes('listo') && !est.includes('entregado') && !est.includes('cancelado')) {
-      actions += `<button class="action-btn btn-aceptar" onclick="aceptarPedido(${p.id})">✅ Aceptar</button>`;
-      actions += `<button class="action-btn btn-modificar" onclick="abrirModificacion(${p.id})">⚠️ Modificar</button>`;
-      actions += `<button class="action-btn btn-cambio" onclick="abrirCambio(${p.id})">🔄 Cambio</button>`;
-      actions += `<button class="action-btn btn-rechazar" onclick="abrirRechazo(${p.id})">❌ Rechazar</button>`;
-    }
-    if (isAprobado && est.includes('producci')) {
-      actions += `<button class="action-btn btn-listo" onclick="marcarListo(${p.id})">Listo ✓</button>`;
-    }
-    actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Comprador</button>`;
-    actions += `<button class="action-btn btn-imprimir" onclick="imprimirTicketRepartidor(${p.id})">🖨 Repartidor</button>`;
-    actions += `<button class="action-btn btn-imprimir" onclick="imprimirMiniTicket(${p.id})">🏷 Etiqueta</button>`;
-  }
-
-  const timer = funeralTimer(p);
-  const notaFl = p.nota_florista ? `<div class="pedido-notas" style="border-left-color:var(--azul)">Nota florista: ${p.nota_florista}</div>` : '';
-
-  // Product info from items
-  let productoHtml = '';
-  const items = p.items || [];
-  if (items.length === 0) {
-    productoHtml = '<div class="pedido-producto" style="color:var(--texto2);font-size:13px">Producto no especificado</div>';
-  } else {
-    for (const item of items) {
-      if (item.es_personalizado) {
-        productoHtml += `<div><span class="badge-personalizado">⚡ PERSONALIZADO</span></div>`;
-        productoHtml += `<div class="pedido-producto">${item.nombre_personalizado || item.nombre}</div>`;
-        if (item.observaciones) productoHtml += `<div class="pedido-producto-obs">${item.observaciones}</div>`;
-      } else {
-        productoHtml += `<div class="pedido-producto">${item.nombre}${item.codigo ? `<span class="pedido-producto-code">${item.codigo}</span>` : ''}${item.cantidad > 1 ? ` <span class="pedido-producto-code">x${item.cantidad}</span>` : ''} <button class="action-btn btn-foto" style="padding:2px 8px;font-size:11px;display:inline;vertical-align:middle" onclick="verFotos(${p.id},'${(p.numero||'').replace(/'/g,"\\'")}')">📷 Ver foto</button></div>`;
-      }
-    }
-  }
-
-  return `
-  <div class="pedido-card ${pagoPendiente ? 'pago-pendiente' : ''}">
-    ${pagoPendiente ? '<div class="pago-warn">⚠️ NO ELABORAR — PAGO PENDIENTE</div>' : ''}
-    <div>${badges}</div>
-    ${timer}
-    <div class="pedido-header">
-      <div class="pedido-num">${p.numero}</div>
-      <span class="pedido-estado ${estadoClass(p.estado)}">${p.estado}</span>
-    </div>
-    ${productoHtml}
-    <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
-    ${p.fecha_entrega ? `<div class="pedido-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
-    ${p.zona_entrega ? `<div class="pedido-detail">📍 Zona ${p.zona_entrega} — ${p.direccion_entrega || ''}</div>` : ''}
-    ${p.receptor_telefono ? `<div class="pedido-detail">📞 ${p.receptor_telefono}</div>` : ''}
-    ${p.hora_exacta ? `<div class="pedido-detail">⏰ Hora exacta entrega: ${p.hora_exacta}</div>` : ''}
-    ${p.dedicatoria ? `<div class="pedido-dedicatoria">"${p.dedicatoria}"</div>` : ''}
-    ${p.notas_internas ? `<div class="pedido-notas">${p.notas_internas}</div>` : ''}
-    ${notaFl}
-    <div class="pedido-pago">${p.forma_pago || 'Sin info'} ${pagoIcon} — Total: $${(p.total||0)/100}</div>
-    ${actions ? `<div class="pedido-actions">${actions}</div>` : ''}
-  </div>`;
-}
-
-function renderBuckets(pedidos, containerId) {
-  const buckets = {manana:[], tarde:[], noche:[], tienda:[]};
-  pedidos.forEach(p => buckets[classify(p)].push(p));
-  const labels = {manana:'🌅 Manana (9am - 2pm)', tarde:'🌞 Tarde (2pm - 6pm)', noche:'🌙 Noche (6pm - 9pm)', tienda:'🏪 Recoger en tienda'};
-  let html = '';
-  for (const [key, items] of Object.entries(buckets)) {
-    html += `<div class="section">
-      <div class="section-title">${labels[key]} <span class="section-count">${items.length}</span></div>
-      <div class="pedidos-grid">${items.length ? items.map(p => renderCard(p, true)).join('') : '<div class="empty">Sin pedidos</div>'}</div>
-    </div>`;
-  }
-  return html;
-}
-
-// ─── Load Pedidos (hoy + manana) ───
-async function loadPedidos() {
-  try {
-    const [rHoy, rManana] = await Promise.all([
-      fetch(`${API}/pedidos/hoy`, {credentials:'include'}),
-      fetch(`${API}/pedidos/manana`, {credentials:'include'})
-    ]);
-    if (rHoy.status === 401) { window.location.href = '/panel/'; return; }
-    const pedidosHoy = rHoy.ok ? await rHoy.json() : [];
-    const pedidosManana = rManana.ok ? await rManana.json() : [];
-    window._pedidosHoy = pedidosHoy;
-    window._pedidosManana = pedidosManana;
-
-    // Notification badge
-    const pendientes = pedidosHoy.filter(p => !p.estado_florista || p.estado_florista === 'pendiente_aprobacion' || p.estado === 'esperando_validacion').length
-      + pedidosManana.filter(p => !p.estado_florista || p.estado_florista === 'pendiente_aprobacion' || p.estado === 'esperando_validacion').length;
-    const badge = document.getElementById('notif-badge');
-    if (pendientes > 0) { badge.textContent = pendientes; badge.style.display = ''; }
-    else { badge.style.display = 'none'; }
-
-    // Check for new
-    if (prevCountHoy >= 0 && pedidosHoy.length > prevCountHoy) {
-      badge.style.display = '';
-    }
-    prevCountHoy = pedidosHoy.length;
-
-    document.getElementById('pedidos-hoy').innerHTML = '<div class="day-label">Hoy</div>' + renderBuckets(pedidosHoy, 'pedidos-hoy');
-    document.getElementById('pedidos-manana').innerHTML = pedidosManana.length
-      ? '<div class="day-label">Manana</div>' + renderBuckets(pedidosManana, 'pedidos-manana')
-      : '';
-  } catch(e) { console.error(e); }
-}
-
-// ─── Produccion (pedidos aceptados del dia) ───
-let expandedProduccionId = null;
-
-async function loadProduccion() {
-  try {
-    const [rHoy, rManana] = await Promise.all([
-      fetch(`${API}/pedidos/hoy`, {credentials:'include'}),
-      fetch(`${API}/pedidos/manana`, {credentials:'include'})
-    ]);
-    if (!rHoy.ok) return;
-    const hoy = rHoy.ok ? await rHoy.json() : [];
-    const manana = rManana.ok ? await rManana.json() : [];
-    const todos = [...hoy, ...manana];
-    // Solo pedidos aceptados en produccion
-    const produccion = todos.filter(p => {
-      const ef = p.estado_florista || '';
-      const est = (p.estado||'').toLowerCase();
-      return (ef === 'aprobado' || ef === 'aprobado_con_modificacion') && est.includes('producci');
-    });
-    if (!produccion.length) {
-      document.getElementById('produccion-body').innerHTML = '<div class="empty">No hay pedidos en produccion</div>';
-      return;
-    }
-    let html = '<div class="pedidos-grid">';
-    for (const p of produccion) {
-      const items = p.items || [];
-      const itemsHtml = items.length
-        ? items.map(it => `${it.cantidad > 1 ? it.cantidad + 'x ' : ''}${it.nombre}`).join('<br>')
-        : '<span style="opacity:.5">Sin productos</span>';
-      const isExpanded = expandedProduccionId === p.id;
-      html += `<div class="pedido-card card-collapsible ${isExpanded ? 'expanded' : ''}" style="border-left-color:var(--naranja)" onclick="toggleProduccion(${p.id})">
-        <div class="pedido-num" style="margin-bottom:4px">${p.numero}</div>
-        <div class="card-items">${itemsHtml}</div>
-        <div class="card-expand" onclick="event.stopPropagation()">
-          ${renderCardDetails(p)}
-          <div class="pedido-actions">
-            <button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Imprimir ticket</button>
-            <button class="action-btn btn-listo" onclick="marcarPreparado(${p.id})">✅ Marcar como preparado</button>
-          </div>
-        </div>
-      </div>`;
-    }
-    html += '</div>';
-    document.getElementById('produccion-body').innerHTML = html;
-  } catch(e) { console.error(e); }
-}
-
-function toggleProduccion(id) {
-  if (expandedProduccionId === id) {
-    expandedProduccionId = null;
-  } else {
-    expandedProduccionId = id;
-  }
-  loadProduccion();
-}
-
-async function marcarPreparado(id) {
-  try {
-    await fetch(`${API}/pedidos/${id}/estado`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado:'Listo'})
-    });
-    loadProduccion();
-  } catch(e) {}
-}
-
-function renderCardDetails(p) {
-  const pagoIcon = p.pago_confirmado ? '✅' : '⚠️ PENDIENTE';
-  let badges = '';
-  if (p.tipo_especial === 'Funeral') badges += '<span class="pedido-badge badge-funeral">FUNERAL</span>';
-  else if (p.tipo_especial === 'Evento') badges += '<span class="pedido-badge badge-evento">EVENTO</span>';
-  const timer = funeralTimer(p);
-  const notaFl = p.nota_florista ? `<div class="pedido-notas" style="border-left-color:var(--azul)">Nota florista: ${p.nota_florista}</div>` : '';
-
-  let productoHtml = '';
-  const items = p.items || [];
-  for (const item of items) {
-    if (item.es_personalizado) {
-      productoHtml += `<div><span class="badge-personalizado">⚡ PERSONALIZADO</span></div>`;
-      productoHtml += `<div class="pedido-producto">${item.nombre_personalizado || item.nombre}</div>`;
-      if (item.observaciones) productoHtml += `<div class="pedido-producto-obs">${item.observaciones}</div>`;
-    } else {
-      productoHtml += `<div class="pedido-producto">${item.nombre}${item.codigo ? `<span class="pedido-producto-code">${item.codigo}</span>` : ''}${item.cantidad > 1 ? ` <span class="pedido-producto-code">x${item.cantidad}</span>` : ''}</div>`;
-    }
-  }
-
-  return `
-    <div>${badges}</div>
-    ${timer}
-    <div class="pedido-header">
-      <span class="pedido-estado ${estadoClass(p.estado)}">${p.estado}</span>
-    </div>
-    ${productoHtml}
-    <div class="pedido-receptor">${p.receptor_nombre || 'Sin receptor'}</div>
-    ${p.fecha_entrega ? `<div class="pedido-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
-    ${p.zona_entrega ? `<div class="pedido-detail">📍 Zona ${p.zona_entrega} — ${p.direccion_entrega || ''}</div>` : ''}
-    ${p.receptor_telefono ? `<div class="pedido-detail">📞 ${p.receptor_telefono}</div>` : ''}
-    ${p.hora_exacta ? `<div class="pedido-detail">⏰ Hora exacta entrega: ${p.hora_exacta}</div>` : ''}
-    ${p.dedicatoria ? `<div class="pedido-dedicatoria">"${p.dedicatoria}"</div>` : ''}
-    ${p.notas_internas ? `<div class="pedido-notas">${p.notas_internas}</div>` : ''}
-    ${notaFl}
-    <div class="pedido-pago">${p.forma_pago || 'Sin info'} ${pagoIcon} — Total: $${(p.total||0)/100}</div>
-  `;
-}
-
-// ─── Agendados ───
-async function loadAgendados() {
-  try {
-    const r = await fetch(`${API}/pedidos/agendados`, {credentials:'include'});
-    if (!r.ok) return;
-    const pedidos = await r.json();
-    if (!pedidos.length) {
-      document.getElementById('agendados-body').innerHTML = '<div class="empty">No hay pedidos agendados</div>';
-      return;
-    }
-    let html = `<table class="agenda-table"><thead><tr>
-      <th>Numero</th><th>Fecha</th><th>Horario</th><th>Receptor</th><th>Zona</th><th>Estado</th><th>Total</th>
-    </tr></thead><tbody>`;
-    for (const p of pedidos) {
-      const fecha = p.fecha_entrega ? new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'}) : '';
-      html += `<tr>
-        <td style="font-weight:600;color:var(--verde)">${p.numero}</td>
-        <td>${fecha}</td>
-        <td>${p.horario_entrega||'—'}</td>
-        <td>${p.receptor_nombre||'—'}</td>
-        <td>${p.zona_entrega||'—'}</td>
-        <td><span class="pedido-estado ${estadoClass(p.estado)}">${p.estado}</span></td>
-        <td>$${(p.total||0)/100}</td>
-      </tr>`;
-    }
-    html += '</tbody></table>';
-    document.getElementById('agendados-body').innerHTML = html;
-  } catch(e) {}
-}
-
-// ─── Realizados ───
-let expandedRealizadoId = null;
-
-async function loadRealizados() {
-  try {
-    const r = await fetch(`${API}/pedidos/realizados`, {credentials:'include'});
-    if (!r.ok) return;
-    const pedidos = await r.json();
-    if (!pedidos.length) {
-      document.getElementById('realizados-body').innerHTML = '<div class="empty">No hay pedidos listos pendientes de entrega</div>';
-      return;
-    }
-    let html = '<div class="pedidos-grid">';
-    for (const p of pedidos) {
-      const isExpanded = expandedRealizadoId === p.id;
-      html += `<div class="pedido-card card-collapsible ${isExpanded ? 'expanded' : ''}" style="border-left-color:var(--verde-c)" onclick="toggleRealizado(${p.id})">
-        <div class="pedido-num">${p.numero}</div>
-        <div class="card-expand" onclick="event.stopPropagation()">
-          ${renderCardDetails(p)}
-          <div class="pedido-actions">
-            <button class="action-btn btn-imprimir" onclick="imprimirTicketComprador(${p.id})">🖨 Reimprimir</button>
-          </div>
-        </div>
-      </div>`;
-    }
-    html += '</div>';
-    document.getElementById('realizados-body').innerHTML = html;
-  } catch(e) {}
-}
-
-function toggleRealizado(id) {
-  if (expandedRealizadoId === id) {
-    expandedRealizadoId = null;
-  } else {
-    expandedRealizadoId = id;
-  }
-  loadRealizados();
-}
-
-// ─── Fecha Fuerte ───
-async function checkTemporada() {
-  try {
-    const r = await fetch(`${API}/panel/horario/estado`, {credentials:'include'});
-    if (!r.ok) return;
-    const data = await r.json();
-    if (data.temporada_activa) {
-      temporadaActiva = true;
-      document.getElementById('tab-fecha-fuerte').classList.remove('hidden');
-      loadFechaFuerte(data.temporada_nombre, data.temporada_categoria);
-    }
-  } catch(e) {}
-}
-
-async function loadFechaFuerte(nombre, categoria) {
-  try {
-    const r = await fetch(`${API}/productos?categoria=${encodeURIComponent(categoria||'')}&solo_disponibles=false`, {credentials:'include'});
-    if (!r.ok) return;
-    const prods = await r.json();
-    if (!prods.length) {
-      document.getElementById('fecha-fuerte-body').innerHTML = `<div class="empty">Sin productos en temporada "${nombre}"</div>`;
-      return;
-    }
-    let html = `<div class="day-label">${nombre}</div><div class="pedidos-grid">`;
-    for (const p of prods) {
-      html += `<div class="pedido-card" style="border-left-color:var(--acento)">
-        <div class="pedido-header">
-          <div style="font-weight:600">${p.nombre}</div>
-          <span style="font-size:12px;color:var(--texto2)">${p.codigo||''}</span>
-        </div>
-        ${p.imagen_url ? `<img src="${p.imagen_url}" style="width:100%;max-height:120px;object-fit:contain;border-radius:8px;margin:8px 0">` : ''}
-        <div class="pedido-detail">Precio: $${(p.precio||0)/100}</div>
-        <div class="pedido-detail">Disponible: ${p.disponible_hoy ? '✅ Si' : '❌ No'}</div>
-      </div>`;
-    }
-    html += '</div>';
-    document.getElementById('fecha-fuerte-body').innerHTML = html;
-  } catch(e) {}
-}
-
-// ─── Inventario ───
-const invExpanded = new Set(); // tracks expanded section keys
-
-function toggleInvSection(key) {
-  if (invExpanded.has(key)) invExpanded.delete(key);
-  else invExpanded.add(key);
-  document.querySelectorAll(`[data-inv-key="${key}"]`).forEach(el => {
-    el.classList.toggle('collapsed', !invExpanded.has(key));
-  });
-}
-
-async function loadInventario() {
-  await Promise.all([loadInvFloral(), loadInvNoFloral()]);
-}
-
 const statusOpts = ['en_stock','stock_bajo','sin_stock'];
 const statusLabels = {'en_stock':'🟢 En stock','stock_bajo':'🟡 Stock bajo','sin_stock':'🔴 Sin stock'};
-
 function renderStatusSelect(id, tipo, current) {
-  return `<select onchange="updateInvStatus(${id},'${tipo}',this.value)">
-    ${statusOpts.map(s => `<option value="${s}" ${current===s?'selected':''}>${statusLabels[s]}</option>`).join('')}
-  </select>`;
+  return `<select onchange="updateInvStatus(${id},'${tipo}',this.value)">${statusOpts.map(s => `<option value="${s}" ${current===s?'selected':''}>${statusLabels[s]}</option>`).join('')}</select>`;
 }
+
+async function loadInventario() { await Promise.all([loadInvFloral(), loadInvNoFloral()]); }
 
 async function loadInvFloral() {
   try {
     const r = await fetch(`${API}/inventario/floral`, {credentials:'include'});
     if (!r.ok) return;
     const items = await r.json();
-
     const principales = items.filter(i => i.categoria === 'principal');
     const otras = items.filter(i => i.categoria === 'otras_flores');
     const follajes = items.filter(i => i.categoria === 'follajes');
-
     const familias = {};
-    principales.forEach(i => {
-      if (!familias[i.familia]) familias[i.familia] = [];
-      familias[i.familia].push(i);
-    });
-
+    principales.forEach(i => { if (!familias[i.familia]) familias[i.familia] = []; familias[i.familia].push(i); });
     let html = '';
-
-    // ── Flores Principales ──
-    const kPrinc = 'fl-principales';
-    html += `<div class="inv-section">
-      <div class="inv-header" onclick="toggleInvSection('${kPrinc}')">
-        Flores Principales (${Object.keys(familias).length} familias) <span>▾</span>
-      </div>
-      <div class="inv-body ${invExpanded.has(kPrinc)?'':'collapsed'}" data-inv-key="${kPrinc}">`;
-
-    for (const [familia, colors] of Object.entries(familias)) {
-      const hasColors = colors.length > 1 || (colors.length === 1 && colors[0].variante);
-      if (hasColors) {
-        const kFam = 'fam-' + familia.replace(/[^a-zA-Z0-9]/g,'_');
-        html += `<div class="inv-row inv-family" onclick="toggleInvSection('${kFam}')" style="cursor:pointer;background:var(--crema)">
-          <div class="inv-name" style="font-weight:600">${familia} <span class="auto-badge">⚡</span></div>
-          <div style="font-size:12px;color:var(--texto2)">${colors.length} colores ▸</div>
-        </div>
-        <div class="inv-colors ${invExpanded.has(kFam)?'':'collapsed'}" data-inv-key="${kFam}">`;
-        for (const c of colors) {
-          html += `<div class="inv-row" style="padding-left:32px">
-            <div class="inv-name">${c.variante || familia}</div>
-            <div class="inv-qty">
-              <button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad - 1})">−</button>
-              <span>${c.cantidad}</span>
-              <button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad + 1})">+</button>
-            </div>
-            <div class="inv-status">${renderStatusSelect(c.id, 'floral', c.stock_estado)}</div>
-          </div>`;
-        }
+    // Flores Principales
+    const kP = 'fl-principales';
+    html += `<div class="inv-section"><div class="inv-header" onclick="toggleInvSection('${kP}')">Flores Principales (${Object.keys(familias).length} familias) <span>▾</span></div><div class="inv-body ${invExpanded.has(kP)?'':'collapsed'}" data-inv-key="${kP}">`;
+    for (const [fam, colors] of Object.entries(familias)) {
+      if (colors.length > 1 || (colors.length === 1 && colors[0].variante)) {
+        const kF = 'fam-' + fam.replace(/[^a-zA-Z0-9]/g,'_');
+        html += `<div class="inv-row" onclick="toggleInvSection('${kF}')" style="cursor:pointer;background:var(--crema)"><div class="inv-name" style="font-weight:600">${fam} <span class="auto-badge">⚡</span></div><div style="font-size:12px;color:var(--texto2)">${colors.length} colores ▸</div></div><div class="inv-colors ${invExpanded.has(kF)?'':'collapsed'}" data-inv-key="${kF}">`;
+        for (const c of colors) html += `<div class="inv-row" style="padding-left:32px"><div class="inv-name">${c.variante || fam}</div><div class="inv-qty"><button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad-1})">−</button><span>${c.cantidad}</span><button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad+1})">+</button></div><div class="inv-status">${renderStatusSelect(c.id,'floral',c.stock_estado)}</div></div>`;
         html += '</div>';
       } else {
         const c = colors[0];
-        html += `<div class="inv-row">
-          <div class="inv-name">${familia} <span class="auto-badge">⚡</span></div>
-          <div class="inv-qty">
-            <button onclick="updateInvQty(${c.id},'floral',${c.cantidad - 1})">−</button>
-            <span>${c.cantidad}</span>
-            <button onclick="updateInvQty(${c.id},'floral',${c.cantidad + 1})">+</button>
-          </div>
-          <div class="inv-status">${renderStatusSelect(c.id, 'floral', c.stock_estado)}</div>
-        </div>`;
+        html += `<div class="inv-row"><div class="inv-name">${fam} <span class="auto-badge">⚡</span></div><div class="inv-qty"><button onclick="updateInvQty(${c.id},'floral',${c.cantidad-1})">−</button><span>${c.cantidad}</span><button onclick="updateInvQty(${c.id},'floral',${c.cantidad+1})">+</button></div><div class="inv-status">${renderStatusSelect(c.id,'floral',c.stock_estado)}</div></div>`;
       }
     }
     html += '</div></div>';
-
-    // ── Otras Flores ──
-    const kOtras = 'fl-otras';
-    html += `<div class="inv-section">
-      <div class="inv-header" onclick="toggleInvSection('${kOtras}')">
-        Otras Flores (${otras.length}) <span>▾</span>
-      </div>
-      <div class="inv-body ${invExpanded.has(kOtras)?'':'collapsed'}" data-inv-key="${kOtras}">`;
-    for (const i of otras) {
-      html += `<div class="inv-row">
-        <div class="inv-name" style="flex:1">${i.familia}</div>
-        <div class="inv-status">${renderStatusSelect(i.id, 'floral', i.stock_estado)}</div>
-      </div>`;
-    }
+    // Otras
+    const kO = 'fl-otras';
+    html += `<div class="inv-section"><div class="inv-header" onclick="toggleInvSection('${kO}')">Otras Flores (${otras.length}) <span>▾</span></div><div class="inv-body ${invExpanded.has(kO)?'':'collapsed'}" data-inv-key="${kO}">`;
+    for (const i of otras) html += `<div class="inv-row"><div class="inv-name">${i.familia}</div><div class="inv-status">${renderStatusSelect(i.id,'floral',i.stock_estado)}</div></div>`;
     html += '</div></div>';
-
-    // ── Follajes ──
-    const kFoll = 'fl-follajes';
-    html += `<div class="inv-section">
-      <div class="inv-header" onclick="toggleInvSection('${kFoll}')">
-        Follajes (${follajes.length}) <span>▾</span>
-      </div>
-      <div class="inv-body ${invExpanded.has(kFoll)?'':'collapsed'}" data-inv-key="${kFoll}">`;
-    for (const i of follajes) {
-      html += `<div class="inv-row">
-        <div class="inv-name" style="flex:1">${i.familia}</div>
-        <div class="inv-status">${renderStatusSelect(i.id, 'floral', i.stock_estado)}</div>
-      </div>`;
-    }
+    // Follajes
+    const kF2 = 'fl-follajes';
+    html += `<div class="inv-section"><div class="inv-header" onclick="toggleInvSection('${kF2}')">Follajes (${follajes.length}) <span>▾</span></div><div class="inv-body ${invExpanded.has(kF2)?'':'collapsed'}" data-inv-key="${kF2}">`;
+    for (const i of follajes) html += `<div class="inv-row"><div class="inv-name">${i.familia}</div><div class="inv-status">${renderStatusSelect(i.id,'floral',i.stock_estado)}</div></div>`;
     html += '</div></div>';
-
     document.getElementById('inv-floral').innerHTML = html;
-  } catch(e) { console.error(e); }
+  } catch(e) {}
 }
 
 async function loadInvNoFloral() {
@@ -862,23 +923,11 @@ async function loadInvNoFloral() {
     items.forEach(i => { if (!groups[i.categoria]) groups[i.categoria] = []; groups[i.categoria].push(i); });
     let html = '';
     for (const [cat, list] of Object.entries(groups)) {
-      const kNf = 'nf-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
-      html += `<div class="inv-section">
-        <div class="inv-header" onclick="toggleInvSection('${kNf}')">
-          ${cat} (${list.length}) <span>▾</span>
-        </div>
-        <div class="inv-body ${invExpanded.has(kNf)?'':'collapsed'}" data-inv-key="${kNf}">`;
+      const k = 'nf-' + cat.replace(/[^a-zA-Z0-9]/g,'_');
+      html += `<div class="inv-section"><div class="inv-header" onclick="toggleInvSection('${k}')">${cat} (${list.length}) <span>▾</span></div><div class="inv-body ${invExpanded.has(k)?'':'collapsed'}" data-inv-key="${k}">`;
       for (const i of list) {
         const nombre = i.variante ? `${cat} — ${i.variante}` : cat;
-        html += `<div class="inv-row">
-          <div class="inv-name">${nombre}</div>
-          <div class="inv-qty">
-            <button onclick="updateInvQty(${i.id},'no-floral',${i.cantidad - 1})">−</button>
-            <span>${i.cantidad}</span>
-            <button onclick="updateInvQty(${i.id},'no-floral',${i.cantidad + 1})">+</button>
-          </div>
-          <div class="inv-status">${renderStatusSelect(i.id, 'no-floral', i.stock_estado)}</div>
-        </div>`;
+        html += `<div class="inv-row"><div class="inv-name">${nombre}</div><div class="inv-qty"><button onclick="updateInvQty(${i.id},'no-floral',${i.cantidad-1})">−</button><span>${i.cantidad}</span><button onclick="updateInvQty(${i.id},'no-floral',${i.cantidad+1})">+</button></div><div class="inv-status">${renderStatusSelect(i.id,'no-floral',i.stock_estado)}</div></div>`;
       }
       html += '</div></div>';
     }
@@ -886,390 +935,53 @@ async function loadInvNoFloral() {
   } catch(e) {}
 }
 
-async function updateInvQty(id, tipo, newQty) {
-  if (newQty < 0) newQty = 0;
-  try {
-    await fetch(`${API}/inventario/${tipo}/${id}`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({cantidad: newQty})
-    });
-    loadInventario();
-  } catch(e) {}
+async function updateInvQty(id, tipo, v) {
+  if (v < 0) v = 0;
+  try { await fetch(`${API}/inventario/${tipo}/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({cantidad:v})}); loadInventario(); } catch(e) {}
 }
-
 async function updateInvStatus(id, tipo, status) {
+  try { await fetch(`${API}/inventario/${tipo}/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include', body:JSON.stringify({stock_estado:status})}); } catch(e) {}
+}
+
+// ─── Auto-refresh timers ───
+function refreshTimers() {
+  // Re-render countdowns in Produccion cards without re-fetching
+  document.querySelectorAll('#produccion-hoy-body .kds-card').forEach(card => {
+    // Timers auto-refresh on next full reload
+  });
+}
+
+// ─── FECHA FUERTE ───
+let modoFechaFuerte = false;
+
+async function checkFechaFuerte() {
   try {
-    await fetch(`${API}/inventario/${tipo}/${id}`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({stock_estado: status})
-    });
-  } catch(e) {}
-}
-
-// ─── Acciones de pedido ───
-async function aceptarPedido(id) {
-  try {
-    // Buscar el pedido para ver si viene de WhatsApp (esperando_validacion)
-    const pedido = findPedidoById(id);
-    const esWhatsApp = pedido && (pedido.estado === 'esperando_validacion' || pedido.canal === 'WhatsApp');
-    const nuevoEstado = esWhatsApp ? 'pendiente_pago' : 'En producción';
-    await fetch(`${API}/pedidos/${id}/estado`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado: nuevoEstado, estado_florista:'aprobado'})
-    });
-    loadPedidos();
-  } catch(e) {}
-}
-
-function findPedidoById(id) {
-  const all = [...(window._pedidosHoy||[]), ...(window._pedidosManana||[])];
-  return all.find(p => p.id === id);
-}
-
-function abrirModificacion(id) {
-  currentModalPedidoId = id;
-  document.getElementById('mod-texto').value = '';
-  document.getElementById('modal-modificacion').classList.add('active');
-}
-
-document.getElementById('mod-submit').addEventListener('click', async () => {
-  const nota = document.getElementById('mod-texto').value.trim();
-  if (!nota) return;
-  try {
-    await fetch(`${API}/pedidos/${currentModalPedidoId}/estado`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado:'En producción', estado_florista:'aprobado_con_modificacion', nota_florista:nota})
-    });
-    cerrarModal('modal-modificacion');
-    loadPedidos();
-  } catch(e) {}
-});
-
-function abrirCambio(id) {
-  currentModalPedidoId = id;
-  selectedProducto = null;
-  document.getElementById('cambio-buscar').value = '';
-  document.getElementById('cambio-results').innerHTML = '';
-  document.getElementById('cambio-submit').disabled = true;
-  document.getElementById('modal-cambio').classList.add('active');
-  if (!allProductos.length) loadAllProductos();
-}
-
-async function loadAllProductos() {
-  try {
-    const r = await fetch(`${API}/productos`, {credentials:'include'});
-    if (r.ok) allProductos = await r.json();
-  } catch(e) {}
-}
-
-function buscarProductos() {
-  const q = document.getElementById('cambio-buscar').value.toLowerCase().trim();
-  if (q.length < 2) { document.getElementById('cambio-results').innerHTML = ''; return; }
-  const matches = allProductos.filter(p => p.nombre.toLowerCase().includes(q) || (p.codigo||'').toLowerCase().includes(q)).slice(0, 10);
-  document.getElementById('cambio-results').innerHTML = matches.map(p =>
-    `<div class="search-item ${selectedProducto && selectedProducto.id===p.id ? 'selected':''}" onclick="seleccionarProducto(${p.id},'${p.nombre.replace(/'/g,"\\'")}','${(p.codigo||'').replace(/'/g,"\\'")}')">
-      <span>${p.nombre}</span><span style="color:var(--texto2)">${p.codigo||''} — $${(p.precio||0)/100}</span>
-    </div>`
-  ).join('') || '<div class="search-item" style="color:var(--texto2)">Sin resultados</div>';
-}
-
-function seleccionarProducto(id, nombre, codigo) {
-  selectedProducto = {id, nombre, codigo};
-  document.getElementById('cambio-submit').disabled = false;
-  buscarProductos(); // re-render to show selected
-}
-
-document.getElementById('cambio-submit').addEventListener('click', async () => {
-  if (!selectedProducto) return;
-  try {
-    await fetch(`${API}/pedidos/${currentModalPedidoId}/estado`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado:'En producción', estado_florista:'cambio_sugerido', nota_florista:`Sugerencia: ${selectedProducto.nombre} - ${selectedProducto.codigo}`})
-    });
-    cerrarModal('modal-cambio');
-    loadPedidos();
-  } catch(e) {}
-});
-
-function abrirRechazo(id) {
-  currentModalPedidoId = id;
-  document.getElementById('rechazo-razon').value = '';
-  document.getElementById('rechazo-otro').value = '';
-  document.getElementById('rechazo-otro').style.display = 'none';
-  document.getElementById('modal-rechazo').classList.add('active');
-}
-
-function toggleRechazoOtro() {
-  document.getElementById('rechazo-otro').style.display = document.getElementById('rechazo-razon').value === 'otros' ? '' : 'none';
-}
-
-document.getElementById('rechazo-submit').addEventListener('click', async () => {
-  let razon = document.getElementById('rechazo-razon').value;
-  if (!razon) return;
-  if (razon === 'otros') razon = document.getElementById('rechazo-otro').value.trim();
-  if (!razon) return;
-  try {
-    await fetch(`${API}/pedidos/${currentModalPedidoId}/estado`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado:'rechazado', estado_florista:'rechazado', nota_florista:razon, requiere_humano:true})
-    });
-    cerrarModal('modal-rechazo');
-    loadPedidos();
-  } catch(e) {}
-});
-
-async function marcarListo(id) {
-  try {
-    await fetch(`${API}/pedidos/${id}/estado`, {
-      method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({estado:'Listo'})
-    });
-    loadPedidos();
-    if (confirm('¿Imprimir ticket?')) imprimirTicketRepartidor(id);
-  } catch(e) {}
-}
-
-// ─── Fotos ───
-async function verFotos(pedidoId, numero) {
-  const body = document.getElementById('foto-modal-body');
-  document.getElementById('foto-modal-title').textContent = `Productos — ${numero}`;
-  body.innerHTML = '<div class="producto-sin-foto">Cargando...</div>';
-  document.getElementById('foto-modal').classList.add('active');
-  try {
-    const r = await fetch(`${API}/pedidos/${pedidoId}/items`, {credentials:'include'});
-    if (!r.ok) { body.innerHTML = '<div class="producto-sin-foto">Error al cargar</div>'; return; }
-    const items = await r.json();
-    if (!items.length) { body.innerHTML = '<div class="producto-sin-foto">Sin productos asociados</div>'; return; }
-    body.innerHTML = items.map(item => {
-      const img = item.imagen_url
-        ? `<img class="producto-img" src="${item.imagen_url}" alt="${item.nombre}" onerror="this.outerHTML='<div class=\\'producto-sin-foto\\'>Sin foto disponible</div>'">`
-        : '<div class="producto-sin-foto">Sin foto disponible</div>';
-      return `<div class="producto-item">${img}<div class="producto-nombre">${item.nombre}${item.cantidad>1?` (x${item.cantidad})`:''}</div>${item.codigo?`<div class="producto-codigo">Codigo: ${item.codigo}</div>`:''}</div>`;
-    }).join('');
-  } catch(e) { body.innerHTML = '<div class="producto-sin-foto">Error al cargar</div>'; }
-}
-
-// ─── Helpers de ticket ───
-async function fetchPedidoConItems(id) {
-  const [rp, ri] = await Promise.all([
-    fetch(`${API}/pedidos/${id}`, {credentials:'include'}),
-    fetch(`${API}/pedidos/${id}/items`, {credentials:'include'})
-  ]);
-  if (!rp.ok) throw new Error('No se pudo cargar pedido');
-  const p = await rp.json();
-  p._items = ri.ok ? await ri.json() : [];
-  return p;
-}
-
-function fmtPrecio(centavos) {
-  const n = (centavos||0)/100;
-  return n >= 1000 ? '$' + n.toLocaleString('es-MX') : '$' + n;
-}
-
-function horarioLabel(h) {
-  const map = {manana:'Manana 9-2pm','mañana':'Manana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'};
-  return map[(h||'').toLowerCase()] || h || '';
-}
-
-// ─── Util: sanitizar/formato para tickets ───
-function sanitizarTexto(s) {
-  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ñ/g,'N').replace(/Ñ/g,'N').replace(/ü/g,'U').replace(/Ü/g,'U').toUpperCase();
-}
-function fmtPrecioTk(centavos) {
-  return '$' + (centavos/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-function fechaTicket(str) {
-  if (!str) return '';
-  const d = new Date((str||'').replace(' ','T'));
-  if (isNaN(d)) return sanitizarTexto(str);
-  const dias = ['DOM','LUN','MAR','MIE','JUE','VIE','SAB'];
-  const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-  const hasTime = (str||'').includes(':');
-  let out = `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
-  if (hasTime) { let h=d.getHours(),m=d.getMinutes(),ap=h>=12?'PM':'AM'; if(h===0)h=12;else if(h>12)h-=12; out+=`  ${h}:${String(m).padStart(2,'0')} ${ap}`; }
-  return out;
-}
-function fechaLargaHoy() {
-  const d = new Date();
-  const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
-  return `CHIHUAHUA, CHIH., A ${d.getDate()} DE ${meses[d.getMonth()]} DE ${d.getFullYear()}`;
-}
-function horarioCorto(h) {
-  const map = {manana:'MANANA','mañana':'MANANA',tarde:'TARDE',noche:'NOCHE'};
-  return map[(h||'').toLowerCase()] || (h||'').toUpperCase();
-}
-
-// ─── Ticket Comprador (80mm) ───
-async function imprimirTicketComprador(id) {
-  try {
-    const p = await fetchPedidoConItems(id);
-    const S = sanitizarTexto;
-    const isFuneral = (p.tipo_especial||'').toLowerCase() === 'funeral';
-    const recoger = !p.direccion_entrega && !p.zona_entrega && !isFuneral;
-    const L = [];
-    L.push('<div class="dsep"></div>');
-    L.push('<div class="tline" style="font-size:20px"><strong>FLORERIA LUCY</strong></div>');
-    L.push('<div class="tline" style="font-size:10px"><strong>- LA FLORE CHOCOLATIER -</strong></div>');
-    L.push('<div class="tline sm">C. SABINO 610, LAS GRANJAS</div>');
-    L.push('<div class="tline sm">CHIHUAHUA, CHIH., MEXICO</div>');
-    L.push('<div class="tline sm">TEL. 614 334 9392</div>');
-    L.push('<div class="tline sm">florerialucychihuahua@gmail.com</div>');
-    L.push('<div class="dsep"></div>');
-    L.push('<div class="tline"><strong>COMPROBANTE DE COMPRA</strong></div>');
-    L.push(`<div class="tline big">${p.numero}</div>`);
-    L.push(`<div class="tline sm">${fechaTicket(p.fecha_pedido || new Date().toISOString())}</div>`);
-    L.push('<div class="dsep"></div>');
-    // Delivery data
-    if (isFuneral) {
-      L.push('<div class="tline" style="margin:6px 0"><strong>*** PEDIDO FUNERAL ***</strong></div>');
-      if (p.notas_internas) {
-        const n = p.notas_internas;
-        const mf = n.match(/FUNERAL\s*(?:—|-)\s*([^.]+)/i); if (mf) L.push(`<div><strong>FUNERARIA:</strong> ${S(mf[1])}</div>`);
-        const mfa = n.match(/Fallecido:\s*([^.]+)/i); if (mfa) L.push(`<div><strong>FALLECIDO:</strong> ${S(mfa[1])}</div>`);
-        const ms = n.match(/Sala:\s*([^.]+)/i); if (ms) L.push(`<div><strong>SALA:</strong> ${S(ms[1])}</div>`);
-        const mb = n.match(/Banda:\s*([^.]+)/i); if (mb) L.push(`<div><strong>BANDA:</strong> ${S(mb[1])}</div>`);
-        const mv = n.match(/Velacion:\s*([^.]+)/i); if (mv) L.push(`<div><strong>VELACION:</strong> ${S(mv[1])}</div>`);
+    const r = await fetch(`${TALLER_API}/fecha-fuerte/config`, {credentials:'include'});
+    if (!r.ok) return;
+    const cfg = await r.json();
+    if (cfg.modo_fecha_fuerte === 'true') {
+      modoFechaFuerte = true;
+      // Disable Nuevos tab
+      const tabNuevos = document.querySelector('.tab[data-tab="nuevos"]');
+      if (tabNuevos) {
+        tabNuevos.classList.add('disabled');
+        tabNuevos.innerHTML = '🔴 Nuevos <span class="tab-badge" style="display:none">0</span>';
       }
-      if (p.fecha_entrega) L.push(`<div><strong>FECHA:</strong> ${fechaTicket(p.fecha_entrega)}</div>`);
-    } else if (p.direccion_entrega) {
-      L.push('<div class="hdr">DATOS DE ENTREGA</div>');
-      if (p.receptor_nombre) L.push(`<div><strong>RECIBE:</strong> ${S(p.receptor_nombre)}</div>`);
-      if (p.receptor_telefono) L.push(`<div><strong>TEL:</strong> ${p.receptor_telefono}</div>`);
-      L.push(`<div><strong>DIR:</strong> ${S(p.direccion_entrega)}</div>`);
-      if (p.fecha_entrega) L.push(`<div><strong>FECHA:</strong> ${fechaTicket(p.fecha_entrega)}</div>`);
-      if (p.horario_entrega) L.push(`<div><strong>HORARIO:</strong> ${S(p.horario_entrega)}</div>`);
-      if (p.hora_exacta) L.push(`<div><strong>HORA:</strong> ${p.hora_exacta}</div>`);
-      if (p.zona_entrega) L.push(`<div><strong>ZONA:</strong> ${S(p.zona_entrega)}</div>`);
-      if (p.ruta) L.push(`<div><strong>RUTA:</strong> ${S(p.ruta)}</div>`);
-    } else if (recoger) {
-      L.push('<div class="hdr">RECOGER EN TIENDA</div>');
-      if (p.fecha_entrega) L.push(`<div><strong>FECHA:</strong> ${fechaTicket(p.fecha_entrega)}</div>`);
-      if (p.hora_exacta) L.push(`<div><strong>HORA:</strong> ${p.hora_exacta}</div>`);
+      document.getElementById('nuevos-body').innerHTML = '<div class="empty">Modo Fecha Fuerte activo — los pedidos entran directo a Produccion</div>';
     }
-    if (p.dedicatoria) {
-      L.push('<div class="psep"></div>');
-      L.push('<div><strong>DEDICATORIA:</strong></div>');
-      L.push(`<div>${S(p.dedicatoria)}</div>`);
-      L.push('<div class="psep"></div>');
-    }
-    // Products
-    L.push('<div class="hdr">ARTICULOS</div>');
-    if (p._items.length) {
-      for (const it of p._items) {
-        const name = S(it.es_personalizado ? (it.nombre_personalizado || it.nombre) : it.nombre);
-        const price = fmtPrecioTk(it.precio_unitario * it.cantidad);
-        L.push(`<div class="irow"><span>${it.cantidad}X ${name}</span><span class="r">${price}</span></div>`);
-      }
-    } else { L.push('<div>(SIN DETALLE)</div>'); }
-    L.push('<div class="sep"></div>');
-    L.push(`<div class="irow"><span>SUBTOTAL</span><span class="r">${fmtPrecioTk(p.subtotal||0)}</span></div>`);
-    if (!recoger && p.envio > 0) L.push(`<div class="irow"><span>ENVIO ZONA ${S(p.zona_entrega||'')}</span><span class="r">${fmtPrecioTk(p.envio)}</span></div>`);
-    L.push('<div class="dsep"></div>');
-    L.push(`<div class="irow"><span class="med">TOTAL</span><span class="r med">${fmtPrecioTk(p.total)}</span></div>`);
-    L.push('<div class="sep"></div>');
-    if (p.forma_pago) { L.push('<div><strong>FORMA DE PAGO:</strong></div>'); L.push(`<div>${S(p.forma_pago)}</div>`); }
-    L.push('<div class="dsep"></div>');
-    L.push('<div class="tline"><strong>GRACIAS POR SU PREFERENCIA</strong></div>');
-    L.push(`<div class="tline sm">${fechaLargaHoy()}</div>`);
-    L.push('<div class="dsep"></div>');
-    document.getElementById('print-frame').innerHTML = L.join('\n');
-    setTimeout(() => window.print(), 100);
-  } catch(e) { alert('Error al cargar pedido'); }
+  } catch(e) {}
 }
 
-// ─── Ticket Repartidor (80mm) ───
-async function imprimirTicketRepartidor(id) {
-  try {
-    const p = await fetchPedidoConItems(id);
-    const S = sanitizarTexto;
-    const recoger = !p.direccion_entrega && !p.zona_entrega;
-    const pagoOk = p.pago_confirmado ? '✓' : 'PENDIENTE';
-    let L = [];
-    L.push('<div class="dsep"></div>');
-    L.push(`<div class="tline med"><strong>${p.numero}</strong></div>`);
-    if (recoger) {
-      L.push('<div class="tline"><strong>RECOGER EN TIENDA</strong></div>');
-    } else {
-      L.push(`<div class="tline">HORARIO: ${horarioLabel(p.horario_entrega)}</div>`);
-      L.push(`<div class="tline">ZONA: ${S(p.zona_entrega||'')}</div>`);
-      if (p.ruta) L.push(`<div class="tline">RUTA: ${S(p.ruta)}</div>`);
-    }
-    L.push('<div class="dsep"></div>');
-    if (!recoger) {
-      L.push('<div class="hdr">ENTREGA A</div>');
-      L.push(`<div><strong>RECIBE:</strong> ${S(p.receptor_nombre||'')}</div>`);
-      if (p.receptor_telefono) L.push(`<div><strong>TEL:</strong> ${p.receptor_telefono}</div>`);
-      if (p.direccion_entrega) L.push(`<div><strong>DIR:</strong> ${S(p.direccion_entrega)}</div>`);
-      if (p.fecha_entrega) L.push(`<div><strong>FECHA:</strong> ${fechaTicket(p.fecha_entrega)}</div>`);
-    } else {
-      L.push(`<div><strong>CLIENTE:</strong> ${S(p.receptor_nombre||'')}</div>`);
-      if (p.receptor_telefono) L.push(`<div><strong>TEL:</strong> ${p.receptor_telefono}</div>`);
-      if (p.hora_exacta) L.push(`<div><strong>HORA:</strong> ${p.hora_exacta}</div>`);
-    }
-    L.push('<div class="dsep"></div>');
-    if (p.dedicatoria) {
-      L.push('<div class="psep"></div>');
-      L.push('<div><strong>DEDICATORIA:</strong></div>');
-      L.push(`<div>${S(p.dedicatoria)}</div>`);
-      L.push('<div class="psep"></div>');
-    }
-    if (p.notas_internas) {
-      L.push('<div><strong>NOTAS:</strong></div>');
-      L.push(`<div>${S(p.notas_internas)}</div>`);
-    }
-    L.push('<div class="dsep"></div>');
-    L.push(`<div><strong>PAGO:</strong> ${S(p.forma_pago||'')} ${pagoOk}</div>`);
-    L.push('<div class="dsep"></div>');
-    document.getElementById('print-frame').innerHTML = L.join('\n');
-    setTimeout(() => window.print(), 100);
-  } catch(e) { alert('Error al cargar pedido'); }
-}
-
-// ─── Mini Ticket / Etiqueta (1 por item) ───
-async function imprimirMiniTicket(id) {
-  try {
-    const p = await fetchPedidoConItems(id);
-    const S = sanitizarTexto;
-    const isFuneral = (p.tipo_especial||'').toLowerCase() === 'funeral';
-    const recoger = !p.direccion_entrega && !p.zona_entrega && !isFuneral;
-    const totalItems = Math.max(p._items.length, 1);
-    let html = '';
-    for (let idx = 0; idx < totalItems; idx++) {
-      const it = p._items[idx];
-      const label = totalItems > 1 ? ` (${idx+1} DE ${totalItems})` : '';
-      const itemName = it ? S(it.es_personalizado ? (it.nombre_personalizado||it.nombre) : it.nombre) : '';
-      let L = [];
-      L.push('<div class="dsep"></div>');
-      L.push(`<div class="tline med">${p.numero}${label}</div>`);
-      if (itemName) L.push(`<div class="tline"><strong>${itemName}</strong></div>`);
-      L.push('<div class="sep"></div>');
-      if (p.fecha_entrega) L.push(`<div>ENTREGA: ${fechaTicket(p.fecha_entrega)}</div>`);
-      if (!recoger && p.horario_entrega) L.push(`<div>HORARIO: ${horarioCorto(p.horario_entrega)}</div>`);
-      if (p.hora_exacta) L.push(`<div>HORA: ${p.hora_exacta}</div>`);
-      if (p.zona_entrega) L.push(`<div>ZONA: ${S(p.zona_entrega)}</div>`);
-      if (p.receptor_nombre) L.push(`<div>RECIBE: ${S(p.receptor_nombre)}</div>`);
-      if (isFuneral) {
-        const mf = (p.notas_internas||'').match(/FUNERAL\s*(?:—|-)\s*([^.]+)/i);
-        if (mf) L.push(`<div>FUNERARIA: ${S(mf[1])}</div>`);
-      }
-      L.push('<div class="dsep"></div>');
-      html += `<div class="mini-ticket">${L.join('\n')}</div>`;
-    }
-    document.getElementById('print-frame').innerHTML = html;
-    setTimeout(() => window.print(), 100);
-  } catch(e) { alert('Error al cargar pedido'); }
-}
-
-// ─── Modal helpers ───
-function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
-
-// ─── Init ───
+// ─── INIT ───
 updateClock();
-setInterval(updateClock, 30000);
-loadPedidos();
-setInterval(loadPedidos, 60000);
-checkTemporada();
-loadAllProductos();
+setInterval(updateClock, 1000);
+checkFechaFuerte();
+loadNuevos();
+loadBadges();
+setInterval(() => {
+  loadBadges();
+  refreshTab(currentTab);
+}, 15000);
 </script>
 </body>
 </html>

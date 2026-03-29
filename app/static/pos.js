@@ -53,6 +53,7 @@ function navTo(sec) {
   document.getElementById('sb-' + sec).classList.add('active');
   if (sec === 'pendientes') loadPendientes();
   if (sec === 'transacciones') loadTransacciones();
+  if (sec === 'entregas') loadEntregas();
 }
 
 function saveFiscalInputs() {
@@ -2271,3 +2272,81 @@ async function confirmarPagoPos(id) {
     }
   } catch(e) { alert('Error de conexion'); }
 }
+
+// ═══════════════════════════════════════════
+// ENTREGAS
+// ═══════════════════════════════════════════
+let entregasSub = 'lobby';
+
+function setEntregasSub(sub, btn) {
+  entregasSub = sub;
+  if (btn) {
+    btn.closest('div').querySelectorAll('button').forEach(b => {
+      b.style.background = '#fff'; b.style.color = 'var(--texto)'; b.style.fontWeight = '500';
+    });
+    btn.style.background = 'var(--verde)'; btn.style.color = '#fff'; btn.style.fontWeight = '600';
+  }
+  loadEntregasContent();
+}
+
+async function loadEntregas() {
+  loadEntregasResumen();
+  loadEntregasContent();
+}
+
+async function loadEntregasResumen() {
+  try {
+    const r = await fetch('/api/taller/entregas/resumen-dia', {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('entregas-resumen').innerHTML = `
+      <span>Total del dia: ${d.total}</span>
+      <span>Entregados: ${d.entregados}</span>
+      <span>Pendientes: ${d.pendientes}</span>
+      <span>Repartidores activos: ${d.repartidores_activos}</span>`;
+    // Badge
+    const badge = document.getElementById('badge-entregas');
+    if (badge) {
+      const pending = d.pendientes;
+      badge.textContent = pending; badge.style.display = pending > 0 ? '' : 'none';
+    }
+  } catch(e) {}
+}
+
+async function loadEntregasContent() {
+  const el = document.getElementById('entregas-content');
+  const urls = {lobby: '/api/taller/entregas/lobby', recoger: '/api/taller/entregas/por-recoger', envios: '/api/taller/entregas/envios'};
+  try {
+    const r = await fetch(urls[entregasSub], {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--texto2)">Sin pedidos</div>'; return; }
+    const isReadOnly = entregasSub === 'envios';
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--verde);color:#fff">';
+    html += '<th style="padding:10px 12px;text-align:left">Orden</th><th style="padding:10px 12px;text-align:left">Cliente</th><th style="padding:10px 12px;text-align:left">Producto(s)</th><th style="padding:10px 12px;text-align:left">Estado</th>';
+    if (!isReadOnly) html += '<th style="padding:10px 12px;text-align:left">Accion</th>';
+    html += '</tr></thead><tbody>';
+    data.forEach(p => {
+      const items = (p.items||[]).map(i => `${i.cantidad>1?i.cantidad+'x ':''}${i.nombre}`).join(', ') || '—';
+      html += `<tr style="border-bottom:1px solid var(--borde)">
+        <td style="padding:10px 12px;font-weight:700;color:var(--verde)">${p.numero}</td>
+        <td style="padding:10px 12px;font-weight:600">${p.cliente_nombre || p.receptor_nombre || '—'}</td>
+        <td style="padding:10px 12px;color:var(--texto2)">${items}</td>
+        <td style="padding:10px 12px">${p.estado}${p.ruta ? ' — Ruta '+p.ruta : ''}</td>`;
+      if (!isReadOnly) html += `<td style="padding:10px 12px"><button onclick="entregaMarcar(${p.id})" style="padding:8px 14px;background:var(--verde);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">✅ Entregado</button></td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  } catch(e) {}
+}
+
+async function entregaMarcar(id) {
+  try {
+    await fetch(`/api/taller/pedidos/${id}/entregado`, {method:'POST', credentials:'include'});
+    loadEntregas();
+  } catch(e) {}
+}
+
+// Auto-refresh entregas badge
+setInterval(loadEntregasResumen, 30000);
