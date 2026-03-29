@@ -1009,6 +1009,8 @@ async function submitPedido(estado) {
       contadorPendientes++;
       renderBadge();
     }
+    // Refresh all tabs immediately after order creation
+    setTimeout(() => updateBadgePend(), 500);
     mostrarModalCreado(result);
   } catch(e) {
     console.error('POS submitPedido error:', e);
@@ -2245,19 +2247,35 @@ async function updateBadgePend() {
     contadorPendientes = (data.pendientes || []).length;
     renderBadge();
     // Auto-refresh if pendientes section is active
-    if (document.getElementById('sec-pendientes').classList.contains('active') && pendFilterPeriodo === 'hoy') {
-      pendAllData = data.pendientes || [];
-      const q = document.getElementById('pend-search').value.trim();
-      if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
+    if (document.getElementById('sec-pendientes').classList.contains('active')) {
+      if (pendFilterPeriodo === 'hoy') {
+        pendAllData = data.pendientes || [];
+        const q = document.getElementById('pend-search')?.value?.trim();
+        if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
+      } else {
+        loadPendientes();
+      }
     }
     // Auto-refresh transacciones if active
-    if (document.getElementById('sec-transacciones').classList.contains('active') && transFilterPeriodo === 'hoy') {
+    if (document.getElementById('sec-transacciones').classList.contains('active')) {
       loadTransacciones();
+    }
+    // Auto-refresh entregas if active
+    if (document.getElementById('sec-entregas')?.classList.contains('active')) {
+      loadEntregasContent();
     }
   } catch(e) { /* silent */ }
 }
 updateBadgePend();
-setInterval(updateBadgePend, 60000);
+setInterval(updateBadgePend, 15000);
+
+// Auto-refresh on tab visibility change (user returns to browser)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    updateBadgePend();
+  }
+});
+window.addEventListener('focus', () => { updateBadgePend(); });
 
 async function confirmarPagoPos(id) {
   if (!confirm('Confirmar que el pago fue verificado?')) return;

@@ -288,12 +288,41 @@ async def pos_crear_pedido(
     fecha_str = data.get("fecha_entrega")
     fecha_entrega = date_type.fromisoformat(fecha_str) if fecha_str else datetime.now(TZ).date()
 
+    # Determinar metodo_entrega y estado correcto
+    es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral"))
+    es_funeral = tipo == "funeral"
+    if es_mostrador:
+        _metodo = "mostrador"
+    elif tipo == "recoger":
+        _metodo = "recoger"
+    elif es_funeral and data.get("direccion_entrega"):
+        _metodo = "funeral_envio"
+    elif es_funeral:
+        _metodo = "funeral_recoger"
+    else:
+        _metodo = "envio"
+
+    # Mostrador pagado → Listo (cliente se lo lleva)
+    # Envío/recoger/funeral pagado → En producción (florista debe elaborar)
+    if estado_pedido == "pagado":
+        if es_mostrador:
+            _estado = "Listo"
+            _estado_fl = "aprobado"
+        else:
+            _estado = "En producción"
+            _estado_fl = "aprobado"
+    else:
+        _estado = "Pendiente pago"
+        _estado_fl = "pendiente_pago"
+
     pedido = Pedido(
         numero=folio,
         customer_id=cliente_id,
         canal="Mostrador",
-        estado="Listo" if estado_pedido == "pagado" else "Pendiente pago",
-        estado_florista="aprobado" if estado_pedido == "pagado" else "pendiente_pago",
+        estado=_estado,
+        estado_florista=_estado_fl,
+        metodo_entrega=_metodo,
+        produccion_at=datetime.now(TZ) if _estado == "En producción" else None,
         fecha_entrega=fecha_entrega,
         horario_entrega=horario,
         hora_exacta=data.get("hora_especifica"),
@@ -659,9 +688,32 @@ async def pos_completar_pedido(
         if suma_pagos < total:
             raise HTTPException(status_code=400, detail=f"Falta asignar ${(total - suma_pagos) / 100:.0f}")
 
-    # Update pedido fields
-    pedido.estado = "Listo" if estado_pedido == "pagado" else "Pendiente pago"
-    pedido.estado_florista = "aprobado" if estado_pedido == "pagado" else "pendiente_pago"
+    # Determinar metodo_entrega
+    es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral"))
+    if es_mostrador:
+        _metodo = "mostrador"
+    elif tipo == "recoger":
+        _metodo = "recoger"
+    elif tipo == "funeral" and data.get("direccion_entrega"):
+        _metodo = "funeral_envio"
+    elif tipo == "funeral":
+        _metodo = "funeral_recoger"
+    else:
+        _metodo = "envio"
+
+    # Mostrador pagado → Listo | Envío/recoger pagado → En producción
+    if estado_pedido == "pagado":
+        if es_mostrador:
+            pedido.estado = "Listo"
+        else:
+            pedido.estado = "En producción"
+            pedido.produccion_at = datetime.now(TZ)
+        pedido.estado_florista = "aprobado"
+    else:
+        pedido.estado = "Pendiente pago"
+        pedido.estado_florista = "pendiente_pago"
+
+    pedido.metodo_entrega = _metodo
     pedido.pago_confirmado = estado_pedido == "pagado"
     pedido.subtotal = subtotal
     pedido.envio = envio
