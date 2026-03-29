@@ -4,39 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Repartidor — Floreria Lucy</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#dc3545;--naranja:#f59e0b;--dorado:#d4a843;--morada:#7c3aed;--azul:#2563eb;--verde-c:#16a34a}
+:root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#ef4444;--naranja:#f97316;--dorado:#d4a843;--morada:#7c3aed;--azul:#2563eb;--verde-c:#16a34a}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh}
+body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent}
 
 /* Header */
-.hdr{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--verde);color:#fff;padding:14px 16px}
-.hdr-title{font-size:16px;font-weight:600}
-.hdr-sub{font-size:12px;opacity:.8;margin-top:2px}
+.hdr{position:fixed;top:0;left:0;right:0;z-index:50;background:var(--verde);color:#fff;padding:12px 16px}
+.hdr-top{display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-size:16px;font-weight:700}
+.hdr-logout{font-size:11px;color:#f87171;text-decoration:none}
 
-/* Views */
-.view{display:none;padding:70px 12px 100px;max-width:480px;margin:0 auto}
-.view.active{display:block}
+/* Resumen del dia */
+.resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.resumen-item{text-align:center;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 4px}
+.resumen-num{font-size:20px;font-weight:800}
+.resumen-label{font-size:9px;opacity:.8;text-transform:uppercase;letter-spacing:.3px}
+
+/* Tabs */
+.tabs{position:fixed;top:0;left:0;right:0;z-index:40;background:var(--blanco);border-bottom:1px solid var(--borde);display:flex}
+.tab{flex:1;padding:10px 8px;font-size:12px;font-weight:600;color:var(--texto2);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;font-family:inherit;text-align:center;position:relative}
+.tab.active{color:var(--verde);border-bottom-color:var(--verde)}
+.tab-badge{position:absolute;top:4px;right:calc(50% - 30px);background:var(--rojo);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;padding:0 4px;border-radius:8px;display:none;align-items:center;justify-content:center}
+
+/* Main */
+.main{padding-top:12px;padding-bottom:100px;max-width:500px;margin:0 auto;padding-left:12px;padding-right:12px}
 
 /* Login */
-.login-box{max-width:320px;margin:80px auto;text-align:center}
+.login-view{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{max-width:320px;width:100%;text-align:center}
 .login-box h2{font-size:20px;font-weight:700;color:var(--verde);margin-bottom:4px}
 .login-box p{font-size:13px;color:var(--texto2);margin-bottom:20px}
 .login-input{width:100%;padding:14px;border:1px solid var(--borde);border-radius:10px;font-size:15px;font-family:inherit;margin-bottom:12px}
 .login-input:focus{outline:none;border-color:var(--verde)}
 .login-btn{width:100%;padding:14px;background:var(--verde);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px}
-.login-btn:active{background:var(--verde-m)}
 .login-err{color:var(--rojo);font-size:13px;margin-top:8px;display:none}
 
 /* Card */
-.card{background:var(--blanco);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,.06);border-left:4px solid var(--borde);position:relative;transition:all .4s}
+.card{background:var(--blanco);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 8px rgba(0,0,0,.06);border-left:4px solid var(--borde);position:relative;transition:all .2s}
 .card.zona-morada{border-left-color:var(--morada)}
 .card.zona-azul{border-left-color:var(--azul)}
 .card.zona-verde{border-left-color:var(--verde-c)}
-.card.entregado{opacity:.5;background:#f0fdf4}
 .card.fallido{border-left-color:var(--rojo);background:#fff5f5}
 .card-check{position:absolute;top:12px;right:12px;width:24px;height:24px;accent-color:var(--verde)}
+.card-parada{display:inline-block;background:var(--verde);color:var(--dorado);font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;margin-bottom:6px}
+.card-folio{font-size:20px;font-weight:800;color:var(--verde);margin-bottom:4px}
+.card-timer{font-size:11px;font-weight:700;background:#fee2e2;color:var(--rojo);padding:3px 8px;border-radius:6px;margin-left:8px}
 .badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;display:inline-block;margin-right:4px;margin-bottom:6px}
 .badge-manana{background:#fef3c7;color:#92400e}
 .badge-tarde{background:#fed7aa;color:#9a3412}
@@ -45,79 +59,93 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .badge-zona-morada{background:var(--morada)}
 .badge-zona-azul{background:var(--azul)}
 .badge-zona-verde{background:var(--verde-c)}
+.badge-ruta{background:var(--verde);color:var(--dorado)}
 .card-name{font-size:16px;font-weight:700;margin-bottom:4px}
 .card-detail{font-size:13px;color:var(--texto2);margin-bottom:3px}
 .card-detail a{color:var(--verde);text-decoration:none}
 .card-dedi{font-style:italic;font-size:12px;background:#fef9e7;padding:6px 8px;border-radius:6px;margin:6px 0;color:#92400e}
 .card-notas{font-size:12px;color:var(--texto2);margin:4px 0}
-.card-pago{font-size:13px;font-weight:600;margin-top:6px}
 .card-items{font-size:11px;color:var(--texto2);margin-top:4px}
-.card-banner{font-size:11px;font-weight:600;padding:6px 8px;border-radius:6px;margin-top:8px}
-.banner-ok{background:#dcfce7;color:#166534}
-.banner-fail{background:#fee2e2;color:#991b1b}
-
-/* Action buttons */
 .card-actions{display:flex;gap:8px;margin-top:10px}
-.abtn{flex:1;padding:12px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px;display:flex;align-items:center;justify-content:center;gap:4px}
+.abtn{flex:1;padding:12px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;min-height:48px;display:flex;align-items:center;justify-content:center;gap:5px}
 .abtn:active{transform:scale(.97)}
 .abtn-ok{background:var(--verde-c);color:#fff}
 .abtn-fail{background:var(--rojo);color:#fff}
-.abtn-confirm{background:var(--verde);color:#fff;margin-top:8px}
+.abtn-maps{background:var(--blanco);color:var(--verde);border:1px solid var(--verde)}
+.abtn-call{background:var(--blanco);color:var(--azul);border:1px solid var(--azul)}
 
-/* Photo preview */
-.foto-preview{display:flex;align-items:center;gap:8px;margin-top:8px}
-.foto-preview img{width:80px;height:80px;object-fit:cover;border-radius:8px}
-.foto-preview .abtn{flex:none;width:auto;padding:10px 16px}
+/* Drag handle */
+.drag-handle{cursor:grab;font-size:18px;color:var(--texto2);padding:4px 8px;touch-action:none;user-select:none}
+.card.dragging{opacity:.5;transform:scale(.98)}
 
 /* Bottom bar */
 .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:60;background:var(--blanco);border-top:1px solid var(--borde);padding:10px 12px;display:flex;gap:8px}
-.bottom-bar .abtn{font-size:13px}
-.bbtn-maps{background:var(--blanco);color:var(--verde);border:1px solid var(--verde)}
-.bbtn-ruta{background:var(--verde);color:#fff}
+.bbtn-ruta{background:var(--verde);color:#fff;font-size:14px;font-weight:700}
 .bbtn-ruta:disabled{opacity:.4;cursor:not-allowed}
 
-/* Modal */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
-.modal-bg.active{display:flex}
-.modal{background:var(--blanco);border-radius:16px;padding:20px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto}
-.modal h3{font-size:16px;font-weight:600;margin-bottom:12px;color:var(--verde)}
-.modal-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.chip{padding:8px 12px;border:1px solid var(--borde);border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit;background:var(--blanco)}
-.chip:hover,.chip.active{background:var(--verde);color:#fff;border-color:var(--verde)}
-.modal textarea{width:100%;padding:10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;min-height:60px;margin-bottom:12px}
-.modal textarea:focus{outline:none;border-color:var(--verde)}
-.modal-btns{display:flex;gap:8px}
-.modal-btns .abtn{font-size:13px}
-.mbtn-cancel{background:var(--blanco);color:var(--texto);border:1px solid var(--borde)}
-.mbtn-danger{background:var(--rojo);color:#fff}
+/* Photo */
+.foto-preview{display:flex;align-items:center;gap:8px;margin-top:8px}
+.foto-preview img{width:80px;height:80px;object-fit:cover;border-radius:8px}
+.abtn-confirm{background:var(--verde);color:#fff;flex:none;padding:10px 20px}
 
-/* Summary */
-.summary{text-align:center;padding:40px 20px}
-.summary h2{font-size:22px;font-weight:700;color:var(--verde);margin-bottom:20px}
-.summary-row{font-size:16px;margin-bottom:8px}
-.summary-fail{margin-top:20px;text-align:left}
-.summary-fail-item{font-size:13px;padding:8px;background:#fff5f5;border-radius:8px;margin-bottom:6px}
+/* Historial */
+.hist-card{background:var(--blanco);border-radius:12px;padding:12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.04);display:flex;gap:10px;align-items:center}
+.hist-foto{width:56px;height:56px;border-radius:8px;object-fit:cover;cursor:pointer;flex-shrink:0}
+.hist-foto-placeholder{width:56px;height:56px;border-radius:8px;background:var(--crema);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hist-info{flex:1;min-width:0}
+.hist-folio{font-size:14px;font-weight:700;color:var(--verde)}
+.hist-detail{font-size:12px;color:var(--texto2)}
+.hist-tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;display:inline-block}
+.tag-ok{background:#dcfce7;color:var(--verde-c)}
+.tag-fail{background:#fee2e2;color:var(--rojo)}
+
+/* Cierre ruta */
+.cierre{text-align:center;padding:40px 20px}
+.cierre-icon{font-size:48px;margin-bottom:12px}
+.cierre-title{font-size:22px;font-weight:800;color:var(--verde);margin-bottom:8px}
+.cierre-stat{font-size:16px;margin-bottom:6px}
+.cierre-tiempo{font-size:14px;color:var(--texto2);margin-bottom:20px}
 
 /* Filters */
 .filters{margin-bottom:12px}
-.filter-group{margin-bottom:8px}
-.filter-label{font-size:10px;font-weight:600;color:var(--texto2);text-transform:uppercase;margin-bottom:4px;letter-spacing:.5px}
+.filter-group{margin-bottom:6px}
+.filter-label{font-size:10px;font-weight:600;color:var(--texto2);text-transform:uppercase;margin-bottom:3px;letter-spacing:.5px}
 .filter-row{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .filter-row::-webkit-scrollbar{display:none}
 .fbtn{padding:5px 10px;border:1px solid var(--verde);border-radius:14px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--verde);white-space:nowrap;flex-shrink:0}
 .fbtn.active{background:var(--verde);color:var(--dorado);border-color:var(--verde)}
 
-.err-msg{color:var(--rojo);font-size:12px;margin-top:4px;display:none}
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.modal-bg.active{display:flex}
+.modal{background:var(--blanco);border-radius:16px;padding:20px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:12px;color:var(--verde)}
+.modal-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{padding:8px 12px;border:1px solid var(--borde);border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit;background:var(--blanco)}
+.chip.active{background:var(--verde);color:#fff;border-color:var(--verde)}
+.modal textarea{width:100%;padding:10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;min-height:60px;margin-bottom:12px}
+.modal textarea:focus{outline:none;border-color:var(--verde)}
+.modal-btns{display:flex;gap:8px}
+.mbtn-cancel{background:var(--blanco);color:var(--texto);border:1px solid var(--borde)}
+.mbtn-danger{background:var(--rojo);color:#fff}
+
+/* Foto modal full */
+.foto-full-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:center;justify-content:center}
+.foto-full-overlay.active{display:flex}
+.foto-full-overlay img{max-width:95%;max-height:90vh;border-radius:12px;object-fit:contain}
+
+.empty{text-align:center;padding:40px;color:var(--texto2);font-size:14px}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.err-msg{color:var(--rojo);font-size:12px;margin-top:4px;display:none}
 </style>
 </head>
 <body>
 
-<!-- STATE A: Login -->
-<div class="view active" id="v-login">
+<!-- ═══ LOGIN ═══ -->
+<div id="v-login" class="login-view">
   <div class="login-box">
-    <h2>Repartidor</h2>
+    <h2>🚚 Repartidor</h2>
     <p>Floreria Lucy</p>
     <input class="login-input" type="password" id="login-pw" placeholder="Contrasena" autocomplete="current-password">
     <button class="login-btn" id="login-btn">Entrar</button>
@@ -125,46 +153,67 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   </div>
 </div>
 
-<!-- STATE B: Select orders -->
-<div class="view" id="v-select">
-  <div class="hdr">
-    <div class="hdr-title" style="display:flex;align-items:center;gap:10px">Repartidor — Floreria Lucy <a href="/auth/logout" style="font-size:11px;color:#f87171;text-decoration:none;margin-left:auto">Salir</a></div>
-    <div class="hdr-sub" id="hdr-select-sub"></div>
+<!-- ═══ APP (post-login) ═══ -->
+<div id="v-app" style="display:none">
+
+<!-- Header + resumen -->
+<div class="hdr" id="app-header">
+  <div class="hdr-top">
+    <div class="hdr-title">🚚 Repartidor</div>
+    <a class="hdr-logout" href="/auth/logout">Salir</a>
   </div>
-  <div id="filters-select"></div>
-  <div id="select-list"></div>
-  <div class="bottom-bar">
-    <button class="abtn bbtn-maps" id="btn-maps" onclick="abrirMaps()">📍 Ver en Maps</button>
-    <button class="abtn bbtn-ruta" id="btn-ruta" disabled onclick="confirmarRuta()">🚚 INICIAR RUTA (0)</button>
+  <div class="resumen" id="resumen-dia">
+    <div class="resumen-item"><div class="resumen-num" id="r-asignados">0</div><div class="resumen-label">Asignados</div></div>
+    <div class="resumen-item"><div class="resumen-num" id="r-enruta">0</div><div class="resumen-label">En ruta</div></div>
+    <div class="resumen-item"><div class="resumen-num" id="r-entregados">0</div><div class="resumen-label">Entregados</div></div>
+    <div class="resumen-item"><div class="resumen-num" id="r-fallidos">0</div><div class="resumen-label">No entregados</div></div>
   </div>
 </div>
 
-<!-- STATE C: En camino -->
-<div class="view" id="v-camino">
-  <div class="hdr">
-    <div class="hdr-title" style="display:flex;align-items:center;gap:10px">Repartidor — Floreria Lucy <a href="/auth/logout" style="font-size:11px;color:#f87171;text-decoration:none;margin-left:auto">Salir</a></div>
-    <div class="hdr-sub" id="hdr-camino-sub"></div>
-  </div>
-  <div id="filters-camino"></div>
-  <div id="camino-list"></div>
+<!-- Tabs -->
+<div class="tabs" id="app-tabs" style="top:108px">
+  <button class="tab active" data-tab="pendientes" onclick="switchTab('pendientes')">📦 Pendientes <span class="tab-badge" id="tb-pend"></span></button>
+  <button class="tab" data-tab="entregados" onclick="switchTab('entregados')">✅ Entregados</button>
+  <button class="tab" data-tab="fallidos" onclick="switchTab('fallidos')">❌ No entregados</button>
 </div>
 
-<!-- STATE D: Summary -->
-<div class="view" id="v-summary">
-  <div class="hdr">
-    <div class="hdr-title" style="display:flex;align-items:center;gap:10px">Repartidor — Floreria Lucy <a href="/auth/logout" style="font-size:11px;color:#f87171;text-decoration:none;margin-left:auto">Salir</a></div>
-    <div class="hdr-sub">Resumen del dia</div>
+<!-- Content -->
+<div class="main" style="padding-top:160px">
+
+  <!-- TAB: Pendientes -->
+  <div id="tab-pendientes">
+    <div id="filters-box"></div>
+    <div id="pendientes-list"></div>
+    <div class="bottom-bar" id="bottom-bar">
+      <button class="abtn abtn-maps" onclick="abrirMaps()" style="flex:none;padding:12px 16px">📍 Maps</button>
+      <button class="abtn bbtn-ruta" id="btn-ruta" disabled onclick="confirmarRuta()">🚚 INICIAR RUTA (0)</button>
+    </div>
   </div>
-  <div id="summary-body"></div>
+
+  <!-- TAB: Entregados -->
+  <div id="tab-entregados" style="display:none">
+    <div id="entregados-list"></div>
+  </div>
+
+  <!-- TAB: No entregados -->
+  <div id="tab-fallidos" style="display:none">
+    <div id="fallidos-list"></div>
+  </div>
+
+  <!-- Cierre de ruta (overlay) -->
+  <div id="cierre-ruta" style="display:none"></div>
+
+</div>
 </div>
 
 <!-- Modal: confirm route -->
 <div class="modal-bg" id="modal-ruta" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="modal">
     <h3 id="modal-ruta-title">Iniciar ruta?</h3>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:12px" id="modal-ruta-est"></p>
     <div class="modal-btns">
       <button class="abtn mbtn-cancel" onclick="document.getElementById('modal-ruta').classList.remove('active')">Cancelar</button>
-      <button class="abtn abtn-ok" onclick="iniciarRuta()">Si, salir</button>
+      <button class="abtn abtn-ok" onclick="iniciarRuta()">Si, salir a repartir</button>
     </div>
   </div>
 </div>
@@ -182,84 +231,62 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     </div>
     <textarea id="ne-motivo" placeholder="Detalle del motivo..."></textarea>
     <div class="modal-btns">
-      <button class="abtn mbtn-cancel" onclick="cerrarNoEntrega()">Cancelar</button>
+      <button class="abtn mbtn-cancel" onclick="document.getElementById('modal-noentrega').classList.remove('active')">Cancelar</button>
       <button class="abtn mbtn-danger" id="ne-submit">Registrar</button>
     </div>
   </div>
 </div>
 
+<!-- Foto full screen -->
+<div class="foto-full-overlay" id="foto-full" onclick="this.classList.remove('active')">
+  <img id="foto-full-img" src="">
+</div>
+
 <script>
+const RUTAS = ['NORTE','NORESTE','NOROESTE','PONIENTE','ORIENTE','SUR','SURESTE','Zona Central'];
 let allPedidos = [];
 let selected = new Set();
 let currentNoEntregaId = null;
-let currentState = 'login';
+let currentTab = 'pendientes';
+let rutaStartTime = null;
 
 // ─── Filters ───
 const filters = { dia: 'hoy', horario: 'todos', ruta: 'todos', tipo: 'todos' };
-const RUTAS = ['NORTE','NORESTE','NOROESTE','PONIENTE','ORIENTE','SUR','SURESTE','Zona Central'];
 
-function renderFilters(containerId) {
-  const mkBtn = (group, value, label) => {
-    const active = filters[group] === value ? 'active' : '';
-    return `<span class="fbtn ${active}" onclick="setFilter('${group}','${value}')">${label}</span>`;
-  };
-  document.getElementById(containerId).innerHTML = `<div class="filters">
+function renderFilters() {
+  const mk = (g, v, l) => `<span class="fbtn ${filters[g]===v?'active':''}" onclick="setFilter('${g}','${v}')">${l}</span>`;
+  document.getElementById('filters-box').innerHTML = `<div class="filters">
     <div class="filter-group"><div class="filter-label">Dia</div><div class="filter-row">
-      ${mkBtn('dia','hoy','Hoy')}${mkBtn('dia','manana','Manana')}${mkBtn('dia','todos','Todos')}
+      ${mk('dia','hoy','Hoy')}${mk('dia','manana','Manana')}${mk('dia','todos','Todos')}
     </div></div>
     <div class="filter-group"><div class="filter-label">Horario</div><div class="filter-row">
-      ${mkBtn('horario','todos','Todos')}${mkBtn('horario','manana','Manana')}${mkBtn('horario','tarde','Tarde')}${mkBtn('horario','noche','Noche')}
+      ${mk('horario','todos','Todos')}${mk('horario','manana','Manana')}${mk('horario','tarde','Tarde')}${mk('horario','noche','Noche')}
     </div></div>
     <div class="filter-group"><div class="filter-label">Ruta</div><div class="filter-row">
-      ${mkBtn('ruta','todos','Todos')}${RUTAS.map(r => mkBtn('ruta', r, r)).join('')}
-    </div></div>
-    <div class="filter-group"><div class="filter-label">Tipo</div><div class="filter-row">
-      ${mkBtn('tipo','todos','Todos')}${mkBtn('tipo','domicilio','Domicilio')}${mkBtn('tipo','funeral','Funeral')}
+      ${mk('ruta','todos','Todos')}${RUTAS.map(r => mk('ruta',r,r)).join('')}
     </div></div>
   </div>`;
 }
 
-function setFilter(group, value) {
-  const changed = filters[group] !== value;
-  filters[group] = value;
-  if (group === 'dia' && changed) {
-    loadEntregas();
-  } else {
-    if (currentState === 'select') renderSelect();
-    else if (currentState === 'camino') renderCamino();
-  }
+function setFilter(g, v) {
+  filters[g] = v;
+  if (g === 'dia') loadEntregas(); else renderPendientes();
 }
 
-function applyFilters(pedidos) {
-  return pedidos.filter(p => {
+function applyFilters(list) {
+  return list.filter(p => {
     if (filters.horario !== 'todos') {
       const h = (p.horario_entrega||'').toLowerCase();
       if (filters.horario === 'manana' && !h.includes('mañana') && !h.includes('manana')) return false;
       if (filters.horario === 'tarde' && !h.includes('tarde')) return false;
       if (filters.horario === 'noche' && !h.includes('noche')) return false;
     }
-    if (filters.ruta !== 'todos') {
-      if ((p.ruta||'') !== filters.ruta) return false;
-    }
-    if (filters.tipo !== 'todos') {
-      const isFuneral = (p.tipo_especial||'') === 'Funeral';
-      if (filters.tipo === 'funeral' && !isFuneral) return false;
-      if (filters.tipo === 'domicilio' && isFuneral) return false;
-    }
+    if (filters.ruta !== 'todos' && (p.ruta||'') !== filters.ruta) return false;
     return true;
   });
 }
 
-function showView(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('v-' + id).classList.add('active');
-  currentState = id;
-}
-
-function todayStr() {
-  return new Date().toLocaleDateString('es-MX', {timeZone:'America/Chihuahua', weekday:'long', day:'numeric', month:'long'});
-}
-
+// ─── Helpers ───
 function zonaClass(z) {
   const zl = (z||'').toLowerCase();
   if (zl.includes('morada')) return 'zona-morada';
@@ -267,7 +294,6 @@ function zonaClass(z) {
   if (zl.includes('verde')) return 'zona-verde';
   return '';
 }
-
 function horarioBadge(h) {
   const hl = (h||'').toLowerCase();
   if (hl.includes('mañana')||hl.includes('manana')) return '<span class="badge badge-manana">Manana</span>';
@@ -275,7 +301,6 @@ function horarioBadge(h) {
   if (hl.includes('noche')) return '<span class="badge badge-noche">Noche</span>';
   return '';
 }
-
 function zonaBadge(z) {
   const zl = (z||'').toLowerCase();
   let cls = '';
@@ -284,60 +309,68 @@ function zonaBadge(z) {
   else if (zl.includes('verde')) cls = 'badge-zona-verde';
   return cls ? `<span class="badge badge-zona ${cls}">${z}</span>` : '';
 }
-
 function telLink(t) {
   if (!t) return '';
-  const digits = t.replace(/\D/g,'');
-  const num = digits.length === 10 ? '52' + digits : digits;
-  return `<a href="tel:${num}">📞 ${t}</a>`;
+  const d = t.replace(/\D/g,'');
+  const num = d.length === 10 ? '52' + d : d;
+  return `<a href="tel:${num}" style="color:var(--azul)">📞 ${t}</a>`;
+}
+function mapsLink(dir) {
+  if (!dir) return '';
+  return `<a href="https://www.google.com/maps/search/${encodeURIComponent(dir+', Chihuahua, México')}" target="_blank" style="color:var(--verde)">🗺 Abrir en Maps</a>`;
+}
+function tiempoDesde(iso) {
+  if (!iso) return '';
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diff < 1) return 'ahora';
+  if (diff < 60) return `${diff}m`;
+  return `${Math.floor(diff/60)}h ${diff%60}m`;
+}
+function fmtFecha(str) {
+  if (!str) return '';
+  return new Date(str+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short'});
+}
+function fmtHora(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'});
 }
 
 // ─── Login ───
 document.getElementById('login-btn').addEventListener('click', doLogin);
 document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
 async function doLogin() {
   const pw = document.getElementById('login-pw').value;
   try {
-    const r = await fetch('/auth/login', {
-      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({password: pw})
-    });
-    if (r.ok) {
-      loadEntregas();
-    } else {
-      document.getElementById('login-err').style.display = '';
-    }
-  } catch(e) {
-    document.getElementById('login-err').textContent = 'Error de conexion';
-    document.getElementById('login-err').style.display = '';
-  }
+    const r = await fetch('/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({password: pw})});
+    if (r.ok) { enterApp(); } else { document.getElementById('login-err').style.display = ''; }
+  } catch(e) { document.getElementById('login-err').textContent = 'Error de conexion'; document.getElementById('login-err').style.display = ''; }
 }
 
-// ─── Check session on load ───
+// ─── Session check ───
 async function checkSession() {
   try {
     const r = await fetch('/repartidor/entregas-hoy', {credentials:'include'});
-    if (r.ok) {
-      allPedidos = await r.json();
-      decideView();
-    }
+    if (r.ok) { allPedidos = await r.json(); enterApp(); }
   } catch(e) {}
 }
 
-function decideView() {
-  const listos = allPedidos.filter(p => p.estado === 'Listo');
-  const enCamino = allPedidos.filter(p => p.estado === 'En camino');
-  if (enCamino.length > 0) {
-    renderCamino();
-    showView('camino');
-  } else if (listos.length > 0) {
-    renderSelect();
-    showView('select');
-  } else {
-    renderSummary();
-    showView('summary');
-  }
+function enterApp() {
+  document.getElementById('v-login').style.display = 'none';
+  document.getElementById('v-app').style.display = '';
+  loadEntregas();
+}
+
+// ─── Tabs ───
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('tab-pendientes').style.display = tab === 'pendientes' ? '' : 'none';
+  document.getElementById('tab-entregados').style.display = tab === 'entregados' ? '' : 'none';
+  document.getElementById('tab-fallidos').style.display = tab === 'fallidos' ? '' : 'none';
+  document.getElementById('bottom-bar').style.display = tab === 'pendientes' ? '' : 'none';
+  if (tab === 'pendientes') renderPendientes();
+  else if (tab === 'entregados') renderEntregados();
+  else if (tab === 'fallidos') renderFallidos();
 }
 
 // ─── Load data ───
@@ -345,40 +378,95 @@ async function loadEntregas() {
   try {
     const param = filters.dia !== 'hoy' ? `?fecha=${filters.dia}` : '';
     const r = await fetch(`/repartidor/entregas-hoy${param}`, {credentials:'include'});
-    if (r.status === 401) { showView('login'); return; }
+    if (r.status === 401) { document.getElementById('v-login').style.display = ''; document.getElementById('v-app').style.display = 'none'; return; }
     if (!r.ok) return;
     allPedidos = await r.json();
-    decideView();
+    updateResumen();
+    renderPendientes();
+    // Check if there's an active route (pedidos en camino)
+    const enCamino = allPedidos.filter(p => p.estado === 'En camino');
+    if (enCamino.length > 0 && !rutaStartTime) {
+      rutaStartTime = Date.now();
+    }
   } catch(e) {}
 }
 
-// ─── STATE B: Select ───
-function renderSelect() {
-  renderFilters('filters-select');
-  const allListos = allPedidos.filter(p => p.estado === 'Listo');
-  const listos = applyFilters(allListos);
-  document.getElementById('hdr-select-sub').textContent = `${todayStr()}  ·  ${listos.length} de ${allListos.length} pendientes`;
+function updateResumen() {
+  const listos = allPedidos.filter(p => p.estado === 'Listo' || p.estado === 'listo_taller');
+  const enCamino = allPedidos.filter(p => p.estado === 'En camino');
+  const entregados = allPedidos.filter(p => p.estado === 'Entregado' || p.estado === 'entregado');
+  const fallidos = allPedidos.filter(p => p.estado === 'intento_fallido');
+  document.getElementById('r-asignados').textContent = listos.length + enCamino.length;
+  document.getElementById('r-enruta').textContent = enCamino.length;
+  document.getElementById('r-entregados').textContent = entregados.length;
+  document.getElementById('r-fallidos').textContent = fallidos.length;
+  // Tab badges
+  const bp = document.getElementById('tb-pend');
+  const pending = listos.length + enCamino.length;
+  bp.textContent = pending; bp.style.display = pending > 0 ? 'flex' : 'none';
+}
+
+// ─── Render card body (shared) ───
+function cardBody(p) {
+  return `<div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}${p.ruta ? `<span class="badge badge-ruta">${p.ruta}</span>` : ''}</div>
+    ${p.fecha_entrega ? `<div class="card-detail">📅 ${fmtFecha(p.fecha_entrega)}</div>` : ''}
+    <div class="card-name">${p.nombre_destinatario||'Sin destinatario'}</div>
+    <div class="card-detail">${telLink(p.telefono_destinatario)}</div>
+    <div class="card-detail">📍 ${p.direccion_entrega||'Sin direccion'}</div>
+    <div class="card-detail">${mapsLink(p.direccion_entrega)}</div>
+    ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
+    ${p.notas_entrega ? `<div class="card-notas">📝 ${p.notas_entrega}</div>` : ''}
+    ${p.items && p.items.length ? `<div class="card-items">📦 ${p.items.join(', ')}</div>` : ''}
+    ${p.cliente_nombre ? `<div style="font-size:11px;color:var(--texto2);margin-top:4px;border-top:1px solid var(--borde);padding-top:4px">Ordenó: ${p.cliente_nombre}${p.cliente_telefono ? ' · '+telLink(p.cliente_telefono) : ''}</div>` : ''}`;
+}
+
+// ─── TAB: Pendientes ───
+function renderPendientes() {
+  renderFilters();
+  const listos = allPedidos.filter(p => p.estado === 'Listo' || p.estado === 'listo_taller');
+  const enCamino = allPedidos.filter(p => p.estado === 'En camino');
+  const all = [...enCamino, ...applyFilters(listos)];
+  const el = document.getElementById('pendientes-list');
+
+  if (!all.length) {
+    el.innerHTML = '<div class="empty">🚚 No hay entregas pendientes</div>';
+    return;
+  }
+
   let html = '';
-  if (!listos.length) {
-    html = '<div style="text-align:center;padding:40px;color:var(--texto2)">No hay pedidos listos</div>';
-  }
-  for (const p of listos) {
-    const checked = selected.has(p.id) ? 'checked' : '';
-    html += `<div class="card ${zonaClass(p.zona_envio)}">
-      <input type="checkbox" class="card-check" ${checked} onchange="toggleSel(${p.id},this.checked)">
-      <div style="font-size:18px;font-weight:700;color:var(--verde);margin-bottom:6px">${p.folio}</div>
-      <div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}${p.ruta ? `<span class="badge" style="background:#193a2c;color:#d4a843">${p.ruta}</span>` : ''}</div>
-      ${p.fecha_entrega ? `<div class="card-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
-      <div class="card-detail" style="font-weight:600">Entrega a: ${p.nombre_destinatario||''}</div>
-      <div class="card-detail">Tel: ${telLink(p.telefono_destinatario)}</div>
-      <div class="card-detail">${p.direccion_entrega||''}</div>
-      ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
-      ${p.notas_entrega ? `<div class="card-notas">${p.notas_entrega}</div>` : ''}
-      ${p.cliente_nombre ? `<div style="font-size:11px;color:var(--texto2);margin-top:6px;border-top:1px solid var(--borde);padding-top:6px">Contacto cliente: ${p.cliente_nombre}${p.cliente_telefono ? ' · ' + telLink(p.cliente_telefono) : ''}</div>` : ''}
-      ${p.items.length ? `<div class="card-items">${p.items.join(', ')}</div>` : ''}
+  // En camino first
+  enCamino.forEach((p, i) => {
+    const timer = tiempoDesde(p.inicio_ruta_at || null);
+    html += `<div class="card ${zonaClass(p.zona_envio)}" id="card-${p.id}">
+      <div class="card-parada">Parada ${i+1} de ${enCamino.length}</div>
+      ${timer ? `<span class="card-timer">⏱ ${timer} en ruta</span>` : ''}
+      <div class="card-folio">${p.folio}</div>
+      ${cardBody(p)}
+      <input type="file" accept="image/*" capture="environment" id="foto-${p.id}" style="display:none" onchange="onFoto(${p.id},this)">
+      <div id="preview-${p.id}"></div>
+      <div class="err-msg" id="err-${p.id}"></div>
+      <div class="card-actions" id="actions-${p.id}">
+        <button class="abtn abtn-ok" onclick="document.getElementById('foto-${p.id}').click()">📷 Entregar</button>
+        <button class="abtn abtn-fail" onclick="abrirNoEntrega(${p.id})">❌ No pude</button>
+      </div>
     </div>`;
+  });
+
+  // Listos (seleccionables)
+  if (listos.length && enCamino.length) {
+    html += '<div style="font-size:12px;font-weight:600;color:var(--texto2);margin:16px 0 8px;text-transform:uppercase">Listos para ruta</div>';
   }
-  document.getElementById('select-list').innerHTML = html;
+  const filteredListos = applyFilters(listos);
+  filteredListos.forEach(p => {
+    const checked = selected.has(p.id) ? 'checked' : '';
+    html += `<div class="card ${zonaClass(p.zona_envio)}" data-id="${p.id}">
+      <input type="checkbox" class="card-check" ${checked} onchange="toggleSel(${p.id},this.checked)">
+      <div class="card-folio">${p.folio}</div>
+      ${cardBody(p)}
+    </div>`;
+  });
+
+  el.innerHTML = html;
   updateBottomBar();
 }
 
@@ -390,23 +478,34 @@ function toggleSel(id, checked) {
 function updateBottomBar() {
   const n = selected.size;
   const btn = document.getElementById('btn-ruta');
-  btn.disabled = n === 0;
-  btn.textContent = `🚚 INICIAR RUTA (${n})`;
+  const enCamino = allPedidos.filter(p => p.estado === 'En camino').length;
+  btn.disabled = n === 0 && enCamino === 0;
+  if (n > 0) {
+    const est = n * 17; // ~17 min per stop
+    btn.textContent = `🚚 INICIAR RUTA (${n}) · ~${est}min`;
+  } else {
+    btn.textContent = '🚚 INICIAR RUTA (0)';
+  }
 }
 
+// ─── Maps ───
 function abrirMaps() {
-  const listos = allPedidos.filter(p => selected.has(p.id) && p.direccion_entrega);
-  if (!listos.length) { alert('Selecciona pedidos con direccion'); return; }
-  const dirs = listos.map(p => encodeURIComponent(p.direccion_entrega||''));
+  const ids = selected.size > 0 ? [...selected] : allPedidos.filter(p => p.estado === 'En camino').map(p => p.id);
+  const pedidos = allPedidos.filter(p => ids.includes(p.id) && p.direccion_entrega);
+  if (!pedidos.length) { alert('Sin direcciones'); return; }
+  const dirs = pedidos.map(p => encodeURIComponent(p.direccion_entrega + ', Chihuahua, México'));
   const last = dirs.pop();
   let url = `https://www.google.com/maps/dir/?api=1&destination=${last}`;
   if (dirs.length) url += `&waypoints=${dirs.join('|')}`;
   window.open(url, '_blank');
 }
 
+// ─── Iniciar ruta ───
 function confirmarRuta() {
   const n = selected.size;
-  document.getElementById('modal-ruta-title').textContent = `Iniciar ruta con ${n} pedido${n>1?'s':''}?`;
+  const est = n * 17;
+  document.getElementById('modal-ruta-title').textContent = `Iniciar ruta con ${n} entrega${n>1?'s':''}?`;
+  document.getElementById('modal-ruta-est').textContent = `Tiempo estimado: ~${est} minutos`;
   document.getElementById('modal-ruta').classList.add('active');
 }
 
@@ -417,78 +516,18 @@ async function iniciarRuta() {
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
       body: JSON.stringify({pedido_ids: [...selected]})
     });
-    if (!r.ok) { alert('Error al iniciar ruta'); return; }
+    if (!r.ok) { const e = await r.json().catch(()=>({})); alert(e.detail || 'Error al iniciar ruta'); return; }
     selected.clear();
+    rutaStartTime = Date.now();
     await loadEntregas();
   } catch(e) { alert('Error de conexion'); }
 }
 
-// ─── STATE C: En camino ───
-function renderCamino() {
-  renderFilters('filters-camino');
-  const allEnCamino = allPedidos.filter(p => p.estado === 'En camino');
-  const enCamino = applyFilters(allEnCamino);
-  const entregados = applyFilters(allPedidos.filter(p => p.estado === 'Entregado' || p.estado === 'entregado'));
-  const fallidos = applyFilters(allPedidos.filter(p => p.estado === 'intento_fallido'));
-  const pendientes = enCamino.length;
-  document.getElementById('hdr-camino-sub').textContent = `En camino · ${pendientes} entrega${pendientes!==1?'s':''}`;
-
-  let html = '';
-  for (const p of enCamino) {
-    html += `<div class="card ${zonaClass(p.zona_envio)}" id="card-${p.id}">
-      <div style="font-size:18px;font-weight:700;color:var(--verde);margin-bottom:6px">${p.folio}</div>
-      <div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}${p.ruta ? `<span class="badge" style="background:#193a2c;color:#d4a843">${p.ruta}</span>` : ''}</div>
-      ${p.fecha_entrega ? `<div class="card-detail">📅 Entrega: ${new Date(p.fecha_entrega+'T12:00:00').toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</div>` : ''}
-      <div class="card-detail" style="font-weight:600">Entrega a: ${p.nombre_destinatario||''}</div>
-      <div class="card-detail">Tel: ${telLink(p.telefono_destinatario)}</div>
-      <div class="card-detail">${p.direccion_entrega||''}</div>
-      ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
-      ${p.notas_entrega ? `<div class="card-notas">${p.notas_entrega}</div>` : ''}
-      ${p.cliente_nombre ? `<div style="font-size:11px;color:var(--texto2);margin-top:6px;border-top:1px solid var(--borde);padding-top:6px">Contacto cliente: ${p.cliente_nombre}${p.cliente_telefono ? ' · ' + telLink(p.cliente_telefono) : ''}</div>` : ''}
-      ${p.items.length ? `<div class="card-items">${p.items.join(', ')}</div>` : ''}
-      <input type="file" accept="image/*" capture="environment" id="foto-${p.id}" style="display:none" onchange="onFoto(${p.id},this)">
-      <div id="preview-${p.id}"></div>
-      <div class="err-msg" id="err-${p.id}"></div>
-      <div class="card-actions" id="actions-${p.id}">
-        <button class="abtn abtn-ok" onclick="document.getElementById('foto-${p.id}').click()">✅ Entregado</button>
-        <button class="abtn abtn-fail" onclick="abrirNoEntrega(${p.id})">❌ No pude</button>
-      </div>
-    </div>`;
-  }
-
-  // Show delivered
-  for (const p of entregados) {
-    html += `<div class="card entregado">
-      <div class="card-name">${p.nombre_destinatario||''} — ${p.folio}</div>
-      <div class="card-banner banner-ok">✅ Entregado</div>
-    </div>`;
-  }
-
-  // Show failed
-  for (const p of fallidos) {
-    html += `<div class="card fallido">
-      <div class="card-name">${p.nombre_destinatario||''} — ${p.folio}</div>
-      <div class="card-banner banner-fail">⚠️ Intento fallido: ${p.nota_no_entrega||''}</div>
-    </div>`;
-  }
-
-  document.getElementById('camino-list').innerHTML = html;
-
-  if (pendientes === 0) {
-    renderSummary();
-    showView('summary');
-  }
-}
-
+// ─── Foto + entregar ───
 function onFoto(id, input) {
   if (!input.files.length) return;
-  const file = input.files[0];
-  const url = URL.createObjectURL(file);
-  document.getElementById('preview-' + id).innerHTML = `
-    <div class="foto-preview">
-      <img src="${url}">
-      <button class="abtn abtn-confirm" onclick="confirmarEntrega(${id})">Confirmar ✓</button>
-    </div>`;
+  const url = URL.createObjectURL(input.files[0]);
+  document.getElementById('preview-' + id).innerHTML = `<div class="foto-preview"><img src="${url}"><button class="abtn abtn-confirm" onclick="confirmarEntrega(${id})">Confirmar ✓</button></div>`;
   document.getElementById('actions-' + id).style.display = 'none';
 }
 
@@ -497,29 +536,14 @@ async function confirmarEntrega(id) {
   if (!input.files.length) return;
   const preview = document.getElementById('preview-' + id);
   preview.innerHTML = '<div style="text-align:center;padding:12px"><span class="spinner"></span> Subiendo foto...</div>';
-  const errEl = document.getElementById('err-' + id);
-  errEl.style.display = 'none';
-
   const fd = new FormData();
   fd.append('foto', input.files[0]);
   try {
     const r = await fetch(`/repartidor/entregar/${id}`, {method:'POST', credentials:'include', body: fd});
-    if (!r.ok) {
-      const d = await r.json().catch(()=>({}));
-      errEl.textContent = d.detail || 'Error al entregar';
-      errEl.style.display = '';
-      preview.innerHTML = '';
-      document.getElementById('actions-' + id).style.display = '';
-      return;
-    }
-    // Success — reload
+    if (!r.ok) { const d = await r.json().catch(()=>({})); document.getElementById('err-'+id).textContent = d.detail||'Error'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; return; }
     await loadEntregas();
-  } catch(e) {
-    errEl.textContent = 'Error de conexion';
-    errEl.style.display = '';
-    preview.innerHTML = '';
-    document.getElementById('actions-' + id).style.display = '';
-  }
+    checkCierreRuta();
+  } catch(e) { document.getElementById('err-'+id).textContent = 'Error de conexion'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; }
 }
 
 // ─── No entrega ───
@@ -529,61 +553,116 @@ function abrirNoEntrega(id) {
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   document.getElementById('modal-noentrega').classList.add('active');
 }
-
-function cerrarNoEntrega() {
-  document.getElementById('modal-noentrega').classList.remove('active');
-}
-
 function selChip(el) {
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('ne-motivo').value = el.textContent;
 }
-
 document.getElementById('ne-submit').addEventListener('click', async () => {
   const motivo = document.getElementById('ne-motivo').value.trim();
   if (!motivo) return;
   try {
-    const r = await fetch(`/repartidor/no-entrega/${currentNoEntregaId}`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-      body: JSON.stringify({motivo})
-    });
-    if (!r.ok) { alert('Error al registrar'); return; }
-    cerrarNoEntrega();
+    const r = await fetch(`/repartidor/no-entrega/${currentNoEntregaId}`, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({motivo})});
+    if (!r.ok) { alert('Error'); return; }
+    document.getElementById('modal-noentrega').classList.remove('active');
     await loadEntregas();
+    checkCierreRuta();
   } catch(e) { alert('Error de conexion'); }
 });
 
-// ─── STATE D: Summary ───
-function renderSummary() {
-  const entregados = allPedidos.filter(p => p.estado === 'Entregado' || p.estado === 'entregado');
-  const fallidos = allPedidos.filter(p => p.estado === 'intento_fallido');
-  let html = `<div class="summary">
-    <h2>✅ Listo por hoy!</h2>
-    <div class="summary-row">Entregados: ${entregados.length} ✅</div>
-    <div class="summary-row">Intentos fallidos: ${fallidos.length} ⚠️</div>`;
-  if (fallidos.length) {
-    html += '<div class="summary-fail">';
-    for (const p of fallidos) {
-      html += `<div class="summary-fail-item"><strong>${p.folio}</strong> — ${p.nombre_destinatario||''}<br><span style="color:var(--texto2)">${p.nota_no_entrega||''}</span></div>`;
-    }
-    html += '</div>';
+// ─── Cierre de ruta ───
+function checkCierreRuta() {
+  const enCamino = allPedidos.filter(p => p.estado === 'En camino');
+  if (enCamino.length === 0 && rutaStartTime) {
+    showCierreRuta();
   }
-  html += `<button class="abtn" style="margin-top:24px;background:var(--verde);color:#fff;width:100%" onclick="verHistorial()">← Ver historial del dia</button>`;
-  html += '</div>';
-  document.getElementById('summary-body').innerHTML = html;
 }
 
-function verHistorial() {
-  // Show all orders read-only in camino view
-  renderCamino();
-  showView('camino');
+function showCierreRuta() {
+  const entregados = allPedidos.filter(p => p.estado === 'Entregado' || p.estado === 'entregado');
+  const fallidos = allPedidos.filter(p => p.estado === 'intento_fallido');
+  const total = entregados.length + fallidos.length;
+  const durMin = rutaStartTime ? Math.floor((Date.now() - rutaStartTime) / 60000) : 0;
+  const durH = Math.floor(durMin / 60);
+  const durM = durMin % 60;
+  const durStr = durH > 0 ? `${durH}h ${durM}m` : `${durM}m`;
+
+  document.getElementById('cierre-ruta').style.display = '';
+  document.getElementById('cierre-ruta').innerHTML = `<div class="cierre">
+    <div class="cierre-icon">🎉</div>
+    <div class="cierre-title">Ruta completada!</div>
+    <div class="cierre-stat">✅ ${entregados.length} de ${total} entregas</div>
+    ${fallidos.length ? `<div class="cierre-stat">❌ ${fallidos.length} no entregados</div>` : ''}
+    <div class="cierre-tiempo">Tiempo total: ${durStr}</div>
+    ${fallidos.length ? `<div style="text-align:left;margin-top:12px">${fallidos.map(p => `<div style="background:#fff5f5;padding:8px 10px;border-radius:8px;margin-bottom:6px;font-size:13px"><strong>${p.folio}</strong> — ${p.nombre_destinatario||''}<br><span style="color:var(--texto2)">${p.nota_no_entrega||''}</span></div>`).join('')}</div>` : ''}
+    <button class="abtn" style="margin-top:20px;background:var(--verde);color:#fff;width:100%" onclick="cerrarCierre()">Cerrar</button>
+  </div>`;
+}
+
+function cerrarCierre() {
+  document.getElementById('cierre-ruta').style.display = 'none';
+  rutaStartTime = null;
+}
+
+// ─── TAB: Entregados ───
+function renderEntregados() {
+  const entregados = allPedidos.filter(p => p.estado === 'Entregado' || p.estado === 'entregado');
+  const el = document.getElementById('entregados-list');
+  if (!entregados.length) { el.innerHTML = '<div class="empty">Sin entregas completadas hoy</div>'; return; }
+  el.innerHTML = entregados.map(p => {
+    const horaSalida = fmtHora(p.inicio_ruta_at);
+    const horaEntrega = fmtHora(p.entregado_at);
+    let duracion = '';
+    if (p.inicio_ruta_at && p.entregado_at) {
+      const diff = Math.floor((new Date(p.entregado_at) - new Date(p.inicio_ruta_at)) / 60000);
+      duracion = diff > 60 ? `${Math.floor(diff/60)}h ${diff%60}m` : `${diff}m`;
+    }
+    return `<div class="hist-card">
+      ${p.foto_entrega_url ? `<img class="hist-foto" src="${p.foto_entrega_url}" onclick="verFotoFull('${p.foto_entrega_url}')">` : '<div class="hist-foto-placeholder">📦</div>'}
+      <div class="hist-info">
+        <div class="hist-folio">${p.folio} <span class="hist-tag tag-ok">✅</span></div>
+        <div class="hist-detail">${p.nombre_destinatario||'—'}</div>
+        <div class="hist-detail">🕐 Salió: ${horaSalida} → Entregó: ${horaEntrega}${duracion ? ` (${duracion})` : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── TAB: No entregados ───
+function renderFallidos() {
+  const fallidos = allPedidos.filter(p => p.estado === 'intento_fallido');
+  const el = document.getElementById('fallidos-list');
+  if (!fallidos.length) { el.innerHTML = '<div class="empty">Sin intentos fallidos</div>'; return; }
+  el.innerHTML = fallidos.map(p => {
+    return `<div class="hist-card" style="border-left:3px solid var(--rojo)">
+      <div class="hist-foto-placeholder" style="background:#fee2e2">❌</div>
+      <div class="hist-info">
+        <div class="hist-folio">${p.folio} <span class="hist-tag tag-fail">No entregado</span></div>
+        <div class="hist-detail">${p.nombre_destinatario||'—'} · ${p.direccion_entrega||''}</div>
+        <div class="hist-detail" style="color:var(--rojo)">${p.nota_no_entrega||'Sin motivo'}</div>
+        <button class="abtn abtn-ok" style="margin-top:6px;padding:8px 14px;font-size:12px;min-height:auto;flex:none" onclick="reintentar(${p.id})">🔄 Reintentar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function reintentar(id) {
+  try {
+    // Reset to Listo for retry
+    const r = await fetch(`/api/taller/pedidos/${id}/listo`, {method:'POST', credentials:'include'});
+    if (r.ok) await loadEntregas();
+    switchTab('pendientes');
+  } catch(e) { alert('Error'); }
+}
+
+// ─── Foto full ───
+function verFotoFull(url) {
+  document.getElementById('foto-full-img').src = url;
+  document.getElementById('foto-full').classList.add('active');
 }
 
 // ─── Polling ───
-setInterval(() => {
-  if (currentState === 'select' || currentState === 'camino') loadEntregas();
-}, 60000);
+setInterval(() => loadEntregas(), 30000);
 
 // ─── Init ───
 checkSession();
