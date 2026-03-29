@@ -1018,7 +1018,19 @@ function onFinPeriodoChange() {
   const isRango = document.getElementById('fin-periodo').value === 'rango';
   document.getElementById('fin-desde').style.display = isRango ? '' : 'none';
   document.getElementById('fin-hasta').style.display = isRango ? '' : 'none';
-  if (!isRango) loadFinanzas();
+  if (!isRango) reloadAllFinanzas();
+}
+
+function reloadAllFinanzas() {
+  loadFinanzas();
+  // Reload whichever sub-tab is visible
+  const visible = document.querySelector('#sec-finanzas .sub-content:not([style*="display: none"]):not([style*="display:none"])');
+  if (!visible) return;
+  const id = visible.id.replace('-content', '');
+  if (id === 'fin-egresos') loadEgresos();
+  if (id === 'fin-utilidad') loadUtilidad();
+  if (id === 'fin-flujo') loadFlujo();
+  if (id === 'fin-cortes') loadCortes();
 }
 
 function finSubTab(id) {
@@ -1464,7 +1476,7 @@ function abrirCorteCajaPDF() {
   const periodo = document.getElementById('fin-periodo').value;
   const labels = {hoy:'Hoy',semana:'Esta semana',mes:'Este mes',rango:'Rango personalizado'};
   document.getElementById('modal-egreso-body').innerHTML = `
-    <h4 style="margin-bottom:12px">Generar corte de caja</h4>
+    <h4 style="margin-bottom:12px">Generar resumen financiero</h4>
     <div style="background:var(--crema);border-radius:10px;padding:16px;margin-bottom:16px">
       <div style="font-size:13px;color:var(--texto2)">Período: <strong>${labels[periodo]||periodo}</strong></div>
       <div style="font-size:14px;font-weight:600;color:var(--verde);margin-top:4px">${desde} → ${hasta}</div>

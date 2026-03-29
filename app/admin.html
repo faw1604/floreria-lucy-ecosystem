@@ -134,12 +134,12 @@
     <h2>Finanzas</h2>
     <div class="sec-actions">
       <select id="fin-periodo" onchange="onFinPeriodoChange()"><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="rango">Rango personalizado</option></select>
-      <input type="date" id="fin-desde" style="display:none" onchange="loadFinanzas()">
-      <input type="date" id="fin-hasta" style="display:none" onchange="loadFinanzas()">
+      <input type="date" id="fin-desde" style="display:none" onchange="reloadAllFinanzas()">
+      <input type="date" id="fin-hasta" style="display:none" onchange="reloadAllFinanzas()">
       <button class="btn-primary" onclick="abrirModalOtroIngreso()">+ Otro ingreso</button>
       <button class="btn-sm" onclick="exportarFinanzas('ingresos')">📥 Ingresos</button>
       <button class="btn-sm" onclick="exportarFinanzas('egresos')">📥 Egresos</button>
-      <button class="btn-primary" onclick="abrirCorteCajaPDF()">📊 Corte de caja</button>
+      <button class="btn-primary" onclick="abrirCorteCajaPDF()">📊 Generar resumen</button>
     </div>
   </div>
   <div class="sec-body">
