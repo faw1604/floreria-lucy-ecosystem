@@ -21,6 +21,7 @@ function navTo(sec) {
     web: loadWeb,
     finanzas: loadFinanzas,
     estadisticas: loadEstadisticas,
+    facturacion: loadFacturacion,
     usuarios: loadUsuarios,
     config: loadConfig,
   };
@@ -1688,6 +1689,51 @@ function renderEstChart(id) {
     tbody.innerHTML = dist.map(d => `<tr><td>${esc(d.canal)}</td><td>${d.count}</td><td>${fmt$(d.total)}</td><td>${d.porcentaje}%</td></tr>`).join('');
   }
 }
+
+// ══════ FACTURACIÓN ══════
+async function loadFacturacion() {
+  try {
+    const r = await fetch(API+'/api/admin/facturacion/pendientes',{credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const tbody = document.getElementById('fact-tbody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--texto2);padding:40px">Sin pedidos pendientes de facturar</td></tr>'; return; }
+    tbody.innerHTML = data.map(p => `<tr>
+      <td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td>
+      <td>${fmtDate(p.fecha)}</td>
+      <td>${esc(p.cliente)}</td>
+      <td>${esc(p.canal)}</td>
+      <td style="font-weight:600">${fmt$(p.total)}</td>
+      <td style="color:var(--dorado);font-weight:600">${fmt$(p.iva)}</td>
+      <td>${badgeEstado(p.estado)}</td>
+      <td>
+        <button class="btn-sm" onclick="window.open('/pedidos/${p.id}/ticket-digital','_blank')">Ver ticket</button>
+        <button class="btn-dorado" onclick="marcarFacturado(${p.id})">Facturado</button>
+      </td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+async function marcarFacturado(id) {
+  if (!confirm('Marcar como facturado?')) return;
+  await fetch(API+'/api/admin/facturacion/'+id+'/marcar',{method:'POST',credentials:'include'});
+  showToast('Marcado como facturado');
+  loadFacturacion();
+  updateBadgeFact();
+}
+
+async function updateBadgeFact() {
+  try {
+    const r = await fetch(API+'/api/admin/facturacion/count',{credentials:'include'});
+    const d = await r.json();
+    const badge = document.getElementById('badge-fact');
+    if (d.count > 0) { badge.style.display = 'flex'; badge.textContent = d.count > 9 ? '9+' : d.count; }
+    else badge.style.display = 'none';
+  } catch(e) {}
+}
+updateBadgeFact();
+setInterval(updateBadgeFact, 30000);
+
 
 // ══════ USUARIOS ══════
 async function loadUsuarios() {

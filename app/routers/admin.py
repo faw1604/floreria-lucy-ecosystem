@@ -689,6 +689,53 @@ async def eliminar_banner(
     return {"ok": True}
 
 
+# ══════ FACTURACIÓN ══════
+
+@router.get("/facturacion/pendientes")
+async def facturacion_pendientes(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(text("""
+        SELECT p.id, p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador') as cli,
+               p.canal, p.total, p.estado
+        FROM pedidos p LEFT JOIN clientes c ON c.id=p.customer_id
+        WHERE p.requiere_factura = true AND (p.facturado = false OR p.facturado IS NULL)
+        ORDER BY p.fecha_entrega DESC
+    """))
+    rows = result.fetchall()
+    return [
+        {"id":r[0],"folio":r[1],"fecha":str(r[2]) if r[2] else None,"cliente":r[3],
+         "canal":r[4],"total":r[5],"iva":round(r[5]*0.16),"estado":r[6]}
+        for r in rows
+    ]
+
+
+@router.get("/facturacion/count")
+async def facturacion_count(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(text(
+        "SELECT COUNT(*) FROM pedidos WHERE requiere_factura = true AND (facturado = false OR facturado IS NULL)"
+    ))
+    return {"count": result.scalar() or 0}
+
+
+@router.post("/facturacion/{pedido_id}/marcar")
+async def marcar_facturado(
+    pedido_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    await db.execute(text("UPDATE pedidos SET facturado = true WHERE id = :id"), {"id": pedido_id})
+    await db.commit()
+    return {"ok": True}
+
+
 # ══════ CUENTAS TRANSFERENCIA ══════
 
 @router.get("/cuentas-transferencia")

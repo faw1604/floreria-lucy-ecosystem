@@ -302,6 +302,7 @@ async def pos_crear_pedido(
         total=total,
         tipo_especial="Funeral" if tipo == "funeral" else None,
         ruta=data.get("ruta"),
+        requiere_factura=data.get("requiere_factura", False),
     )
     db.add(pedido)
     await db.flush()

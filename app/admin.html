@@ -24,6 +24,7 @@
     <div class="sb-item" onclick="navTo('web')" id="sb-web"><span class="sb-ico">🌐</span><span class="sb-label">Página Web</span></div>
     <div class="sb-item" onclick="navTo('finanzas')" id="sb-finanzas"><span class="sb-ico">📊</span><span class="sb-label">Finanzas</span></div>
     <div class="sb-item" onclick="navTo('estadisticas')" id="sb-estadisticas"><span class="sb-ico">📈</span><span class="sb-label">Estadísticas</span></div>
+    <div class="sb-item" onclick="navTo('facturacion')" id="sb-facturacion"><span class="sb-ico">🧾<span class="badge" id="badge-fact" style="display:none">0</span></span><span class="sb-label">Facturación</span></div>
     <div class="sb-item" onclick="navTo('usuarios')" id="sb-usuarios"><span class="sb-ico">🔑</span><span class="sb-label">Usuarios</span></div>
     <div class="sb-item" onclick="navTo('config')" id="sb-config"><span class="sb-ico">⚙️</span><span class="sb-label">Config</span></div>
   </div>
@@ -193,6 +194,18 @@
       <div style="position:relative;height:300px"><canvas id="est-main-chart"></canvas></div>
       <div class="table-wrap" style="margin-top:16px"><table class="data-table"><thead id="est-table-head"></thead><tbody id="est-table-body"></tbody></table></div>
     </div>
+  </div>
+</div>
+
+<!-- ════════ USUARIOS ════════ -->
+<!-- ════════ FACTURACIÓN ════════ -->
+<div class="section" id="sec-facturacion">
+  <div class="sec-header"><h2>Facturación</h2><span class="sec-sub">Pedidos pendientes de facturar</span></div>
+  <div class="sec-body">
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Total</th><th>IVA (16%)</th><th>Estado</th><th>Acciones</th></tr></thead>
+      <tbody id="fact-tbody"></tbody>
+    </table></div>
   </div>
 </div>
 

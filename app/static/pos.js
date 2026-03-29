@@ -8,6 +8,7 @@ let vistaActual = localStorage.getItem('pos_vista_catalogo') || 'grid';
 let ivaActivo = false;
 let iepsActivo = false;
 let descGlobal = null; // {tipo:'%'|'$', valor:X}
+let conFactura = false;
 let ordenTipo = null; // mostrador|domicilio|recoger|funeral
 let clienteSel = null; // {id, nombre, telefono, primera_compra}
 let funerariaSel = null; // {id, nombre, zona, costo_envio}
@@ -290,12 +291,18 @@ function renderCartTotals() {
     html += `<div class="ct-disc-row" id="gdisc-row" style="display:none"><input type="number" id="gdisc-val" placeholder="0" step="any"><select id="gdisc-tipo"><option value="%">%</option><option value="$">$</option></select><button onclick="applyGlobalDisc()">Aplicar</button></div>`;
   }
   html += `<div class="ct-line total"><span>TOTAL</span><span>$${(t.total/100).toLocaleString()}</span></div>`;
+  html += `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 0;cursor:pointer;color:var(--texto2)"><input type="checkbox" ${conFactura?'checked':''} onchange="toggleFacturaPOS(this.checked)" style="accent-color:var(--dorado)"> Con factura</label>`;
+  if (conFactura) {
+    const ivaFact = Math.round(t.subtotal * 0.16);
+    html += `<div style="font-size:11px;color:var(--dorado);padding:2px 0">Subtotal: $${(t.subtotal/100).toLocaleString()} + IVA (16%): $${(ivaFact/100).toLocaleString()} = $${((t.subtotal+ivaFact)/100).toLocaleString()}</div>`;
+  }
   html += `<button class="btn-continuar" ${carrito.length===0?'disabled':''} onclick="goWin(2)">Continuar orden →</button>`;
   document.getElementById('cart-totals').innerHTML = html;
 }
 
 function toggleIva() { ivaActivo = !ivaActivo; renderCart(); }
 function toggleIeps() { iepsActivo = !iepsActivo; renderCart(); }
+function toggleFacturaPOS(checked) { conFactura = checked; renderCart(); }
 function toggleGlobalDiscInput() {
   const r = document.getElementById('gdisc-row');
   if (r) r.style.display = r.style.display === 'none' ? 'flex' : 'none';
@@ -809,6 +816,7 @@ function buildPayload(estado) {
     cargo_hora_especifica: t.cargoHora || 0,
     pagos,
     estado,
+    requiere_factura: conFactura,
   };
 
   if (ordenTipo === 'domicilio') {
@@ -932,6 +940,7 @@ function resetVenta() {
   ivaActivo = false;
   iepsActivo = false;
   descGlobal = null;
+  conFactura = false;
   selectedPays = {};
   lastResult = null;
   lastCarritoSnap = [];
