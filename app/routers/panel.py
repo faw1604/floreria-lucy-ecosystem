@@ -274,6 +274,17 @@ async def taller_html(panel_session: str | None = Cookie(default=None)):
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="taller.html no encontrado")
 
+@router.get("/reset-session")
+async def reset_session():
+    """Borra cookies y redirige al login."""
+    response = HTMLResponse('<html><body><script>document.cookie="panel_session=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT";location.href="/panel/";</script></body></html>')
+    response.delete_cookie("panel_session", path="/")
+    response.delete_cookie("panel_session", path="/auth")
+    response.delete_cookie("panel_session", path="/panel")
+    response.delete_cookie("panel_session")
+    return response
+
+
 @router.get("/", response_class=HTMLResponse)
 async def panel_html(panel_session: str | None = Cookie(default=None)):
     try:
