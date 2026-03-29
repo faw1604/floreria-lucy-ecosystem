@@ -257,9 +257,14 @@ async def _crear_pedido_web_inner(request, db):
     if len(telefono) < 10:
         raise HTTPException(status_code=400, detail="Teléfono inválido")
 
-    fecha_entrega = data.get("fecha_entrega")
-    if not fecha_entrega:
+    fecha_entrega_str = data.get("fecha_entrega")
+    if not fecha_entrega_str:
         raise HTTPException(status_code=400, detail="Fecha de entrega es obligatoria")
+    from datetime import date as date_type
+    try:
+        fecha_entrega = date_type.fromisoformat(fecha_entrega_str)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido")
 
     # Validar tipo domicilio
     if tipo == "domicilio":
