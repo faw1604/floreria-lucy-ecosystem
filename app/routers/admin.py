@@ -17,6 +17,7 @@ from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIn
 from app.models.banners import BannerCatalogo
 from app.models.cuentas import CuentaTransferencia
 from app.models.fiscales import DatosFiscalesCliente
+from app.models.proveedores import Proveedor
 
 router = APIRouter()
 
@@ -299,6 +300,50 @@ async def eliminar_gasto_recurrente(
     await db.commit()
     return {"ok": True}
 
+
+# --- Proveedores ---
+
+@router.get("/proveedores")
+async def listar_proveedores(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(Proveedor).order_by(Proveedor.nombre))
+    return [{"id":p.id,"nombre":p.nombre,"contacto":p.contacto,"telefono":p.telefono,"notas":p.notas,"activo":p.activo} for p in result.scalars().all()]
+
+@router.post("/proveedores")
+async def crear_proveedor(request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    data = await request.json()
+    p = Proveedor(nombre=data["nombre"].strip(), contacto=data.get("contacto"), telefono=data.get("telefono"), notas=data.get("notas"))
+    db.add(p)
+    await db.commit()
+    await db.refresh(p)
+    return {"ok":True,"id":p.id}
+
+@router.put("/proveedores/{prov_id}")
+async def actualizar_proveedor(prov_id: int, request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(Proveedor).where(Proveedor.id == prov_id))
+    p = result.scalar_one_or_none()
+    if not p: raise HTTPException(status_code=404, detail="No encontrado")
+    data = await request.json()
+    for k in ["nombre","contacto","telefono","notas","activo"]:
+        if k in data: setattr(p, k, data[k])
+    await db.commit()
+    return {"ok":True}
+
+@router.delete("/proveedores/{prov_id}")
+async def eliminar_proveedor(prov_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    # Check if has egresos
+    cnt = await db.execute(text("SELECT COUNT(*) FROM egresos WHERE proveedor = (SELECT nombre FROM proveedores WHERE id = :id)"), {"id": prov_id})
+    if (cnt.scalar() or 0) > 0:
+        raise HTTPException(status_code=400, detail="Tiene egresos asociados — desactívalo en vez de eliminar")
+    result = await db.execute(select(Proveedor).where(Proveedor.id == prov_id))
+    p = result.scalar_one_or_none()
+    if not p: raise HTTPException(status_code=404, detail="No encontrado")
+    await db.delete(p)
+    await db.commit()
+    return {"ok":True}
 
 # --- Categorías de gasto ---
 

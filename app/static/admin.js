@@ -1158,13 +1158,14 @@ function mpOptions(selected) {
 async function abrirModalEgreso(eg) {
   await loadMetodosPago();
   await loadCategoriasGasto();
+  await loadProveedores();
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('modal-egreso-body').innerHTML = `
     <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${eg?.fecha||hoy}"></div>
     <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
     <div class="field"><label>Categoría</label><select id="eg-cat"><option value="">Selecciona...</option>${catGastoOptions(eg?.categoria)}</select></div>
     <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
-    <div class="field"><label>Proveedor</label><input id="eg-prov" value="${esc(eg?.proveedor||'')}" placeholder="Nombre del proveedor (opcional)"></div>
+    <div class="field"><label>Proveedor</label><select id="eg-prov"><option value="">Sin proveedor</option>${provOptions(eg?.proveedor)}</select></div>
     <div class="field"><label>Monto * (pesos)</label><input type="number" id="eg-monto" step="0.01" value="${eg ? (eg.monto/100).toFixed(2) : ''}"></div>
     <div class="field"><label>Notas</label><textarea id="eg-notas">${esc(eg?.notas||'')}</textarea></div>
     <div class="field"><label># Factura / Nota de referencia</label><input id="eg-ref" value="${esc(eg?.referencia||'')}" placeholder="Opcional"></div>
@@ -1332,6 +1333,71 @@ async function crearCG() {
   if (!nombre) return;
   await fetch(API+'/api/admin/categorias-gasto', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({nombre})});
   abrirCategoriasGasto();
+}
+
+// --- Proveedores ---
+let proveedoresList = [];
+
+async function loadProveedores() {
+  try { const r = await fetch(API+'/api/admin/proveedores',{credentials:'include'}); proveedoresList = await r.json(); } catch(e) {}
+}
+
+function provOptions(selected) {
+  return proveedoresList.filter(p=>p.activo).map(p => `<option value="${esc(p.nombre)}" ${selected===p.nombre?'selected':''}>${esc(p.nombre)}</option>`).join('');
+}
+
+async function abrirProveedores() {
+  await loadProveedores();
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4>Proveedores</h4>
+    ${proveedoresList.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--borde)">
+      <div style="flex:1">
+        <input value="${esc(p.nombre)}" id="prov-nom-${p.id}" style="font-size:12px;padding:4px 8px;border:1px solid var(--borde);border-radius:4px;width:100%;margin-bottom:2px">
+        <div style="display:flex;gap:4px">
+          <input value="${esc(p.contacto||'')}" id="prov-con-${p.id}" placeholder="Contacto" style="font-size:11px;padding:3px 6px;border:1px solid var(--borde);border-radius:4px;flex:1">
+          <input value="${esc(p.telefono||'')}" id="prov-tel-${p.id}" placeholder="Teléfono" style="font-size:11px;padding:3px 6px;border:1px solid var(--borde);border-radius:4px;width:100px">
+        </div>
+      </div>
+      <label style="font-size:11px;display:flex;align-items:center;gap:3px"><input type="checkbox" ${p.activo?'checked':''} onchange="toggleProv(${p.id},this.checked)">Act</label>
+      <button class="btn-sm" onclick="guardarProv(${p.id})" style="font-size:11px">Guardar</button>
+      <button class="btn-danger" style="font-size:11px;padding:4px 6px" onclick="eliminarProv(${p.id})">🗑</button>
+    </div>`).join('') || '<div style="color:var(--texto2);padding:12px">Sin proveedores</div>'}
+    <div style="border-top:1px solid var(--borde);margin-top:12px;padding-top:12px">
+      <strong style="font-size:13px">Nuevo proveedor</strong>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input id="prov-new-nom" placeholder="Nombre *" style="flex:1;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+        <input id="prov-new-con" placeholder="Contacto" style="flex:1;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+        <input id="prov-new-tel" placeholder="Teléfono" style="width:100px;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+        <button class="btn-primary" onclick="crearProv()">Agregar</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function guardarProv(id) {
+  await fetch(API+'/api/admin/proveedores/'+id, {method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',
+    body:JSON.stringify({nombre:document.getElementById('prov-nom-'+id)?.value?.trim(), contacto:document.getElementById('prov-con-'+id)?.value?.trim()||null, telefono:document.getElementById('prov-tel-'+id)?.value?.trim()||null})});
+  showToast('Guardado');
+}
+
+async function toggleProv(id, activo) {
+  await fetch(API+'/api/admin/proveedores/'+id, {method:'PUT',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({activo})});
+}
+
+async function eliminarProv(id) {
+  if (!confirm('Eliminar?')) return;
+  const r = await fetch(API+'/api/admin/proveedores/'+id, {method:'DELETE',credentials:'include'});
+  if (!r.ok) { const e = await r.json(); alert(e.detail||'Error'); return; }
+  abrirProveedores();
+}
+
+async function crearProv() {
+  const nombre = document.getElementById('prov-new-nom').value.trim();
+  if (!nombre) return alert('Nombre requerido');
+  await fetch(API+'/api/admin/proveedores', {method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+    body:JSON.stringify({nombre, contacto:document.getElementById('prov-new-con').value.trim()||null, telefono:document.getElementById('prov-new-tel').value.trim()||null})});
+  abrirProveedores();
 }
 
 // --- Métodos de pago egresos ---

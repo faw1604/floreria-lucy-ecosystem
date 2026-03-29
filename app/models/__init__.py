@@ -10,6 +10,7 @@ from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIn
 from app.models.banners import BannerCatalogo
 from app.models.cuentas import CuentaTransferencia
 from app.models.fiscales import DatosFiscalesCliente
+from app.models.proveedores import Proveedor
 
 __all__ = [
     "Cliente",
@@ -32,6 +33,7 @@ __all__ = [
     "CategoriaGasto",
     "CuentaTransferencia",
     "DatosFiscalesCliente",
+    "Proveedor",
     "BannerCatalogo",
     "Categoria",
     "ProductoVariante",
