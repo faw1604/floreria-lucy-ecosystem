@@ -19,11 +19,20 @@ async def get_db():
         yield session
 
 async def inicializar_db():
-    # Importar todos los modelos para que Base.metadata los conozca
-    import app.models  # noqa: F401
+    import logging
+    _log = logging.getLogger("floreria")
+
+    # 1. create_all para tablas existentes
+    try:
+        import app.models  # noqa: F401
+    except Exception as e:
+        _log.warning(f"Import app.models: {e}")
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Auto-migrate: agregar columnas nuevas si no existen
+
+    # 2. Migraciones manuales en conexión separada
+    async with engine.begin() as conn:
         from sqlalchemy import text
         _migrations = [
             ("pedidos", "metodo_entrega", "VARCHAR(30)"),
@@ -35,9 +44,13 @@ async def inicializar_db():
         for tabla, col, tipo in _migrations:
             try:
                 await conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {col} {tipo}"))
+                _log.info(f"  + {tabla}.{col}")
             except Exception:
-                pass  # ya existe
-        # Crear tabla reservas si no existe
+                pass
+
+    # 3. Crear tabla reservas en conexión separada
+    async with engine.begin() as conn:
+        from sqlalchemy import text
         try:
             await conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS reservas (
@@ -55,5 +68,6 @@ async def inicializar_db():
                     descarte_razon TEXT
                 )
             """))
-        except Exception:
-            pass
+            _log.info("Tabla reservas: OK")
+        except Exception as e:
+            _log.error(f"Tabla reservas ERROR: {e}")
