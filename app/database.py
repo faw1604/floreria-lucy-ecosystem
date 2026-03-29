@@ -37,3 +37,23 @@ async def inicializar_db():
                 await conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {col} {tipo}"))
             except Exception:
                 pass  # ya existe
+        # Crear tabla reservas si no existe
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS reservas (
+                    id SERIAL PRIMARY KEY,
+                    producto_id INTEGER,
+                    nombre_custom VARCHAR(200),
+                    precio INTEGER NOT NULL,
+                    foto_url TEXT,
+                    florista_usuario VARCHAR(100) NOT NULL,
+                    estado VARCHAR(20) DEFAULT 'disponible',
+                    pedido_id INTEGER,
+                    created_at TIMESTAMP,
+                    vendida_at TIMESTAMP,
+                    descartada_at TIMESTAMP,
+                    descarte_razon TEXT
+                )
+            """))
+        except Exception:
+            pass
