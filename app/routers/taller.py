@@ -10,6 +10,7 @@ from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
 from app.models.productos import Producto
 from app.models.configuracion import ConfiguracionNegocio
+from app.models.inventario import InsumoFloral, InsumoProducto
 from app.core.config import TZ
 from app.routers.auth import verificar_sesion
 
@@ -118,7 +119,7 @@ async def badges(
 
     r_recoger = await db.execute(
         select(func.count(Pedido.id)).where(
-            Pedido.estado == "Listo",
+            Pedido.estado.in_(["Listo", "listo_taller"]),
             Pedido.metodo_entrega.in_(["recoger", "funeral_recoger"]),
         )
     )
@@ -137,9 +138,21 @@ async def nuevos(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
+    from sqlalchemy import or_
+    # esperando_validacion (WhatsApp/Web) + pendiente_pago sin aprobar (POS)
     result = await db.execute(
         select(Pedido)
-        .where(Pedido.estado == "esperando_validacion")
+        .where(
+            Pedido.estado.in_(["esperando_validacion", "pendiente_pago", "Pendiente pago"]),
+            or_(
+                Pedido.estado_florista.is_(None),
+                Pedido.estado_florista == "pendiente_aprobacion",
+                Pedido.estado_florista == "aprobado_con_modificacion",
+                Pedido.estado_florista == "cambio_sugerido",
+                Pedido.estado_florista == "rechazado",
+                Pedido.estado_florista == "requiere_atencion",
+            ),
+        )
         .order_by(Pedido.fecha_pedido.desc())
     )
     pedidos = result.scalars().all()
@@ -193,7 +206,7 @@ async def por_recoger(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado == "Listo",
+            Pedido.estado.in_(["Listo", "listo_taller"]),
             Pedido.metodo_entrega.in_(["recoger", "funeral_recoger"]),
         )
         .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
@@ -267,6 +280,26 @@ async def aceptar(
     pedido.estado = "En producción"
     pedido.estado_florista = "aprobado"
     pedido.produccion_at = datetime.now(TZ)
+
+    # Auto-descuento de inventario para insumos con descuento_automatico=true
+    items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+    items_pedido = items_result.scalars().all()
+    for item in items_pedido:
+        insumos_result = await db.execute(
+            select(InsumoProducto).where(InsumoProducto.producto_id == item.producto_id)
+        )
+        for ip in insumos_result.scalars().all():
+            if ip.insumo_floral_id:
+                insumo_result = await db.execute(
+                    select(InsumoFloral).where(
+                        InsumoFloral.id == ip.insumo_floral_id,
+                        InsumoFloral.descuento_automatico == True,
+                    )
+                )
+                insumo = insumo_result.scalar_one_or_none()
+                if insumo and insumo.cantidad > 0:
+                    insumo.cantidad = max(0, insumo.cantidad - ip.cantidad_consumida * item.cantidad)
+
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -290,16 +323,37 @@ async def aceptar_con_cambios(
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
 
-@router.post("/pedidos/{pedido_id}/requiere-atencion")
-async def requiere_atencion(
+@router.post("/pedidos/{pedido_id}/sugerir-cambio")
+async def sugerir_cambio(
     pedido_id: int,
+    request: Request,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
+    data = await request.json()
+    nota = data.get("nota", "")
     pedido = await _get_pedido(pedido_id, db)
+    pedido.estado_florista = "cambio_sugerido"
+    pedido.nota_florista = nota
+    await db.commit()
+    return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
+
+
+@router.post("/pedidos/{pedido_id}/no-aceptar")
+async def no_aceptar(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    razon = data.get("razon", "")
+    pedido = await _get_pedido(pedido_id, db)
+    pedido.estado_florista = "rechazado"
+    pedido.nota_florista = razon
     pedido.requiere_humano = True
-    pedido.estado_florista = "requiere_atencion"
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
 
@@ -329,7 +383,7 @@ async def listo(
 ):
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = "Listo"
+    pedido.estado = "listo_taller"
     pedido.listo_at = datetime.now(TZ)
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
@@ -469,7 +523,7 @@ async def entregas_lobby(
     _auth(panel_session)
     result = await db.execute(
         select(Pedido)
-        .where(Pedido.estado == "Listo", Pedido.metodo_entrega == "mostrador")
+        .where(Pedido.estado.in_(["Listo", "listo_taller"]), Pedido.metodo_entrega == "mostrador")
         .order_by(Pedido.listo_at)
     )
     pedidos = result.scalars().all()
@@ -485,7 +539,7 @@ async def entregas_por_recoger(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado == "Listo",
+            Pedido.estado.in_(["Listo", "listo_taller"]),
             Pedido.metodo_entrega.in_(["recoger", "funeral_recoger"]),
         )
         .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
@@ -503,7 +557,7 @@ async def entregas_envios(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["Listo", "En camino"]),
+            Pedido.estado.in_(["Listo", "listo_taller", "En camino"]),
             Pedido.metodo_entrega.in_(["envio", "funeral_envio"]),
         )
         .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)

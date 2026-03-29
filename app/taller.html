@@ -262,8 +262,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 <div class="modal-overlay" id="modal-cancelar" onclick="if(event.target===this)closeModal('modal-cancelar')">
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal('modal-cancelar')">&times;</button>
-    <div class="modal-title">Cancelar pedido</div>
-    <p style="font-size:13px;color:var(--texto2);margin-bottom:12px">¿Estas seguro? Esta accion no se puede deshacer.</p>
+    <div class="modal-title">No aceptar pedido</div>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:12px">Selecciona la razon del rechazo:</p>
     <select class="modal-select" id="cancel-razon" onchange="document.getElementById('cancel-otro').style.display=this.value==='otros'?'':'none'">
       <option value="">Seleccionar razon...</option>
       <option value="No tenemos ese producto en stock">No tenemos ese producto en stock</option>
@@ -274,6 +274,31 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     </select>
     <textarea class="modal-input" id="cancel-otro" rows="2" placeholder="Especificar razon..." style="display:none"></textarea>
     <button class="modal-submit" id="cancel-submit">Confirmar cancelacion</button>
+  </div>
+</div>
+
+<!-- Modal: Sugerir Cambio de Arreglo -->
+<div class="modal-overlay" id="modal-cambio" onclick="if(event.target===this)closeModal('modal-cambio')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-cambio')">&times;</button>
+    <div class="modal-title">Sugerir cambio de arreglo</div>
+    <input class="modal-input" id="cambio-buscar" placeholder="Buscar producto..." oninput="buscarProductosCambio()">
+    <div id="cambio-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;margin-bottom:12px"></div>
+    <button class="modal-submit" id="cambio-submit" disabled>Confirmar sugerencia</button>
+  </div>
+</div>
+
+<!-- Modal: Listo (ticket + etiqueta) -->
+<div class="modal-overlay" id="modal-listo" onclick="if(event.target===this)closeModal('modal-listo')">
+  <div class="modal-box" style="text-align:center">
+    <button class="modal-close" onclick="closeModal('modal-listo')">&times;</button>
+    <div class="modal-title" style="text-align:center">✅ Pedido marcado como listo</div>
+    <p style="font-size:14px;color:var(--texto2);margin-bottom:16px" id="listo-folio"></p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="act-btn btn-secondary" style="font-size:14px;padding:12px 20px" onclick="listoImprimirTicket()">🖨 Imprimir ticket digital</button>
+      <button class="act-btn btn-secondary" style="font-size:14px;padding:12px 20px" onclick="listoImprimirEtiqueta()">🏷 Imprimir etiqueta termica</button>
+    </div>
+    <button class="act-btn" style="margin-top:16px;background:var(--verde);color:#fff;width:100%;justify-content:center;font-size:14px;padding:12px" onclick="closeModal('modal-listo')">Cerrar</button>
   </div>
 </div>
 
@@ -497,7 +522,41 @@ function renderCardNuevos(p) {
   if (p.requiere_factura) badges += '<span class="kds-badge badge-factura">FACTURA</span>';
   const timer = tiempoDesde(p.fecha_pedido);
 
-  return `<div class="kds-card" data-id="${p.id}">
+  // Florista status badges
+  const ef = p.estado_florista || '';
+  if (ef === 'aprobado_con_modificacion') badges += '<span class="kds-badge" style="background:#fef3c7;color:#92400e">ESPERANDO RESPUESTA CLIENTE</span>';
+  else if (ef === 'cambio_sugerido') badges += '<span class="kds-badge" style="background:#fed7aa;color:#9a3412">CAMBIO SUGERIDO — ESPERANDO CLIENTE</span>';
+  else if (ef === 'rechazado') badges += '<span class="kds-badge" style="background:#fee2e2;color:#991b1b">RECHAZADO — REQUIERE INTERVENCION</span>';
+
+  // POS pendiente_pago: banner rojo, botones deshabilitados
+  const esPagoPendiente = p.estado === 'pendiente_pago' || (p.canal === 'Mostrador' && !p.pago_confirmado);
+  const esEsperandoValidacion = p.estado === 'esperando_validacion';
+  const mostrarBotones = esEsperandoValidacion && !esPagoPendiente;
+  const yaRespondido = ef && ef !== 'pendiente_aprobacion';
+
+  let pagoBanner = '';
+  if (esPagoPendiente) {
+    pagoBanner = '<div style="background:var(--rojo);color:#fff;font-size:12px;font-weight:700;padding:8px 12px;margin:0 0 4px;text-align:center;border-radius:8px">⚠ PEDIDO NO PAGADO — NO REALIZAR</div>';
+  }
+
+  let actionsHtml = '';
+  if (mostrarBotones && !yaRespondido) {
+    actionsHtml = `<div class="kds-actions">
+      <button class="act-btn btn-accept" onclick="accionAceptar(${p.id})">✅ Aceptar</button>
+      <button class="act-btn btn-edit" onclick="accionModificar(${p.id})">✏️ Modificar</button>
+      <button class="act-btn btn-warn" onclick="accionCambio(${p.id})">🔄 Cambio</button>
+      <button class="act-btn btn-cancel" onclick="accionNoAceptar(${p.id})">❌ No aceptar</button>
+    </div>`;
+  } else if (esPagoPendiente) {
+    actionsHtml = `<div class="kds-actions" style="opacity:.4;pointer-events:none">
+      <button class="act-btn btn-accept" disabled>✅ Aceptar</button>
+      <button class="act-btn btn-edit" disabled>✏️ Modificar</button>
+      <button class="act-btn btn-warn" disabled>🔄 Cambio</button>
+      <button class="act-btn btn-cancel" disabled>❌ No aceptar</button>
+    </div>`;
+  }
+
+  return `<div class="kds-card${esPagoPendiente ? ' urgente' : ''}" data-id="${p.id}">
     <div class="kds-card-head">
       <div>
         <div class="kds-num">${tipoIcon(p)} ${p.numero}</div>
@@ -505,6 +564,7 @@ function renderCardNuevos(p) {
       <span class="kds-timer timer-up">⏱ ${timer}</span>
     </div>
     <div class="kds-body">
+      ${pagoBanner}
       <div class="kds-badges">${badges}</div>
       <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
@@ -512,14 +572,9 @@ function renderCardNuevos(p) {
       ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.direccion_entrega}</div>` : ''}
       ${p.dedicatoria ? `<div class="kds-dedicatoria">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
-      ${p.nota_florista ? `<div class="kds-notas" style="border-left-color:var(--azul)">Nota: ${p.nota_florista}</div>` : ''}
+      ${p.nota_florista ? `<div class="kds-notas" style="border-left-color:var(--azul)">Nota florista: ${p.nota_florista}</div>` : ''}
     </div>
-    <div class="kds-actions">
-      <button class="act-btn btn-accept" onclick="accionAceptar(${p.id})">✅ Aceptar</button>
-      <button class="act-btn btn-edit" onclick="accionEditar(${p.id})">✏️</button>
-      <button class="act-btn btn-warn" onclick="accionAtencion(${p.id})">⚠️</button>
-      <button class="act-btn btn-cancel" onclick="accionCancelar(${p.id})">❌</button>
-    </div>
+    ${actionsHtml}
   </div>`;
 }
 
@@ -736,18 +791,20 @@ async function loadRealizados() {
   } catch(e) {}
 }
 
-// ─── ACCIONES ───
+// ─── ACCIONES NUEVOS ───
+
+// 1. ✅ ACEPTAR — estado_florista=aprobado, estado=en_produccion, descuenta inventario
 async function accionAceptar(id) {
   try {
     await fetch(`${TALLER_API}/pedidos/${id}/aceptar`, {method:'POST', credentials:'include'});
-    loadNuevos();
-    loadBadges();
+    loadNuevos(); loadBadges();
   } catch(e) {}
 }
 
-function accionEditar(id) {
+// 2. ✏️ ACEPTAR CON MODIFICACIÓN — modal texto, estado_florista=aprobado_con_modificacion
+function accionModificar(id) {
   currentModalId = id;
-  document.getElementById('modal-nota-title').textContent = 'Aceptar con cambios';
+  document.getElementById('modal-nota-title').textContent = 'Aceptar con modificacion';
   document.getElementById('modal-nota-text').value = '';
   document.getElementById('modal-nota-text').placeholder = '¿Cual es la modificacion?';
   document.getElementById('modal-nota-submit').textContent = 'Confirmar modificacion';
@@ -764,14 +821,59 @@ function accionEditar(id) {
   document.getElementById('modal-nota').classList.add('active');
 }
 
-async function accionAtencion(id) {
-  try {
-    await fetch(`${TALLER_API}/pedidos/${id}/requiere-atencion`, {method:'POST', credentials:'include'});
+// 3. 🔄 SUGERIR CAMBIO DE ARREGLO — modal buscar producto, estado_florista=cambio_sugerido
+let allProductosBuscar = [];
+let selectedProductoCambio = null;
+
+function accionCambio(id) {
+  currentModalId = id;
+  selectedProductoCambio = null;
+  document.getElementById('cambio-buscar').value = '';
+  document.getElementById('cambio-results').innerHTML = '';
+  document.getElementById('cambio-submit').disabled = true;
+  document.getElementById('cambio-submit').onclick = async () => {
+    if (!selectedProductoCambio) return;
+    const nota = `Sugerencia: ${selectedProductoCambio.nombre} - ${selectedProductoCambio.codigo || 'sin codigo'}`;
+    await fetch(`${TALLER_API}/pedidos/${currentModalId}/sugerir-cambio`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({nota})
+    });
+    closeModal('modal-cambio');
     loadNuevos(); loadBadges();
+  };
+  document.getElementById('modal-cambio').classList.add('active');
+  if (!allProductosBuscar.length) loadProductosBuscar();
+}
+
+async function loadProductosBuscar() {
+  try {
+    const r = await fetch(`${API}/productos`, {credentials:'include'});
+    if (r.ok) allProductosBuscar = await r.json();
   } catch(e) {}
 }
 
-function accionCancelar(id) {
+function buscarProductosCambio() {
+  const q = document.getElementById('cambio-buscar').value.toLowerCase().trim();
+  if (q.length < 2) { document.getElementById('cambio-results').innerHTML = ''; return; }
+  const matches = allProductosBuscar.filter(p =>
+    p.nombre.toLowerCase().includes(q) || (p.codigo||'').toLowerCase().includes(q)
+  ).slice(0, 10);
+  document.getElementById('cambio-results').innerHTML = matches.map(p => {
+    const sel = selectedProductoCambio && selectedProductoCambio.id === p.id;
+    return `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;${sel?'background:#dcfce7':''}" onclick="seleccionarProductoCambio(${p.id},'${esc(p.nombre)}','${esc(p.codigo||'')}')">
+      <span>${p.nombre}</span><span style="color:var(--texto2)">${p.codigo||''} — $${(p.precio||0)/100}</span>
+    </div>`;
+  }).join('') || '<div style="padding:10px 12px;color:var(--texto2);font-size:13px">Sin resultados</div>';
+}
+
+function seleccionarProductoCambio(id, nombre, codigo) {
+  selectedProductoCambio = {id, nombre, codigo};
+  document.getElementById('cambio-submit').disabled = false;
+  buscarProductosCambio();
+}
+
+// 4. ❌ NO ACEPTAR — modal razones, estado_florista=rechazado
+function accionNoAceptar(id) {
   currentModalId = id;
   document.getElementById('cancel-razon').value = '';
   document.getElementById('cancel-otro').value = '';
@@ -781,7 +883,7 @@ function accionCancelar(id) {
     if (!razon) return;
     if (razon === 'otros') razon = document.getElementById('cancel-otro').value.trim();
     if (!razon) return;
-    await fetch(`${TALLER_API}/pedidos/${currentModalId}/cancelar`, {
+    await fetch(`${TALLER_API}/pedidos/${currentModalId}/no-aceptar`, {
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
       body: JSON.stringify({razon})
     });
@@ -791,13 +893,31 @@ function accionCancelar(id) {
   document.getElementById('modal-cancelar').classList.add('active');
 }
 
+// ─── ACCIONES PRODUCCION ───
+
+// ✅ LISTO — estado=listo_taller, pregunta imprimir ticket/etiqueta
+let listoCurrentId = null;
+
 async function accionListo(id) {
   try {
-    await fetch(`${TALLER_API}/pedidos/${id}/listo`, {method:'POST', credentials:'include'});
+    const r = await fetch(`${TALLER_API}/pedidos/${id}/listo`, {method:'POST', credentials:'include'});
+    const data = await r.json();
+    listoCurrentId = id;
+    document.getElementById('listo-folio').textContent = `Pedido marcado como listo en taller`;
+    document.getElementById('modal-listo').classList.add('active');
     loadProduccion(); loadBadges();
   } catch(e) {}
 }
 
+function listoImprimirTicket() {
+  if (listoCurrentId) window.open(`${API}/pedidos/${listoCurrentId}/ticket-digital`, '_blank');
+}
+
+function listoImprimirEtiqueta() {
+  if (listoCurrentId) imprimirEtiqueta(listoCurrentId);
+}
+
+// ─── ACCION ENTREGADO ───
 async function accionEntregado(id) {
   try {
     await fetch(`${TALLER_API}/pedidos/${id}/entregado`, {method:'POST', credentials:'include'});
