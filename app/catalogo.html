@@ -2061,7 +2061,7 @@ function renderOrderStep4() {
   document.getElementById('of-factura-desglose').style.display = 'none';
 }
 
-function toggleFactura() {
+async function toggleFactura() {
   const checked = document.getElementById('of-factura').checked;
   const desglose = document.getElementById('of-factura-desglose');
   if (checked) {
@@ -2074,7 +2074,24 @@ function toggleFactura() {
     const iva = Math.round(sub * 0.16);
     const total = sub + iva;
     desglose.style.display = '';
-    desglose.innerHTML = `<div>Subtotal: $${(sub/100).toLocaleString()}</div><div>IVA (16%): $${(iva/100).toLocaleString()}</div><div style="font-weight:600;color:var(--verde);font-size:15px;margin-top:4px">Total con factura: $${(total/100).toLocaleString()}</div>`;
+    desglose.innerHTML = `<div>Subtotal: $${(sub/100).toLocaleString()}</div><div>IVA (16%): $${(iva/100).toLocaleString()}</div><div style="font-weight:600;color:var(--verde);font-size:15px;margin-top:4px">Total con factura: $${(total/100).toLocaleString()}</div>
+    <div style="border:1px solid var(--dorado);border-radius:10px;padding:12px;margin-top:10px;text-align:left">
+      <div style="font-weight:600;color:var(--dorado);font-size:13px;margin-bottom:8px">Datos de facturación</div>
+      <div class="order-field"><label>RFC <span class="required">*</span></label><input type="text" id="of-rfc" placeholder="XAXX010101000" style="text-transform:uppercase"></div>
+      <div class="order-field"><label>Razón social <span class="required">*</span></label><input type="text" id="of-razon" placeholder="Nombre o razón social"></div>
+      <div class="order-field"><label>Régimen fiscal <span class="required">*</span></label><select id="of-regimen"><option value="">Selecciona...</option></select></div>
+      <div class="order-field"><label>Uso CFDI <span class="required">*</span></label><select id="of-uso-cfdi"><option value="">Selecciona...</option></select></div>
+      <div class="order-field"><label>Correo para factura <span class="required">*</span></label><input type="email" id="of-correo-fiscal" placeholder="correo@ejemplo.com"></div>
+      <div class="order-field"><label>Código postal <span class="required">*</span></label><input type="text" id="of-cp-fiscal" placeholder="31000" maxlength="5"></div>
+    </div>`;
+    // Load catalogos
+    try {
+      const r = await fetch(API+'/catalogo/catalogos-fiscales');
+      const d = await r.json();
+      const rs = document.getElementById('of-regimen'); const us = document.getElementById('of-uso-cfdi');
+      if(rs) d.regimenes.forEach(rg => { const o=document.createElement('option'); o.value=rg.codigo; o.textContent=rg.codigo+' - '+rg.nombre; rs.appendChild(o); });
+      if(us) d.usos.forEach(u => { const o=document.createElement('option'); o.value=u.codigo; o.textContent=u.codigo+' - '+u.nombre; us.appendChild(o); });
+    } catch(e) {}
   } else {
     desglose.style.display = 'none';
   }
@@ -2106,6 +2123,14 @@ async function submitOrder() {
       horario_velacion: pedidoWeb.horario_velacion || null,
       codigo_descuento: appliedDiscount ? appliedDiscount.codigo : null,
       requiere_factura: document.getElementById('of-factura')?.checked || false,
+      datos_fiscales: document.getElementById('of-factura')?.checked ? {
+        rfc: document.getElementById('of-rfc')?.value?.trim()?.toUpperCase() || null,
+        razon_social: document.getElementById('of-razon')?.value?.trim() || null,
+        regimen_fiscal: document.getElementById('of-regimen')?.value || null,
+        uso_cfdi: document.getElementById('of-uso-cfdi')?.value || null,
+        correo_fiscal: document.getElementById('of-correo-fiscal')?.value?.trim() || null,
+        codigo_postal: document.getElementById('of-cp-fiscal')?.value?.trim() || null,
+      } : null,
     };
     const r = await fetch(`${API}/catalogo/pedido`, {
       method: 'POST',

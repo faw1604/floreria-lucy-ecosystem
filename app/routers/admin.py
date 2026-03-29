@@ -16,6 +16,7 @@ from app.models.usuarios import Usuario
 from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso, CategoriaGasto
 from app.models.banners import BannerCatalogo
 from app.models.cuentas import CuentaTransferencia
+from app.models.fiscales import DatosFiscalesCliente
 
 router = APIRouter()
 
@@ -691,49 +692,97 @@ async def eliminar_banner(
 
 # ══════ FACTURACIÓN ══════
 
+def _fact_row(r):
+    return {"id":r[0],"folio":r[1],"fecha":str(r[2]) if r[2] else None,"cliente":r[3],
+     "canal":r[4],"subtotal":r[5],"iva":round(r[5]*0.16),"total":r[5]+round(r[5]*0.16),
+     "estado":r[6],"datos_fiscales_id":r[7],"folio_fiscal":r[8],"customer_id":r[9]}
+
 @router.get("/facturacion/pendientes")
-async def facturacion_pendientes(
-    panel_session: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
-):
+async def facturacion_pendientes(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
     result = await db.execute(text("""
-        SELECT p.id, p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador') as cli,
-               p.canal, p.total, p.estado
+        SELECT p.id, p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador'),
+               p.canal, p.total, p.estado, p.datos_fiscales_id, p.folio_fiscal, p.customer_id
         FROM pedidos p LEFT JOIN clientes c ON c.id=p.customer_id
         WHERE p.requiere_factura = true AND (p.facturado = false OR p.facturado IS NULL)
         ORDER BY p.fecha_entrega DESC
     """))
-    rows = result.fetchall()
-    return [
-        {"id":r[0],"folio":r[1],"fecha":str(r[2]) if r[2] else None,"cliente":r[3],
-         "canal":r[4],"total":r[5],"iva":round(r[5]*0.16),"estado":r[6]}
-        for r in rows
-    ]
+    return [_fact_row(r) for r in result.fetchall()]
 
+@router.get("/facturacion/facturados")
+async def facturacion_facturados(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(text("""
+        SELECT p.id, p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador'),
+               p.canal, p.total, p.estado, p.datos_fiscales_id, p.folio_fiscal, p.customer_id
+        FROM pedidos p LEFT JOIN clientes c ON c.id=p.customer_id
+        WHERE p.facturado = true ORDER BY p.fecha_entrega DESC
+    """))
+    return [_fact_row(r) for r in result.fetchall()]
 
 @router.get("/facturacion/count")
-async def facturacion_count(
-    panel_session: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
-):
+async def facturacion_count(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
-    result = await db.execute(text(
-        "SELECT COUNT(*) FROM pedidos WHERE requiere_factura = true AND (facturado = false OR facturado IS NULL)"
-    ))
+    result = await db.execute(text("SELECT COUNT(*) FROM pedidos WHERE requiere_factura = true AND (facturado = false OR facturado IS NULL)"))
     return {"count": result.scalar() or 0}
 
-
 @router.post("/facturacion/{pedido_id}/marcar")
-async def marcar_facturado(
-    pedido_id: int,
-    panel_session: str | None = Cookie(default=None),
-    db: AsyncSession = Depends(get_db),
-):
+async def marcar_facturado(pedido_id: int, request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
-    await db.execute(text("UPDATE pedidos SET facturado = true WHERE id = :id"), {"id": pedido_id})
+    data = await request.json()
+    folio_fiscal = data.get("folio_fiscal", "")
+    await db.execute(text("UPDATE pedidos SET facturado = true, folio_fiscal = :ff WHERE id = :id"), {"id": pedido_id, "ff": folio_fiscal or None})
     await db.commit()
     return {"ok": True}
+
+# --- Datos fiscales ---
+
+@router.get("/datos-fiscales/{cliente_id}")
+async def obtener_datos_fiscales(cliente_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    result = await db.execute(select(DatosFiscalesCliente).where(DatosFiscalesCliente.cliente_id == cliente_id))
+    df = result.scalar_one_or_none()
+    if not df: return {"existe": False}
+    return {"existe":True,"id":df.id,"rfc":df.rfc,"razon_social":df.razon_social,"regimen_fiscal":df.regimen_fiscal,
+            "uso_cfdi":df.uso_cfdi,"correo_fiscal":df.correo_fiscal,"codigo_postal":df.codigo_postal}
+
+@router.post("/datos-fiscales")
+async def guardar_datos_fiscales(request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    data = await request.json()
+    cliente_id = data.get("cliente_id")
+    # Upsert
+    result = await db.execute(select(DatosFiscalesCliente).where(DatosFiscalesCliente.cliente_id == cliente_id))
+    df = result.scalar_one_or_none()
+    if not df:
+        df = DatosFiscalesCliente(cliente_id=cliente_id)
+        db.add(df)
+    for k in ["rfc","razon_social","regimen_fiscal","uso_cfdi","correo_fiscal","codigo_postal"]:
+        if k in data: setattr(df, k, data[k])
+    await db.commit()
+    await db.refresh(df)
+    return {"ok":True,"id":df.id}
+
+@router.get("/datos-fiscales/pedido/{pedido_id}")
+async def datos_fiscales_pedido(pedido_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    # Get datos_fiscales_id from pedido
+    r = await db.execute(text("SELECT datos_fiscales_id FROM pedidos WHERE id = :id"), {"id": pedido_id})
+    row = r.fetchone()
+    if not row or not row[0]: return {"existe": False}
+    result = await db.execute(select(DatosFiscalesCliente).where(DatosFiscalesCliente.id == row[0]))
+    df = result.scalar_one_or_none()
+    if not df: return {"existe": False}
+    return {"existe":True,"rfc":df.rfc,"razon_social":df.razon_social,"regimen_fiscal":df.regimen_fiscal,
+            "uso_cfdi":df.uso_cfdi,"correo_fiscal":df.correo_fiscal,"codigo_postal":df.codigo_postal}
+
+@router.get("/catalogos-fiscales")
+async def catalogos_fiscales(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    regs = await db.execute(text("SELECT codigo, nombre FROM regimenes_fiscales ORDER BY codigo"))
+    usos = await db.execute(text("SELECT codigo, nombre FROM usos_cfdi ORDER BY codigo"))
+    return {"regimenes": [{"codigo":r[0],"nombre":r[1]} for r in regs.fetchall()],
+            "usos": [{"codigo":r[0],"nombre":r[1]} for r in usos.fetchall()]}
 
 
 # ══════ CUENTAS TRANSFERENCIA ══════

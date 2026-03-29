@@ -318,6 +318,18 @@ async def pos_crear_pedido(
             observaciones=it.get("observaciones"),
         ))
 
+    # Save datos fiscales if factura
+    _dfd = data.get("datos_fiscales")
+    if _dfd and data.get("requiere_factura"):
+        from app.models.fiscales import DatosFiscalesCliente
+        _ndf = DatosFiscalesCliente(
+            cliente_id=cliente_id, rfc=_dfd.get("rfc"), razon_social=_dfd.get("razon_social"),
+            regimen_fiscal=_dfd.get("regimen_fiscal"), uso_cfdi=_dfd.get("uso_cfdi"),
+            correo_fiscal=_dfd.get("correo_fiscal"), codigo_postal=_dfd.get("codigo_postal"))
+        db.add(_ndf)
+        await db.flush()
+        pedido.datos_fiscales_id = _ndf.id
+
     await db.commit()
     await db.refresh(pedido)
 

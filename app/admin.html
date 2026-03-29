@@ -200,12 +200,24 @@
 <!-- ════════ USUARIOS ════════ -->
 <!-- ════════ FACTURACIÓN ════════ -->
 <div class="section" id="sec-facturacion">
-  <div class="sec-header"><h2>Facturación</h2><span class="sec-sub">Pedidos pendientes de facturar</span></div>
+  <div class="sec-header"><h2>Facturación</h2></div>
   <div class="sec-body">
-    <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Total</th><th>IVA (16%)</th><th>Estado</th><th>Acciones</th></tr></thead>
-      <tbody id="fact-tbody"></tbody>
-    </table></div>
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="factSubTab('fact-pend')">Pendientes</button>
+      <button class="sub-tab" onclick="factSubTab('fact-done')">Facturados</button>
+    </div>
+    <div class="sub-content" id="fact-pend-content">
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Subtotal</th><th>IVA</th><th>Total</th><th>Datos</th><th>Acciones</th></tr></thead>
+        <tbody id="fact-tbody"></tbody>
+      </table></div>
+    </div>
+    <div class="sub-content" id="fact-done-content" style="display:none">
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Total</th><th>Folio fiscal</th><th>Datos</th></tr></thead>
+        <tbody id="fact-done-tbody"></tbody>
+      </table></div>
+    </div>
   </div>
 </div>
 

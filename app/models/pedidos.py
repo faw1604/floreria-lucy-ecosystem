@@ -49,6 +49,8 @@ class Pedido(Base):
     webhook_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     requiere_factura: Mapped[bool] = mapped_column(Boolean, default=False)
     facturado: Mapped[bool] = mapped_column(Boolean, default=False)
+    folio_fiscal: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    datos_fiscales_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
 
 class ItemPedido(Base):

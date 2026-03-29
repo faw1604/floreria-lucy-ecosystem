@@ -120,6 +120,16 @@ async def catalogo_productos(
     ]
 
 
+@router.get("/catalogos-fiscales")
+async def catalogos_fiscales_publico(db: AsyncSession = Depends(get_db)):
+    """Catálogos de régimen fiscal y uso CFDI para formulario web."""
+    from sqlalchemy import text as txt
+    regs = await db.execute(txt("SELECT codigo, nombre FROM regimenes_fiscales ORDER BY codigo"))
+    usos = await db.execute(txt("SELECT codigo, nombre FROM usos_cfdi ORDER BY codigo"))
+    return {"regimenes": [{"codigo":r[0],"nombre":r[1]} for r in regs.fetchall()],
+            "usos": [{"codigo":r[0],"nombre":r[1]} for r in usos.fetchall()]}
+
+
 @router.get("/horarios-disponibles")
 async def horarios_disponibles(
     fecha: str,
@@ -348,6 +358,18 @@ async def crear_pedido_web(
             precio_unitario=iv["precio"],
         )
         db.add(item_pedido)
+
+    # Save datos fiscales if provided
+    _df_web = data.get("datos_fiscales")
+    if _df_web and data.get("requiere_factura"):
+        from app.models.fiscales import DatosFiscalesCliente
+        _dfc = DatosFiscalesCliente(
+            cliente_id=cliente.id, rfc=_df_web.get("rfc"), razon_social=_df_web.get("razon_social"),
+            regimen_fiscal=_df_web.get("regimen_fiscal"), uso_cfdi=_df_web.get("uso_cfdi"),
+            correo_fiscal=_df_web.get("correo_fiscal"), codigo_postal=_df_web.get("codigo_postal"))
+        db.add(_dfc)
+        await db.flush()
+        pedido.datos_fiscales_id = _dfc.id
 
     await db.commit()
     await db.refresh(pedido)

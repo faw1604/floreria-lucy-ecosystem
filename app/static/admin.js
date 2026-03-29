@@ -1691,35 +1691,94 @@ function renderEstChart(id) {
 }
 
 // ══════ FACTURACIÓN ══════
+function factSubTab(id) {
+  const parent = document.getElementById('sec-facturacion');
+  parent.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  parent.querySelectorAll('.sub-content').forEach(c => c.style.display = 'none');
+  event.target.classList.add('active');
+  document.getElementById(id + '-content').style.display = '';
+  if (id === 'fact-done') loadFacturados();
+}
+
 async function loadFacturacion() {
   try {
     const r = await fetch(API+'/api/admin/facturacion/pendientes',{credentials:'include'});
     if (!r.ok) return;
     const data = await r.json();
     const tbody = document.getElementById('fact-tbody');
-    if (!data.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--texto2);padding:40px">Sin pedidos pendientes de facturar</td></tr>'; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:40px">Sin pedidos pendientes de facturar</td></tr>'; return; }
+    tbody.innerHTML = data.map(p => `<tr>
+      <td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td>
+      <td>${fmtDate(p.fecha)}</td>
+      <td>${esc(p.cliente)}</td>
+      <td>${esc(p.canal)}</td>
+      <td>${fmt$(p.subtotal)}</td>
+      <td style="color:var(--dorado)">${fmt$(p.iva)}</td>
+      <td style="font-weight:600">${fmt$(p.total)}</td>
+      <td>${p.datos_fiscales_id ? '<span style="color:var(--verde)" title="Datos fiscales completos">✓</span>' : '<span style="color:var(--rojo)" title="Sin datos fiscales">✗</span>'}</td>
+      <td>
+        <button class="btn-sm" onclick="verDatosFiscales(${p.id})">Datos</button>
+        <button class="btn-sm" onclick="window.open('/pedidos/${p.id}/ticket-digital','_blank')">Ticket</button>
+        <button class="btn-dorado" onclick="pedirFolioFiscal(${p.id})">Facturar</button>
+      </td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+async function loadFacturados() {
+  try {
+    const r = await fetch(API+'/api/admin/facturacion/facturados',{credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const tbody = document.getElementById('fact-done-tbody');
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--texto2);padding:40px">Sin pedidos facturados</td></tr>'; return; }
     tbody.innerHTML = data.map(p => `<tr>
       <td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td>
       <td>${fmtDate(p.fecha)}</td>
       <td>${esc(p.cliente)}</td>
       <td>${esc(p.canal)}</td>
       <td style="font-weight:600">${fmt$(p.total)}</td>
-      <td style="color:var(--dorado);font-weight:600">${fmt$(p.iva)}</td>
-      <td>${badgeEstado(p.estado)}</td>
-      <td>
-        <button class="btn-sm" onclick="window.open('/pedidos/${p.id}/ticket-digital','_blank')">Ver ticket</button>
-        <button class="btn-dorado" onclick="marcarFacturado(${p.id})">Facturado</button>
-      </td>
+      <td style="color:var(--dorado);font-weight:600">${esc(p.folio_fiscal||'—')}</td>
+      <td>${p.datos_fiscales_id ? '<span style="color:var(--verde)">✓</span>' : '—'}</td>
     </tr>`).join('');
   } catch(e) {}
 }
 
-async function marcarFacturado(id) {
-  if (!confirm('Marcar como facturado?')) return;
-  await fetch(API+'/api/admin/facturacion/'+id+'/marcar',{method:'POST',credentials:'include'});
-  showToast('Marcado como facturado');
+function pedirFolioFiscal(id) {
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4>Marcar como facturado</h4>
+    <div class="field"><label>Folio fiscal (CFDI)</label><input id="ff-folio" placeholder="Ej: ABC-123-456"></div>
+    <button class="btn-primary" onclick="confirmarFacturado(${id})" style="width:100%;margin-top:8px">Confirmar</button>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function confirmarFacturado(id) {
+  const folio = document.getElementById('ff-folio')?.value?.trim() || '';
+  await fetch(API+'/api/admin/facturacion/'+id+'/marcar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({folio_fiscal:folio})});
+  cerrarModal('modal-egreso');
+  showToast('Facturado ✓');
   loadFacturacion();
   updateBadgeFact();
+}
+
+async function verDatosFiscales(pedidoId) {
+  try {
+    const r = await fetch(API+'/api/admin/datos-fiscales/pedido/'+pedidoId,{credentials:'include'});
+    const d = await r.json();
+    document.getElementById('modal-egreso-body').innerHTML = d.existe
+      ? `<h4>Datos fiscales</h4>
+         <div style="font-size:13px;line-height:1.8">
+           <strong>RFC:</strong> ${esc(d.rfc||'—')}<br>
+           <strong>Razón social:</strong> ${esc(d.razon_social||'—')}<br>
+           <strong>Régimen:</strong> ${esc(d.regimen_fiscal||'—')}<br>
+           <strong>Uso CFDI:</strong> ${esc(d.uso_cfdi||'—')}<br>
+           <strong>Correo:</strong> ${esc(d.correo_fiscal||'—')}<br>
+           <strong>C.P.:</strong> ${esc(d.codigo_postal||'—')}
+         </div>`
+      : '<h4>Datos fiscales</h4><div style="color:var(--texto2);padding:12px">Sin datos fiscales registrados para este pedido</div>';
+    document.getElementById('modal-egreso').classList.add('active');
+  } catch(e) {}
 }
 
 async function updateBadgeFact() {

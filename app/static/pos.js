@@ -295,6 +295,15 @@ function renderCartTotals() {
   if (conFactura) {
     const ivaFact = Math.round(t.subtotal * 0.16);
     html += `<div style="font-size:11px;color:var(--dorado);padding:2px 0">Subtotal: $${(t.subtotal/100).toLocaleString()} + IVA (16%): $${(ivaFact/100).toLocaleString()} = $${((t.subtotal+ivaFact)/100).toLocaleString()}</div>`;
+    html += `<div style="border:1px solid var(--dorado);border-radius:8px;padding:8px;margin:6px 0;font-size:11px">
+      <div style="font-weight:600;color:var(--dorado);margin-bottom:4px">Datos fiscales</div>
+      <input id="fc-rfc" placeholder="RFC *" value="${window._datosFiscales?.rfc||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
+      <input id="fc-razon" placeholder="Razón social *" value="${window._datosFiscales?.razon_social||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
+      <select id="fc-regimen" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px"><option value="">Régimen fiscal *</option></select>
+      <select id="fc-uso" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px"><option value="">Uso CFDI *</option></select>
+      <input id="fc-email" placeholder="Correo fiscal *" value="${window._datosFiscales?.correo_fiscal||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
+      <input id="fc-cp" placeholder="C.P. *" value="${window._datosFiscales?.codigo_postal||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px">
+    </div>`;
   }
   html += `<button class="btn-continuar" ${carrito.length===0?'disabled':''} onclick="goWin(2)">Continuar orden →</button>`;
   document.getElementById('cart-totals').innerHTML = html;
@@ -302,7 +311,38 @@ function renderCartTotals() {
 
 function toggleIva() { ivaActivo = !ivaActivo; renderCart(); }
 function toggleIeps() { iepsActivo = !iepsActivo; renderCart(); }
-function toggleFacturaPOS(checked) { conFactura = checked; renderCart(); }
+async function toggleFacturaPOS(checked) {
+  conFactura = checked;
+  window._datosFiscales = window._datosFiscales || {};
+  renderCart();
+  if (checked) {
+    // Load catalogos fiscales
+    try {
+      const r = await fetch('/api/admin/catalogos-fiscales', {credentials:'include'});
+      const d = await r.json();
+      const regSel = document.getElementById('fc-regimen');
+      const usoSel = document.getElementById('fc-uso');
+      if (regSel) { d.regimenes.forEach(rg => { const o = document.createElement('option'); o.value=rg.codigo; o.textContent=rg.codigo+' '+rg.nombre; if(window._datosFiscales?.regimen_fiscal===rg.codigo) o.selected=true; regSel.appendChild(o); }); }
+      if (usoSel) { d.usos.forEach(u => { const o = document.createElement('option'); o.value=u.codigo; o.textContent=u.codigo+' '+u.nombre; if(window._datosFiscales?.uso_cfdi===u.codigo) o.selected=true; usoSel.appendChild(o); }); }
+    } catch(e) {}
+    // Pre-fill from client
+    if (clienteSel?.id) {
+      try {
+        const r = await fetch('/api/admin/datos-fiscales/'+clienteSel.id, {credentials:'include'});
+        const d = await r.json();
+        if (d.existe) {
+          window._datosFiscales = d;
+          if (document.getElementById('fc-rfc')) document.getElementById('fc-rfc').value = d.rfc || '';
+          if (document.getElementById('fc-razon')) document.getElementById('fc-razon').value = d.razon_social || '';
+          if (document.getElementById('fc-email')) document.getElementById('fc-email').value = d.correo_fiscal || '';
+          if (document.getElementById('fc-cp')) document.getElementById('fc-cp').value = d.codigo_postal || '';
+          if (d.regimen_fiscal && document.getElementById('fc-regimen')) document.getElementById('fc-regimen').value = d.regimen_fiscal;
+          if (d.uso_cfdi && document.getElementById('fc-uso')) document.getElementById('fc-uso').value = d.uso_cfdi;
+        }
+      } catch(e) {}
+    }
+  }
+}
 function toggleGlobalDiscInput() {
   const r = document.getElementById('gdisc-row');
   if (r) r.style.display = r.style.display === 'none' ? 'flex' : 'none';
@@ -817,6 +857,14 @@ function buildPayload(estado) {
     pagos,
     estado,
     requiere_factura: conFactura,
+    datos_fiscales: conFactura ? {
+      rfc: document.getElementById('fc-rfc')?.value?.trim() || null,
+      razon_social: document.getElementById('fc-razon')?.value?.trim() || null,
+      regimen_fiscal: document.getElementById('fc-regimen')?.value || null,
+      uso_cfdi: document.getElementById('fc-uso')?.value || null,
+      correo_fiscal: document.getElementById('fc-email')?.value?.trim() || null,
+      codigo_postal: document.getElementById('fc-cp')?.value?.trim() || null,
+    } : null,
   };
 
   if (ordenTipo === 'domicilio') {
