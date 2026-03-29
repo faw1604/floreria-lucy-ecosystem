@@ -5,8 +5,8 @@ let carrito = []; // [{producto_id, nombre, codigo, categoria, precio, cantidad,
 let productos = [];
 let categorias = [];
 let vistaActual = localStorage.getItem('pos_vista_catalogo') || 'grid';
-let ivaActivo = false;
-let iepsActivo = false;
+let ivaActivo = false; // legacy — now auto-calculated via conFactura
+let iepsActivo = false; // legacy — now auto-calculated via conFactura
 let descGlobal = null; // {tipo:'%'|'$', valor:X}
 let conFactura = false;
 let ordenTipo = null; // mostrador|domicilio|recoger|funeral
@@ -203,10 +203,24 @@ function getItemFinalPrice(item) {
   return Math.max(0, price);
 }
 
+const CHOCOLATE_CATS = ['chocolates gourmet'];
+
+function isChocolate(it) {
+  return CHOCOLATE_CATS.some(c => (it.categoria||'').toLowerCase().includes(c));
+}
+
 function calcTotals() {
   const subtotal = carrito.reduce((s, it) => s + getItemFinalPrice(it), 0);
-  const iva = ivaActivo ? Math.round(subtotal * 0.16) : 0;
-  const ieps = iepsActivo ? Math.round(subtotal * 0.08) : 0; // display only
+  // Auto-calculate taxes when conFactura
+  let subFlores = 0, subChoco = 0;
+  if (conFactura) {
+    carrito.forEach(it => {
+      const fp = getItemFinalPrice(it);
+      if (isChocolate(it)) subChoco += fp; else subFlores += fp;
+    });
+  }
+  const iva = conFactura ? Math.round(subFlores * 0.16) : 0;
+  const ieps = conFactura ? Math.round(subChoco * 0.08) : 0; // display only, never added to total
   let descGlobalAmt = 0;
   if (descGlobal) {
     if (descGlobal.tipo === '%') descGlobalAmt = Math.round(subtotal * descGlobal.valor / 100);
@@ -233,7 +247,7 @@ function calcTotals() {
   let cargoHora = 0;
   if (selHorario === 'hora_especifica') cargoHora = 8000; // $80 en centavos
   const total = subtotal + iva - descGlobalAmt + envio + comision + cargoHora;
-  return { subtotal, iva, ieps, descGlobalAmt, envio, comision, cargoHora, total };
+  return { subtotal, subFlores, subChoco, iva, ieps, descGlobalAmt, envio, comision, cargoHora, total };
 }
 
 function renderCart() {
@@ -279,10 +293,6 @@ function renderCartTotals() {
   const t = calcTotals();
   const n = carrito.reduce((s, it) => s + it.cantidad, 0);
   let html = `<div class="ct-line"><span>${n} items</span><span>Subtotal: $${(t.subtotal/100).toLocaleString()}</span></div>`;
-  html += '<div class="ct-chips">';
-  html += `<span class="ct-chip${ivaActivo?' active':''}" onclick="toggleIva()">× IVA (16%): $${(t.iva/100).toLocaleString()}</span>`;
-  html += `<span class="ct-chip ieps${iepsActivo?' active':''}" onclick="toggleIeps()">× IEPS (8%): $${(t.ieps/100).toLocaleString()}</span>`;
-  html += '</div>';
   if (descGlobal) {
     html += `<div class="ct-line" style="color:var(--dorado)"><span>Descuento ${descGlobal.tipo==='%'?descGlobal.valor+'%':'$'+(descGlobal.valor).toLocaleString()}</span><span>-$${(t.descGlobalAmt/100).toLocaleString()}</span></div>`;
     html += `<button class="ct-disc-link" onclick="clearGlobalDisc()">× Quitar descuento global</button>`;
@@ -293,8 +303,13 @@ function renderCartTotals() {
   html += `<div class="ct-line total"><span>TOTAL</span><span>$${(t.total/100).toLocaleString()}</span></div>`;
   html += `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:6px 0;cursor:pointer;color:var(--texto2)"><input type="checkbox" ${conFactura?'checked':''} onchange="toggleFacturaPOS(this.checked)" style="accent-color:var(--dorado)"> Con factura</label>`;
   if (conFactura) {
-    const ivaFact = Math.round(t.subtotal * 0.16);
-    html += `<div style="font-size:11px;color:var(--dorado);padding:2px 0">Subtotal: $${(t.subtotal/100).toLocaleString()} + IVA (16%): $${(ivaFact/100).toLocaleString()} = $${((t.subtotal+ivaFact)/100).toLocaleString()}</div>`;
+    let desgl = '';
+    if (t.subFlores) desgl += `<div style="font-size:11px;color:var(--texto2)">Subtotal flores/otros: $${(t.subFlores/100).toLocaleString()}</div>`;
+    if (t.subFlores) desgl += `<div style="font-size:11px;color:var(--dorado)">IVA 16%: $${(t.iva/100).toLocaleString()}</div>`;
+    if (t.subChoco) desgl += `<div style="font-size:11px;color:var(--texto2)">Subtotal chocolates: $${(t.subChoco/100).toLocaleString()}</div>`;
+    if (t.subChoco) desgl += `<div style="font-size:11px;color:var(--texto2)">IEPS 8%: $${(t.ieps/100).toLocaleString()} (desglosado)</div>`;
+    desgl += `<div style="font-size:12px;font-weight:600;color:var(--dorado);margin-top:2px">Total con factura: $${(t.total/100).toLocaleString()}</div>`;
+    html += desgl;
     html += `<div style="border:1px solid var(--dorado);border-radius:8px;padding:8px;margin:6px 0;font-size:11px">
       <div style="font-weight:600;color:var(--dorado);margin-bottom:4px">Datos fiscales</div>
       <input id="fc-rfc" placeholder="RFC *" value="${window._datosFiscales?.rfc||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
@@ -765,18 +780,15 @@ function updateSummary() {
   const st = document.getElementById('sum-totals');
   if (st) {
     let html = `<div class="ct-line"><span>Subtotal</span><span>$${(t.subtotal/100).toLocaleString()}</span></div>`;
-    if (t.iva) html += `<div class="ct-line"><span>IVA 16%</span><span>$${(t.iva/100).toLocaleString()}</span></div>`;
-    if (t.ieps && iepsActivo) html += `<div class="ct-line"><span>IEPS 8% (incluido)</span><span>$${(t.ieps/100).toLocaleString()}</span></div>`;
+    if (conFactura && t.subFlores) html += `<div class="ct-line"><span>IVA 16% (flores/otros)</span><span>$${(t.iva/100).toLocaleString()}</span></div>`;
+    if (conFactura && t.subChoco) html += `<div class="ct-line" style="color:var(--texto2)"><span>IEPS 8% chocolates (desglosado)</span><span>$${(t.ieps/100).toLocaleString()}</span></div>`;
     if (t.envio) html += `<div class="ct-line"><span>Envio</span><span>$${(t.envio/100).toLocaleString()}</span></div>`;
     if (t.cargoHora) html += `<div class="ct-line"><span>Hora especifica</span><span>+$${(t.cargoHora/100).toLocaleString()}</span></div>`;
     if (t.descGlobalAmt) html += `<div class="ct-line disc"><span>Descuento</span><span>-$${(t.descGlobalAmt/100).toLocaleString()}</span></div>`;
     if (t.comision) html += `<div class="ct-line"><span>Comision link (4%)</span><span>+$${(t.comision/100).toLocaleString()}</span></div>`;
     html += `<div class="ct-line total"><span>TOTAL</span><span>$${(t.total/100).toLocaleString()}</span></div>`;
-    // Con factura toggle in summary (Window 3)
     html += `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:8px 0 4px;cursor:pointer;color:var(--texto2)"><input type="checkbox" ${conFactura?'checked':''} onchange="toggleFacturaPOS(this.checked)" style="accent-color:var(--dorado)"> Con factura</label>`;
     if (conFactura) {
-      const ivaF = Math.round(t.subtotal * 0.16);
-      html += `<div style="font-size:11px;color:var(--dorado);padding:2px 0">IVA (16%): $${(ivaF/100).toLocaleString()} → Total: $${((t.subtotal+ivaF)/100).toLocaleString()}</div>`;
       html += `<div id="sum-fiscal" style="border:1px solid var(--dorado);border-radius:8px;padding:8px;margin:6px 0;font-size:11px">
         <div style="font-weight:600;color:var(--dorado);margin-bottom:4px">Datos fiscales</div>
         <input id="fc-rfc" placeholder="RFC *" value="${window._datosFiscales?.rfc||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
@@ -878,7 +890,7 @@ function buildPayload(estado) {
     tipo: ordenTipo,
     cliente_id: clienteSel?.id || null,
     items,
-    tipo_impuesto: ivaActivo ? 'IVA' : (iepsActivo ? 'IEPS' : 'NA'),
+    tipo_impuesto: conFactura ? 'IVA' : 'NA',
     descuento_total: t.descGlobalAmt,
     cargo_hora_especifica: t.cargoHora || 0,
     pagos,
