@@ -41,11 +41,11 @@ async def listar_usuarios(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(select(Usuario).order_by(Usuario.created_at.desc()))
+    result = await db.execute(text("SELECT id, nombre, username, rol, activo, created_at FROM usuarios ORDER BY id"))
     return [
-        {"id": u.id, "nombre": u.nombre, "username": u.username, "rol": u.rol,
-         "activo": u.activo, "created_at": u.created_at.isoformat() if u.created_at else None}
-        for u in result.scalars().all()
+        {"id": r[0], "nombre": r[1], "username": r[2], "rol": r[3],
+         "activo": r[4], "created_at": str(r[5]) if r[5] else None}
+        for r in result.fetchall()
     ]
 
 
@@ -61,27 +61,18 @@ async def crear_usuario(
     password = data.get("password", "")
     if not password:
         raise HTTPException(status_code=400, detail="Contraseña requerida")
-    # Simple hash (bcrypt si está disponible, sino SHA256)
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
     try:
-        from passlib.hash import bcrypt
-        pw_hash = bcrypt.hash(password)
-    except ImportError:
-        pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    u = Usuario(
-        nombre=data["nombre"],
-        username=data["username"],
-        password_hash=pw_hash,
-        rol=data.get("rol", "operador"),
-        activo=data.get("activo", True),
-    )
-    db.add(u)
-    try:
+        await db.execute(text(
+            "INSERT INTO usuarios (nombre, username, password_hash, rol, activo) VALUES (:n, :u, :p, :r, true)"
+        ), {"n": data["nombre"], "u": data["username"], "p": pw_hash, "r": data.get("rol", "operador")})
         await db.commit()
-        await db.refresh(u)
-    except Exception:
+    except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="Username ya existe")
-    return {"ok": True, "id": u.id}
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Username ya existe")
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True}
 
 
 @router.put("/usuarios/{user_id}")
@@ -92,22 +83,23 @@ async def actualizar_usuario(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(select(Usuario).where(Usuario.id == user_id))
-    u = result.scalar_one_or_none()
-    if not u:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
     data = await request.json()
-    if "nombre" in data:
-        u.nombre = data["nombre"]
-    if "rol" in data:
-        u.rol = data["rol"]
-    if "activo" in data:
-        # Prevent deactivating last admin
-        if not data["activo"] and u.rol == "admin":
-            count = await db.execute(select(func.count(Usuario.id)).where(Usuario.rol == "admin", Usuario.activo == True))
-            if count.scalar() <= 1:
+    # Prevent deactivating last admin
+    if "activo" in data and not data["activo"]:
+        r = await db.execute(text("SELECT rol FROM usuarios WHERE id = :id"), {"id": user_id})
+        row = r.fetchone()
+        if row and row[0] == "admin":
+            cnt = await db.execute(text("SELECT COUNT(*) FROM usuarios WHERE rol='admin' AND activo=true"))
+            if (cnt.scalar() or 0) <= 1:
                 raise HTTPException(status_code=400, detail="No se puede desactivar el último admin")
-        u.activo = data["activo"]
+    sets = []
+    params = {"id": user_id}
+    for k in ["nombre", "rol", "activo"]:
+        if k in data:
+            sets.append(f"{k} = :{k}")
+            params[k] = data[k]
+    if not sets: return {"ok": True}
+    await db.execute(text(f"UPDATE usuarios SET {', '.join(sets)} WHERE id = :id"), params)
     await db.commit()
     return {"ok": True}
 
@@ -124,16 +116,9 @@ async def cambiar_password(
     password = data.get("password", "")
     if len(password) < 4:
         raise HTTPException(status_code=400, detail="Contraseña muy corta")
-    result = await db.execute(select(Usuario).where(Usuario.id == user_id))
-    u = result.scalar_one_or_none()
-    if not u:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
     import hashlib
-    try:
-        from passlib.hash import bcrypt
-        u.password_hash = bcrypt.hash(password)
-    except ImportError:
-        u.password_hash = hashlib.sha256(password.encode()).hexdigest()
+    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    await db.execute(text("UPDATE usuarios SET password_hash = :p WHERE id = :id"), {"p": pw_hash, "id": user_id})
     await db.commit()
     return {"ok": True}
 
