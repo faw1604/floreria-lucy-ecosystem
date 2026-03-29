@@ -370,6 +370,21 @@ async def pos_crear_pedido(
     await db.commit()
     await db.refresh(pedido)
 
+    # Marcar reservas como vendidas
+    reserva_ids = data.get("reserva_ids", [])
+    if reserva_ids:
+        from app.models.reservas import Reserva
+        for rid in reserva_ids:
+            r_res = await db.execute(
+                select(Reserva).where(Reserva.id == rid, Reserva.estado == "disponible")
+            )
+            reserva = r_res.scalar_one_or_none()
+            if reserva:
+                reserva.estado = "vendida"
+                reserva.pedido_id = pedido.id
+                reserva.vendida_at = datetime.now(TZ)
+        await db.commit()
+
     return {
         "ok": True, "folio": pedido.numero, "id": pedido.id,
         "total": total, "subtotal": subtotal, "impuesto": impuesto,
@@ -764,6 +779,21 @@ async def pos_completar_pedido(
 
     await db.commit()
     await db.refresh(pedido)
+
+    # Marcar reservas como vendidas
+    reserva_ids = data.get("reserva_ids", [])
+    if reserva_ids:
+        from app.models.reservas import Reserva
+        for rid in reserva_ids:
+            r_res = await db.execute(
+                select(Reserva).where(Reserva.id == rid, Reserva.estado == "disponible")
+            )
+            reserva_obj = r_res.scalar_one_or_none()
+            if reserva_obj:
+                reserva_obj.estado = "vendida"
+                reserva_obj.pedido_id = pedido.id
+                reserva_obj.vendida_at = datetime.now(TZ)
+        await db.commit()
 
     return {
         "ok": True, "folio": pedido.numero, "id": pedido.id,

@@ -60,6 +60,7 @@
         <button id="vt-grid" class="active" onclick="setView('grid')">⊞</button>
       </div>
       <button class="btn-rayo" onclick="abrirModalRayo()" title="Producto no registrado">⚡</button>
+      <button class="btn-rayo" onclick="abrirModalReservasPOS()" title="Reservas disponibles" style="background:#16a34a;color:#fff;font-size:13px;font-weight:700;width:auto;padding:0 12px">R</button>
     </div>
     <div class="prod-scroll">
       <div class="prod-grid" id="prod-container"></div>
@@ -259,6 +260,19 @@
 </div><!-- /main -->
 
 <!-- ═══ MODALS ═══ -->
+
+<!-- Modal: Reservas disponibles -->
+<div class="modal-bg" id="modal-reservas-pos" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal-card" style="max-width:600px;max-height:80vh;overflow-y:auto">
+    <div class="modal-header">
+      <h3>Reservas disponibles</h3>
+      <button class="modal-x" onclick="document.getElementById('modal-reservas-pos').classList.remove('active')">&times;</button>
+    </div>
+    <div id="reservas-pos-list" style="padding:16px">
+      <div style="text-align:center;color:var(--texto2)">Cargando...</div>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: Producto rayo -->
 <div class="modal-bg" id="modal-rayo" onclick="if(event.target===this)this.classList.remove('active')">

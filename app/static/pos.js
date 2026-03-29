@@ -967,6 +967,10 @@ function buildPayload(estado) {
     body.hora_especifica = document.getElementById('f-hora-rec')?.value || '';
   }
 
+  // Reservas vinculadas
+  const reserva_ids = carrito.filter(it => it.reserva_id).map(it => it.reserva_id);
+  if (reserva_ids.length) body.reserva_ids = reserva_ids;
+
   return body;
 }
 
@@ -2368,3 +2372,52 @@ async function entregaMarcar(id) {
 
 // Auto-refresh entregas badge
 setInterval(loadEntregasResumen, 30000);
+
+// ═══════════════════════════════════════════
+// RESERVAS EN POS
+// ═══════════════════════════════════════════
+
+async function abrirModalReservasPOS() {
+  const modal = document.getElementById('modal-reservas-pos');
+  const list = document.getElementById('reservas-pos-list');
+  list.innerHTML = '<div style="text-align:center;color:var(--texto2);padding:20px">Cargando...</div>';
+  modal.classList.add('active');
+  try {
+    const r = await fetch('/api/reservas/disponibles', {credentials:'include'});
+    if (!r.ok) { list.innerHTML = '<div style="color:var(--rojo);padding:16px">Error al cargar</div>'; return; }
+    const data = await r.json();
+    if (!data.length) { list.innerHTML = '<div style="text-align:center;color:var(--texto2);padding:20px">No hay reservas disponibles</div>'; return; }
+    list.innerHTML = data.map(res => {
+      const img = res.foto_url || res.imagen_url;
+      const yaEnCarrito = carrito.find(x => x.reserva_id === res.id);
+      return `<div style="display:flex;gap:12px;align-items:center;padding:12px;border-bottom:1px solid var(--borde);${yaEnCarrito?'opacity:.4':'cursor:pointer'}" ${yaEnCarrito?'':`onclick="addReservaAlCarrito(${res.id},'${(res.nombre||'').replace(/'/g,"\\'")}',${res.precio},'${(res.foto_url||res.imagen_url||'').replace(/'/g,"\\'")}',${res.producto_id||'null'})"`}>
+        ${img ? `<img src="${img}" style="width:64px;height:64px;border-radius:8px;object-fit:cover;flex-shrink:0">` : '<div style="width:64px;height:64px;border-radius:8px;background:var(--crema);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🌸</div>'}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:14px">${res.nombre}</div>
+          <div style="font-size:12px;color:var(--texto2)">Por: ${res.florista_usuario}</div>
+        </div>
+        <div style="font-weight:700;color:var(--verde);font-size:16px;flex-shrink:0">$${(res.precio/100).toLocaleString()}</div>
+        ${yaEnCarrito ? '<span style="font-size:11px;color:var(--texto2)">Ya en carrito</span>' : ''}
+      </div>`;
+    }).join('');
+  } catch(e) { list.innerHTML = '<div style="color:var(--rojo);padding:16px">Error de conexion</div>'; }
+}
+
+function addReservaAlCarrito(id, nombre, precio, imgUrl, productoId) {
+  if (carrito.find(x => x.reserva_id === id)) return;
+  carrito.push({
+    producto_id: productoId || 0,
+    nombre: nombre,
+    codigo: null,
+    categoria: 'Reserva',
+    precio: precio,
+    cantidad: 1,
+    imagen_url: imgUrl || null,
+    descuento: null,
+    es_custom: !productoId,
+    observaciones: 'Reserva #' + id,
+    reserva_id: id,
+  });
+  renderCart();
+  document.getElementById('modal-reservas-pos').classList.remove('active');
+}

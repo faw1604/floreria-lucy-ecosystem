@@ -11,6 +11,7 @@ from app.models.banners import BannerCatalogo
 from app.models.cuentas import CuentaTransferencia
 from app.models.fiscales import DatosFiscalesCliente
 from app.models.proveedores import Proveedor
+from app.models.reservas import Reserva
 
 __all__ = [
     "Cliente",
@@ -37,4 +38,5 @@ __all__ = [
     "BannerCatalogo",
     "Categoria",
     "ProductoVariante",
+    "Reserva",
 ]

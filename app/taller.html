@@ -201,6 +201,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <button class="tab" data-tab="recoger">🔴 Por Recoger <span class="tab-badge" id="badge-recoger"></span></button>
   <button class="tab" data-tab="proximos">Proximos</button>
   <button class="tab" data-tab="realizados">Realizados</button>
+  <button class="tab" data-tab="reservas">Reservas <span class="tab-badge" id="badge-reservas"></span></button>
   <button class="tab" data-tab="inventario">Inventario</button>
 </div>
 
@@ -234,6 +235,16 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <!-- REALIZADOS -->
   <div class="tab-content" id="content-realizados">
     <div id="realizados-body"><div class="empty">Cargando...</div></div>
+  </div>
+
+  <!-- RESERVAS -->
+  <div class="tab-content" id="content-reservas">
+    <div class="toolbar">
+      <div class="toolbar-title">Pizarron de Reservas</div>
+      <button class="act-btn btn-accept" style="font-size:14px;padding:10px 20px" onclick="openModalReserva()">+ Nueva Reserva</button>
+    </div>
+    <div id="reservas-resumen" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;font-size:13px;color:var(--texto2)"></div>
+    <div class="kds-grid" id="reservas-grid"><div class="empty">Cargando...</div></div>
   </div>
 
   <!-- INVENTARIO -->
@@ -311,6 +322,49 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   </div>
 </div>
 
+<!-- Modal: Nueva Reserva -->
+<div class="modal-overlay" id="modal-reserva" onclick="if(event.target===this)closeModal('modal-reserva')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-reserva')">&times;</button>
+    <div class="modal-title">Nueva Reserva</div>
+    <div style="display:flex;gap:4px;margin-bottom:14px">
+      <button class="sub-tab active" id="res-tab-catalogo" onclick="setReservaTab('catalogo')" style="padding:8px 16px;border:1px solid var(--borde);border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;background:var(--verde);color:#fff">Del catalogo</button>
+      <button class="sub-tab" id="res-tab-custom" onclick="setReservaTab('custom')" style="padding:8px 16px;border:1px solid var(--borde);border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;background:#fff">⚡ Arreglo especial</button>
+    </div>
+    <div id="res-catalogo">
+      <input class="modal-input" id="res-buscar" placeholder="Buscar producto del catalogo..." oninput="buscarProductoReserva()">
+      <div id="res-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;margin-bottom:12px"></div>
+      <div id="res-selected" style="font-size:13px;color:var(--verde);font-weight:600;margin-bottom:12px"></div>
+    </div>
+    <div id="res-custom" style="display:none">
+      <input class="modal-input" id="res-nombre" placeholder="Nombre del arreglo">
+      <input class="modal-input" id="res-precio" type="number" placeholder="Precio en pesos (ej: 650)" min="1">
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--texto2);display:block;margin-bottom:4px">Foto (opcional)</label>
+      <input type="file" id="res-foto" accept="image/*" style="font-size:13px">
+    </div>
+    <button class="modal-submit" onclick="crearReserva()" style="width:100%">Agregar Reserva</button>
+  </div>
+</div>
+
+<!-- Modal: Descartar Reserva -->
+<div class="modal-overlay" id="modal-descartar" onclick="if(event.target===this)closeModal('modal-descartar')">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('modal-descartar')">&times;</button>
+    <div class="modal-title">Descartar reserva</div>
+    <select class="modal-select" id="desc-razon">
+      <option value="">Seleccionar razon...</option>
+      <option value="Se marchito">Se marchito</option>
+      <option value="Dano accidental">Dano accidental</option>
+      <option value="No se vendio a tiempo">No se vendio a tiempo</option>
+      <option value="Otro">Otro</option>
+    </select>
+    <textarea class="modal-input" id="desc-otro" rows="2" placeholder="Detalle adicional..." style="display:none"></textarea>
+    <button class="modal-submit" id="desc-submit">Confirmar descarte</button>
+  </div>
+</div>
+
 <div id="print-frame"></div>
 
 <script>
@@ -353,6 +407,7 @@ function refreshTab(tab) {
   else if (tab === 'recoger') loadRecoger();
   else if (tab === 'proximos') loadProximos();
   else if (tab === 'realizados') loadRealizados();
+  else if (tab === 'reservas') { loadReservas(); loadReservasResumen(); }
   else if (tab === 'inventario') loadInventario();
 }
 
@@ -1069,6 +1124,169 @@ function refreshTimers() {
   document.querySelectorAll('#produccion-hoy-body .kds-card').forEach(card => {
     // Timers auto-refresh on next full reload
   });
+}
+
+// ─── RESERVAS ───
+let reservaTab = 'catalogo';
+let reservaProductoSel = null;
+let allProductosReserva = [];
+let descartarReservaId = null;
+
+function setReservaTab(tab) {
+  reservaTab = tab;
+  document.getElementById('res-catalogo').style.display = tab === 'catalogo' ? '' : 'none';
+  document.getElementById('res-custom').style.display = tab === 'custom' ? '' : 'none';
+  const btnCat = document.getElementById('res-tab-catalogo');
+  const btnCus = document.getElementById('res-tab-custom');
+  if (tab === 'catalogo') {
+    btnCat.style.background = 'var(--verde)'; btnCat.style.color = '#fff'; btnCat.style.fontWeight = '600';
+    btnCus.style.background = '#fff'; btnCus.style.color = 'var(--texto)'; btnCus.style.fontWeight = '500';
+  } else {
+    btnCus.style.background = 'var(--verde)'; btnCus.style.color = '#fff'; btnCus.style.fontWeight = '600';
+    btnCat.style.background = '#fff'; btnCat.style.color = 'var(--texto)'; btnCat.style.fontWeight = '500';
+  }
+  reservaProductoSel = null;
+  document.getElementById('res-selected').innerHTML = '';
+}
+
+function openModalReserva() {
+  reservaProductoSel = null;
+  reservaTab = 'catalogo';
+  setReservaTab('catalogo');
+  document.getElementById('res-buscar').value = '';
+  document.getElementById('res-results').innerHTML = '';
+  document.getElementById('res-selected').innerHTML = '';
+  document.getElementById('res-nombre').value = '';
+  document.getElementById('res-precio').value = '';
+  document.getElementById('res-foto').value = '';
+  document.getElementById('modal-reserva').classList.add('active');
+  if (!allProductosReserva.length) loadProductosReserva();
+}
+
+async function loadProductosReserva() {
+  try {
+    const r = await fetch(`${API}/productos`, {credentials:'include'});
+    if (r.ok) allProductosReserva = await r.json();
+  } catch(e) {}
+}
+
+function buscarProductoReserva() {
+  const q = document.getElementById('res-buscar').value.toLowerCase().trim();
+  if (q.length < 2) { document.getElementById('res-results').innerHTML = ''; return; }
+  const matches = allProductosReserva.filter(p =>
+    p.nombre.toLowerCase().includes(q) || (p.codigo||'').toLowerCase().includes(q)
+  ).slice(0, 10);
+  document.getElementById('res-results').innerHTML = matches.map(p => {
+    const sel = reservaProductoSel && reservaProductoSel.id === p.id;
+    return `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center;${sel?'background:#dcfce7':''}" onclick="selProductoReserva(${p.id},'${esc(p.nombre)}',${p.precio},'${esc(p.codigo||'')}')">
+      <div style="display:flex;align-items:center;gap:8px">
+        ${p.imagen_url ? `<img src="${p.imagen_url}" style="width:36px;height:36px;border-radius:6px;object-fit:cover">` : ''}
+        <span>${p.nombre}</span>
+      </div>
+      <span style="color:var(--texto2)">${p.codigo||''} — $${(p.precio||0)/100}</span>
+    </div>`;
+  }).join('') || '<div style="padding:10px 12px;color:var(--texto2)">Sin resultados</div>';
+}
+
+function selProductoReserva(id, nombre, precio, codigo) {
+  reservaProductoSel = {id, nombre, precio, codigo};
+  document.getElementById('res-selected').innerHTML = `✅ ${nombre} — $${precio/100}`;
+  buscarProductoReserva();
+}
+
+async function crearReserva() {
+  let body = {};
+  if (reservaTab === 'catalogo') {
+    if (!reservaProductoSel) { alert('Selecciona un producto'); return; }
+    body = {producto_id: reservaProductoSel.id, precio: reservaProductoSel.precio};
+  } else {
+    const nombre = document.getElementById('res-nombre').value.trim();
+    const precioPesos = parseFloat(document.getElementById('res-precio').value);
+    if (!nombre) { alert('Escribe el nombre del arreglo'); return; }
+    if (!precioPesos || precioPesos <= 0) { alert('Escribe el precio'); return; }
+    body = {nombre_custom: nombre, precio: Math.round(precioPesos * 100)};
+  }
+  body.florista_usuario = 'florista'; // TODO: get from session
+  try {
+    const r = await fetch('/api/reservas/crear', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.detail || 'Error'); return; }
+    closeModal('modal-reserva');
+    loadReservas();
+    loadReservasResumen();
+  } catch(e) { alert('Error de conexion'); }
+}
+
+async function loadReservas() {
+  try {
+    const r = await fetch('/api/reservas/disponibles', {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const el = document.getElementById('reservas-grid');
+    // Update badge
+    setBadge('badge-reservas', data.length);
+    if (!data.length) { el.innerHTML = '<div class="empty">🌸 No hay reservas disponibles</div>'; return; }
+    el.innerHTML = data.map(res => {
+      const img = res.foto_url || res.imagen_url;
+      const timer = tiempoDesde(res.created_at);
+      return `<div class="kds-card" style="border-left-color:var(--dorado)">
+        <div class="kds-card-head">
+          <div class="kds-num" style="font-size:16px">🌸 Reserva #${res.id}</div>
+          <span class="kds-timer" style="background:#fef3c7;color:#92400e">${timer}</span>
+        </div>
+        <div class="kds-body">
+          ${img ? `<img src="${img}" style="width:100%;max-height:160px;object-fit:cover;border-radius:10px;margin-bottom:8px">` : ''}
+          <div class="kds-cliente">${res.nombre}</div>
+          ${res.codigo ? `<div class="kds-detail" style="font-size:11px;color:var(--texto2)">${res.codigo}</div>` : ''}
+          <div style="font-size:18px;font-weight:700;color:var(--verde);margin:4px 0">$${(res.precio/100).toLocaleString()}</div>
+          <div class="kds-detail">👤 ${res.florista_usuario}</div>
+        </div>
+        <div class="kds-actions">
+          <button class="act-btn btn-cancel" onclick="abrirDescartar(${res.id})">Descartar</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function loadReservasResumen() {
+  try {
+    const r = await fetch('/api/reservas/resumen-dia', {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    document.getElementById('reservas-resumen').innerHTML = `
+      <span>📦 Disponibles: <strong>${d.disponibles}</strong></span>
+      <span>✅ Vendidas hoy: <strong>${d.vendidas_hoy}</strong></span>
+      <span>🗑 Descartadas: <strong>${d.descartadas_hoy}</strong></span>
+      <span>💰 Ingresos: <strong>$${(d.ingresos_hoy/100).toLocaleString()}</strong></span>`;
+  } catch(e) {}
+}
+
+function abrirDescartar(id) {
+  descartarReservaId = id;
+  document.getElementById('desc-razon').value = '';
+  document.getElementById('desc-otro').value = '';
+  document.getElementById('desc-otro').style.display = 'none';
+  document.getElementById('desc-razon').onchange = () => {
+    document.getElementById('desc-otro').style.display = document.getElementById('desc-razon').value === 'Otro' ? '' : 'none';
+  };
+  document.getElementById('desc-submit').onclick = async () => {
+    let razon = document.getElementById('desc-razon').value;
+    if (!razon) return;
+    if (razon === 'Otro') {
+      const otro = document.getElementById('desc-otro').value.trim();
+      if (otro) razon = otro;
+    }
+    await fetch(`/api/reservas/${descartarReservaId}/descartar`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({razon})
+    });
+    closeModal('modal-descartar');
+    loadReservas(); loadReservasResumen();
+  };
+  document.getElementById('modal-descartar').classList.add('active');
 }
 
 // ─── FECHA FUERTE ───
