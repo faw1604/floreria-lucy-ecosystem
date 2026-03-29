@@ -21,3 +21,17 @@ async def get_db():
 async def inicializar_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Auto-migrate: agregar columnas nuevas si no existen
+        from sqlalchemy import text
+        _migrations = [
+            ("pedidos", "metodo_entrega", "VARCHAR(30)"),
+            ("pedidos", "modo_fecha_fuerte_lote", "VARCHAR(100)"),
+            ("pedidos", "listo_at", "TIMESTAMP"),
+            ("pedidos", "produccion_at", "TIMESTAMP"),
+            ("pedidos", "cancelado_razon", "TEXT"),
+        ]
+        for tabla, col, tipo in _migrations:
+            try:
+                await conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {col} {tipo}"))
+            except Exception:
+                pass  # ya existe
