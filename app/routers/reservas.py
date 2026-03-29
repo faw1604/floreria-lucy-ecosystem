@@ -14,6 +14,10 @@ logger = logging.getLogger("floreria")
 
 router = APIRouter()
 
+def _now():
+    """Datetime actual en Chihuahua, sin timezone (naive) para asyncpg."""
+    return datetime.now(TZ).replace(tzinfo=None)
+
 
 def _auth(panel_session: str | None):
     if not verificar_sesion(panel_session):
@@ -87,7 +91,7 @@ async def crear_reserva(
         foto_url=foto_url,
         florista_usuario=florista,
         estado="disponible",
-        created_at=datetime.now(TZ),
+        created_at=_now(),
     )
     db.add(reserva)
     await db.commit()
@@ -133,7 +137,7 @@ async def vender_reserva(
 
     reserva.estado = "vendida"
     reserva.pedido_id = pedido_id
-    reserva.vendida_at = datetime.now(TZ)
+    reserva.vendida_at = _now()
     await db.commit()
     return {"ok": True, "id": reserva.id}
 
@@ -156,7 +160,7 @@ async def descartar_reserva(
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
     reserva.estado = "descartada"
-    reserva.descartada_at = datetime.now(TZ)
+    reserva.descartada_at = _now()
     reserva.descarte_razon = razon
     await db.commit()
     return {"ok": True, "id": reserva.id}

@@ -18,6 +18,10 @@ logger = logging.getLogger("floreria")
 
 router = APIRouter()
 
+def _now():
+    """Datetime actual en Chihuahua, sin timezone (naive) para asyncpg."""
+    return datetime.now(TZ).replace(tzinfo=None)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -279,7 +283,7 @@ async def aceptar(
     pedido = await _get_pedido(pedido_id, db)
     pedido.estado = "En producción"
     pedido.estado_florista = "aprobado"
-    pedido.produccion_at = datetime.now(TZ)
+    pedido.produccion_at = _now()
 
     # Auto-descuento de inventario para insumos con descuento_automatico=true
     items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
@@ -318,7 +322,7 @@ async def aceptar_con_cambios(
     pedido.estado = "En producción"
     pedido.estado_florista = "aprobado_con_modificacion"
     pedido.nota_florista = nota
-    pedido.produccion_at = datetime.now(TZ)
+    pedido.produccion_at = _now()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -384,7 +388,7 @@ async def listo(
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
     pedido.estado = "listo_taller"
-    pedido.listo_at = datetime.now(TZ)
+    pedido.listo_at = _now()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -398,7 +402,7 @@ async def entregado(
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
     pedido.estado = "Entregado"
-    pedido.entregado_at = datetime.now(TZ)
+    pedido.entregado_at = _now()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -640,7 +644,7 @@ async def fecha_fuerte_lote_listo(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    ahora = datetime.now(TZ)
+    ahora = _now()
 
     # Mark all pedidos in this batch as Listo
     result = await db.execute(

@@ -18,6 +18,10 @@ from app.routers.auth import verificar_sesion
 
 router = APIRouter()
 
+def _now():
+    """Datetime actual en Chihuahua, sin timezone (naive) para asyncpg."""
+    return datetime.now(TZ).replace(tzinfo=None)
+
 
 async def _generar_folio(db: AsyncSession) -> str:
     año = datetime.now(TZ).strftime("%Y")
@@ -339,7 +343,7 @@ async def _pos_crear_pedido_inner(request, db):
         estado=_estado,
         estado_florista=_estado_fl,
         metodo_entrega=_metodo,
-        produccion_at=datetime.now(TZ) if _estado == "En producción" else None,
+        produccion_at=_now() if _estado == "En producción" else None,
         fecha_entrega=fecha_entrega,
         horario_entrega=horario,
         hora_exacta=data.get("hora_especifica"),
@@ -399,7 +403,7 @@ async def _pos_crear_pedido_inner(request, db):
             if reserva:
                 reserva.estado = "vendida"
                 reserva.pedido_id = pedido.id
-                reserva.vendida_at = datetime.now(TZ)
+                reserva.vendida_at = _now()
         await db.commit()
 
     return {
@@ -757,7 +761,7 @@ async def pos_completar_pedido(
             pedido.estado = "Listo"
         else:
             pedido.estado = "En producción"
-            pedido.produccion_at = datetime.now(TZ)
+            pedido.produccion_at = _now()
         pedido.estado_florista = "aprobado"
     else:
         pedido.estado = "Pendiente pago"
@@ -827,7 +831,7 @@ async def pos_completar_pedido(
             if reserva_obj:
                 reserva_obj.estado = "vendida"
                 reserva_obj.pedido_id = pedido.id
-                reserva_obj.vendida_at = datetime.now(TZ)
+                reserva_obj.vendida_at = _now()
         await db.commit()
 
     return {
