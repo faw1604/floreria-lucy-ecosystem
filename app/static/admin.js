@@ -1459,6 +1459,36 @@ async function exportarFinanzas(tipo) {
   }
 }
 
+function abrirCorteCajaPDF() {
+  const {desde, hasta} = getFinDates();
+  const periodo = document.getElementById('fin-periodo').value;
+  const labels = {hoy:'Hoy',semana:'Esta semana',mes:'Este mes',rango:'Rango personalizado'};
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4 style="margin-bottom:12px">Generar corte de caja</h4>
+    <div style="background:var(--crema);border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;color:var(--texto2)">Período: <strong>${labels[periodo]||periodo}</strong></div>
+      <div style="font-size:14px;font-weight:600;color:var(--verde);margin-top:4px">${desde} → ${hasta}</div>
+    </div>
+    <div style="font-size:12px;color:var(--texto2);margin-bottom:12px">Se generará un PDF con ingresos, egresos, flujo de caja y desglose por método de pago.</div>
+    <button class="btn-primary" onclick="generarCortePDF('${desde}','${hasta}')" style="width:100%" id="btn-corte-pdf">Generar PDF</button>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function generarCortePDF(desde, hasta) {
+  const btn = document.getElementById('btn-corte-pdf');
+  btn.disabled = true; btn.textContent = 'Generando...';
+  try {
+    const r = await fetch(API+'/api/admin/finanzas/corte-pdf?desde='+desde+'&hasta='+hasta, {method:'POST', credentials:'include'});
+    if (!r.ok) { alert('Error al generar PDF'); btn.disabled=false; btn.textContent='Generar PDF'; return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'corte_'+desde+'_'+hasta+'.pdf'; a.click();
+    cerrarModal('modal-egreso');
+    showToast('Corte generado ✓');
+  } catch(e) { alert('Error de conexión'); btn.disabled=false; btn.textContent='Generar PDF'; }
+}
+
 function downloadCSV(csv, filename) {
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);

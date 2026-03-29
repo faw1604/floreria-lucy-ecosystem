@@ -741,6 +741,179 @@ async def eliminar_cuenta(cuenta_id: int, panel_session: str | None = Cookie(def
     return {"ok":True}
 
 
+# ══════ CORTE DE CAJA PDF ══════
+
+@router.post("/finanzas/corte-pdf")
+async def corte_pdf(
+    desde: str, hasta: str,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    from fastapi.responses import StreamingResponse
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import inch, cm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    import io
+
+    d_desde = date.fromisoformat(desde)
+    d_hasta = date.fromisoformat(hasta)
+    verde = colors.HexColor('#193a2c')
+    dorado = colors.HexColor('#d4a843')
+    gris = colors.HexColor('#f0ede8')
+
+    # Fetch ingresos
+    ri = await db.execute(text(f"""
+        SELECT p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador') as cli, p.canal, p.forma_pago, p.total
+        FROM pedidos p LEFT JOIN clientes c ON c.id=p.customer_id
+        WHERE p.fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}
+        ORDER BY p.fecha_entrega, p.id
+    """), _dp(desde, hasta))
+    ingresos = ri.fetchall()
+    total_ing = sum(r[5] for r in ingresos)
+
+    # Otros ingresos
+    ro = await db.execute(text("SELECT fecha, concepto, monto, metodo_pago FROM otros_ingresos WHERE fecha BETWEEN :d AND :h ORDER BY fecha"), _dp(desde, hasta))
+    otros = ro.fetchall()
+    total_otros = sum(r[2] for r in otros)
+
+    # Fetch egresos
+    re = await db.execute(text("SELECT fecha, concepto, categoria, proveedor, metodo_pago, monto FROM egresos WHERE fecha BETWEEN :d AND :h ORDER BY fecha"), _dp(desde, hasta))
+    egresos_rows = re.fetchall()
+    total_egr = sum(r[5] for r in egresos_rows)
+
+    # Build PDF
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=1.5*cm, bottomMargin=1.5*cm, leftMargin=2*cm, rightMargin=2*cm)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('Title2', parent=styles['Title'], textColor=verde, fontSize=18, spaceAfter=6)
+    h2_style = ParagraphStyle('H2', parent=styles['Heading2'], textColor=verde, fontSize=13, spaceAfter=8, spaceBefore=16)
+    normal = styles['Normal']
+    small = ParagraphStyle('Small', parent=normal, fontSize=8, textColor=colors.gray)
+
+    elements = []
+    # Header
+    elements.append(Paragraph('Florería Lucy', title_style))
+    elements.append(Paragraph(f'Corte de caja — {desde} al {hasta}', ParagraphStyle('Sub', parent=normal, fontSize=11, textColor=colors.gray)))
+    elements.append(Spacer(1, 0.4*cm))
+
+    def fmt(centavos):
+        return f'${centavos/100:,.2f}'
+
+    # INGRESOS
+    elements.append(Paragraph('INGRESOS (Ventas)', h2_style))
+    if ingresos:
+        data_ing = [['Folio', 'Fecha', 'Cliente', 'Canal', 'Pago', 'Total']]
+        for r in ingresos:
+            data_ing.append([r[0], str(r[1]), r[2][:25], r[3] or '', (r[4] or '')[:15], fmt(r[5])])
+        data_ing.append(['', '', '', '', 'SUBTOTAL', fmt(total_ing)])
+        t = Table(data_ing, colWidths=[1.3*inch, 0.8*inch, 1.5*inch, 0.7*inch, 1*inch, 0.9*inch])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), verde), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTSIZE', (0,0), (-1,-1), 8), ('FONTSIZE', (0,0), (-1,0), 9),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('BACKGROUND', (0,-1), (-1,-1), gris), ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+            ('ALIGN', (-1,0), (-1,-1), 'RIGHT'),
+        ]))
+        elements.append(t)
+    else:
+        elements.append(Paragraph('Sin ventas en este período', normal))
+
+    if otros:
+        elements.append(Spacer(1, 0.3*cm))
+        elements.append(Paragraph('Otros ingresos', h2_style))
+        data_oi = [['Fecha', 'Concepto', 'Pago', 'Monto']]
+        for r in otros:
+            data_oi.append([str(r[0]), r[1][:30], (r[3] or '')[:15], fmt(r[2])])
+        data_oi.append(['', '', 'SUBTOTAL', fmt(total_otros)])
+        t2 = Table(data_oi, colWidths=[1*inch, 2.5*inch, 1.2*inch, 1*inch])
+        t2.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), dorado), ('TEXTCOLOR', (0,0), (-1,0), verde),
+            ('FONTSIZE', (0,0), (-1,-1), 8), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('BACKGROUND', (0,-1), (-1,-1), gris), ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+            ('ALIGN', (-1,0), (-1,-1), 'RIGHT'),
+        ]))
+        elements.append(t2)
+
+    # EGRESOS
+    elements.append(Paragraph('EGRESOS', h2_style))
+    if egresos_rows:
+        data_eg = [['Fecha', 'Concepto', 'Categoría', 'Proveedor', 'Pago', 'Monto']]
+        for r in egresos_rows:
+            data_eg.append([str(r[0]), r[1][:25], (r[2] or '')[:15], (r[3] or '')[:15], (r[4] or '')[:15], fmt(r[5])])
+        data_eg.append(['', '', '', '', 'SUBTOTAL', fmt(total_egr)])
+        t3 = Table(data_eg, colWidths=[0.8*inch, 1.3*inch, 1*inch, 1*inch, 1*inch, 0.9*inch])
+        t3.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#ef4444')), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTSIZE', (0,0), (-1,-1), 8), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('BACKGROUND', (0,-1), (-1,-1), gris), ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+            ('ALIGN', (-1,0), (-1,-1), 'RIGHT'),
+        ]))
+        elements.append(t3)
+    else:
+        elements.append(Paragraph('Sin egresos en este período', normal))
+
+    # FLUJO DE CAJA
+    elements.append(Paragraph('FLUJO DE CAJA', h2_style))
+    total_ing_all = total_ing + total_otros
+    saldo = total_ing_all - total_egr
+    saldo_color = verde if saldo >= 0 else colors.HexColor('#ef4444')
+    data_fc = [
+        ['Total ingresos (ventas + otros)', fmt(total_ing_all)],
+        ['Total egresos', fmt(total_egr)],
+        ['SALDO DEL PERÍODO', fmt(saldo)],
+    ]
+    t4 = Table(data_fc, colWidths=[4*inch, 1.5*inch])
+    t4.setStyle(TableStyle([
+        ('FONTSIZE', (0,0), (-1,-1), 10), ('ALIGN', (-1,0), (-1,-1), 'RIGHT'),
+        ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'), ('FONTSIZE', (0,-1), (-1,-1), 12),
+        ('TEXTCOLOR', (-1,-1), (-1,-1), saldo_color),
+        ('LINEBELOW', (0,-2), (-1,-2), 1, colors.lightgrey),
+        ('LINEABOVE', (0,-1), (-1,-1), 2, verde),
+    ]))
+    elements.append(t4)
+
+    # Desglose por método de pago
+    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Paragraph('Desglose por método de pago', ParagraphStyle('H3', parent=normal, fontSize=10, textColor=verde, fontName='Helvetica-Bold', spaceBefore=8)))
+    mp_ing = {}
+    for r in ingresos:
+        mp = r[4] or 'Sin info'
+        mp_ing[mp] = mp_ing.get(mp, 0) + r[5]
+    for r in otros:
+        mp = r[3] or 'Sin info'
+        mp_ing[mp] = mp_ing.get(mp, 0) + r[2]
+    mp_egr = {}
+    for r in egresos_rows:
+        mp = r[4] or 'Sin info'
+        mp_egr[mp] = mp_egr.get(mp, 0) + r[5]
+    all_mps = sorted(set(list(mp_ing.keys()) + list(mp_egr.keys())))
+    data_mp = [['Método', 'Entradas', 'Salidas', 'Neto']]
+    for mp in all_mps:
+        ent = mp_ing.get(mp, 0)
+        sal = mp_egr.get(mp, 0)
+        data_mp.append([mp, fmt(ent), fmt(sal), fmt(ent - sal)])
+    t5 = Table(data_mp, colWidths=[2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+    t5.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), verde), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+        ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
+    ]))
+    elements.append(t5)
+
+    # Footer
+    ahora = datetime.now(TZ)
+    elements.append(Spacer(1, 0.5*cm))
+    elements.append(Paragraph(f'Generado: {ahora.strftime("%d/%m/%Y %H:%M")} — Florería Lucy', small))
+
+    doc.build(elements)
+    buf.seek(0)
+    return StreamingResponse(buf, media_type='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename=corte_{desde}_{hasta}.pdf'})
+
+
 # ══════ ESTADÍSTICAS ══════
 
 _VENTAS_WHERE = "estado NOT IN ('Cancelado','rechazado') AND pago_confirmado = true"
