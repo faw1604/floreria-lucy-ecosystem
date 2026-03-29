@@ -57,11 +57,22 @@ async def _serializar_pedido_con_items(p, db):
 
 
 async def generar_numero_pedido(db: AsyncSession) -> str:
+    from sqlalchemy import func as sqlfunc
     ahora = datetime.now(TZ)
-    año = ahora.strftime("%Y")
-    result = await db.execute(select(Pedido).where(Pedido.numero.like(f"FL-{año}-%")))
-    count = len(result.scalars().all())
-    return f"FL-{año}-{str(count + 1).zfill(4)}"
+    yr = ahora.strftime("%Y")
+    prefix = f"FL-{yr}-"
+    result = await db.execute(
+        select(sqlfunc.max(Pedido.numero)).where(Pedido.numero.like(f"{prefix}%"))
+    )
+    max_num = result.scalar()
+    if max_num:
+        try:
+            last = int(max_num.split("-")[-1])
+        except (ValueError, IndexError):
+            last = 0
+    else:
+        last = 0
+    return f"{prefix}{str(last + 1).zfill(4)}"
 
 @router.get("/")
 async def listar_pedidos(
