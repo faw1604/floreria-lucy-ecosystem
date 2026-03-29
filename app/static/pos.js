@@ -1570,10 +1570,11 @@ async function loadResumenVentas() {
   try {
     const r = await fetch('/pos/resumen-ventas');
     const d = await r.json();
-    document.getElementById('tm-hoy').innerHTML = `${d.hoy.ventas} ventas`;
-    document.getElementById('tm-ayer').innerHTML = `${d.ayer.ventas} ventas`;
-    document.getElementById('tm-semana').innerHTML = `${d.semana.ventas} ventas`;
-    document.getElementById('tm-mes').innerHTML = `${d.mes.ventas} ventas`;
+    const showMoney = window._isAdmin;
+    document.getElementById('tm-hoy').innerHTML = `${d.hoy.ventas} ventas${showMoney ? ' | $'+d.hoy.total.toLocaleString() : ''}`;
+    document.getElementById('tm-ayer').innerHTML = `${d.ayer.ventas} ventas${showMoney ? ' | $'+d.ayer.total.toLocaleString() : ''}`;
+    document.getElementById('tm-semana').innerHTML = `${d.semana.ventas} ventas${showMoney ? ' | $'+d.semana.total.toLocaleString() : ''}`;
+    document.getElementById('tm-mes').innerHTML = `${d.mes.ventas} ventas${showMoney ? ' | $'+d.mes.total.toLocaleString() : ''}`;
   } catch(e) { /* silent */ }
 }
 
@@ -1612,7 +1613,13 @@ function renderTransTable(rows) {
   const tbody = document.getElementById('trans-tbody');
   const empty = document.getElementById('trans-empty');
   const countEl = document.getElementById('trans-count');
-  countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '');
+  const showMoney = window._isAdmin;
+  if (showMoney) {
+    const totalSum = rows.reduce((s,p) => s + (p.total||0), 0) / 100;
+    countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '') + ' | $' + totalSum.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  } else {
+    countEl.textContent = rows.length + ' transaccion' + (rows.length !== 1 ? 'es' : '');
+  }
   if (rows.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = '';
@@ -1629,6 +1636,7 @@ function renderTransTable(rows) {
       <td>${p.cliente_nombre || '-'}</td>
       <td>${canalLabel(p.canal)}</td>
       <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
+      ${showMoney ? `<td style="font-weight:600;white-space:nowrap">${pagoIcon(p.forma_pago)} $${((p.total||0)/100).toLocaleString()}</td>` : ''}
       <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
       <td>${obsIcon(p)}</td>
       <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:16px;cursor:pointer" title="Ver ticket">🎫</button></td>

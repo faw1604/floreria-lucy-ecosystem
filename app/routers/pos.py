@@ -640,6 +640,8 @@ async def pos_completar_pedido(
     pedido.dedicatoria = data.get("dedicatoria") or pedido.dedicatoria
     pedido.notas_internas = data.get("notas_entrega") or pedido.notas_internas
     pedido.ruta = data.get("ruta") or pedido.ruta
+    if "requiere_factura" in data:
+        pedido.requiere_factura = data["requiere_factura"]
 
     horario = data.get("horario_entrega")
     if horario == "hora_especifica":
