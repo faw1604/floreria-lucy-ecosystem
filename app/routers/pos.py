@@ -614,6 +614,16 @@ async def pos_finalizar_pedido(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    import traceback as _tb
+    try:
+        return await _pos_finalizar_inner(pedido_id, request, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[POS FINALIZAR] Error: {e}\n{_tb.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def _pos_finalizar_inner(pedido_id, request, db):
     result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
     pedido = result.scalar_one_or_none()
     if not pedido:
@@ -625,7 +635,13 @@ async def pos_finalizar_pedido(
     if suma_pagos < (pedido.total or 0):
         raise HTTPException(status_code=400, detail=f"Falta asignar ${((pedido.total or 0) - suma_pagos) / 100:.0f}")
 
-    pedido.estado = "Listo"
+    # Determinar si es mostrador con solo reservas o necesita producción
+    m = pedido.metodo_entrega or ""
+    if m == "mostrador":
+        pedido.estado = "Listo"
+    else:
+        pedido.estado = "En producción"
+        pedido.produccion_at = datetime.now(TZ)
     pedido.estado_florista = "aprobado"
     pedido.pago_confirmado = True
     pedido.forma_pago = ", ".join(p.get("nombre", "") for p in pagos if p.get("nombre"))
