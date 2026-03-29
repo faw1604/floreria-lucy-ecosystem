@@ -19,6 +19,8 @@ async def get_db():
         yield session
 
 async def inicializar_db():
+    # Importar todos los modelos para que Base.metadata los conozca
+    import app.models  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Auto-migrate: agregar columnas nuevas si no existen
