@@ -293,6 +293,55 @@
   </div>
 </div>
 
+<!-- LOGIN OVERLAY -->
+<div id="admin-login" style="position:fixed;inset:0;background:#193a2c;z-index:9999;display:flex;align-items:center;justify-content:center">
+  <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:36px;width:100%;max-width:360px;text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">🌸</div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:24px;color:#fff;margin-bottom:4px">Panel Florería Lucy</h1>
+    <p style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:24px">Acceso administrativo</p>
+    <input type="password" id="admin-pass" placeholder="Contraseña" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff;font-size:14px;outline:none;margin-bottom:12px" onkeydown="if(event.key==='Enter')adminLogin()">
+    <button onclick="adminLogin()" style="width:100%;padding:11px;background:#d4a843;color:#1a0f08;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer">Entrar</button>
+    <div id="admin-login-err" style="color:#f87171;font-size:12px;margin-top:8px;display:none">Contraseña incorrecta</div>
+  </div>
+</div>
+<script>
+// Clear all old cookies on load
+document.cookie.split(';').forEach(c => {
+  const name = c.split('=')[0].trim();
+  if (name === 'panel_session') {
+    document.cookie = name + '=;path=/;expires=Thu,01 Jan 1970 00:00:00 GMT';
+    document.cookie = name + '=;path=/auth;expires=Thu,01 Jan 1970 00:00:00 GMT';
+    document.cookie = name + '=;path=/panel;expires=Thu,01 Jan 1970 00:00:00 GMT';
+    document.cookie = name + '=;expires=Thu,01 Jan 1970 00:00:00 GMT';
+  }
+});
+
+// Check if session valid
+async function checkSession() {
+  try {
+    const r = await fetch('/pos/productos', {credentials:'include'});
+    if (r.status === 401) { document.getElementById('admin-login').style.display = 'flex'; return; }
+    document.getElementById('admin-login').style.display = 'none';
+  } catch(e) { document.getElementById('admin-login').style.display = 'flex'; }
+}
+
+async function adminLogin() {
+  const pass = document.getElementById('admin-pass').value;
+  const err = document.getElementById('admin-login-err');
+  err.style.display = 'none';
+  try {
+    const r = await fetch('/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({password: pass})});
+    if (r.ok) {
+      document.getElementById('admin-login').style.display = 'none';
+      location.reload();
+    } else {
+      err.style.display = '';
+    }
+  } catch(e) { err.textContent = 'Error de conexión'; err.style.display = ''; }
+}
+
+checkSession();
+</script>
 <script src="/static/admin.js"></script>
 </body>
 </html>
