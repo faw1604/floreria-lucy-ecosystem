@@ -38,7 +38,22 @@ function navTo(sec) {
   if (sec === 'transacciones') loadTransacciones();
 }
 
+function saveFiscalInputs() {
+  if (!conFactura) return;
+  const rfc = document.getElementById('fc-rfc');
+  if (rfc) {
+    window._datosFiscales = {
+      rfc: rfc.value||'', razon_social: document.getElementById('fc-razon')?.value||'',
+      regimen_fiscal: document.getElementById('fc-regimen')?.value||'',
+      uso_cfdi: document.getElementById('fc-uso')?.value||'',
+      correo_fiscal: document.getElementById('fc-email')?.value||'',
+      codigo_postal: document.getElementById('fc-cp')?.value||'',
+    };
+  }
+}
+
 function goWin(n) {
+  saveFiscalInputs();
   document.querySelectorAll('.venta-win').forEach(w => w.classList.remove('active'));
   document.getElementById('win' + n).classList.add('active');
   if (n === 3) { buildW3Form(); updateSummary(); }
@@ -251,6 +266,7 @@ function calcTotals() {
 }
 
 function renderCart() {
+  saveFiscalInputs();
   const container = document.getElementById('cart-items');
   if (carrito.length === 0) {
     container.innerHTML = '<div class="cart-empty"><span class="ico">🛒</span>Selecciona productos del catalogo</div>';
@@ -767,6 +783,7 @@ function updatePayStatus() {
 
 // ─── Summary (right column) ───
 function updateSummary() {
+  saveFiscalInputs();
   const t = calcTotals();
   // Items
   const si = document.getElementById('sum-items');
@@ -896,14 +913,14 @@ function buildPayload(estado) {
     pagos,
     estado,
     requiere_factura: conFactura,
-    datos_fiscales: conFactura ? {
-      rfc: document.getElementById('fc-rfc')?.value?.trim() || null,
-      razon_social: document.getElementById('fc-razon')?.value?.trim() || null,
-      regimen_fiscal: document.getElementById('fc-regimen')?.value || null,
-      uso_cfdi: document.getElementById('fc-uso')?.value || null,
-      correo_fiscal: document.getElementById('fc-email')?.value?.trim() || null,
-      codigo_postal: document.getElementById('fc-cp')?.value?.trim() || null,
-    } : null,
+    datos_fiscales: conFactura ? (saveFiscalInputs(), {
+      rfc: window._datosFiscales?.rfc || null,
+      razon_social: window._datosFiscales?.razon_social || null,
+      regimen_fiscal: window._datosFiscales?.regimen_fiscal || null,
+      uso_cfdi: window._datosFiscales?.uso_cfdi || null,
+      correo_fiscal: window._datosFiscales?.correo_fiscal || null,
+      codigo_postal: window._datosFiscales?.codigo_postal || null,
+    }) : null,
   };
 
   if (ordenTipo === 'domicilio') {
