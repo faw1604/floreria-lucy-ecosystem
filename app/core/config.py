@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     TIMEZONE: str = "America/Chihuahua"
     PANEL_PASSWORD: str = "floreria2024"
     SESSION_SECRET: str = "ecosistema-session-2024"
-    SESION_DURACION: int = 28800  # 8 horas en segundos
+    SESION_DURACION: int = 43200  # 12 horas en segundos
 
     class Config:
         env_file = ".env"
