@@ -563,8 +563,10 @@ async def pos_pedidos_hoy(
     # Map estado filter values to DB values
     estado_map = {
         "pendiente_pago": ["Pendiente pago", "pendiente_pago", "comprobante_recibido", "esperando_validacion"],
-        "pagado": ["Listo"],
-        "listo_taller": ["Listo taller"],
+        "pagado": ["Listo", "pagado"],
+        "Listo": ["Listo"],
+        "listo_taller": ["Listo taller", "listo_taller"],
+        "En producción": ["En producción"],
         "en_camino": ["En camino"],
         "entregado": ["Entregado"],
         "cancelado": ["Cancelado"],
@@ -856,7 +858,7 @@ async def pos_resumen_ventas(
     inicio_semana = hoy - timedelta(days=dow)
     inicio_mes = hoy.replace(day=1)
 
-    estados_venta = ["Listo", "Listo taller", "En camino", "Entregado"]
+    estados_venta = ["Listo", "listo_taller", "Listo taller", "En producción", "pagado", "En camino", "Entregado"]
 
     async def contar(f_ini, f_fin):
         utc_s = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
@@ -927,7 +929,7 @@ async def pos_corte_caja(
     else:
         f_ini = f_fin = hoy
 
-    estados_venta = ["Listo", "Listo taller", "En camino", "Entregado"]
+    estados_venta = ["Listo", "listo_taller", "Listo taller", "En producción", "pagado", "En camino", "Entregado"]
 
     if skip_date_filter:
         query = select(Pedido).where(Pedido.estado.in_(estados_venta))

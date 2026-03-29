@@ -1711,7 +1711,7 @@ async function loadTransacciones(params) {
     let url = '/pos/pedidos-hoy?periodo=' + transFilterPeriodo;
     // Default: only finalized states
     if (!params || !params.includes('estado=')) {
-      url += '&estado=pagado,listo_taller,en_camino,entregado';
+      url += '&estado=pagado,Listo,listo_taller,En producción,en_camino,entregado';
     }
     if (params) url += '&' + params;
     if (transFilterPeriodo === 'rango') {
