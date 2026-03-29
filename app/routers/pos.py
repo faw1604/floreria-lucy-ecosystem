@@ -553,14 +553,14 @@ async def pos_pedidos_hoy(
 
     # Map estado filter values to DB values
     estado_map = {
-        "pendiente_pago": ["Pendiente pago", "pendiente_pago", "comprobante_recibido", "esperando_validacion"],
-        "pagado": ["Listo", "pagado"],
-        "Listo": ["Listo"],
-        "listo_taller": ["Listo taller", "listo_taller"],
-        "En producción": ["En producción"],
-        "en_camino": ["En camino"],
-        "entregado": ["Entregado"],
-        "cancelado": ["Cancelado"],
+        "pendiente_pago": [EP.PENDIENTE_PAGO, "pendiente_pago", EP.COMPROBANTE_RECIBIDO, EP.ESPERANDO_VALIDACION],
+        "pagado": [EP.LISTO, EP.PAGADO],
+        "Listo": [EP.LISTO],
+        "listo_taller": [EP.LISTO_TALLER, "Listo taller"],
+        "En producción": [EP.EN_PRODUCCION],
+        "en_camino": [EP.EN_CAMINO],
+        "entregado": [EP.ENTREGADO],
+        "cancelado": [EP.CANCELADO],
     }
 
     for p in pedidos:
@@ -875,7 +875,7 @@ async def pos_resumen_ventas(
     inicio_semana = hoy - timedelta(days=dow)
     inicio_mes = hoy.replace(day=1)
 
-    estados_venta = ["Listo", "listo_taller", "Listo taller", "En producción", "pagado", "En camino", "Entregado"]
+    estados_venta = EP.VENTA_COMPLETADA
 
     async def contar(f_ini, f_fin):
         utc_s = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
@@ -946,7 +946,7 @@ async def pos_corte_caja(
     else:
         f_ini = f_fin = hoy
 
-    estados_venta = ["Listo", "listo_taller", "Listo taller", "En producción", "pagado", "En camino", "Entregado"]
+    estados_venta = EP.VENTA_COMPLETADA
 
     if skip_date_filter:
         query = select(Pedido).where(Pedido.estado.in_(estados_venta))

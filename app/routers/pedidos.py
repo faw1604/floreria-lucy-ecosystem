@@ -11,6 +11,7 @@ from app.models.clientes import Cliente
 from app.models.productos import Producto
 from app.models.configuracion import ConfiguracionNegocio
 from app.core.config import TZ
+from app.core.estados import EstadoPedido as EP
 from app.routers.auth import verificar_sesion
 
 logger = logging.getLogger("floreria")
@@ -219,7 +220,7 @@ async def crear_pedido_desde_claudia(
         numero=numero,
         customer_id=cliente.id,
         canal=data.get("canal", "WhatsApp"),
-        estado="esperando_validacion",
+        estado=EP.ESPERANDO_VALIDACION,
         fecha_entrega=data.get("fecha_entrega"),
         horario_entrega=data.get("horario_entrega"),
         zona_entrega=zona,
@@ -577,7 +578,7 @@ async def confirmar_pago(
     pedido = result.scalar_one_or_none()
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
-    if pedido.estado not in ("comprobante_recibido", "Pendiente pago", "pendiente_pago"):
+    if pedido.estado not in (EP.COMPROBANTE_RECIBIDO, EP.PENDIENTE_PAGO, "pendiente_pago"):
         raise HTTPException(status_code=400, detail=f"Estado actual '{pedido.estado}' no permite confirmar pago")
 
     estado_anterior = pedido.estado
@@ -632,17 +633,18 @@ async def subir_comprobante(
 
 
 ESTADO_LABELS = {
-    "esperando_validacion": "Esperando validación del florista",
+    EP.ESPERANDO_VALIDACION: "Esperando validación del florista",
     "pendiente_pago": "Validado por el florista",
-    "Pendiente pago": "Validado por el florista",
-    "comprobante_recibido": "Comprobante de pago recibido",
-    "pagado": "Pago confirmado",
-    "En producción": "En producción",
-    "Listo": "Listo para entrega",
-    "En camino": "En camino",
-    "Entregado": "Entregado",
+    EP.PENDIENTE_PAGO: "Validado por el florista",
+    EP.COMPROBANTE_RECIBIDO: "Comprobante de pago recibido",
+    EP.PAGADO: "Pago confirmado",
+    EP.EN_PRODUCCION: "En producción",
+    EP.LISTO: "Listo para entrega",
+    EP.LISTO_TALLER: "Listo en taller",
+    EP.EN_CAMINO: "En camino",
+    EP.ENTREGADO: "Entregado",
     "rechazado": "Rechazado por el florista",
-    "Cancelado": "Cancelado",
+    EP.CANCELADO: "Cancelado",
 }
 
 
@@ -672,7 +674,7 @@ async def estado_para_claudia(
 
     # Datos de pago solo cuando estado = pendiente_pago
     datos_pago = None
-    if pedido.estado in ("pendiente_pago", "Pendiente pago"):
+    if pedido.estado in ("pendiente_pago", EP.PENDIENTE_PAGO):
         from app.routers.configuracion import obtener_config_dict
         config = await obtener_config_dict(db)
         datos_pago = {
