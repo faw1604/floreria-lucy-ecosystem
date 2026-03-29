@@ -13,6 +13,7 @@ from app.models.configuracion import ConfiguracionNegocio
 from app.models.inventario import InsumoFloral, InsumoProducto
 from app.core.config import TZ
 from app.core.utils import ahora, hoy
+from app.core.estados import EstadoPedido as EP, EstadoFlorista as EF, MetodoEntrega as ME
 from app.routers.auth import verificar_sesion
 
 logger = logging.getLogger("floreria")
@@ -106,13 +107,13 @@ async def badges(
     fecha_hoy = hoy()
 
     r_nuevos = await db.execute(
-        select(func.count(Pedido.id)).where(Pedido.estado == "esperando_validacion")
+        select(func.count(Pedido.id)).where(Pedido.estado == EP.ESPERANDO_VALIDACION)
     )
     nuevos = r_nuevos.scalar() or 0
 
     r_prod = await db.execute(
         select(func.count(Pedido.id)).where(
-            Pedido.estado.in_(["En producción", "pagado"]),
+            Pedido.estado.in_(EP.EN_TALLER_PRODUCCION),
             Pedido.fecha_entrega == fecha_hoy,
         )
     )
@@ -120,8 +121,8 @@ async def badges(
 
     r_recoger = await db.execute(
         select(func.count(Pedido.id)).where(
-            Pedido.estado.in_(["Listo", "listo_taller"]),
-            Pedido.metodo_entrega.in_(["recoger", "funeral_recoger"]),
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_RECOGER),
         )
     )
     por_recoger = r_recoger.scalar() or 0
@@ -144,14 +145,14 @@ async def nuevos(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["esperando_validacion", "pendiente_pago", "Pendiente pago"]),
+            Pedido.estado.in_(EP.EN_TALLER_NUEVOS),
             or_(
                 Pedido.estado_florista.is_(None),
-                Pedido.estado_florista == "pendiente_aprobacion",
-                Pedido.estado_florista == "aprobado_con_modificacion",
-                Pedido.estado_florista == "cambio_sugerido",
-                Pedido.estado_florista == "rechazado",
-                Pedido.estado_florista == "requiere_atencion",
+                Pedido.estado_florista == EF.PENDIENTE,
+                Pedido.estado_florista == EF.APROBADO_CON_MODIFICACION,
+                Pedido.estado_florista == EF.CAMBIO_SUGERIDO,
+                Pedido.estado_florista == EF.RECHAZADO,
+                Pedido.estado_florista == EF.REQUIERE_ATENCION,
             ),
         )
         .order_by(Pedido.fecha_pedido.desc())
@@ -170,7 +171,7 @@ async def produccion_hoy(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["En producción", "pagado"]),
+            Pedido.estado.in_(EP.EN_TALLER_PRODUCCION),
             Pedido.fecha_entrega == fecha_hoy,
         )
         .order_by(Pedido.horario_entrega, Pedido.hora_exacta)
@@ -189,7 +190,7 @@ async def produccion_manana(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["En producción", "pagado"]),
+            Pedido.estado.in_(EP.EN_TALLER_PRODUCCION),
             Pedido.fecha_entrega == manana,
         )
         .order_by(Pedido.horario_entrega, Pedido.hora_exacta)
@@ -207,8 +208,8 @@ async def por_recoger(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["Listo", "listo_taller"]),
-            Pedido.metodo_entrega.in_(["recoger", "funeral_recoger"]),
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_RECOGER),
         )
         .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
     )
@@ -249,7 +250,7 @@ async def realizados(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["Entregado", "entregado"]),
+            Pedido.estado.in_([EP.ENTREGADO]),
             Pedido.fecha_entrega == fecha_hoy,
         )
         .order_by(Pedido.entregado_at.desc())
@@ -278,8 +279,8 @@ async def aceptar(
 ):
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = "En producción"
-    pedido.estado_florista = "aprobado"
+    pedido.estado = EP.EN_PRODUCCION
+    pedido.estado_florista = EF.APROBADO
     pedido.produccion_at = ahora()
 
     # Auto-descuento de inventario para insumos con descuento_automatico=true
@@ -316,8 +317,8 @@ async def aceptar_con_cambios(
     data = await request.json()
     nota = data.get("nota", "")
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = "En producción"
-    pedido.estado_florista = "aprobado_con_modificacion"
+    pedido.estado = EP.EN_PRODUCCION
+    pedido.estado_florista = EF.APROBADO_CON_MODIFICACION
     pedido.nota_florista = nota
     pedido.produccion_at = ahora()
     await db.commit()
@@ -335,7 +336,7 @@ async def sugerir_cambio(
     data = await request.json()
     nota = data.get("nota", "")
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado_florista = "cambio_sugerido"
+    pedido.estado_florista = EF.CAMBIO_SUGERIDO
     pedido.nota_florista = nota
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
@@ -352,7 +353,7 @@ async def no_aceptar(
     data = await request.json()
     razon = data.get("razon", "")
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado_florista = "rechazado"
+    pedido.estado_florista = EF.RECHAZADO
     pedido.nota_florista = razon
     pedido.requiere_humano = True
     await db.commit()
@@ -370,7 +371,7 @@ async def cancelar(
     data = await request.json()
     razon = data.get("razon", "")
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = "Cancelado"
+    pedido.estado = EP.CANCELADO
     pedido.cancelado_razon = razon
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
@@ -384,7 +385,7 @@ async def listo(
 ):
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = "listo_taller"
+    pedido.estado = EP.LISTO_TALLER
     pedido.listo_at = ahora()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
@@ -398,7 +399,7 @@ async def entregado(
 ):
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = "Entregado"
+    pedido.estado = EP.ENTREGADO
     pedido.entregado_at = ahora()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
@@ -524,7 +525,7 @@ async def entregas_lobby(
     _auth(panel_session)
     result = await db.execute(
         select(Pedido)
-        .where(Pedido.estado.in_(["Listo", "listo_taller"]), Pedido.metodo_entrega == "mostrador")
+        .where(Pedido.estado.in_(EP.LISTOS), Pedido.metodo_entrega == ME.MOSTRADOR)
         .order_by(Pedido.listo_at)
     )
     pedidos = result.scalars().all()
@@ -540,8 +541,8 @@ async def entregas_por_recoger(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["Listo", "listo_taller"]),
-            Pedido.metodo_entrega.in_(["recoger", "funeral_recoger"]),
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_RECOGER),
         )
         .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
     )
@@ -558,8 +559,8 @@ async def entregas_envios(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_(["Listo", "listo_taller", "En camino"]),
-            Pedido.metodo_entrega.in_(["envio", "funeral_envio"]),
+            Pedido.estado.in_(EP.LISTOS + [EP.EN_CAMINO]),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
         )
         .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
     )
@@ -583,7 +584,7 @@ async def entregas_resumen_dia(
     r_entregados = await db.execute(
         select(func.count(Pedido.id)).where(
             Pedido.fecha_entrega == fecha_hoy,
-            Pedido.estado.in_(["Entregado", "entregado"]),
+            Pedido.estado.in_([EP.ENTREGADO]),
         )
     )
     entregados = r_entregados.scalar() or 0
@@ -591,7 +592,7 @@ async def entregas_resumen_dia(
     r_pendientes = await db.execute(
         select(func.count(Pedido.id)).where(
             Pedido.fecha_entrega == fecha_hoy,
-            Pedido.estado.notin_(["Entregado", "entregado", "Cancelado"]),
+            Pedido.estado.notin_([EP.ENTREGADO, EP.CANCELADO]),
         )
     )
     pendientes = r_pendientes.scalar() or 0
@@ -599,7 +600,7 @@ async def entregas_resumen_dia(
     r_repartidores = await db.execute(
         select(func.count(func.distinct(Pedido.ruta))).where(
             Pedido.fecha_entrega == fecha_hoy,
-            Pedido.estado == "En camino",
+            Pedido.estado == EP.EN_CAMINO,
             Pedido.ruta.isnot(None),
         )
     )
@@ -647,7 +648,7 @@ async def fecha_fuerte_lote_listo(
     result = await db.execute(
         select(Pedido).where(
             Pedido.modo_fecha_fuerte_lote == lote,
-            Pedido.estado.in_(["En producción", "pagado"]),
+            Pedido.estado.in_(EP.EN_TALLER_PRODUCCION),
         )
     )
     pedidos = result.scalars().all()
@@ -656,7 +657,7 @@ async def fecha_fuerte_lote_listo(
 
     ids = []
     for p in pedidos:
-        p.estado = "Listo"
+        p.estado = EP.LISTO
         p.listo_at = ts_ahora
         ids.append(p.id)
 

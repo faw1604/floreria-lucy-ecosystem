@@ -15,6 +15,7 @@ from app.models.pagos import MetodoPago
 from app.models.funerarias import Funeraria
 from app.core.config import TZ
 from app.core.utils import ahora, hoy, generar_folio
+from app.core.estados import EstadoPedido as EP, EstadoFlorista as EF, MetodoEntrega as ME
 from app.routers.auth import verificar_sesion
 
 router = APIRouter()
@@ -299,15 +300,15 @@ async def _pos_crear_pedido_inner(request, db):
     es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral", "recoger", "domicilio"))
     es_funeral = tipo == "funeral"
     if es_mostrador:
-        _metodo = "mostrador"
+        _metodo = ME.MOSTRADOR
     elif tipo == "recoger":
-        _metodo = "recoger"
+        _metodo = ME.RECOGER
     elif es_funeral and data.get("direccion_entrega"):
-        _metodo = "funeral_envio"
+        _metodo = ME.FUNERAL_ENVIO
     elif es_funeral:
-        _metodo = "funeral_recoger"
+        _metodo = ME.FUNERAL_RECOGER
     else:
-        _metodo = "envio"
+        _metodo = ME.ENVIO
 
     # Determinar si es solo reservas (ya elaboradas) o necesita producción
     reserva_ids = data.get("reserva_ids", [])
@@ -317,14 +318,14 @@ async def _pos_crear_pedido_inner(request, db):
     # Pagado + cualquier otra cosa → En producción (florista debe elaborar)
     if estado_pedido == "pagado":
         if es_mostrador and solo_reservas:
-            _estado = "Listo"
-            _estado_fl = "aprobado"
+            _estado = EP.LISTO
+            _estado_fl = EF.APROBADO
         else:
-            _estado = "En producción"
-            _estado_fl = "aprobado"
+            _estado = EP.EN_PRODUCCION
+            _estado_fl = EF.APROBADO
     else:
-        _estado = "Pendiente pago"
-        _estado_fl = "pendiente_pago"
+        _estado = EP.PENDIENTE_PAGO
+        _estado_fl = EF.PENDIENTE_PAGO
 
     pedido = Pedido(
         numero=folio,
@@ -636,12 +637,12 @@ async def _pos_finalizar_inner(pedido_id, request, db):
 
     # Determinar si es mostrador con solo reservas o necesita producción
     m = pedido.metodo_entrega or ""
-    if m == "mostrador":
-        pedido.estado = "Listo"
+    if m == ME.MOSTRADOR:
+        pedido.estado = EP.LISTO
     else:
-        pedido.estado = "En producción"
+        pedido.estado = EP.EN_PRODUCCION
         pedido.produccion_at = datetime.now(TZ)
-    pedido.estado_florista = "aprobado"
+    pedido.estado_florista = EF.APROBADO
     pedido.pago_confirmado = True
     pedido.forma_pago = ", ".join(p.get("nombre", "") for p in pagos if p.get("nombre"))
     await db.commit()
@@ -761,29 +762,29 @@ async def pos_completar_pedido(
     # Determinar metodo_entrega
     es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral", "recoger", "domicilio"))
     if es_mostrador:
-        _metodo = "mostrador"
+        _metodo = ME.MOSTRADOR
     elif tipo == "recoger":
-        _metodo = "recoger"
+        _metodo = ME.RECOGER
     elif tipo == "funeral" and data.get("direccion_entrega"):
-        _metodo = "funeral_envio"
+        _metodo = ME.FUNERAL_ENVIO
     elif tipo == "funeral":
-        _metodo = "funeral_recoger"
+        _metodo = ME.FUNERAL_RECOGER
     else:
-        _metodo = "envio"
+        _metodo = ME.ENVIO
 
     # Solo reservas en mostrador → Listo | Cualquier otro → En producción
     reserva_ids = data.get("reserva_ids", [])
     solo_reservas = len(reserva_ids) > 0 and len(reserva_ids) >= len(items)
     if estado_pedido == "pagado":
         if es_mostrador and solo_reservas:
-            pedido.estado = "Listo"
+            pedido.estado = EP.LISTO
         else:
-            pedido.estado = "En producción"
+            pedido.estado = EP.EN_PRODUCCION
             pedido.produccion_at = ahora()
-        pedido.estado_florista = "aprobado"
+        pedido.estado_florista = EF.APROBADO
     else:
-        pedido.estado = "Pendiente pago"
-        pedido.estado_florista = "pendiente_pago"
+        pedido.estado = EP.PENDIENTE_PAGO
+        pedido.estado_florista = EF.PENDIENTE_PAGO
 
     pedido.metodo_entrega = _metodo
     pedido.pago_confirmado = estado_pedido == "pagado"
