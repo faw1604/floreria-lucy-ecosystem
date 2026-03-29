@@ -27,6 +27,7 @@ async def login(request: Request):
         max_age=settings.SESION_DURACION,
         httponly=True,
         samesite="lax",
+        path="/",
     )
     return response
 
@@ -34,5 +35,5 @@ async def login(request: Request):
 async def logout():
     from fastapi.responses import HTMLResponse
     response = HTMLResponse('<script>location.href="/panel"</script>')
-    response.delete_cookie("panel_session")
+    response.delete_cookie("panel_session", path="/")
     return response
