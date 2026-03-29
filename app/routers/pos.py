@@ -190,6 +190,16 @@ async def pos_crear_pedido(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    import traceback as _tb
+    try:
+        return await _pos_crear_pedido_inner(request, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[POS PEDIDO] Error: {e}\n{_tb.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def _pos_crear_pedido_inner(request, db):
     data = await request.json()
     tipo = data.get("tipo", "mostrador")
     items = data.get("items", [])
@@ -289,7 +299,7 @@ async def pos_crear_pedido(
     fecha_entrega = date_type.fromisoformat(fecha_str) if fecha_str else datetime.now(TZ).date()
 
     # Determinar metodo_entrega y estado correcto
-    es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral"))
+    es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral", "recoger", "domicilio"))
     es_funeral = tipo == "funeral"
     if es_mostrador:
         _metodo = "mostrador"
@@ -708,7 +718,7 @@ async def pos_completar_pedido(
             raise HTTPException(status_code=400, detail=f"Falta asignar ${(total - suma_pagos) / 100:.0f}")
 
     # Determinar metodo_entrega
-    es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral"))
+    es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral", "recoger", "domicilio"))
     if es_mostrador:
         _metodo = "mostrador"
     elif tipo == "recoger":

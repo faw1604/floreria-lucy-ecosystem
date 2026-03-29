@@ -228,6 +228,16 @@ async def crear_pedido_web(
     db: AsyncSession = Depends(get_db),
 ):
     """Endpoint público para crear pedido desde el catálogo web."""
+    import traceback as _tb
+    try:
+        return await _crear_pedido_web_inner(request, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[CATALOGO PEDIDO] Error: {e}\n{_tb.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def _crear_pedido_web_inner(request, db):
     data = await request.json()
 
     tipo = data.get("tipo", "domicilio")
