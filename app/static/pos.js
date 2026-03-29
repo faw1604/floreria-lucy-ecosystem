@@ -1,15 +1,14 @@
 // ═══════════════════════════════════════════
-// AUTH CHECK — redirect to login on 401
+// AUTH CHECK — redirect to login on 401 (POS directo only)
 // ═══════════════════════════════════════════
 const _origFetch = window.fetch;
+let _auth401Count = 0;
 window.fetch = async function(...args) {
   const r = await _origFetch.apply(this, args);
-  if (r.status === 401 && !window._isEmbed401Shown) {
-    window._isEmbed401Shown = true;
-    if (window._isAdmin || new URLSearchParams(window.location.search).get('embed') === 'true') {
-      // Inside admin iframe — show message
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Inter,sans-serif;color:#666"><div style="text-align:center"><h2 style="color:#193a2c">Sesion expirada</h2><p>Recarga la pagina del panel admin</p><button onclick="window.top.location.href=\\'/panel/\\'" style="margin-top:12px;padding:10px 24px;background:#193a2c;color:#fff;border:none;border-radius:8px;cursor:pointer">Ir al login</button></div></div>';
-    } else {
+  if (r.status === 401) {
+    _auth401Count++;
+    // Only redirect if POS standalone (not embed) and multiple 401s
+    if (_auth401Count >= 3 && !new URLSearchParams(window.location.search).get('embed')) {
       window.location.href = '/panel/';
     }
   }

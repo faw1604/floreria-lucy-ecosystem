@@ -294,7 +294,7 @@
 </div>
 
 <!-- LOGIN OVERLAY -->
-<div id="admin-login" style="position:fixed;inset:0;background:#193a2c;z-index:9999;display:flex;align-items:center;justify-content:center">
+<div id="admin-login" style="position:fixed;inset:0;background:#193a2c;z-index:9999;display:none;align-items:center;justify-content:center">
   <div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:36px;width:100%;max-width:360px;text-align:center">
     <div style="font-size:32px;margin-bottom:12px">🌸</div>
     <h1 style="font-family:'Playfair Display',serif;font-size:24px;color:#fff;margin-bottom:4px">Panel Florería Lucy</h1>
@@ -305,24 +305,16 @@
   </div>
 </div>
 <script>
-// Clear all old cookies on load
-document.cookie.split(';').forEach(c => {
-  const name = c.split('=')[0].trim();
-  if (name === 'panel_session') {
-    document.cookie = name + '=;path=/;expires=Thu,01 Jan 1970 00:00:00 GMT';
-    document.cookie = name + '=;path=/auth;expires=Thu,01 Jan 1970 00:00:00 GMT';
-    document.cookie = name + '=;path=/panel;expires=Thu,01 Jan 1970 00:00:00 GMT';
-    document.cookie = name + '=;expires=Thu,01 Jan 1970 00:00:00 GMT';
-  }
-});
-
-// Check if session valid
+// Check session — show login only if needed, never delete cookies
 async function checkSession() {
   try {
-    const r = await fetch('/pos/productos', {credentials:'include'});
-    if (r.status === 401) { document.getElementById('admin-login').style.display = 'flex'; return; }
-    document.getElementById('admin-login').style.display = 'none';
-  } catch(e) { document.getElementById('admin-login').style.display = 'flex'; }
+    const r = await fetch('/pedidos/hoy', {credentials:'include'});
+    if (r.status === 401) {
+      document.getElementById('admin-login').style.display = 'flex';
+    }
+  } catch(e) {
+    document.getElementById('admin-login').style.display = 'flex';
+  }
 }
 
 async function adminLogin() {

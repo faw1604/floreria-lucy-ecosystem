@@ -34,8 +34,8 @@ function navTo(sec) {
   navTo(hash);
 })();
 
-function logout() {
-  fetch(API + '/auth/logout', {credentials:'include'});
+async function logout() {
+  await fetch(API + '/auth/logout', {credentials:'include'});
   location.href = '/panel/';
 }
 
