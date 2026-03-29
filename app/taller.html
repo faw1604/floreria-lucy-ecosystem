@@ -902,7 +902,7 @@ function accionCambio(id) {
 
 async function loadProductosBuscar() {
   try {
-    const r = await fetch(`${API}/productos`, {credentials:'include'});
+    const r = await fetch(`${API}/productos/`, {credentials:'include'});
     if (r.ok) allProductosBuscar = await r.json();
   } catch(e) {}
 }
@@ -1165,7 +1165,7 @@ function openModalReserva() {
 
 async function loadProductosReserva() {
   try {
-    const r = await fetch(`${API}/productos`, {credentials:'include'});
+    const r = await fetch(`${API}/productos/`, {credentials:'include'});
     if (r.ok) allProductosReserva = await r.json();
   } catch(e) {}
 }
