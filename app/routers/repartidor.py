@@ -10,6 +10,8 @@ from app.models.pedidos import Pedido, ItemPedido
 from app.models.productos import Producto
 from app.models.clientes import Cliente
 from app.core.config import TZ
+from app.core.utils import ahora
+from app.core.estados import EstadoPedido as EP
 from app.routers.auth import verificar_sesion
 
 router = APIRouter()
@@ -54,7 +56,7 @@ async def entregas_hoy(
     from datetime import timedelta
     hoy = datetime.now(TZ).date()
     manana = hoy + timedelta(days=1)
-    estados = ["Listo", "En camino", "entregado", "Entregado", "intento_fallido"]
+    estados = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
     if fecha == "manana":
         query = select(Pedido).where(Pedido.fecha_entrega == manana, Pedido.estado.in_(estados))
     elif fecha == "todos":
@@ -111,14 +113,14 @@ async def iniciar_ruta(
     ids = data.get("pedido_ids", [])
     if not ids:
         raise HTTPException(status_code=400, detail="No se enviaron pedidos")
-    ahora = datetime.now(TZ)
+    ts = ahora()
     count = 0
     for pid in ids:
         result = await db.execute(select(Pedido).where(Pedido.id == pid))
         pedido = result.scalar_one_or_none()
-        if pedido and pedido.estado == "Listo":
-            pedido.estado = "En camino"
-            pedido.inicio_ruta_at = ahora
+        if pedido and pedido.estado in EP.LISTOS:
+            pedido.estado = EP.EN_CAMINO
+            pedido.inicio_ruta_at = ts
             count += 1
     await db.commit()
     return {"ok": True, "actualizados": count}
@@ -140,8 +142,8 @@ async def entregar(
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
-    ahora = datetime.now(TZ)
-    ts = int(ahora.timestamp())
+    ts_now = ahora()
+    ts_int = int(ts_now.timestamp())
     folio = (pedido.numero or "").replace("-", "_")
     contenido = await foto.read()
 
@@ -149,15 +151,15 @@ async def entregar(
         upload_result = cloudinary.uploader.upload(
             contenido,
             folder="entregas/",
-            public_id=f"{folio}_{ts}",
+            public_id=f"{folio}_{ts_int}",
             resource_type="image",
         )
         foto_url = upload_result.get("secure_url", "")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al subir foto: {str(e)}")
 
-    pedido.estado = "Entregado"
-    pedido.entregado_at = ahora
+    pedido.estado = EP.ENTREGADO
+    pedido.entregado_at = ts_now
     pedido.foto_entrega_url = foto_url
     await db.commit()
     return {"ok": True, "foto_url": foto_url}
@@ -181,9 +183,9 @@ async def no_entrega(
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
-    ahora = datetime.now(TZ)
-    pedido.estado = "intento_fallido"
-    pedido.intento_fallido_at = ahora
+    ts_now = ahora()
+    pedido.estado = EP.INTENTO_FALLIDO
+    pedido.intento_fallido_at = ts_now
     pedido.nota_no_entrega = motivo
     await db.commit()
     return {"ok": True}
