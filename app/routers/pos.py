@@ -4,6 +4,9 @@ from sqlalchemy import select, func
 from datetime import datetime, timedelta
 import httpx
 import os
+import logging
+
+logger = logging.getLogger("floreria")
 from app.database import get_db
 from app.models.productos import Producto
 from app.models.clientes import Cliente
