@@ -1174,10 +1174,19 @@ async function guardarEgreso(id) {
   if (!body.fecha || !body.concepto || !body.monto) return alert('Fecha, concepto y monto son obligatorios');
   const url = id ? API+'/api/admin/egresos/'+id : API+'/api/admin/egresos';
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, {method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
-  cerrarModal('modal-egreso');
-  showToast('Gasto guardado ✓');
-  loadEgresos();
+  try {
+    const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      alert('Error al guardar: ' + (err.detail || r.status));
+      return;
+    }
+    cerrarModal('modal-egreso');
+    showToast('Gasto guardado ✓');
+    await loadEgresos();
+  } catch(e) {
+    alert('Error de conexión al guardar egreso');
+  }
 }
 
 async function eliminarEgreso(id) {
