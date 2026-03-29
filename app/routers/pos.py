@@ -302,10 +302,14 @@ async def pos_crear_pedido(
     else:
         _metodo = "envio"
 
-    # Mostrador pagado → Listo (cliente se lo lleva)
-    # Envío/recoger/funeral pagado → En producción (florista debe elaborar)
+    # Determinar si es solo reservas (ya elaboradas) o necesita producción
+    reserva_ids = data.get("reserva_ids", [])
+    solo_reservas = len(reserva_ids) > 0 and len(reserva_ids) >= len(items)
+
+    # Pagado + solo reservas en mostrador → Listo (se lo lleva ya hecho)
+    # Pagado + cualquier otra cosa → En producción (florista debe elaborar)
     if estado_pedido == "pagado":
-        if es_mostrador:
+        if es_mostrador and solo_reservas:
             _estado = "Listo"
             _estado_fl = "aprobado"
         else:
@@ -716,9 +720,11 @@ async def pos_completar_pedido(
     else:
         _metodo = "envio"
 
-    # Mostrador pagado → Listo | Envío/recoger pagado → En producción
+    # Solo reservas en mostrador → Listo | Cualquier otro → En producción
+    reserva_ids = data.get("reserva_ids", [])
+    solo_reservas = len(reserva_ids) > 0 and len(reserva_ids) >= len(items)
     if estado_pedido == "pagado":
-        if es_mostrador:
+        if es_mostrador and solo_reservas:
             pedido.estado = "Listo"
         else:
             pedido.estado = "En producción"

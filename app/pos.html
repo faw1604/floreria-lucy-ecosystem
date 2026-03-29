@@ -263,12 +263,10 @@
 
 <!-- Modal: Reservas disponibles -->
 <div class="modal-bg" id="modal-reservas-pos" onclick="if(event.target===this)this.classList.remove('active')">
-  <div class="modal-card" style="max-width:600px;max-height:80vh;overflow-y:auto">
-    <div class="modal-header">
-      <h3>Reservas disponibles</h3>
-      <button class="modal-x" onclick="document.getElementById('modal-reservas-pos').classList.remove('active')">&times;</button>
-    </div>
-    <div id="reservas-pos-list" style="padding:16px">
+  <div class="modal" style="max-width:600px;max-height:80vh;overflow-y:auto">
+    <button class="close" onclick="document.getElementById('modal-reservas-pos').classList.remove('active')">&times;</button>
+    <h3>🌸 Reservas disponibles</h3>
+    <div id="reservas-pos-list" style="margin-top:12px">
       <div style="text-align:center;color:var(--texto2)">Cargando...</div>
     </div>
   </div>
