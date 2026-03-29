@@ -772,9 +772,36 @@ function updateSummary() {
     if (t.descGlobalAmt) html += `<div class="ct-line disc"><span>Descuento</span><span>-$${(t.descGlobalAmt/100).toLocaleString()}</span></div>`;
     if (t.comision) html += `<div class="ct-line"><span>Comision link (4%)</span><span>+$${(t.comision/100).toLocaleString()}</span></div>`;
     html += `<div class="ct-line total"><span>TOTAL</span><span>$${(t.total/100).toLocaleString()}</span></div>`;
+    // Con factura toggle in summary (Window 3)
+    html += `<label style="display:flex;align-items:center;gap:6px;font-size:12px;padding:8px 0 4px;cursor:pointer;color:var(--texto2)"><input type="checkbox" ${conFactura?'checked':''} onchange="toggleFacturaPOS(this.checked)" style="accent-color:var(--dorado)"> Con factura</label>`;
+    if (conFactura) {
+      const ivaF = Math.round(t.subtotal * 0.16);
+      html += `<div style="font-size:11px;color:var(--dorado);padding:2px 0">IVA (16%): $${(ivaF/100).toLocaleString()} → Total: $${((t.subtotal+ivaF)/100).toLocaleString()}</div>`;
+      html += `<div id="sum-fiscal" style="border:1px solid var(--dorado);border-radius:8px;padding:8px;margin:6px 0;font-size:11px">
+        <div style="font-weight:600;color:var(--dorado);margin-bottom:4px">Datos fiscales</div>
+        <input id="fc-rfc" placeholder="RFC *" value="${window._datosFiscales?.rfc||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
+        <input id="fc-razon" placeholder="Razon social *" value="${window._datosFiscales?.razon_social||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
+        <select id="fc-regimen" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px"><option value="">Regimen fiscal *</option></select>
+        <select id="fc-uso" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px"><option value="">Uso CFDI *</option></select>
+        <input id="fc-email" placeholder="Correo fiscal *" value="${window._datosFiscales?.correo_fiscal||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px;margin-bottom:3px">
+        <input id="fc-cp" placeholder="C.P. *" value="${window._datosFiscales?.codigo_postal||''}" style="width:100%;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:11px">
+      </div>`;
+    }
     st.innerHTML = html;
+    // Load fiscal selects if factura active in summary
+    if (conFactura) loadFiscalSelects();
   }
   updatePayStatus();
+}
+
+async function loadFiscalSelects() {
+  try {
+    const r = await fetch('/api/admin/catalogos-fiscales',{credentials:'include'});
+    const d = await r.json();
+    const rs = document.getElementById('fc-regimen'); const us = document.getElementById('fc-uso');
+    if(rs && rs.options.length<=1) d.regimenes.forEach(rg => { const o=document.createElement('option'); o.value=rg.codigo; o.textContent=rg.codigo+' '+rg.nombre; if(window._datosFiscales?.regimen_fiscal===rg.codigo) o.selected=true; rs.appendChild(o); });
+    if(us && us.options.length<=1) d.usos.forEach(u => { const o=document.createElement('option'); o.value=u.codigo; o.textContent=u.codigo+' '+u.nombre; if(window._datosFiscales?.uso_cfdi===u.codigo) o.selected=true; us.appendChild(o); });
+  } catch(e) {}
 }
 
 // ═══════════════════════════════════════════
