@@ -14,24 +14,14 @@ from app.models.pedidos import Pedido, ItemPedido
 from app.models.pagos import MetodoPago
 from app.models.funerarias import Funeraria
 from app.core.config import TZ
+from app.core.utils import ahora, hoy, generar_folio
 from app.routers.auth import verificar_sesion
 
 router = APIRouter()
 
-def _now():
-    """Datetime actual en Chihuahua, sin timezone (naive) para asyncpg."""
-    return datetime.now(TZ).replace(tzinfo=None)
-
 
 async def _generar_folio(db: AsyncSession) -> str:
-    año = datetime.now(TZ).strftime("%Y")
-    result = await db.execute(select(func.max(Pedido.numero)).where(Pedido.numero.like(f"FL-{año}-%")))
-    max_folio = result.scalar()
-    if max_folio:
-        ultimo_num = int(max_folio.rsplit("-", 1)[1])
-    else:
-        ultimo_num = 0
-    return f"FL-{año}-{str(ultimo_num + 1).zfill(4)}"
+    return await generar_folio(db)
 
 
 @router.get("/productos")
@@ -343,7 +333,7 @@ async def _pos_crear_pedido_inner(request, db):
         estado=_estado,
         estado_florista=_estado_fl,
         metodo_entrega=_metodo,
-        produccion_at=_now() if _estado == "En producción" else None,
+        produccion_at=ahora() if _estado == "En producción" else None,
         fecha_entrega=fecha_entrega,
         horario_entrega=horario,
         hora_exacta=data.get("hora_especifica"),
@@ -403,7 +393,7 @@ async def _pos_crear_pedido_inner(request, db):
             if reserva:
                 reserva.estado = "vendida"
                 reserva.pedido_id = pedido.id
-                reserva.vendida_at = _now()
+                reserva.vendida_at = ahora()
         await db.commit()
 
     return {
@@ -789,7 +779,7 @@ async def pos_completar_pedido(
             pedido.estado = "Listo"
         else:
             pedido.estado = "En producción"
-            pedido.produccion_at = _now()
+            pedido.produccion_at = ahora()
         pedido.estado_florista = "aprobado"
     else:
         pedido.estado = "Pendiente pago"
@@ -859,7 +849,7 @@ async def pos_completar_pedido(
             if reserva_obj:
                 reserva_obj.estado = "vendida"
                 reserva_obj.pedido_id = pedido.id
-                reserva_obj.vendida_at = _now()
+                reserva_obj.vendida_at = ahora()
         await db.commit()
 
     return {

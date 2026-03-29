@@ -12,15 +12,12 @@ from app.models.productos import Producto
 from app.models.configuracion import ConfiguracionNegocio
 from app.models.inventario import InsumoFloral, InsumoProducto
 from app.core.config import TZ
+from app.core.utils import ahora, hoy
 from app.routers.auth import verificar_sesion
 
 logger = logging.getLogger("floreria")
 
 router = APIRouter()
-
-def _now():
-    """Datetime actual en Chihuahua, sin timezone (naive) para asyncpg."""
-    return datetime.now(TZ).replace(tzinfo=None)
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +103,7 @@ async def badges(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    hoy = datetime.now(TZ).date()
+    fecha_hoy = hoy()
 
     r_nuevos = await db.execute(
         select(func.count(Pedido.id)).where(Pedido.estado == "esperando_validacion")
@@ -116,7 +113,7 @@ async def badges(
     r_prod = await db.execute(
         select(func.count(Pedido.id)).where(
             Pedido.estado.in_(["En producción", "pagado"]),
-            Pedido.fecha_entrega == hoy,
+            Pedido.fecha_entrega == fecha_hoy,
         )
     )
     produccion = r_prod.scalar() or 0
@@ -169,12 +166,12 @@ async def produccion_hoy(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    hoy = datetime.now(TZ).date()
+    fecha_hoy = hoy()
     result = await db.execute(
         select(Pedido)
         .where(
             Pedido.estado.in_(["En producción", "pagado"]),
-            Pedido.fecha_entrega == hoy,
+            Pedido.fecha_entrega == fecha_hoy,
         )
         .order_by(Pedido.horario_entrega, Pedido.hora_exacta)
     )
@@ -188,7 +185,7 @@ async def produccion_manana(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    manana = datetime.now(TZ).date() + timedelta(days=1)
+    manana = hoy() + timedelta(days=1)
     result = await db.execute(
         select(Pedido)
         .where(
@@ -225,7 +222,7 @@ async def proximos(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    manana = datetime.now(TZ).date() + timedelta(days=1)
+    manana = hoy() + timedelta(days=1)
     result = await db.execute(
         select(Pedido)
         .where(Pedido.fecha_entrega > manana)
@@ -248,12 +245,12 @@ async def realizados(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    hoy = datetime.now(TZ).date()
+    fecha_hoy = hoy()
     result = await db.execute(
         select(Pedido)
         .where(
             Pedido.estado.in_(["Entregado", "entregado"]),
-            Pedido.fecha_entrega == hoy,
+            Pedido.fecha_entrega == fecha_hoy,
         )
         .order_by(Pedido.entregado_at.desc())
     )
@@ -283,7 +280,7 @@ async def aceptar(
     pedido = await _get_pedido(pedido_id, db)
     pedido.estado = "En producción"
     pedido.estado_florista = "aprobado"
-    pedido.produccion_at = _now()
+    pedido.produccion_at = ahora()
 
     # Auto-descuento de inventario para insumos con descuento_automatico=true
     items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
@@ -322,7 +319,7 @@ async def aceptar_con_cambios(
     pedido.estado = "En producción"
     pedido.estado_florista = "aprobado_con_modificacion"
     pedido.nota_florista = nota
-    pedido.produccion_at = _now()
+    pedido.produccion_at = ahora()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -388,7 +385,7 @@ async def listo(
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
     pedido.estado = "listo_taller"
-    pedido.listo_at = _now()
+    pedido.listo_at = ahora()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -402,7 +399,7 @@ async def entregado(
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
     pedido.estado = "Entregado"
-    pedido.entregado_at = _now()
+    pedido.entregado_at = ahora()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -501,7 +498,7 @@ async def imprimir_etiquetas_manana(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    manana = datetime.now(TZ).date() + timedelta(days=1)
+    manana = hoy() + timedelta(days=1)
     result = await db.execute(
         select(Pedido)
         .where(Pedido.fecha_entrega == manana)
@@ -576,16 +573,16 @@ async def entregas_resumen_dia(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    hoy = datetime.now(TZ).date()
+    fecha_hoy = hoy()
 
     r_total = await db.execute(
-        select(func.count(Pedido.id)).where(Pedido.fecha_entrega == hoy)
+        select(func.count(Pedido.id)).where(Pedido.fecha_entrega == fecha_hoy)
     )
     total = r_total.scalar() or 0
 
     r_entregados = await db.execute(
         select(func.count(Pedido.id)).where(
-            Pedido.fecha_entrega == hoy,
+            Pedido.fecha_entrega == fecha_hoy,
             Pedido.estado.in_(["Entregado", "entregado"]),
         )
     )
@@ -593,7 +590,7 @@ async def entregas_resumen_dia(
 
     r_pendientes = await db.execute(
         select(func.count(Pedido.id)).where(
-            Pedido.fecha_entrega == hoy,
+            Pedido.fecha_entrega == fecha_hoy,
             Pedido.estado.notin_(["Entregado", "entregado", "Cancelado"]),
         )
     )
@@ -601,7 +598,7 @@ async def entregas_resumen_dia(
 
     r_repartidores = await db.execute(
         select(func.count(func.distinct(Pedido.ruta))).where(
-            Pedido.fecha_entrega == hoy,
+            Pedido.fecha_entrega == fecha_hoy,
             Pedido.estado == "En camino",
             Pedido.ruta.isnot(None),
         )
@@ -644,7 +641,7 @@ async def fecha_fuerte_lote_listo(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    ahora = _now()
+    ts_ahora = ahora()
 
     # Mark all pedidos in this batch as Listo
     result = await db.execute(
@@ -660,7 +657,7 @@ async def fecha_fuerte_lote_listo(
     ids = []
     for p in pedidos:
         p.estado = "Listo"
-        p.listo_at = ahora
+        p.listo_at = ts_ahora
         ids.append(p.id)
 
     await db.commit()

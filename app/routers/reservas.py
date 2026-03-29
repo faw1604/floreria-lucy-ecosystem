@@ -8,15 +8,12 @@ from app.database import get_db
 from app.models.reservas import Reserva
 from app.models.productos import Producto
 from app.core.config import TZ
+from app.core.utils import ahora, hoy
 from app.routers.auth import verificar_sesion
 
 logger = logging.getLogger("floreria")
 
 router = APIRouter()
-
-def _now():
-    """Datetime actual en Chihuahua, sin timezone (naive) para asyncpg."""
-    return datetime.now(TZ).replace(tzinfo=None)
 
 
 def _auth(panel_session: str | None):
@@ -91,7 +88,7 @@ async def crear_reserva(
         foto_url=foto_url,
         florista_usuario=florista,
         estado="disponible",
-        created_at=_now(),
+        created_at=ahora(),
     )
     db.add(reserva)
     await db.commit()
@@ -137,7 +134,7 @@ async def vender_reserva(
 
     reserva.estado = "vendida"
     reserva.pedido_id = pedido_id
-    reserva.vendida_at = _now()
+    reserva.vendida_at = ahora()
     await db.commit()
     return {"ok": True, "id": reserva.id}
 
@@ -160,7 +157,7 @@ async def descartar_reserva(
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
     reserva.estado = "descartada"
-    reserva.descartada_at = _now()
+    reserva.descartada_at = ahora()
     reserva.descarte_razon = razon
     await db.commit()
     return {"ok": True, "id": reserva.id}
@@ -173,8 +170,8 @@ async def resumen_dia(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    hoy = datetime.now(TZ).date()
-    inicio = datetime.combine(hoy, datetime.min.time())
+    fecha_hoy = hoy()
+    inicio = datetime.combine(fecha_hoy, datetime.min.time())
 
     r_producidas = await db.execute(
         select(func.count(Reserva.id)).where(Reserva.created_at >= inicio)
