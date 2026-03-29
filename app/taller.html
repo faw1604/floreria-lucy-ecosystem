@@ -190,7 +190,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <div class="header-right">
     <span class="header-time" id="hdr-date"></span>
     <span class="header-time" id="hdr-time"></span>
-    <a class="header-btn" href="/panel/">Volver al panel</a>
+    <a class="header-btn" href="/panel/" id="btn-panel" style="display:none">Volver al panel</a>
     <a class="header-btn" href="/auth/logout" style="background:rgba(248,113,113,.3)">Salir</a>
   </div>
 </div>
@@ -1308,6 +1308,21 @@ async function checkFechaFuerte() {
       document.getElementById('nuevos-body').innerHTML = '<div class="empty">Modo Fecha Fuerte activo — los pedidos entran directo a Produccion</div>';
     }
   } catch(e) {}
+}
+
+// ─── Rol del usuario ───
+function getUserRol() {
+  try {
+    const c = document.cookie.split(';').find(c => c.trim().startsWith('panel_session='));
+    if (!c) return null;
+    const token = c.split('=')[1];
+    const decoded = atob(token);
+    const payload = decoded.split('|')[0];
+    return JSON.parse(payload).r;
+  } catch(e) { return null; }
+}
+if (getUserRol() === 'admin') {
+  document.getElementById('btn-panel').style.display = '';
 }
 
 // ─── INIT ───
