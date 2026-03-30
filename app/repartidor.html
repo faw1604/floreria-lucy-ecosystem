@@ -243,47 +243,55 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 </div>
 
 <script>
-const RUTAS = ['NORTE','NORESTE','NOROESTE','PONIENTE','ORIENTE','SUR','SURESTE','Zona Central'];
 let allPedidos = [];
 let selected = new Set();
 let currentNoEntregaId = null;
 let currentTab = 'pendientes';
 let rutaStartTime = null;
+let temporadaAlta = false;
+let filtroHorario = 'todos';
 
-// ─── Filters ───
-const filters = { dia: 'hoy', horario: 'todos', ruta: 'todos', tipo: 'todos' };
-
+// ─── Filters (solo horario) ───
 function renderFilters() {
-  const mk = (g, v, l) => `<span class="fbtn ${filters[g]===v?'active':''}" onclick="setFilter('${g}','${v}')">${l}</span>`;
+  const mk = (v, l) => `<span class="fbtn ${filtroHorario===v?'active':''}" onclick="setFiltroHorario('${v}')">${l}</span>`;
+  let horarios = '';
+  if (temporadaAlta) {
+    horarios = mk('todos','Todos') + mk('turno1','Turno 1 (8-3)') + mk('turno2','Turno 2 (3-8)');
+  } else {
+    horarios = mk('todos','Todos') + mk('manana','Manana (9-2)') + mk('tarde','Tarde (2-6)') + mk('noche','Noche (6-9)');
+  }
   document.getElementById('filters-box').innerHTML = `<div class="filters">
-    <div class="filter-group"><div class="filter-label">Dia</div><div class="filter-row">
-      ${mk('dia','hoy','Hoy')}${mk('dia','manana','Manana')}${mk('dia','todos','Todos')}
-    </div></div>
-    <div class="filter-group"><div class="filter-label">Horario</div><div class="filter-row">
-      ${mk('horario','todos','Todos')}${mk('horario','manana','Manana')}${mk('horario','tarde','Tarde')}${mk('horario','noche','Noche')}
-    </div></div>
-    <div class="filter-group"><div class="filter-label">Ruta</div><div class="filter-row">
-      ${mk('ruta','todos','Todos')}${RUTAS.map(r => mk('ruta',r,r)).join('')}
-    </div></div>
+    <div class="filter-group"><div class="filter-label">Horario</div><div class="filter-row">${horarios}</div></div>
   </div>`;
 }
 
-function setFilter(g, v) {
-  filters[g] = v;
-  if (g === 'dia') loadEntregas(); else renderPendientes();
+function setFiltroHorario(v) {
+  filtroHorario = v;
+  renderPendientes();
 }
 
 function applyFilters(list) {
+  if (filtroHorario === 'todos') return list;
   return list.filter(p => {
-    if (filters.horario !== 'todos') {
-      const h = (p.horario_entrega||'').toLowerCase();
-      if (filters.horario === 'manana' && !h.includes('mañana') && !h.includes('manana')) return false;
-      if (filters.horario === 'tarde' && !h.includes('tarde')) return false;
-      if (filters.horario === 'noche' && !h.includes('noche')) return false;
+    const h = (p.horario_entrega||'').toLowerCase();
+    if (temporadaAlta) {
+      // Turno 1: 8-15h → mañana + parte de tarde | Turno 2: 15-20h → tarde + noche
+      if (filtroHorario === 'turno1') return h.includes('mañana') || h.includes('manana') || h.includes('turno 1');
+      if (filtroHorario === 'turno2') return h.includes('tarde') || h.includes('noche') || h.includes('turno 2');
+    } else {
+      if (filtroHorario === 'manana') return h.includes('mañana') || h.includes('manana');
+      if (filtroHorario === 'tarde') return h.includes('tarde');
+      if (filtroHorario === 'noche') return h.includes('noche');
     }
-    if (filters.ruta !== 'todos' && (p.ruta||'') !== filters.ruta) return false;
     return true;
   });
+}
+
+async function loadTemporada() {
+  try {
+    const r = await fetch('/repartidor/config-temporada', {credentials:'include'});
+    if (r.ok) { const d = await r.json(); temporadaAlta = d.temporada_alta; }
+  } catch(e) {}
 }
 
 // ─── Helpers ───
@@ -354,9 +362,10 @@ async function checkSession() {
   } catch(e) {}
 }
 
-function enterApp() {
+async function enterApp() {
   document.getElementById('v-login').style.display = 'none';
   document.getElementById('v-app').style.display = '';
+  await loadTemporada();
   loadEntregas();
 }
 

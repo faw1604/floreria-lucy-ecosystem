@@ -40,6 +40,7 @@ class Pedido(Base):
     intento_fallido_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     nota_no_entrega: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     ruta: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    repartidor_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     metodo_entrega: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     # mostrador | recoger | envio | funeral_envio | funeral_recoger
     modo_fecha_fuerte_lote: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

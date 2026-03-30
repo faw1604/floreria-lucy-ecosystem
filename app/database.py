@@ -39,6 +39,7 @@ async def inicializar_db():
             ("pedidos", "modo_fecha_fuerte_lote", "VARCHAR(100)"),
             ("pedidos", "listo_at", "TIMESTAMP"),
             ("pedidos", "produccion_at", "TIMESTAMP"),
+            ("pedidos", "repartidor_id", "INTEGER"),
             ("pedidos", "cancelado_razon", "TEXT"),
         ]
         for tabla, col, tipo in _migrations:

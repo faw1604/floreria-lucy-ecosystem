@@ -12,7 +12,8 @@ from app.models.clientes import Cliente
 from app.core.config import TZ
 from app.core.utils import ahora
 from app.core.estados import EstadoPedido as EP
-from app.routers.auth import verificar_sesion
+from app.models.configuracion import ConfiguracionNegocio
+from app.routers.auth import verificar_sesion, _parse_token
 
 router = APIRouter()
 
@@ -45,6 +46,21 @@ async def _pedido_items_nombres(pedido_id: int, db: AsyncSession) -> list[str]:
     return nombres
 
 
+@router.get("/config-temporada")
+async def config_temporada(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve si la temporada alta está activa."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(
+        select(ConfiguracionNegocio).where(ConfiguracionNegocio.clave == "claudia_temporada_alta")
+    )
+    cfg = result.scalar_one_or_none()
+    return {"temporada_alta": cfg.valor == "true" if cfg else False}
+
+
 @router.get("/entregas-hoy")
 async def entregas_hoy(
     fecha: str = "hoy",
@@ -53,16 +69,28 @@ async def entregas_hoy(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    # Obtener ID del repartidor logueado
+    info = _parse_token(panel_session)
+    mi_id = info["id"] if info else None
+
     from datetime import timedelta
-    hoy = datetime.now(TZ).date()
-    manana = hoy + timedelta(days=1)
+    fecha_hoy = datetime.now(TZ).date()
+    manana = fecha_hoy + timedelta(days=1)
     estados = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
     if fecha == "manana":
         query = select(Pedido).where(Pedido.fecha_entrega == manana, Pedido.estado.in_(estados))
     elif fecha == "todos":
-        query = select(Pedido).where(Pedido.fecha_entrega.in_([hoy, manana]), Pedido.estado.in_(estados))
+        query = select(Pedido).where(Pedido.fecha_entrega.in_([fecha_hoy, manana]), Pedido.estado.in_(estados))
     else:
-        query = select(Pedido).where(Pedido.fecha_entrega == hoy, Pedido.estado.in_(estados))
+        query = select(Pedido).where(Pedido.fecha_entrega == fecha_hoy, Pedido.estado.in_(estados))
+
+    # Filtrar: pedidos asignados a mí + pedidos sin asignar (solo envíos)
+    from sqlalchemy import or_
+    query = query.where(
+        Pedido.metodo_entrega.in_(["envio", "funeral_envio"]),
+        or_(Pedido.repartidor_id == mi_id, Pedido.repartidor_id.is_(None))
+    )
+
     result = await db.execute(query)
     pedidos = sorted(result.scalars().all(), key=_sort_key)
     out = []
@@ -97,6 +125,9 @@ async def entregas_hoy(
             "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
             "ruta": p.ruta,
             "tipo_especial": p.tipo_especial,
+            "inicio_ruta_at": p.inicio_ruta_at.isoformat() if p.inicio_ruta_at else None,
+            "entregado_at": p.entregado_at.isoformat() if p.entregado_at else None,
+            "repartidor_id": p.repartidor_id,
         })
     return out
 
@@ -109,6 +140,8 @@ async def iniciar_ruta(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    info = _parse_token(panel_session)
+    mi_id = info["id"] if info else None
     data = await request.json()
     ids = data.get("pedido_ids", [])
     if not ids:
@@ -121,6 +154,7 @@ async def iniciar_ruta(
         if pedido and pedido.estado in EP.LISTOS:
             pedido.estado = EP.EN_CAMINO
             pedido.inicio_ruta_at = ts
+            pedido.repartidor_id = mi_id
             count += 1
     await db.commit()
     return {"ok": True, "actualizados": count}
@@ -187,5 +221,26 @@ async def no_entrega(
     pedido.estado = EP.INTENTO_FALLIDO
     pedido.intento_fallido_at = ts_now
     pedido.nota_no_entrega = motivo
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/asignar/{pedido_id}")
+async def asignar_repartidor(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin asigna repartidor a un pedido."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    data = await request.json()
+    repartidor_id = data.get("repartidor_id")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    pedido.repartidor_id = repartidor_id
     await db.commit()
     return {"ok": True}
