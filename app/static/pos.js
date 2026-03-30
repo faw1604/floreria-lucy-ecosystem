@@ -2316,9 +2316,17 @@ async function loadEntregas() {
   loadEntregasContent();
 }
 
+function getEntregasFecha() {
+  const el = document.getElementById('entregas-fecha');
+  return el && el.value ? el.value : '';
+}
+function loadEntregasConFecha() { loadEntregas(); }
+
 async function loadEntregasResumen() {
   try {
-    const r = await fetch('/api/taller/entregas/resumen-dia', {credentials:'include'});
+    const f = getEntregasFecha();
+    const q = f ? `?fecha=${f}` : '';
+    const r = await fetch(`/api/taller/entregas/resumen-dia${q}`, {credentials:'include'});
     if (!r.ok) return;
     const d = await r.json();
     document.getElementById('entregas-resumen').innerHTML = `
@@ -2337,9 +2345,11 @@ async function loadEntregasResumen() {
 
 async function loadEntregasContent() {
   const el = document.getElementById('entregas-content');
+  const f = getEntregasFecha();
+  const q = f ? `?fecha=${f}` : '';
   const urls = {lobby: '/api/taller/entregas/lobby', recoger: '/api/taller/entregas/por-recoger', envios: '/api/taller/entregas/envios'};
   try {
-    const r = await fetch(urls[entregasSub], {credentials:'include'});
+    const r = await fetch(urls[entregasSub] + q, {credentials:'include'});
     if (!r.ok) return;
     const data = await r.json();
     if (!data.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--texto2)">Sin pedidos</div>'; return; }

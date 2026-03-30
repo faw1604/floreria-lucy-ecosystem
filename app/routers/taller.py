@@ -517,64 +517,69 @@ async def imprimir_etiquetas_manana(
 # Entregas (for POS and Admin)
 # ---------------------------------------------------------------------------
 
+def _parse_fecha(fecha_str: str | None):
+    """Convierte string fecha a date, o devuelve hoy si es None."""
+    if fecha_str:
+        return date_type.fromisoformat(fecha_str)
+    return None
+
+
 @router.get("/entregas/lobby")
 async def entregas_lobby(
+    fecha: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(
-        select(Pedido)
-        .where(Pedido.estado.in_(EP.LISTOS), Pedido.metodo_entrega == ME.MOSTRADOR)
-        .order_by(Pedido.listo_at)
-    )
+    query = select(Pedido).where(Pedido.estado.in_(EP.LISTOS), Pedido.metodo_entrega == ME.MOSTRADOR)
+    f = _parse_fecha(fecha)
+    if f:
+        query = query.where(Pedido.fecha_entrega == f)
+    result = await db.execute(query.order_by(Pedido.listo_at))
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]
 
 
 @router.get("/entregas/por-recoger")
 async def entregas_por_recoger(
+    fecha: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(
-        select(Pedido)
-        .where(
-            Pedido.estado.in_(EP.LISTOS),
-            Pedido.metodo_entrega.in_(ME.PARA_RECOGER),
-        )
-        .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
-    )
+    query = select(Pedido).where(Pedido.estado.in_(EP.LISTOS), Pedido.metodo_entrega.in_(ME.PARA_RECOGER))
+    f = _parse_fecha(fecha)
+    if f:
+        query = query.where(Pedido.fecha_entrega == f)
+    result = await db.execute(query.order_by(Pedido.fecha_entrega, Pedido.horario_entrega))
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]
 
 
 @router.get("/entregas/envios")
 async def entregas_envios(
+    fecha: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    result = await db.execute(
-        select(Pedido)
-        .where(
-            Pedido.estado.in_(EP.LISTOS + [EP.EN_CAMINO]),
-            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
-        )
-        .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
-    )
+    query = select(Pedido).where(Pedido.estado.in_(EP.LISTOS + [EP.EN_CAMINO]), Pedido.metodo_entrega.in_(ME.PARA_ENVIO))
+    f = _parse_fecha(fecha)
+    if f:
+        query = query.where(Pedido.fecha_entrega == f)
+    result = await db.execute(query.order_by(Pedido.fecha_entrega, Pedido.horario_entrega))
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]
 
 
 @router.get("/entregas/resumen-dia")
 async def entregas_resumen_dia(
+    fecha: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    fecha_hoy = hoy()
+    fecha_hoy = _parse_fecha(fecha) or hoy()
 
     r_total = await db.execute(
         select(func.count(Pedido.id)).where(Pedido.fecha_entrega == fecha_hoy)

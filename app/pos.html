@@ -236,11 +236,15 @@
 <!-- ════════════ SECTION: ENTREGAS ════════════ -->
 <div class="section" id="sec-entregas">
   <div class="sec-pad">
-    <div id="entregas-resumen" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;padding:14px;background:var(--verde);color:#fff;border-radius:12px;font-size:14px;font-weight:600"></div>
-    <div style="display:flex;gap:8px;margin-bottom:16px">
+    <div id="entregas-resumen" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;padding:14px;background:var(--verde);color:#fff;border-radius:12px;font-size:14px;font-weight:600"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
       <button class="tab-btn active" onclick="setEntregasSub('lobby',this)" style="padding:8px 16px;border:1px solid var(--borde);border-radius:8px;background:var(--verde);color:#fff;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px">En espera en lobby</button>
       <button class="tab-btn" onclick="setEntregasSub('recoger',this)" style="padding:8px 16px;border:1px solid var(--borde);border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">Por recoger</button>
       <button class="tab-btn" onclick="setEntregasSub('envios',this)" style="padding:8px 16px;border:1px solid var(--borde);border-radius:8px;background:#fff;cursor:pointer;font-family:inherit;font-weight:500;font-size:13px">Envios</button>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <label style="font-size:12px;color:var(--texto2)">Fecha:</label>
+        <input type="date" id="entregas-fecha" onchange="loadEntregasConFecha()" style="padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit">
+      </div>
     </div>
     <div id="entregas-content"></div>
   </div>
