@@ -1633,7 +1633,15 @@ function removeFuneralNon() {
 }
 
 function getChihuahuaNow() {
-  return new Date(new Date().toLocaleString('en-US', {timeZone: 'America/Chihuahua'}));
+  // Safari-safe: extraer partes individuales con Intl.DateTimeFormat
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chihuahua',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  });
+  const parts = {};
+  fmt.formatToParts(new Date()).forEach(p => { parts[p.type] = p.value; });
+  return new Date(parts.year, parts.month - 1, parts.day, parts.hour === '24' ? 0 : parts.hour, parts.minute, parts.second);
 }
 
 function calcMinDate() {
@@ -1702,8 +1710,8 @@ function renderStep3Fields() {
   // Name fields (split into nombre + apellido) — applies to all types
   let html = `
     <div style="display:flex;gap:8px">
-      <div class="order-field" style="flex:1"><label>Nombre(s) <span class="required">*</span></label><input type="text" id="of-nombre" value="${pedidoWeb.cliente_nombre_first||''}" placeholder="Nombre(s)"></div>
-      <div class="order-field" style="flex:1"><label>Apellido(s) <span class="required">*</span></label><input type="text" id="of-apellido" value="${pedidoWeb.cliente_nombre_last||''}" placeholder="Apellido(s)"></div>
+      <div class="order-field" style="flex:1"><label>Tu nombre <span class="required">*</span></label><input type="text" id="of-nombre" value="${pedidoWeb.cliente_nombre_first||''}" placeholder="Tu nombre(s)"></div>
+      <div class="order-field" style="flex:1"><label>Tu apellido <span class="required">*</span></label><input type="text" id="of-apellido" value="${pedidoWeb.cliente_nombre_last||''}" placeholder="Tu apellido(s)"></div>
     </div>
     <div class="order-field"><label>Teléfono <span class="required">*</span></label>
       <div class="order-phone-row">
@@ -1724,7 +1732,7 @@ function renderStep3Fields() {
     </div>
     <div class="order-field"><label>Dirección de entrega <span class="required">*</span></label><input type="text" id="of-direccion" value="${pedidoWeb.direccion_entrega||''}" placeholder="Calle, número, colonia">
       <div class="order-verify-row">
-        <a href="#" id="of-maps-link" onclick="verifyMaps()" target="_blank">📍 Verificar en Maps</a>
+        <a href="javascript:void(0)" id="of-maps-link" onclick="verifyMaps();return false;">📍 Verificar en Maps</a>
         <label><input type="checkbox" id="of-dir-verified" ${pedidoWeb.dir_verified?'checked':''}> Dirección verificada</label>
       </div>
     </div>
