@@ -147,9 +147,10 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <div class="login-box">
     <h2>🚚 Repartidor</h2>
     <p>Floreria Lucy</p>
+    <input class="login-input" type="text" id="login-user" placeholder="Usuario" autocomplete="username">
     <input class="login-input" type="password" id="login-pw" placeholder="Contrasena" autocomplete="current-password">
     <button class="login-btn" id="login-btn">Entrar</button>
-    <div class="login-err" id="login-err">Contrasena incorrecta</div>
+    <div class="login-err" id="login-err">Usuario o contrasena incorrectos</div>
   </div>
 </div>
 
@@ -346,10 +347,13 @@ function fmtHora(iso) {
 // ─── Login ───
 document.getElementById('login-btn').addEventListener('click', doLogin);
 document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-pw').focus(); });
 async function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
   const pw = document.getElementById('login-pw').value;
+  if (!user || !pw) { document.getElementById('login-err').textContent = 'Ingresa usuario y contrasena'; document.getElementById('login-err').style.display = ''; return; }
   try {
-    const r = await fetch('/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({password: pw})});
+    const r = await fetch('/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({username: user, password: pw})});
     if (r.ok) { enterApp(); } else { document.getElementById('login-err').style.display = ''; }
   } catch(e) { document.getElementById('login-err').textContent = 'Error de conexion'; document.getElementById('login-err').style.display = ''; }
 }
