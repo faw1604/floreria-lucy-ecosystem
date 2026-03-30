@@ -1291,14 +1291,19 @@ function imprimirDedicatoria(fromTicket) {
   const info = fromTicket ? buildInfoFromPedido(ticketPedido) : buildInfoFromPOS();
   if (!info.dedicatoria) { alert('Este pedido no tiene dedicatoria'); return; }
   const html = buildDedicatoriaCard(info);
-  const w = window.open('', '_blank', 'width=400,height=560');
+  const w = window.open('', '_blank', 'width=420,height=620');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dedicatoria ${info.folio}</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
 @page{size:3.5in 5in;margin:0}
-body{width:3.5in;height:5in;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif}
-.dedi-card{position:relative;width:3.5in;height:5in;padding:40px 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.dedi-toolbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#f5f5f5;border-bottom:1px solid #ddd;font-family:'Inter',sans-serif}
+.dedi-toolbar span{font-size:12px;color:#666}
+.dedi-toolbar button{padding:8px 20px;background:#193a2c;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+.dedi-toolbar button:hover{background:#2d5a3d}
+.dedi-preview{display:flex;align-items:center;justify-content:center;padding:20px;background:#e8e8e8;min-height:calc(100vh - 49px)}
+body{font-family:'Playfair Display',serif}
+.dedi-card{position:relative;width:3.5in;height:5in;padding:40px 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,0.15)}
 .dedi-corner{position:absolute;width:60px;height:60px;background-size:contain;background-repeat:no-repeat}
 .dedi-tl{top:8px;left:8px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/%3E%3Cpath d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/%3E%3Ccircle cx='50' cy='5' r='2.5' fill='%23333'/%3E%3Ccircle cx='5' cy='50' r='2.5' fill='%23333'/%3E%3Cpath d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Cpath d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Ccircle cx='35' cy='5' r='1.5' fill='%23333'/%3E%3Ccircle cx='5' cy='35' r='1.5' fill='%23333'/%3E%3Cpath d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3C/svg%3E")}
 .dedi-tr{top:8px;right:8px;transform:scaleX(-1);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/%3E%3Cpath d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/%3E%3Ccircle cx='50' cy='5' r='2.5' fill='%23333'/%3E%3Ccircle cx='5' cy='50' r='2.5' fill='%23333'/%3E%3Cpath d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Cpath d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Ccircle cx='35' cy='5' r='1.5' fill='%23333'/%3E%3Ccircle cx='5' cy='35' r='1.5' fill='%23333'/%3E%3Cpath d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3C/svg%3E")}
@@ -1308,10 +1313,15 @@ body{width:3.5in;height:5in;display:flex;align-items:center;justify-content:cent
 .dedi-receptor{font-size:22px;font-weight:600;font-style:italic;margin-bottom:16px}
 .dedi-texto{font-size:15px;line-height:1.6;white-space:pre-line}
 .dedi-fecha{font-size:11px;color:#666;margin-top:auto;padding-bottom:10px}
-@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-</style></head><body>${html}</body></html>`);
+@media print{.dedi-toolbar{display:none!important}.dedi-preview{padding:0;background:none;min-height:auto}.dedi-card{box-shadow:none}-webkit-print-color-adjust:exact;print-color-adjust:exact}
+</style></head><body>
+<div class="dedi-toolbar">
+  <span>Impresora normal &middot; Papel: 3.5 &times; 5 in</span>
+  <button onclick="window.print()">Imprimir</button>
+</div>
+<div class="dedi-preview">${html}</div>
+</body></html>`);
   w.document.close();
-  setTimeout(() => { w.print(); }, 500);
 }
 
 // ─── WhatsApp ───
