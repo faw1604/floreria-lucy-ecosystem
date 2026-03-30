@@ -706,10 +706,27 @@ function selFuneraria(id, nombre, zona, costo) {
 // ─── Payments ───
 function togglePay(el, name) {
   el.classList.toggle('active');
+  const t = calcTotals();
   if (el.classList.contains('active')) {
-    selectedPays[name] = 0;
+    const count = Object.keys(selectedPays).length;
+    if (count === 0) {
+      // Pago simple: auto-asignar total completo
+      selectedPays[name] = t.total;
+    } else if (count === 1) {
+      // Pasamos de simple a combinado: resetear montos a 0
+      for (const k in selectedPays) selectedPays[k] = 0;
+      selectedPays[name] = 0;
+    } else {
+      // Ya es combinado: agregar con 0
+      selectedPays[name] = 0;
+    }
   } else {
     delete selectedPays[name];
+    // Si queda solo 1, auto-asignar total
+    const keys = Object.keys(selectedPays);
+    if (keys.length === 1) {
+      selectedPays[keys[0]] = t.total;
+    }
   }
   renderPayInputs();
   updateSummary();
@@ -717,24 +734,57 @@ function togglePay(el, name) {
 
 function renderPayInputs() {
   const c = document.getElementById('pay-inputs');
-  const soloEfectivo = Object.keys(selectedPays).length === 1 && selectedPays['Efectivo'] !== undefined;
-  c.innerHTML = Object.keys(selectedPays).map(name => {
-    const comNote = name === 'Link de pago' ? `<div style="font-size:10px;color:var(--dorado);margin-top:2px">+4% comision</div>` : '';
-    const displayVal = selectedPays[name] ? (selectedPays[name] / 100) : '';
-    let extra = '';
-    if (name === 'Efectivo' && soloEfectivo) {
-      extra = `<div style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:12px" id="vuelto-row">
-        <label style="min-width:60px;font-weight:500">Recibido:</label>
-        <input type="number" id="vuelto-recibido" placeholder="$0" step="any" style="flex:1;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:13px" oninput="calcVuelto()">
-        <span id="vuelto-cambio" style="min-width:90px;font-weight:600">Cambio: —</span>
+  const t = calcTotals();
+  const keys = Object.keys(selectedPays);
+  const esPagoSimple = keys.length === 1;
+  const tieneEfectivo = selectedPays['Efectivo'] !== undefined;
+
+  if (keys.length === 0) { c.innerHTML = ''; updatePayStatus(); return; }
+
+  let html = '';
+
+  if (esPagoSimple) {
+    // Pago simple: no mostrar input de monto
+    const name = keys[0];
+    const comNote = name === 'Link de pago' ? `<div style="font-size:10px;color:var(--dorado);margin-top:4px">+4% comision</div>` : '';
+    if (name === 'Efectivo') {
+      // Efectivo solo: mostrar Recibido pre-llenado con total
+      const totalPesos = (t.total / 100).toFixed(2);
+      html += `<div style="padding:8px;background:var(--gris);border-radius:6px;margin-top:6px">
+        <div style="display:flex;gap:8px;align-items:center;font-size:12px" id="vuelto-row">
+          <label style="min-width:60px;font-weight:500">Recibido:</label>
+          <input type="number" id="vuelto-recibido" value="${totalPesos}" step="any" style="flex:1;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:13px" oninput="calcVuelto()">
+          <span id="vuelto-cambio" style="min-width:90px;font-weight:600;color:#2e7d32">Cambio: $0</span>
+        </div>
+      </div>`;
+    } else {
+      html += comNote;
+    }
+  } else {
+    // Pago combinado: mostrar input de monto para cada método
+    html += keys.map(name => {
+      const comNote = name === 'Link de pago' ? `<div style="font-size:10px;color:var(--dorado);margin-top:2px">+4% comision</div>` : '';
+      const displayVal = selectedPays[name] ? (selectedPays[name] / 100) : '';
+      return `<div class="pay-input">
+        <label>${name}</label>
+        <input type="number" placeholder="$0" step="any" value="${displayVal}" onchange="updatePayAmt('${name}',this.value)">
+        ${comNote}
+      </div>`;
+    }).join('');
+    // Si tiene efectivo en combinado, mostrar Recibido debajo
+    if (tieneEfectivo) {
+      const efMonto = selectedPays['Efectivo'] ? (selectedPays['Efectivo'] / 100).toFixed(2) : '';
+      html += `<div style="padding:8px;background:var(--gris);border-radius:6px;margin-top:6px">
+        <div style="display:flex;gap:8px;align-items:center;font-size:12px" id="vuelto-row">
+          <label style="min-width:60px;font-weight:500">Recibido:</label>
+          <input type="number" id="vuelto-recibido" value="${efMonto}" step="any" placeholder="$0" style="flex:1;padding:4px 6px;border:1px solid var(--borde);border-radius:4px;font-size:13px" oninput="calcVuelto()">
+          <span id="vuelto-cambio" style="min-width:90px;font-weight:600">Cambio: —</span>
+        </div>
       </div>`;
     }
-    return `<div class="pay-input">
-      <label>${name}</label>
-      <input type="number" placeholder="$0" step="any" value="${displayVal}" onchange="updatePayAmt('${name}',this.value)">
-      ${comNote}
-    </div>${extra}`;
-  }).join('');
+  }
+
+  c.innerHTML = html;
   updatePayStatus();
 }
 
@@ -749,16 +799,25 @@ function calcVuelto() {
   const span = document.getElementById('vuelto-cambio');
   if (!inp || !span) return;
   const recibido = parseFloat(inp.value || 0);
-  const t = calcTotals();
-  const totalPesos = t.total / 100;
+  const keys = Object.keys(selectedPays);
+  const esPagoSimple = keys.length === 1;
+  // En simple el monto de referencia es el total; en combinado es lo asignado a efectivo
+  let referencia;
+  if (esPagoSimple) {
+    const t = calcTotals();
+    referencia = t.total / 100;
+  } else {
+    referencia = (selectedPays['Efectivo'] || 0) / 100;
+  }
   if (!inp.value || recibido === 0) {
     span.textContent = 'Cambio: —';
     span.style.color = 'var(--texto2)';
-  } else if (recibido < totalPesos) {
-    span.textContent = 'Monto insuficiente';
+  } else if (recibido < referencia) {
+    const falta = (referencia - recibido).toFixed(2);
+    span.textContent = `Falta: $${falta}`;
     span.style.color = 'var(--rojo)';
   } else {
-    const cambio = (recibido - totalPesos).toFixed(2);
+    const cambio = (recibido - referencia).toFixed(2);
     span.textContent = `Cambio: $${cambio}`;
     span.style.color = '#2e7d32';
   }
@@ -768,12 +827,22 @@ function updatePayStatus() {
   const t = calcTotals();
   const asignado = Object.values(selectedPays).reduce((s, v) => s + v, 0);
   const el = document.getElementById('pay-status');
-  if (Object.keys(selectedPays).length === 0) { el.innerHTML = ''; return; }
-  if (asignado >= t.total) {
-    el.innerHTML = `<div class="pay-status ok">✓ Pago completo: $${(asignado/100).toLocaleString()}</div>`;
-  } else {
+  const keys = Object.keys(selectedPays);
+  if (keys.length === 0) { el.innerHTML = ''; return; }
+  // Pago simple: siempre completo (auto-asignado)
+  if (keys.length === 1) {
+    el.innerHTML = '';
+    return;
+  }
+  // Pago combinado
+  if (asignado > t.total) {
+    const exceso = asignado - t.total;
+    el.innerHTML = `<div class="pay-status pending">Exceso: $${(exceso/100).toLocaleString()}</div>`;
+  } else if (asignado < t.total) {
     const falta = t.total - asignado;
     el.innerHTML = `<div class="pay-status pending">Falta asignar: $${(falta/100).toLocaleString()}</div>`;
+  } else {
+    el.innerHTML = '';
   }
 }
 
@@ -984,6 +1053,10 @@ async function finalizarVenta() {
   const asignado = Object.values(selectedPays).reduce((s, v) => s + v, 0);
   if (asignado < t.total) {
     alert(`Falta asignar $${((t.total - asignado)/100).toFixed(0)} en metodos de pago`);
+    return;
+  }
+  if (asignado > t.total) {
+    alert(`Exceso de $${((asignado - t.total)/100).toFixed(0)} en metodos de pago`);
     return;
   }
   await submitPedido('pagado');
