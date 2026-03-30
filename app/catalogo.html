@@ -1828,7 +1828,21 @@ async function onFechaChange() {
     }
     const opts = buildRecogerOpts(fecha);
     let minHour = 0;
-    if (isToday) minHour = currentHour + 2;
+    if (isToday) {
+      minHour = currentHour + 2;
+    } else {
+      // Mañana: mínimo 11:30 (tiempo de elaboración)
+      // Pasado mañana o después: mínimo 9:30
+      const hoyStr = fmtDateLocal(now);
+      const mananaDate = new Date(now);
+      mananaDate.setDate(mananaDate.getDate() + 1);
+      const mananaStr = fmtDateLocal(mananaDate);
+      if (fecha === mananaStr) {
+        minHour = 11.5; // 11:30
+      } else {
+        minHour = 9.5; // 9:30
+      }
+    }
     // Round up to next half hour
     if (minHour > 0) minHour = Math.ceil(minHour * 2) / 2;
     const availableCount = opts.filter(t => { const [h,m] = t.split(':').map(Number); return (h + m/60) >= minHour; }).length;
