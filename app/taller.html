@@ -1098,11 +1098,11 @@ async function loadInvFloral() {
       if (colors.length > 1 || (colors.length === 1 && colors[0].variante)) {
         const kF = 'fam-' + fam.replace(/[^a-zA-Z0-9]/g,'_');
         html += `<div class="inv-row" onclick="toggleInvSection('${kF}')" style="cursor:pointer;background:var(--crema)"><div class="inv-name" style="font-weight:600">${fam} <span class="auto-badge">⚡</span></div><div style="font-size:12px;color:var(--texto2)">${colors.length} colores ▸</div></div><div class="inv-colors ${invExpanded.has(kF)?'':'collapsed'}" data-inv-key="${kF}">`;
-        for (const c of colors) html += `<div class="inv-row" style="padding-left:32px"><div class="inv-name">${c.variante || fam}</div><div class="inv-qty"><button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad-1})">−</button><span>${c.cantidad}</span><button onclick="event.stopPropagation();updateInvQty(${c.id},'floral',${c.cantidad+1})">+</button></div><div class="inv-status">${renderStatusSelect(c.id,'floral',c.stock_estado)}</div></div>`;
+        for (const c of colors) html += `<div class="inv-row" style="padding-left:32px"><div class="inv-name">${c.variante || fam}</div><div class="inv-status">${renderStatusSelect(c.id,'floral',c.stock_estado)}</div></div>`;
         html += '</div>';
       } else {
         const c = colors[0];
-        html += `<div class="inv-row"><div class="inv-name">${fam} <span class="auto-badge">⚡</span></div><div class="inv-qty"><button onclick="updateInvQty(${c.id},'floral',${c.cantidad-1})">−</button><span>${c.cantidad}</span><button onclick="updateInvQty(${c.id},'floral',${c.cantidad+1})">+</button></div><div class="inv-status">${renderStatusSelect(c.id,'floral',c.stock_estado)}</div></div>`;
+        html += `<div class="inv-row"><div class="inv-name">${fam} <span class="auto-badge">⚡</span></div><div class="inv-status">${renderStatusSelect(c.id,'floral',c.stock_estado)}</div></div>`;
       }
     }
     html += '</div></div>';
