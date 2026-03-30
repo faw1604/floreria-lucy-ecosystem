@@ -511,7 +511,7 @@ async def pos_pedidos_hoy(
     # Filter by canal
     if canal:
         canales = [c.strip() for c in canal.split(",")]
-        canal_map = {"POS": "Mostrador", "Claudia": "WhatsApp"}
+        canal_map = {"POS": "Mostrador", "WhatsApp": "WhatsApp", "Web": "Web"}
         db_canales = [canal_map.get(c, c) for c in canales]
         query = query.where(Pedido.canal.in_(db_canales))
 
@@ -963,7 +963,7 @@ async def pos_corte_caja(
         query = query.where(Pedido.customer_id == cliente_id)
     if canal:
         from sqlalchemy import or_
-        canal_map = {"POS": "Mostrador", "Claudia": "WhatsApp"}
+        canal_map = {"POS": "Mostrador", "WhatsApp": "WhatsApp", "Web": "Web"}
         db_canales = [canal_map.get(c.strip(), c.strip()) for c in canal.split(",")]
         query = query.where(Pedido.canal.in_(db_canales))
     if tipo:

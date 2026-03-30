@@ -1345,7 +1345,8 @@ function tipoLabel(p) {
   return 'Mostrador';
 }
 function canalLabel(canal) {
-  if (canal === 'WhatsApp') return 'Claudia';
+  if (canal === 'WhatsApp') return 'WhatsApp';
+  if (canal === 'Web') return 'Web';
   return 'POS';
 }
 
