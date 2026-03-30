@@ -1644,6 +1644,11 @@ function getChihuahuaNow() {
   return new Date(parts.year, parts.month - 1, parts.day, parts.hour === '24' ? 0 : parts.hour, parts.minute, parts.second);
 }
 
+// Formatear date como YYYY-MM-DD sin pasar por UTC (toISOString desfasa la fecha)
+function fmtDateLocal(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 function calcMinDate() {
   const now = getChihuahuaNow();
   const day = now.getDay(); // 0=Sun
@@ -1657,7 +1662,7 @@ function calcMinDate() {
   if (todayBlocked) {
     min.setDate(min.getDate() + 1);
   }
-  return {minDate: min.toISOString().split('T')[0], todayBlocked};
+  return {minDate: fmtDateLocal(min), todayBlocked};
 }
 
 // Store hours for tienda
@@ -1805,7 +1810,7 @@ async function onFechaChange() {
   const fecha = document.getElementById('of-fecha')?.value;
   if (!fecha) return;
   const now = getChihuahuaNow();
-  const hoy = now.toISOString().split('T')[0];
+  const hoy = fmtDateLocal(now);
   const isToday = fecha === hoy;
   const isFuture = fecha > hoy;
   const currentHour = now.getHours() + now.getMinutes() / 60;
