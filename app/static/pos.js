@@ -1401,6 +1401,27 @@ body{font-family:'Playfair Display',serif}
   w.document.close();
 }
 
+// ─── Copiar ticket como imagen ───
+async function copiarTicketImagen(containerId, btnEl) {
+  const tc = document.getElementById(containerId);
+  if (!tc) return;
+  const origText = btnEl.textContent;
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Copiando...';
+  try {
+    const canvas = await html2canvas(tc, {scale: 2, backgroundColor: '#ffffff'});
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+    btnEl.textContent = '✓ Copiado';
+    btnEl.style.background = '#2d5a3d';
+    setTimeout(() => { btnEl.textContent = origText; btnEl.style.background = ''; btnEl.disabled = false; }, 2000);
+  } catch(e) {
+    btnEl.textContent = 'Error al copiar';
+    btnEl.style.background = 'var(--rojo)';
+    setTimeout(() => { btnEl.textContent = origText; btnEl.style.background = ''; btnEl.disabled = false; }, 2000);
+  }
+}
+
 // ─── WhatsApp ───
 async function enviarWhatsApp() {
   const btn = document.getElementById('btn-wa');
@@ -2261,6 +2282,7 @@ function verTicket(p) {
   document.getElementById('ticket-content').innerHTML = buildTicketDigital(info);
   // Buttons
   let btns = '<button onclick="reimprimirDesdeTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Imprimir</button>';
+  btns += '<button onclick="copiarTicketImagen(\'ticket-content\',this)" style="flex:1;padding:10px;background:#555;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">📋 Copiar imagen</button>';
   if (p.dedicatoria && (p.direccion_entrega || p.tipo_especial === 'Funeral')) btns += '<button onclick="imprimirDedicatoria(true)" style="flex:1;padding:10px;background:var(--dorado);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💌 Dedicatoria</button>';
   if (p.cliente_telefono) btns += '<button onclick="enviarWaDesdeTicket()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>';
   btns += `<button onclick="document.getElementById('modal-ticket').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>`;
