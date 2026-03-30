@@ -346,6 +346,7 @@ async def _pos_crear_pedido_inner(request, db):
         notas_internas=notas or None,
         forma_pago=", ".join([p.get("nombre") or str(p.get("metodo_pago_id", "")) for p in pagos]) if pagos else "Efectivo",
         pago_confirmado=estado_pedido == "pagado",
+        pago_confirmado_at=ahora() if estado_pedido == "pagado" else None,
         subtotal=subtotal,
         envio=envio,
         total=total,
@@ -435,6 +436,7 @@ async def _serializar_pedido_pos(p, db):
         "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
         "comprobante_pago_url": p.comprobante_pago_url,
         "requiere_factura": p.requiere_factura,
+        "pago_confirmado_at": p.pago_confirmado_at.isoformat() if p.pago_confirmado_at else None,
     }
 
 
@@ -593,6 +595,9 @@ async def pos_pedidos_hoy(
                 if metodo:
                     desglose_pago[metodo] = desglose_pago.get(metodo, 0) + (p.total or 0)
 
+    # Ordenar finalizados por fecha de pago (más reciente primero)
+    finalizados.sort(key=lambda x: x.get("pago_confirmado_at") or "", reverse=True)
+
     return {
         "pendientes": pendientes,
         "finalizados": finalizados,
@@ -644,6 +649,7 @@ async def _pos_finalizar_inner(pedido_id, request, db):
         pedido.produccion_at = ahora()
     pedido.estado_florista = EF.APROBADO
     pedido.pago_confirmado = True
+    pedido.pago_confirmado_at = ahora()
     pedido.forma_pago = ", ".join(p.get("nombre", "") for p in pagos if p.get("nombre"))
     await db.commit()
     return {"ok": True, "folio": pedido.numero, "estado": pedido.estado}
@@ -788,6 +794,8 @@ async def pos_completar_pedido(
 
     pedido.metodo_entrega = _metodo
     pedido.pago_confirmado = estado_pedido == "pagado"
+    if estado_pedido == "pagado" and not pedido.pago_confirmado_at:
+        pedido.pago_confirmado_at = ahora()
     pedido.subtotal = subtotal
     pedido.envio = envio
     pedido.total = total
