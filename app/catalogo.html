@@ -1855,7 +1855,7 @@ async function onFechaChange() {
     recogerSel.innerHTML = '<option value="">Selecciona hora</option>' + opts.map(t => {
       const [h,m] = t.split(':').map(Number);
       const hourVal = h + m/60;
-      const disabled = isToday && hourVal < minHour;
+      const disabled = hourVal < minHour;
       const sel = pedidoWeb.hora_especifica === t ? 'selected' : '';
       return `<option value="${t}" ${disabled ? 'disabled style="opacity:0.4"' : ''} ${sel}>${t}${disabled ? ' — No disponible' : ''}</option>`;
     }).join('');
