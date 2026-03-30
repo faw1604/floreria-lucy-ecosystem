@@ -455,8 +455,8 @@ async def pos_pedidos_hoy(
         raise HTTPException(status_code=401, detail="No autenticado")
     from datetime import date as date_type, time as time_type
     from calendar import monthrange
-    ahora = datetime.now(TZ)
-    hoy = ahora.date()
+    ts_ahora = datetime.now(TZ)
+    hoy = ts_ahora.date()
 
     # Week: Sunday=0..Saturday=6 (Mexican convention)
     dow = (hoy.weekday() + 1) % 7  # convert Mon=0 to Sun=0
@@ -641,7 +641,7 @@ async def _pos_finalizar_inner(pedido_id, request, db):
         pedido.estado = EP.LISTO
     else:
         pedido.estado = EP.EN_PRODUCCION
-        pedido.produccion_at = datetime.now(TZ)
+        pedido.produccion_at = ahora()
     pedido.estado_florista = EF.APROBADO
     pedido.pago_confirmado = True
     pedido.forma_pago = ", ".join(p.get("nombre", "") for p in pagos if p.get("nombre"))
