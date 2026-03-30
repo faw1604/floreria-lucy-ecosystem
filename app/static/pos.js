@@ -1042,6 +1042,14 @@ function mostrarModalCreado(result) {
   } else {
     btnWa.style.display = 'none';
   }
+  // Dedicatoria button — solo domicilio/funeral con dedicatoria
+  const btnDedi = document.getElementById('btn-dedi');
+  const dedi = document.getElementById('f-dedicatoria')?.value || document.getElementById('f-dedicatoria-fun')?.value || '';
+  if (dedi && (ordenTipo === 'domicilio' || ordenTipo === 'funeral')) {
+    btnDedi.style.display = '';
+  } else {
+    btnDedi.style.display = 'none';
+  }
   document.getElementById('modal-creado').classList.add('active');
 }
 
@@ -1261,6 +1269,49 @@ function buildInfoFromPedido(p) {
 function imprimirTicket() {
   document.getElementById('print-frame').innerHTML = buildTicketCompleto(buildInfoFromPOS());
   setTimeout(() => window.print(), 100);
+}
+
+// ─── Dedicatoria Card (3.5 x 5 in) ───
+function buildDedicatoriaCard(info) {
+  const folio = info.folio || '';
+  const receptor = info.receptor_nombre || '';
+  const dedicatoria = info.dedicatoria || '';
+  const fechaEntrega = info.fecha_entrega ? formatearFecha(info.fecha_entrega) : '';
+  return `<div class="dedi-card">
+    <div class="dedi-corner dedi-tl"></div><div class="dedi-corner dedi-tr"></div>
+    <div class="dedi-corner dedi-bl"></div><div class="dedi-corner dedi-br"></div>
+    <div class="dedi-folio">${folio}</div>
+    <div class="dedi-receptor">${receptor}</div>
+    <div class="dedi-texto">${dedicatoria}</div>
+    <div class="dedi-fecha">${fechaEntrega}</div>
+  </div>`;
+}
+
+function imprimirDedicatoria(fromTicket) {
+  const info = fromTicket ? buildInfoFromPedido(ticketPedido) : buildInfoFromPOS();
+  if (!info.dedicatoria) { alert('Este pedido no tiene dedicatoria'); return; }
+  const html = buildDedicatoriaCard(info);
+  const w = window.open('', '_blank', 'width=400,height=560');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dedicatoria ${info.folio}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+@page{size:3.5in 5in;margin:0}
+body{width:3.5in;height:5in;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif}
+.dedi-card{position:relative;width:3.5in;height:5in;padding:40px 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.dedi-corner{position:absolute;width:60px;height:60px;background-size:contain;background-repeat:no-repeat}
+.dedi-tl{top:8px;left:8px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/%3E%3Cpath d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/%3E%3Ccircle cx='50' cy='5' r='2.5' fill='%23333'/%3E%3Ccircle cx='5' cy='50' r='2.5' fill='%23333'/%3E%3Cpath d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Cpath d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Ccircle cx='35' cy='5' r='1.5' fill='%23333'/%3E%3Ccircle cx='5' cy='35' r='1.5' fill='%23333'/%3E%3Cpath d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3C/svg%3E")}
+.dedi-tr{top:8px;right:8px;transform:scaleX(-1);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/%3E%3Cpath d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/%3E%3Ccircle cx='50' cy='5' r='2.5' fill='%23333'/%3E%3Ccircle cx='5' cy='50' r='2.5' fill='%23333'/%3E%3Cpath d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Cpath d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Ccircle cx='35' cy='5' r='1.5' fill='%23333'/%3E%3Ccircle cx='5' cy='35' r='1.5' fill='%23333'/%3E%3Cpath d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3C/svg%3E")}
+.dedi-bl{bottom:8px;left:8px;transform:scaleY(-1);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/%3E%3Cpath d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/%3E%3Ccircle cx='50' cy='5' r='2.5' fill='%23333'/%3E%3Ccircle cx='5' cy='50' r='2.5' fill='%23333'/%3E%3Cpath d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Cpath d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Ccircle cx='35' cy='5' r='1.5' fill='%23333'/%3E%3Ccircle cx='5' cy='35' r='1.5' fill='%23333'/%3E%3Cpath d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3C/svg%3E")}
+.dedi-br{bottom:8px;right:8px;transform:scale(-1,-1);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/%3E%3Cpath d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/%3E%3Ccircle cx='50' cy='5' r='2.5' fill='%23333'/%3E%3Ccircle cx='5' cy='50' r='2.5' fill='%23333'/%3E%3Cpath d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Cpath d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/%3E%3Ccircle cx='35' cy='5' r='1.5' fill='%23333'/%3E%3Ccircle cx='5' cy='35' r='1.5' fill='%23333'/%3E%3Cpath d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3Cpath d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/%3E%3C/svg%3E")}
+.dedi-folio{font-size:10px;color:#666;margin-bottom:auto;padding-top:10px}
+.dedi-receptor{font-size:22px;font-weight:600;font-style:italic;margin-bottom:16px}
+.dedi-texto{font-size:15px;line-height:1.6;white-space:pre-line}
+.dedi-fecha{font-size:11px;color:#666;margin-top:auto;padding-bottom:10px}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>${html}</body></html>`);
+  w.document.close();
+  setTimeout(() => { w.print(); }, 500);
 }
 
 // ─── WhatsApp ───
@@ -2123,6 +2174,7 @@ function verTicket(p) {
   document.getElementById('ticket-content').innerHTML = buildTicketDigital(info);
   // Buttons
   let btns = '<button onclick="reimprimirDesdeTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Imprimir</button>';
+  if (p.dedicatoria && (p.direccion_entrega || p.tipo_especial === 'Funeral')) btns += '<button onclick="imprimirDedicatoria(true)" style="flex:1;padding:10px;background:var(--dorado);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💌 Dedicatoria</button>';
   if (p.cliente_telefono) btns += '<button onclick="enviarWaDesdeTicket()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>';
   btns += `<button onclick="document.getElementById('modal-ticket').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>`;
   document.getElementById('ticket-buttons').innerHTML = btns;
