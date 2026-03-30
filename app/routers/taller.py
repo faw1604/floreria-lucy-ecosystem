@@ -242,16 +242,17 @@ async def proximos(
 
 @router.get("/realizados")
 async def realizados(
+    fecha: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    fecha_hoy = hoy()
+    f = _parse_fecha(fecha) or hoy()
     result = await db.execute(
         select(Pedido)
         .where(
             Pedido.estado.in_([EP.ENTREGADO]),
-            Pedido.fecha_entrega == fecha_hoy,
+            Pedido.fecha_entrega == f,
         )
         .order_by(Pedido.entregado_at.desc())
     )

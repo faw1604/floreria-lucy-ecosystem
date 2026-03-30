@@ -234,6 +234,11 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
   <!-- REALIZADOS -->
   <div class="tab-content" id="content-realizados">
+    <div class="toolbar">
+      <input type="text" class="recoger-search" id="realizados-search" placeholder="Buscar por folio o cliente..." oninput="filterRealizados()" style="flex:1;max-width:300px">
+      <input type="date" id="realizados-fecha" onchange="loadRealizados()" style="padding:8px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit">
+      <span id="realizados-count" style="font-size:13px;color:var(--texto2);white-space:nowrap"></span>
+    </div>
     <div id="realizados-body"><div class="empty">Cargando...</div></div>
   </div>
 
@@ -809,46 +814,68 @@ async function loadProximos() {
 }
 
 // ─── LOAD: Realizados ───
+let realizadosData = [];
+
 async function loadRealizados() {
   try {
-    const r = await fetch(`${TALLER_API}/realizados`, {credentials:'include'});
+    const f = document.getElementById('realizados-fecha')?.value || '';
+    const q = f ? `?fecha=${f}` : '';
+    const r = await fetch(`${TALLER_API}/realizados${q}`, {credentials:'include'});
     if (!r.ok) return;
-    const data = await r.json();
-    const el = document.getElementById('realizados-body');
-    if (!data.length) { el.innerHTML = '<div class="empty">Sin pedidos entregados hoy</div>'; return; }
-    let html = '<div class="kds-grid">';
-    data.forEach(p => {
-      const m = p.metodo_entrega || '';
-      let tag = '<span class="realizado-tag tag-enviado">🚗 Entregado</span>';
-      if (m === 'mostrador') tag = '<span class="realizado-tag tag-mostrador">🏪 Mostrador</span>';
-      else if (m === 'recoger' || m === 'funeral_recoger') tag = '<span class="realizado-tag tag-recogido">✅ Recogido</span>';
-
-      const listoTime = p.listo_at ? new Date(p.listo_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
-      const entregadoTime = p.entregado_at ? new Date(p.entregado_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
-
-      let duracion = '';
-      if (p.produccion_at && p.entregado_at) {
-        const diff = Math.floor((new Date(p.entregado_at) - new Date(p.produccion_at)) / 60000);
-        const dh = Math.floor(diff / 60);
-        const dm = diff % 60;
-        duracion = `${dh > 0 ? dh+'h ':''}${dm}m`;
-      }
-
-      html += `<div class="kds-card" style="border-left-color:var(--gris)">
-        <div class="kds-card-head">
-          <div class="kds-num" style="font-size:16px">${p.numero}</div>
-          ${tag}
-        </div>
-        <div class="kds-body">
-          <div class="kds-cliente" style="font-size:14px">${p.cliente_nombre || p.receptor_nombre || '—'}</div>
-          <div class="kds-items" style="font-size:12px">${itemsCompacto(p.items)}</div>
-          <div class="kds-detail">🔧 Listo: ${listoTime} — 📦 Entregado: ${entregadoTime}${duracion ? ` — ⏱ ${duracion}` : ''}</div>
-        </div>
-      </div>`;
-    });
-    html += '</div>';
-    el.innerHTML = html;
+    realizadosData = await r.json();
+    renderRealizados(realizadosData);
   } catch(e) {}
+}
+
+function renderRealizados(data) {
+  const el = document.getElementById('realizados-body');
+  const countEl = document.getElementById('realizados-count');
+  countEl.textContent = `${data.length} pedido${data.length !== 1 ? 's' : ''}`;
+  if (!data.length) { el.innerHTML = '<div class="empty">Sin pedidos realizados</div>'; return; }
+  let html = '<div class="kds-grid">';
+  data.forEach(p => {
+    const m = p.metodo_entrega || '';
+    let tag = '<span class="realizado-tag tag-enviado">🚗 Entregado</span>';
+    if (m === 'mostrador') tag = '<span class="realizado-tag tag-mostrador">🏪 Mostrador</span>';
+    else if (m === 'recoger' || m === 'funeral_recoger') tag = '<span class="realizado-tag tag-recogido">✅ Recogido</span>';
+
+    const listoTime = p.listo_at ? new Date(p.listo_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
+    const entregadoTime = p.entregado_at ? new Date(p.entregado_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
+
+    let duracion = '';
+    if (p.produccion_at && p.entregado_at) {
+      const diff = Math.floor((new Date(p.entregado_at) - new Date(p.produccion_at)) / 60000);
+      const dh = Math.floor(diff / 60);
+      const dm = diff % 60;
+      duracion = `${dh > 0 ? dh+'h ':''}${dm}m`;
+    }
+
+    html += `<div class="kds-card" style="border-left-color:var(--gris)" data-folio="${(p.numero||'').toLowerCase()}" data-cliente="${(p.cliente_nombre||p.receptor_nombre||'').toLowerCase()}">
+      <div class="kds-card-head">
+        <div class="kds-num" style="font-size:16px">${p.numero}</div>
+        ${tag}
+      </div>
+      <div class="kds-body">
+        <div class="kds-cliente" style="font-size:14px">${p.cliente_nombre || p.receptor_nombre || '—'}</div>
+        <div class="kds-items" style="font-size:12px">${itemsCompacto(p.items)}</div>
+        <div class="kds-detail">🔧 Listo: ${listoTime} — 📦 Entregado: ${entregadoTime}${duracion ? ` — ⏱ ${duracion}` : ''}</div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function filterRealizados() {
+  const q = (document.getElementById('realizados-search')?.value || '').toLowerCase().trim();
+  if (!q) { renderRealizados(realizadosData); return; }
+  const filtered = realizadosData.filter(p =>
+    (p.numero || '').toLowerCase().includes(q) ||
+    (p.cliente_nombre || '').toLowerCase().includes(q) ||
+    (p.receptor_nombre || '').toLowerCase().includes(q)
+  );
+  renderRealizados(filtered);
+}
 }
 
 // ─── ACCIONES NUEVOS ───
@@ -1265,7 +1292,7 @@ async function loadReservasResumen() {
       <span>📦 Disponibles: <strong>${d.disponibles}</strong></span>
       <span>✅ Vendidas hoy: <strong>${d.vendidas_hoy}</strong></span>
       <span>🗑 Descartadas: <strong>${d.descartadas_hoy}</strong></span>
-      <span>💰 Ingresos: <strong>$${(d.ingresos_hoy/100).toLocaleString()}</strong></span>`;
+`;
   } catch(e) {}
 }
 
