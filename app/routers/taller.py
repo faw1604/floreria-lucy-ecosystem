@@ -279,28 +279,36 @@ async def aceptar(
 ):
     _auth(panel_session)
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = EP.EN_PRODUCCION
-    pedido.estado_florista = EF.APROBADO
-    pedido.produccion_at = ahora()
 
-    # Auto-descuento de inventario para insumos con descuento_automatico=true
-    items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
-    items_pedido = items_result.scalars().all()
-    for item in items_pedido:
-        insumos_result = await db.execute(
-            select(InsumoProducto).where(InsumoProducto.producto_id == item.producto_id)
-        )
-        for ip in insumos_result.scalars().all():
-            if ip.insumo_floral_id:
-                insumo_result = await db.execute(
-                    select(InsumoFloral).where(
-                        InsumoFloral.id == ip.insumo_floral_id,
-                        InsumoFloral.descuento_automatico == True,
+    # Web/WhatsApp sin pagar → pendiente_pago (falta cobrar)
+    # POS o ya pagado → En producción (directo al taller)
+    if pedido.pago_confirmado or pedido.canal == "Mostrador":
+        pedido.estado = EP.EN_PRODUCCION
+        pedido.produccion_at = ahora()
+    else:
+        pedido.estado = EP.PENDIENTE_PAGO
+
+    pedido.estado_florista = EF.APROBADO
+
+    # Auto-descuento solo si entra a producción
+    if pedido.estado == EP.EN_PRODUCCION:
+        items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+        items_pedido = items_result.scalars().all()
+        for item in items_pedido:
+            insumos_result = await db.execute(
+                select(InsumoProducto).where(InsumoProducto.producto_id == item.producto_id)
+            )
+            for ip in insumos_result.scalars().all():
+                if ip.insumo_floral_id:
+                    insumo_result = await db.execute(
+                        select(InsumoFloral).where(
+                            InsumoFloral.id == ip.insumo_floral_id,
+                            InsumoFloral.descuento_automatico == True,
+                        )
                     )
-                )
-                insumo = insumo_result.scalar_one_or_none()
-                if insumo and insumo.cantidad > 0:
-                    insumo.cantidad = max(0, insumo.cantidad - ip.cantidad_consumida * item.cantidad)
+                    insumo = insumo_result.scalar_one_or_none()
+                    if insumo and insumo.cantidad > 0:
+                        insumo.cantidad = max(0, insumo.cantidad - ip.cantidad_consumida * item.cantidad)
 
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
@@ -317,10 +325,13 @@ async def aceptar_con_cambios(
     data = await request.json()
     nota = data.get("nota", "")
     pedido = await _get_pedido(pedido_id, db)
-    pedido.estado = EP.EN_PRODUCCION
+    if pedido.pago_confirmado or pedido.canal == "Mostrador":
+        pedido.estado = EP.EN_PRODUCCION
+        pedido.produccion_at = ahora()
+    else:
+        pedido.estado = EP.PENDIENTE_PAGO
     pedido.estado_florista = EF.APROBADO_CON_MODIFICACION
     pedido.nota_florista = nota
-    pedido.produccion_at = ahora()
     await db.commit()
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
