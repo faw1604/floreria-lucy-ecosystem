@@ -44,10 +44,10 @@ async def inicializar_db():
         ]
         for tabla, col, tipo in _migrations:
             try:
-                await conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN {col} {tipo}"))
+                await conn.execute(text(f"ALTER TABLE {tabla} ADD COLUMN IF NOT EXISTS {col} {tipo}"))
                 _log.info(f"  + {tabla}.{col}")
-            except Exception:
-                pass
+            except Exception as e:
+                _log.info(f"  ~ {tabla}.{col}: {str(e)[:80]}")
 
     # 3. Crear tabla reservas en conexión separada
     async with engine.begin() as conn:
