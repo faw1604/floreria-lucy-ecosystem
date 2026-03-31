@@ -12,6 +12,7 @@ async def listar_productos(
     categoria: str | None = None,
     solo_disponibles: bool = False,
     activo: str | None = None,
+    buscar: str | None = None,
     offset: int = 0,
     limit: int = 0,
     db: AsyncSession = Depends(get_db)
@@ -34,6 +35,11 @@ async def listar_productos(
         query = query.where(Producto.activo == True)
     if categoria:
         query = query.where(Producto.categoria == categoria)
+    if buscar:
+        buscar_like = f"%{buscar}%"
+        query = query.where(
+            Producto.nombre.ilike(buscar_like) | Producto.codigo.ilike(buscar_like)
+        )
     if solo_disponibles:
         query = query.where(Producto.disponible_hoy == True)
     query = query.order_by(Producto.categoria, Producto.nombre)

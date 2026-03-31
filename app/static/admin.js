@@ -239,9 +239,11 @@ function debounceProdSearch() { clearTimeout(prodSearchTimeout); prodSearchTimeo
 function prodFilterUrl() {
   const status = document.getElementById('prod-status-filter')?.value || '';
   const cat = document.getElementById('prod-cat-filter')?.value || '';
+  const q = (document.getElementById('prod-search')?.value || '').trim();
   const activoVal = status === '1' ? 'true' : status === '0' ? 'false' : 'todos';
   let url = API + '/productos/?activo=' + activoVal + '&offset=' + prodOffset + '&limit=' + PROD_PAGE;
   if (cat) url += '&categoria=' + encodeURIComponent(cat);
+  if (q) url += '&buscar=' + encodeURIComponent(q);
   return url;
 }
 
@@ -256,9 +258,6 @@ async function loadProductos(append) {
     let data = await r.json();
     if (data.length < PROD_PAGE) prodHasMore = false;
     prodOffset += data.length;
-    // Client-side search filter
-    const q = (document.getElementById('prod-search')?.value || '').trim();
-    if (q) { const ql = q.toLowerCase(); data = data.filter(p => p.nombre.toLowerCase().includes(ql) || (p.codigo||'').toLowerCase().includes(ql)); }
     prodAllData = append ? prodAllData.concat(data) : data;
     // Populate category filter once
     if (!prodCatsLoaded) {
