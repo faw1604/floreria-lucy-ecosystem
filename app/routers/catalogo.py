@@ -498,11 +498,25 @@ async def seguimiento_pedido(token: str, db: AsyncSession = Depends(get_db)):
     # Check if florista suggested a change
     florista_cambio = None
     if pedido.estado_florista == "cambio_sugerido" and pedido.nota_florista:
-        florista_cambio = {
-            "tipo": "cambio",
-            "nota": pedido.nota_florista,
-            "requiere_respuesta": True,
-        }
+        # Try to parse structured cambio with product options
+        import json
+        try:
+            cambio_data = json.loads(pedido.nota_florista)
+            opciones = cambio_data.get("opciones", [])
+            florista_cambio = {
+                "tipo": "cambio",
+                "nota": cambio_data.get("nota", ""),
+                "opciones": opciones,
+                "requiere_respuesta": True,
+            }
+        except (json.JSONDecodeError, TypeError):
+            # Fallback for plain text nota
+            florista_cambio = {
+                "tipo": "cambio",
+                "nota": pedido.nota_florista,
+                "opciones": [],
+                "requiere_respuesta": True,
+            }
     elif pedido.estado_florista == "aprobado_con_modificacion" and pedido.nota_florista:
         florista_cambio = {
             "tipo": "modificacion",
@@ -550,9 +564,18 @@ async def responder_seguimiento(token: str, request: Request, db: AsyncSession =
     acepta = data.get("acepta", False)
     mensaje = (data.get("mensaje") or "").strip()
 
+    producto_elegido_id = data.get("producto_elegido_id")
+
     if acepta:
         pedido.estado_florista = "pendiente_aprobacion"
-        nota_respuesta = f"[CLIENTE ACEPTA CAMBIO] {mensaje}" if mensaje else "[CLIENTE ACEPTA CAMBIO]"
+        if producto_elegido_id:
+            # Look up product name for the note
+            prod_result = await db.execute(select(Producto).where(Producto.id == producto_elegido_id))
+            prod = prod_result.scalar_one_or_none()
+            prod_name = prod.nombre if prod else f"ID:{producto_elegido_id}"
+            nota_respuesta = f"[CLIENTE ELIGE: {prod_name}] {mensaje}".strip()
+        else:
+            nota_respuesta = f"[CLIENTE ACEPTA CAMBIO] {mensaje}" if mensaje else "[CLIENTE ACEPTA CAMBIO]"
     else:
         pedido.estado_florista = "requiere_atencion"
         pedido.requiere_humano = True

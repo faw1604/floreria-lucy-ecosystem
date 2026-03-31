@@ -393,18 +393,48 @@ function renderTracking(data) {
   // Florista change suggestion
   if (data.florista_cambio && data.florista_cambio.requiere_respuesta && !respondido) {
     const esCambio = data.florista_cambio.tipo === 'cambio';
+    const opciones = data.florista_cambio.opciones || [];
     const titulo = esCambio ? '🔄 Nuestro florista sugiere un cambio' : '✏️ Nuestro florista hizo una modificación';
-    html += `
-      <div class="change-card" id="change-card">
-        <h3>${titulo}</h3>
-        <div class="nota">${escHtml(data.florista_cambio.nota)}</div>
-        <textarea id="respuesta-msg" placeholder="Escribe un mensaje (opcional)"></textarea>
-        <div class="change-btns">
-          <button class="btn-reject" onclick="responderCambio(false)">No acepto</button>
-          <button class="btn-accept" onclick="responderCambio(true)">${esCambio ? 'Acepto el cambio' : 'De acuerdo'}</button>
+
+    if (esCambio && opciones.length > 0) {
+      // Product options mode — no textarea, customer picks one
+      html += `
+        <div class="change-card" id="change-card">
+          <h3>${titulo}</h3>
+          ${data.florista_cambio.nota ? `<div class="nota">${escHtml(data.florista_cambio.nota)}</div>` : ''}
+          <p style="font-size:13px;font-weight:600;margin-bottom:10px">Elige una opción:</p>
+          <div id="cambio-opciones" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+            ${opciones.map(op => `
+              <div class="cambio-opcion" data-id="${op.id}" onclick="seleccionarOpcion(${op.id})" style="display:flex;align-items:center;gap:12px;padding:10px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;transition:all .2s">
+                ${op.imagen_url ? `<img src="${escHtml(op.imagen_url)}" style="width:56px;height:56px;border-radius:8px;object-fit:cover">` : '<div style="width:56px;height:56px;background:var(--borde);border-radius:8px"></div>'}
+                <div style="flex:1">
+                  <div style="font-weight:600;font-size:14px">${escHtml(op.nombre)}</div>
+                  <div style="font-size:13px;color:var(--texto2)">$${(op.precio / 100).toLocaleString()}</div>
+                </div>
+                <div class="opcion-check" style="width:24px;height:24px;border:2px solid var(--borde);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s"></div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="change-btns">
+            <button class="btn-reject" onclick="responderCambio(false)">Ninguna me convence</button>
+            <button class="btn-accept" id="btn-elegir" onclick="responderConEleccion()" disabled>Elegir esta opción</button>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    } else {
+      // Text mode (modificacion or legacy cambio without options)
+      html += `
+        <div class="change-card" id="change-card">
+          <h3>${titulo}</h3>
+          <div class="nota">${escHtml(data.florista_cambio.nota)}</div>
+          <textarea id="respuesta-msg" placeholder="Escribe un mensaje (opcional)"></textarea>
+          <div class="change-btns">
+            <button class="btn-reject" onclick="responderCambio(false)">No acepto</button>
+            <button class="btn-accept" onclick="responderCambio(true)">${esCambio ? 'Acepto el cambio' : 'De acuerdo'}</button>
+          </div>
+        </div>
+      `;
+    }
   } else if (data.florista_cambio && !data.florista_cambio.requiere_respuesta) {
     html += `
       <div class="change-card" style="border-color:var(--rojo)">
@@ -463,6 +493,46 @@ function renderTracking(data) {
   c.innerHTML = html;
   const newTextarea = document.getElementById('respuesta-msg');
   if (newTextarea && prevMsg) newTextarea.value = prevMsg;
+}
+
+let selectedOpcionId = null;
+
+function seleccionarOpcion(id) {
+  selectedOpcionId = id;
+  document.querySelectorAll('.cambio-opcion').forEach(el => {
+    const isSelected = parseInt(el.dataset.id) === id;
+    el.style.borderColor = isSelected ? 'var(--verde-medio)' : 'var(--borde)';
+    el.style.background = isSelected ? 'rgba(45,90,61,0.05)' : '';
+    el.querySelector('.opcion-check').innerHTML = isSelected ? '✓' : '';
+    el.querySelector('.opcion-check').style.borderColor = isSelected ? 'var(--verde-medio)' : 'var(--borde)';
+    el.querySelector('.opcion-check').style.color = isSelected ? 'var(--verde-medio)' : '';
+  });
+  document.getElementById('btn-elegir').disabled = false;
+}
+
+async function responderConEleccion() {
+  if (!selectedOpcionId) return;
+  const btns = document.querySelectorAll('.change-btns button');
+  btns.forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(`${API}/catalogo/seguimiento/${token}/responder`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ acepta: true, producto_elegido_id: selectedOpcionId, mensaje: '' }),
+    });
+    if (r.ok) {
+      respondido = true;
+      const card = document.getElementById('change-card');
+      if (card) {
+        card.innerHTML = '<h3>✅ Opción seleccionada</h3><p style="font-size:13px;color:var(--texto2);margin-top:8px">Gracias, tu pedido continuará con el arreglo que elegiste.</p>';
+        card.style.borderColor = 'var(--verde-medio)';
+        card.style.background = 'rgba(45,90,61,0.05)';
+      }
+    }
+  } catch(e) {
+    alert('Error de conexión');
+    btns.forEach(b => b.disabled = false);
+  }
 }
 
 async function responderCambio(acepta) {
