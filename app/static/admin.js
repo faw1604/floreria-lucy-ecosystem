@@ -289,7 +289,7 @@ function renderProdTable() {
     <td>${p.activo ? '<span style="color:var(--verde)">Si</span>' : '<span style="color:var(--rojo)">No</span>'}</td>
     <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProdQuick(${p.id}, this.checked)" title="Visible en catálogo web"></td>
     <td id="var-badge-${p.id}"></td>
-    <td><button class="btn-sm" onclick="editarProducto(${p.id})">Editar</button></td>
+    <td style="white-space:nowrap"><button class="btn-sm" onclick="editarProducto(${p.id})">Editar</button> <button class="btn-sm" style="color:var(--rojo);border-color:var(--rojo)" onclick="eliminarProducto(${p.id},'${esc(p.nombre)}')">Eliminar</button></td>
   </tr>`).join('');
   if (prodHasMore) {
     tbody.innerHTML += '<tr id="prod-sentinel"><td colspan="10" style="text-align:center;padding:12px;color:var(--texto2);font-size:12px">Cargando más...</td></tr>';
@@ -452,6 +452,9 @@ async function abrirModalProducto(prod) {
   `;
   onCatChange();
   document.getElementById('modal-producto').classList.add('active');
+  // Scroll al inicio del modal
+  const modalBody = document.querySelector('#modal-producto .modal');
+  if (modalBody) modalBody.scrollTop = 0;
 }
 
 function renderVarianteRow(v) {
@@ -514,6 +517,16 @@ async function editarProducto(id) {
   if (!r.ok) return;
   const p = await r.json();
   abrirModalProducto(p);
+}
+
+async function eliminarProducto(id, nombre) {
+  if (!confirm(`¿Eliminar el producto "${nombre}"?\nSe desactivará y dejará de aparecer en el catálogo.`)) return;
+  try {
+    const r = await fetch(API + '/productos/' + id, {method:'DELETE', credentials:'include'});
+    if (!r.ok) { const e = await r.json(); alert(e.detail || 'Error'); return; }
+    showToast('Producto eliminado ✓');
+    loadProductos();
+  } catch(e) { alert('Error de conexión'); }
 }
 
 async function subirImagenProd() {
