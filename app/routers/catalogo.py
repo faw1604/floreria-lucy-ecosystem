@@ -158,6 +158,7 @@ async def catalogo_productos(
             "dimensiones": p.dimensiones,
             "medida_alto": float(p.medida_alto) if p.medida_alto else None,
             "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None,
+            "sin_stock": p.stock_activo and p.stock <= 0,
         }
         for p in productos
     ]

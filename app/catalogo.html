@@ -173,6 +173,11 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .prod-card-price{font-size:16px;font-weight:600;color:var(--verde);margin-bottom:10px}
 .prod-card-btn{width:100%;padding:10px;background:var(--verde);color:var(--blanco);border:none;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
 .prod-card-btn:hover{background:var(--verde-m)}
+.prod-card-btn:disabled{background:#ccc;cursor:not-allowed}
+.prod-card.agotado{opacity:.7;pointer-events:auto}
+.prod-card.agotado img{filter:grayscale(.5)}
+.agotado-badge{position:absolute;top:10px;right:10px;background:rgba(239,68,68,.9);color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;text-transform:uppercase;z-index:2}
+.dyn-card .agotado-badge{top:12px;right:12px;font-size:12px;padding:5px 12px}
 
 /* ====== DISCOUNT PRICE ====== */
 .price-old{text-decoration:line-through;color:#999;font-size:13px;font-weight:400;margin-right:6px}
@@ -644,6 +649,7 @@ function updateCartFab() {
 }
 
 function addToCart(product) {
+  if (product.sin_stock) return;
   if (!cart.find(p => p.id === product.id)) {
     cart.push(product);
     saveCart();
@@ -853,10 +859,12 @@ function renderDynCard() {
   bar.style.width = pct + '%';
   updateCartFab();
 
+  const agotado = p.sin_stock;
   wrapper.innerHTML = `
     <div class="dyn-card" id="dyn-current-card">
       <div class="dyn-card-cat">${p.categoria}</div>
-      <img src="${p.imagen_url}" alt="${p.nombre}" draggable="false">
+      ${agotado ? '<div class="agotado-badge">Agotado</div>' : ''}
+      <img src="${p.imagen_url}" alt="${p.nombre}" draggable="false"${agotado ? ' style="filter:grayscale(.5)"' : ''}>
       <div class="dyn-card-info">
         <div class="dyn-card-name">${p.nombre}</div>
         <div class="dyn-card-price">${renderPrice(p, 'dyn-card-price')}</div>
@@ -1230,14 +1238,16 @@ function renderClassicGrid() {
 
   grid.innerHTML = filtered.map((p, i) => {
     const globalIdx = allProducts.indexOf(p);
+    const agotado = p.sin_stock;
     return `
-    <div class="prod-card" onclick="openDetail(${globalIdx},'classic')">
+    <div class="prod-card ${agotado ? 'agotado' : ''}" style="position:relative" onclick="openDetail(${globalIdx},'classic')">
+      ${agotado ? '<div class="agotado-badge">Agotado</div>' : ''}
       <img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
       <div class="prod-card-body">
         <div class="prod-card-name">${p.nombre}</div>
         <div class="prod-card-price">${renderPrice(p, 'prod-card-price')}</div>
-        <button class="prod-card-btn" onclick="event.stopPropagation();addToCart(allProducts[${globalIdx}])">Agregar al carrito</button>
-        <button class="prod-card-btn" style="margin-top:6px;background:#193a2c;color:#d4a843" onclick="event.stopPropagation();addToCart(allProducts[${globalIdx}]);showOrderForm()">Ordenar ahora</button>
+        <button class="prod-card-btn" ${agotado ? 'disabled' : ''} onclick="event.stopPropagation();addToCart(allProducts[${globalIdx}])">${agotado ? 'No disponible' : 'Agregar al carrito'}</button>
+        ${!agotado ? `<button class="prod-card-btn" style="margin-top:6px;background:#193a2c;color:#d4a843" onclick="event.stopPropagation();addToCart(allProducts[${globalIdx}]);showOrderForm()">Ordenar ahora</button>` : ''}
       </div>
     </div>`;
   }).join('');
