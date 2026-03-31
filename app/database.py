@@ -42,6 +42,7 @@ async def inicializar_db():
             ("pedidos", "repartidor_id", "INTEGER"),
             ("pedidos", "cancelado_razon", "TEXT"),
             ("pedidos", "pago_confirmado_at", "TIMESTAMP"),
+            ("pedidos", "tracking_token", "VARCHAR(64)"),
         ]
         for tabla, col, tipo in _migrations:
             try:
@@ -49,6 +50,10 @@ async def inicializar_db():
                 _log.info(f"  + {tabla}.{col}")
             except Exception as e:
                 _log.info(f"  ~ {tabla}.{col}: {str(e)[:80]}")
+        try:
+            await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_pedidos_tracking_token ON pedidos (tracking_token) WHERE tracking_token IS NOT NULL"))
+        except Exception:
+            pass
 
     # 3. Crear tabla reservas en conexión separada
     async with engine.begin() as conn:

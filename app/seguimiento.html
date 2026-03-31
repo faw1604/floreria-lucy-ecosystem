@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Seguimiento de Pedido — Florería Lucy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --verde-oscuro: #193a2c;
+  --verde-medio: #2d5a3d;
+  --dorado: #d4a843;
+  --crema: #faf8f5;
+  --texto: #1a1a1a;
+  --texto2: #6b7280;
+  --borde: #e5e7eb;
+  --rojo: #ef4444;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--crema);
+  color: var(--texto);
+  min-height: 100vh;
+}
+.header {
+  background: var(--verde-oscuro);
+  color: #fff;
+  padding: 16px 20px;
+  text-align: center;
+}
+.header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px;
+  font-weight: 600;
+}
+.header p {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+
+/* Status Card */
+.status-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+  text-align: center;
+}
+.status-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+.status-label {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.status-desc {
+  font-size: 14px;
+  color: var(--texto2);
+  margin-bottom: 16px;
+}
+.folio-tag {
+  display: inline-block;
+  background: rgba(45,90,61,0.08);
+  color: var(--verde-medio);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: 20px;
+}
+
+/* Progress Steps */
+.progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 20px 0;
+  padding: 0 10px;
+}
+.progress-step {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--borde);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--texto2);
+  position: relative;
+  flex-shrink: 0;
+}
+.progress-step.active {
+  background: var(--verde-medio);
+  color: #fff;
+}
+.progress-step.done {
+  background: var(--dorado);
+  color: #fff;
+}
+.progress-line {
+  height: 3px;
+  flex: 1;
+  background: var(--borde);
+  min-width: 16px;
+}
+.progress-line.done {
+  background: var(--dorado);
+}
+
+/* Florista Change Card */
+.change-card {
+  background: #fffbeb;
+  border: 2px solid var(--dorado);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.change-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--verde-oscuro);
+}
+.change-card .nota {
+  font-size: 14px;
+  color: var(--texto);
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.change-card textarea {
+  width: 100%;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  resize: vertical;
+  min-height: 60px;
+  margin-bottom: 10px;
+}
+.change-btns {
+  display: flex;
+  gap: 8px;
+}
+.change-btns button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-accept {
+  background: var(--verde-medio);
+  color: #fff;
+}
+.btn-reject {
+  background: #fff;
+  color: var(--rojo);
+  border: 1px solid var(--rojo) !important;
+}
+
+/* Items List */
+.items-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+}
+.items-card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--texto2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borde);
+}
+.item-row:last-child { border-bottom: none; }
+.item-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--borde);
+}
+.item-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+.item-qty {
+  font-size: 12px;
+  color: var(--texto2);
+}
+.item-price {
+  font-size: 14px;
+  font-weight: 600;
+}
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid var(--borde);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Delivery Info */
+.info-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
+}
+.info-card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--texto2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.info-row {
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--texto);
+}
+.info-row strong {
+  color: var(--texto2);
+  font-weight: 600;
+}
+
+/* Spinner */
+.spinner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--texto2);
+  font-size: 12px;
+  margin-top: 16px;
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--borde);
+  border-top-color: var(--verde-medio);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Error/Loading states */
+.loading-screen {
+  text-align: center;
+  padding: 60px 20px;
+}
+.loading-screen .spinner {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  margin: 0 auto 16px;
+}
+.error-screen {
+  text-align: center;
+  padding: 60px 20px;
+}
+.error-screen .icon { font-size: 48px; margin-bottom: 12px; }
+.error-screen h2 { font-size: 18px; margin-bottom: 8px; }
+.error-screen p { font-size: 14px; color: var(--texto2); }
+
+/* Cancelled state */
+.status-card.cancelled {
+  border: 2px solid var(--rojo);
+}
+
+/* Delivered state */
+.status-card.delivered {
+  border: 2px solid var(--dorado);
+  background: linear-gradient(135deg, #fffbeb 0%, #fff 100%);
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .progress-step { width: 24px; height: 24px; font-size: 10px; }
+  .status-label { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Florería Lucy</h1>
+  <p>Seguimiento de pedido</p>
+</div>
+
+<div class="container" id="main-container">
+  <!-- Loading state -->
+  <div class="loading-screen" id="loading-screen">
+    <div class="spinner"></div>
+    <p>Cargando información de tu pedido...</p>
+  </div>
+</div>
+
+<script>
+const API = '';
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+let lastEstado = '';
+let respondido = false;
+
+if (!token) {
+  showError('No se encontró el token de seguimiento', 'Verifica el enlace que recibiste');
+}
+
+async function loadTracking() {
+  if (!token) return;
+  try {
+    const r = await fetch(`${API}/catalogo/seguimiento/${token}`);
+    if (!r.ok) {
+      if (r.status === 404) {
+        showError('Pedido no encontrado', 'Verifica el enlace que recibiste o contacta a Florería Lucy');
+      }
+      return;
+    }
+    const data = await r.json();
+    renderTracking(data);
+    lastEstado = data.estado;
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function renderTracking(data) {
+  const c = document.getElementById('main-container');
+
+  // Progress steps: 1=Revisión, 2=Pago, 3=Elaboración, 4=Listo, 5=En camino, 6=Entregado
+  const totalSteps = 6;
+  const step = data.estado_step;
+  const isCancelled = data.estado === 'Cancelado';
+  const isDelivered = data.estado === 'Entregado';
+
+  let progressHTML = '<div class="progress-bar">';
+  const stepLabels = ['', '🔍', '💳', '🌺', '🎀', '🚗', '🎉'];
+  for (let i = 1; i <= totalSteps; i++) {
+    const cls = isCancelled ? '' : (i < step ? 'done' : (i === step ? 'active' : ''));
+    progressHTML += `<div class="progress-step ${cls}">${i <= step && !isCancelled ? '✓' : i}</div>`;
+    if (i < totalSteps) progressHTML += `<div class="progress-line ${!isCancelled && i < step ? 'done' : ''}"></div>`;
+  }
+  progressHTML += '</div>';
+
+  let statusClass = '';
+  if (isCancelled) statusClass = 'cancelled';
+  if (isDelivered) statusClass = 'delivered';
+
+  let html = `
+    <div class="status-card ${statusClass}">
+      <div class="status-icon">${data.estado_icon}</div>
+      <div class="status-label">${data.estado_label}</div>
+      <div class="status-desc">${data.estado_desc}</div>
+      <div class="folio-tag">${data.folio}</div>
+      ${!isCancelled && !isDelivered ? progressHTML : ''}
+    </div>
+  `;
+
+  // Florista change suggestion
+  if (data.florista_cambio && data.florista_cambio.requiere_respuesta && !respondido) {
+    html += `
+      <div class="change-card" id="change-card">
+        <h3>💬 Mensaje de nuestro florista</h3>
+        <div class="nota">${escHtml(data.florista_cambio.nota)}</div>
+        <textarea id="respuesta-msg" placeholder="Escribe un mensaje (opcional)"></textarea>
+        <div class="change-btns">
+          <button class="btn-reject" onclick="responderCambio(false)">No acepto</button>
+          <button class="btn-accept" onclick="responderCambio(true)">Acepto el cambio</button>
+        </div>
+      </div>
+    `;
+  } else if (data.florista_cambio && !data.florista_cambio.requiere_respuesta) {
+    html += `
+      <div class="change-card" style="border-color:var(--rojo)">
+        <h3>Mensaje del equipo</h3>
+        <div class="nota">${escHtml(data.florista_cambio.nota)}</div>
+      </div>
+    `;
+  }
+
+  // Items
+  if (data.items && data.items.length) {
+    html += '<div class="items-card"><h3>Tu pedido</h3>';
+    data.items.forEach(item => {
+      const img = item.imagen_url ? `<img class="item-img" src="${item.imagen_url}" alt="">` : '<div class="item-img"></div>';
+      html += `
+        <div class="item-row">
+          ${img}
+          <div class="item-name">${escHtml(item.nombre)}</div>
+          <div class="item-qty">x${item.cantidad}</div>
+          <div class="item-price">$${(item.precio / 100).toLocaleString()}</div>
+        </div>
+      `;
+    });
+    html += `
+      <div class="total-row">
+        <span>Total</span>
+        <span>$${(data.total / 100).toLocaleString()}</span>
+      </div>
+    </div>`;
+  }
+
+  // Delivery info
+  if (data.fecha_entrega) {
+    const horarios = {manana: 'Mañana (9-2pm)', tarde: 'Tarde (2-6pm)', noche: 'Noche (6-9pm)', hora_exacta: 'Hora específica'};
+    html += `
+      <div class="info-card">
+        <h3>Información de entrega</h3>
+        <div class="info-row"><strong>Fecha:</strong> ${data.fecha_entrega}</div>
+        ${data.horario_entrega ? `<div class="info-row"><strong>Horario:</strong> ${horarios[data.horario_entrega] || data.horario_entrega}</div>` : ''}
+      </div>
+    `;
+  }
+
+  // Auto-update notice
+  if (!isCancelled && !isDelivered) {
+    html += `
+      <div class="spinner-container">
+        <div class="spinner"></div>
+        <span>Actualizando automáticamente</span>
+      </div>
+    `;
+  }
+
+  c.innerHTML = html;
+}
+
+async function responderCambio(acepta) {
+  const msg = document.getElementById('respuesta-msg')?.value || '';
+  const btns = document.querySelectorAll('.change-btns button');
+  btns.forEach(b => b.disabled = true);
+  try {
+    const r = await fetch(`${API}/catalogo/seguimiento/${token}/responder`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ acepta, mensaje: msg }),
+    });
+    if (r.ok) {
+      respondido = true;
+      const card = document.getElementById('change-card');
+      if (card) {
+        card.innerHTML = `<h3>${acepta ? '✅ Cambio aceptado' : '❌ Cambio rechazado'}</h3><p style="font-size:13px;color:var(--texto2);margin-top:8px">${acepta ? 'Gracias, tu pedido continuará con la modificación.' : 'Nuestro equipo revisará tu respuesta y te contactará.'}</p>`;
+        card.style.borderColor = acepta ? 'var(--verde-medio)' : 'var(--rojo)';
+        card.style.background = acepta ? 'rgba(45,90,61,0.05)' : 'rgba(239,68,68,0.05)';
+      }
+    }
+  } catch(e) {
+    alert('Error de conexión');
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+function showError(title, desc) {
+  document.getElementById('main-container').innerHTML = `
+    <div class="error-screen">
+      <div class="icon">😕</div>
+      <h2>${title}</h2>
+      <p>${desc}</p>
+    </div>
+  `;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// Initial load + polling
+loadTracking();
+setInterval(loadTracking, 10000);
+</script>
+
+</body>
+</html>

@@ -54,6 +54,7 @@ class Pedido(Base):
     pago_confirmado_por: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     nota_validacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     webhook_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tracking_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True, index=True)
     requiere_factura: Mapped[bool] = mapped_column(Boolean, default=False)
     facturado: Mapped[bool] = mapped_column(Boolean, default=False)
     folio_fiscal: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

@@ -26,6 +26,12 @@ async def catalogo_html():
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="catalogo.html no encontrado")
 
+@router.get("/seguimiento.html", response_class=HTMLResponse)
+async def seguimiento_page():
+    from pathlib import Path
+    html_path = Path(__file__).parent.parent / "seguimiento.html"
+    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+
 @router.get("/historia", response_class=HTMLResponse)
 async def historia_html():
     try:
@@ -373,6 +379,9 @@ async def _crear_pedido_web_inner(request, db):
         hora_exacta = data.get("hora_especifica")
         horario = "hora_exacta"
 
+    import secrets
+    tracking_token = secrets.token_urlsafe(32)
+
     pedido = Pedido(
         numero=numero,
         customer_id=cliente.id,
@@ -394,6 +403,7 @@ async def _crear_pedido_web_inner(request, db):
         total=subtotal,
         tipo_especial="Funeral" if tipo == "funeral" else ("Recoger" if tipo == "recoger" else None),
         requiere_factura=data.get("requiere_factura", False),
+        tracking_token=tracking_token,
     )
     db.add(pedido)
     await db.flush()
@@ -434,4 +444,110 @@ async def _crear_pedido_web_inner(request, db):
     except Exception:
         pass  # No fallar si WhatsApp falla
 
-    return {"ok": True, "folio": numero}
+    return {"ok": True, "folio": numero, "tracking_token": tracking_token}
+
+
+@router.get("/seguimiento/{token}")
+async def seguimiento_pedido(token: str, db: AsyncSession = Depends(get_db)):
+    """Public endpoint for customers to check order status."""
+    result = await db.execute(
+        select(Pedido).where(Pedido.tracking_token == token)
+    )
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Get items
+    items_result = await db.execute(
+        select(ItemPedido).where(ItemPedido.pedido_id == pedido.id)
+    )
+    items = items_result.scalars().all()
+    items_data = []
+    for item in items:
+        prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+        prod = prod_result.scalar_one_or_none()
+        items_data.append({
+            "nombre": prod.nombre if prod else (item.nombre_personalizado or "Producto"),
+            "cantidad": item.cantidad,
+            "precio": item.precio_unitario,
+            "imagen_url": prod.imagen_url if prod else None,
+        })
+
+    # Map status to customer-friendly labels
+    estado_labels = {
+        "esperando_validacion": {"label": "Revisando tu pedido", "desc": "Nuestro equipo está verificando disponibilidad", "icon": "🔍", "step": 1},
+        "Pendiente pago": {"label": "Pedido aceptado", "desc": "Te enviaremos los datos de pago por WhatsApp", "icon": "✅", "step": 2},
+        "comprobante_recibido": {"label": "Verificando pago", "desc": "Estamos revisando tu comprobante de pago", "icon": "🏦", "step": 2},
+        "pagado": {"label": "Pago confirmado", "desc": "Tu arreglo será elaborado pronto", "icon": "💳", "step": 3},
+        "En producción": {"label": "En elaboración", "desc": "Nuestro florista está preparando tu arreglo", "icon": "🌺", "step": 3},
+        "listo_taller": {"label": "Arreglo listo", "desc": "Tu arreglo está terminado", "icon": "🎀", "step": 4},
+        "En camino": {"label": "En camino", "desc": "Tu pedido va en camino a su destino", "icon": "🚗", "step": 5},
+        "Entregado": {"label": "Entregado", "desc": "Tu pedido fue entregado exitosamente", "icon": "🎉", "step": 6},
+        "Cancelado": {"label": "Cancelado", "desc": pedido.cancelado_razon or "Tu pedido fue cancelado", "icon": "❌", "step": 0},
+    }
+
+    estado_info = estado_labels.get(pedido.estado, {"label": pedido.estado, "desc": "", "icon": "📦", "step": 1})
+
+    # Check if florista suggested a change
+    florista_cambio = None
+    if pedido.estado_florista == "cambio_sugerido" and pedido.nota_florista:
+        florista_cambio = {
+            "nota": pedido.nota_florista,
+            "requiere_respuesta": True,
+        }
+    elif pedido.estado_florista == "rechazado":
+        florista_cambio = {
+            "nota": pedido.nota_florista or "No fue posible procesar tu pedido",
+            "requiere_respuesta": False,
+        }
+
+    return {
+        "folio": pedido.numero,
+        "estado": pedido.estado,
+        "estado_label": estado_info["label"],
+        "estado_desc": estado_info["desc"],
+        "estado_icon": estado_info["icon"],
+        "estado_step": estado_info["step"],
+        "fecha_entrega": str(pedido.fecha_entrega) if pedido.fecha_entrega else None,
+        "horario_entrega": pedido.horario_entrega,
+        "items": items_data,
+        "subtotal": pedido.subtotal,
+        "total": pedido.total,
+        "florista_cambio": florista_cambio,
+        "created_at": str(pedido.fecha_pedido) if pedido.fecha_pedido else None,
+    }
+
+
+@router.post("/seguimiento/{token}/responder")
+async def responder_seguimiento(token: str, request: Request, db: AsyncSession = Depends(get_db)):
+    """Customer responds to florista's change suggestion."""
+    result = await db.execute(
+        select(Pedido).where(Pedido.tracking_token == token)
+    )
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    if pedido.estado_florista != "cambio_sugerido":
+        raise HTTPException(status_code=400, detail="No hay cambio pendiente de respuesta")
+
+    data = await request.json()
+    acepta = data.get("acepta", False)
+    mensaje = (data.get("mensaje") or "").strip()
+
+    if acepta:
+        pedido.estado_florista = "pendiente_aprobacion"
+        nota_respuesta = f"[CLIENTE ACEPTA CAMBIO] {mensaje}" if mensaje else "[CLIENTE ACEPTA CAMBIO]"
+    else:
+        pedido.estado_florista = "requiere_atencion"
+        pedido.requiere_humano = True
+        nota_respuesta = f"[CLIENTE RECHAZA CAMBIO] {mensaje}" if mensaje else "[CLIENTE RECHAZA CAMBIO]"
+
+    # Append to notas_internas
+    if pedido.notas_internas:
+        pedido.notas_internas += f" | {nota_respuesta}"
+    else:
+        pedido.notas_internas = nota_respuesta
+
+    await db.commit()
+    return {"ok": True, "nuevo_estado": pedido.estado_florista}
