@@ -1155,21 +1155,38 @@ function closeDetail() {
 // ====== CLASSIC MODE ======
 let sectionFilter = 'general';
 let catFilter = null;
+let flowerFilter = null;
 let searchQuery = '';
 
 const FUNERAL_CATS = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
+const REGALOS_CATS = ['chocolates gourmet', 'peluches', 'globos', 'dulces y regalos', 'extras', 'regalos'];
+const FLOWER_MAP = {
+  'Rosas': ['rosa'], 'Gerberas': ['gerbera'], 'Girasoles': ['girasol'],
+  'Lirios': ['lili', 'lirio'], 'Mixtos': ['primaveral', 'mixto', 'varios'],
+  'Tulipanes': ['tulipan', 'tulipán'], 'Margaritas': ['margarita'],
+};
 
 function matchesCat(p, cat) {
   if (!cat) return true;
   return p.categoria === cat;
 }
 
+function matchesFlower(p, flower) {
+  if (!flower) return true;
+  const text = p.nombre.toLowerCase() + ' ' + p.categoria.toLowerCase();
+  const keywords = FLOWER_MAP[flower] || [];
+  return keywords.some(k => text.includes(k));
+}
+
 function matchesSection(p, section) {
   const cat = p.categoria.toLowerCase();
-  if (section === 'funeral') return FUNERAL_CATS.some(f => cat.includes(f));
+  const isFuneral = FUNERAL_CATS.some(f => cat.includes(f));
+  const isRegalos = REGALOS_CATS.some(r => cat === r);
+  if (section === 'funeral') return isFuneral;
+  if (section === 'regalos') return isRegalos;
   if (section === 'temporada') return seasonCategory ? p.categoria === seasonCategory : false;
-  // general = everything except funeral
-  return !FUNERAL_CATS.some(f => cat.includes(f));
+  // general = everything except funeral and regalos
+  return !isFuneral && !isRegalos;
 }
 
 function matchesSearch(p, query) {
@@ -1186,24 +1203,22 @@ async function initClassic() {
   }
   renderSectionTabs();
   renderCatPills();
+  renderFlowerPills();
   renderClassicGrid();
 }
 
 function renderSectionTabs() {
-  const tabs = ['general', 'funeral', 'temporada'];
-  const labels = {'general': 'General', 'funeral': 'Funeral', 'temporada': 'Temporada'};
+  const tabs = ['general', 'funeral', 'regalos', 'temporada'];
+  const labels = {'general': 'General', 'funeral': 'Funeral', 'regalos': 'Regalos', 'temporada': 'Temporada'};
   document.getElementById('section-tabs').innerHTML = tabs.map(t =>
     `<button class="filter-tab ${sectionFilter === t ? 'active' : ''}" onclick="setSection('${t}')">${labels[t]}</button>`
   ).join('');
 }
 
 function renderCatPills() {
-  // Extract categories from products that match current section
   const sectionProducts = allProducts.filter(p => matchesSection(p, sectionFilter));
   const catCounts = {};
-  sectionProducts.forEach(p => {
-    catCounts[p.categoria] = (catCounts[p.categoria] || 0) + 1;
-  });
+  sectionProducts.forEach(p => { catCounts[p.categoria] = (catCounts[p.categoria] || 0) + 1; });
   const cats = Object.keys(catCounts).sort();
   const pills = [
     `<button class="filter-pill ${catFilter === null ? 'active' : ''}" onclick="setCat(null)">Todos (${sectionProducts.length})</button>`
@@ -1212,17 +1227,31 @@ function renderCatPills() {
     pills.push(`<button class="filter-pill ${catFilter === c ? 'active' : ''}" onclick="setCat('${c.replace(/'/g, "\\'")}')">${c} (${catCounts[c]})</button>`);
   });
   document.getElementById('type-pills').innerHTML = pills.join('');
-  document.getElementById('flower-pills').innerHTML = '';
 }
 
-function setSection(s) { sectionFilter = s; catFilter = null; renderSectionTabs(); renderCatPills(); renderClassicGrid(); }
+function renderFlowerPills() {
+  // Only show flower pills for general section
+  if (sectionFilter !== 'general') {
+    document.getElementById('flower-pills').innerHTML = '';
+    return;
+  }
+  const flowers = ['Todas', ...Object.keys(FLOWER_MAP)];
+  document.getElementById('flower-pills').innerHTML = flowers.map(f => {
+    const val = f === 'Todas' ? null : f;
+    return `<button class="filter-pill ${flowerFilter === val ? 'active' : ''}" onclick="setFlower(${val ? `'${val}'` : 'null'})">${f}</button>`;
+  }).join('');
+}
+
+function setSection(s) { sectionFilter = s; catFilter = null; flowerFilter = null; renderSectionTabs(); renderCatPills(); renderFlowerPills(); renderClassicGrid(); }
 function setCat(c) { catFilter = c; renderCatPills(); renderClassicGrid(); }
+function setFlower(f) { flowerFilter = f; renderFlowerPills(); renderClassicGrid(); }
 function onSearch() { searchQuery = document.getElementById('search-input').value; renderClassicGrid(); }
 
 function renderClassicGrid() {
   let filtered = allProducts.filter(p => {
     if (!matchesSection(p, sectionFilter)) return false;
     if (!matchesCat(p, catFilter)) return false;
+    if (!matchesFlower(p, flowerFilter)) return false;
     if (!matchesSearch(p, searchQuery)) return false;
     return true;
   });
