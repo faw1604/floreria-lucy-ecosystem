@@ -32,21 +32,30 @@ def esta_en_horario(ahora: datetime) -> bool:
     return hora_apertura <= hora_actual < hora_cierre
 
 @router.get("/horario/estado")
-async def estado_horario(panel_session: str | None = Cookie(default=None)):
-    ahora = datetime.now(TZ)
-    dia = ahora.weekday()
+async def estado_horario(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    ahora_dt = datetime.now(TZ)
+    dia = ahora_dt.weekday()
     nombres_dia = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-    en_horario = esta_en_horario(ahora)
-    temporada_nombre = os.getenv("TEMPORADA_NOMBRE", "")
-    temporada_categoria = os.getenv("TEMPORADA_CATEGORIA", "")
+    en_horario = esta_en_horario(ahora_dt)
+
+    # Read temporada from configuracion_negocio
+    from app.models.configuracion import ConfiguracionNegocio
+    result = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in result.scalars().all()}
+    temporada_activa = cfg.get("temporada_modo") == "alta"
+    temporada_categoria = cfg.get("temporada_categoria", "")
+
     return {
         "abierto": en_horario,
         "dia": nombres_dia[dia],
-        "hora_chihuahua": ahora.strftime("%H:%M"),
+        "hora_chihuahua": ahora_dt.strftime("%H:%M"),
         "horario_hoy": HORARIO_FLORERIA.get(dia, (0, 0)),
-        "temporada_activa": bool(temporada_nombre),
-        "temporada_nombre": temporada_nombre or None,
-        "temporada_categoria": temporada_categoria or None,
+        "temporada_activa": temporada_activa and bool(temporada_categoria),
+        "temporada_nombre": temporada_categoria if temporada_activa else None,
+        "temporada_categoria": temporada_categoria if temporada_activa else None,
     }
 
 @router.get("/horario/entregas")
