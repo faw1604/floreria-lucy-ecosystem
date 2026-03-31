@@ -429,6 +429,32 @@ async def cancelar(
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
 
+@router.get("/pedidos/{pedido_id}/etiqueta-data")
+async def etiqueta_data(
+    pedido_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Datos mínimos para imprimir etiquetas 2x1."""
+    _auth(panel_session)
+    pedido = await _get_pedido(pedido_id, db)
+    result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+    items_db = result.scalars().all()
+    items = []
+    for item in items_db:
+        prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+        prod = prod_result.scalar_one_or_none()
+        nombre = item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto")
+        for _ in range(item.cantidad):
+            items.append(nombre)
+    return {
+        "folio": pedido.numero,
+        "receptor_nombre": pedido.receptor_nombre or "",
+        "items": items,
+        "total_items": len(items),
+    }
+
+
 @router.post("/pedidos/{pedido_id}/listo")
 async def listo(
     pedido_id: int,
