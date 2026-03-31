@@ -96,25 +96,122 @@
 <div class="section" id="sec-claudia">
   <div class="sec-header"><h2>Claudia — Bot WhatsApp</h2></div>
   <div class="sec-body">
-    <div class="placeholder-card">
-      <div class="placeholder-icon">🤖</div>
-      <h3>Claudia — Asistente WhatsApp</h3>
+
+    <!-- Bot Controls -->
+    <div class="config-card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <div style="font-size:28px">🤖</div>
+        <div>
+          <h3 style="margin:0;font-size:16px">Claudia — Asistente WhatsApp</h3>
+          <p style="margin:0;font-size:12px;color:var(--texto2)">Controla el bot y su comportamiento</p>
+        </div>
+      </div>
       <div class="toggle-row">
         <label>Bot activo</label>
         <input type="checkbox" id="claudia-toggle" onchange="toggleConfig('claudia_activa', this.checked)">
       </div>
-      <div class="toggle-row">
-        <label>Temporada alta (envíos $99)</label>
-        <input type="checkbox" id="claudia-temp" onchange="toggleConfig('claudia_temporada_alta', this.checked)">
-      </div>
-      <div class="config-field" style="margin-top:16px">
+      <div class="config-field" style="margin-top:12px">
         <label>Mensaje de bienvenida</label>
         <textarea id="claudia-msg" rows="3" onchange="saveConfigField('claudia_mensaje_bienvenida', this.value)"></textarea>
       </div>
-      <div class="banner-info" style="margin-top:20px">
-        <span>ℹ️</span> Integración completa disponible en Fase 2
+    </div>
+
+    <!-- Modo de Operación -->
+    <div class="config-card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">Modo de Operación</h3>
+        <span id="temporada-badge" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;text-transform:uppercase"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+        <div class="mode-card" id="mode-regular" onclick="seleccionarModo('regular')" style="border:2px solid var(--borde);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s">
+          <div style="font-size:18px;margin-bottom:4px">🌿 Temporada Regular</div>
+          <div style="font-size:12px;color:var(--texto2)">Catálogo completo · 3 zonas · 3 franjas horarias</div>
+        </div>
+        <div class="mode-card" id="mode-alta" onclick="seleccionarModo('alta')" style="border:2px solid var(--borde);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s">
+          <div style="font-size:18px;margin-bottom:4px">✨ Temporada Alta</div>
+          <div style="font-size:12px;color:var(--texto2)">Categoría especial · Horarios y tarifa única</div>
+        </div>
+      </div>
+
+      <!-- Alta Season Config (hidden when regular) -->
+      <div id="temporada-alta-config" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="config-field">
+            <label>Categoría de temporada</label>
+            <select id="temp-categoria" onchange="guardarTemporada()">
+              <option value="">— Seleccionar categoría —</option>
+            </select>
+          </div>
+          <div class="config-field">
+            <label>Precio envío único (todas las zonas)</label>
+            <div style="position:relative">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--texto2);font-weight:600">$</span>
+              <input type="number" id="temp-envio" value="99" min="0" style="padding-left:24px" onchange="guardarTemporada()">
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div class="config-field">
+            <label>Fecha exacta del día fuerte</label>
+            <input type="date" id="temp-fecha" onchange="guardarTemporada()">
+          </div>
+          <div class="config-field">
+            <label>Días antes con restricción total</label>
+            <select id="temp-dias" onchange="guardarTemporada()">
+              <option value="1">1 día antes</option>
+              <option value="2" selected>2 días antes</option>
+              <option value="3">3 días antes</option>
+              <option value="4">4 días antes</option>
+              <option value="5">5 días antes</option>
+              <option value="7">7 días antes</option>
+            </select>
+          </div>
+        </div>
+        <div class="toggle-row" style="margin-bottom:12px">
+          <div>
+            <label>Aceptar pedidos funerales</label>
+            <div style="font-size:11px;color:var(--texto2)">Si se desactiva, no se aceptan funerales durante la temporada</div>
+          </div>
+          <input type="checkbox" id="temp-funerales" checked onchange="guardarTemporada()">
+        </div>
+        <div class="banner-warning" style="font-size:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;border-left:3px solid var(--dorado)">
+          <strong>⚠️</strong> En el día fuerte exacto (y los días con restricción antes de él) el catálogo solo ofrece la categoría de temporada. Los pedidos funerales siempre se procesan normalmente, sin importar la temporada.
+        </div>
       </div>
     </div>
+
+    <!-- Zonas de Envío -->
+    <div class="config-card">
+      <h3 style="margin:0 0 16px;font-size:16px">Zonas de Envío</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div style="border:2px solid #7c3aed;border-radius:12px;padding:14px;text-align:center">
+          <div style="width:32px;height:32px;background:#7c3aed;border-radius:50%;margin:0 auto 8px"></div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px">Morada</div>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--texto2);font-weight:600">$</span>
+            <input type="number" id="zona-morada" value="99" min="0" style="width:100%;padding:6px 6px 6px 24px;border:1px solid var(--borde);border-radius:6px;font-size:14px;font-weight:600;text-align:center" onchange="guardarZonas()">
+          </div>
+        </div>
+        <div style="border:2px solid #3b82f6;border-radius:12px;padding:14px;text-align:center">
+          <div style="width:32px;height:32px;background:#3b82f6;border-radius:50%;margin:0 auto 8px"></div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px">Azul</div>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--texto2);font-weight:600">$</span>
+            <input type="number" id="zona-azul" value="159" min="0" style="width:100%;padding:6px 6px 6px 24px;border:1px solid var(--borde);border-radius:6px;font-size:14px;font-weight:600;text-align:center" onchange="guardarZonas()">
+          </div>
+        </div>
+        <div style="border:2px solid #10b981;border-radius:12px;padding:14px;text-align:center">
+          <div style="width:32px;height:32px;background:#10b981;border-radius:50%;margin:0 auto 8px"></div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:4px">Verde</div>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--texto2);font-weight:600">$</span>
+            <input type="number" id="zona-verde" value="199" min="0" style="width:100%;padding:6px 6px 6px 24px;border:1px solid var(--borde);border-radius:6px;font-size:14px;font-weight:600;text-align:center" onchange="guardarZonas()">
+          </div>
+        </div>
+      </div>
+      <p id="zonas-temporada-note" style="display:none;margin-top:12px;font-size:12px;color:var(--dorado);font-weight:600;text-align:center">🔶 En temporada alta todas las zonas se cobran al precio único configurado arriba</p>
+    </div>
+
   </div>
 </div>
 

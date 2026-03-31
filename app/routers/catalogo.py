@@ -72,11 +72,12 @@ async def catalogo_config(db: AsyncSession = Depends(get_db)):
         "meta_titulo": cfg.get("catalogo_meta_titulo", "Floreria Lucy"),
         "meta_descripcion": cfg.get("catalogo_meta_descripcion", ""),
         "cerrado": cfg.get("catalogo_cerrado", "false") == "true",
-        "fecha_especial_activa": cfg.get("catalogo_fecha_especial_activa", "false") == "true",
-        "fecha_especial_nombre": cfg.get("catalogo_fecha_especial_nombre", ""),
-        "fecha_especial_categorias": cfg.get("catalogo_fecha_especial_categorias", "[]"),
-        "fecha_especial_boton_texto": cfg.get("catalogo_fecha_especial_boton_texto", ""),
-        "temporada_alta": cfg.get("claudia_temporada_alta", "false") == "true",
+        "temporada_modo": cfg.get("temporada_modo", "regular"),
+        "temporada_categoria": cfg.get("temporada_categoria", ""),
+        "temporada_fecha_fuerte": cfg.get("temporada_fecha_fuerte", ""),
+        "temporada_dias_restriccion": int(cfg.get("temporada_dias_restriccion", "2")),
+        "temporada_acepta_funerales": cfg.get("temporada_acepta_funerales", "true") == "true",
+        "temporada_envio_unico": int(cfg.get("temporada_envio_unico", "9900")),
     }
 
 
@@ -85,6 +86,25 @@ async def catalogo_productos(
     categoria: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    # Check temporada config
+    cfg_result = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in cfg_result.scalars().all()}
+
+    temporada_activa = False
+    if cfg.get("temporada_modo") == "alta" and cfg.get("temporada_categoria"):
+        fecha_str = cfg.get("temporada_fecha_fuerte", "")
+        dias_restriccion = int(cfg.get("temporada_dias_restriccion", "2"))
+        if fecha_str:
+            try:
+                fecha_fuerte = date_type.fromisoformat(fecha_str)
+                from app.core.utils import hoy
+                hoy_date = hoy()
+                dias_diff = (fecha_fuerte - hoy_date).days
+                if 0 <= dias_diff <= dias_restriccion:
+                    temporada_activa = True
+            except ValueError:
+                pass
+
     query = (
         select(Producto)
         .where(
@@ -94,8 +114,25 @@ async def catalogo_productos(
         )
         .order_by(Producto.categoria, Producto.nombre)
     )
-    if categoria:
+
+    if temporada_activa and not categoria:
+        # Only show temporada category + funeral categories (if accepted)
+        temp_cat = cfg.get("temporada_categoria", "")
+        acepta_funerales = cfg.get("temporada_acepta_funerales", "true") == "true"
+        if acepta_funerales:
+            # Get funeral category names
+            from app.models.productos import Categoria
+            funeral_cats_result = await db.execute(
+                select(Categoria.nombre).where(Categoria.tipo == "funeral")
+            )
+            funeral_names = [r[0] for r in funeral_cats_result.fetchall()]
+            allowed_cats = [temp_cat] + funeral_names
+            query = query.where(Producto.categoria.in_(allowed_cats))
+        else:
+            query = query.where(Producto.categoria == temp_cat)
+    elif categoria:
         query = query.where(Producto.categoria == categoria)
+
     result = await db.execute(query)
     productos = result.scalars().all()
     return [

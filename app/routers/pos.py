@@ -231,12 +231,21 @@ async def _pos_crear_pedido_inner(request, db):
                 sub_flores += monto_item
         impuesto = int(sub_flores * 0.16)
 
-    # Shipping
+    # Shipping — dynamic tariffs from config
     envio = 0
     zona = data.get("zona_envio")
     if tipo == "domicilio" and zona:
-        tarifas = {"Morada": 9900, "Azul": 15900, "Verde": 19900}
-        envio = tarifas.get(zona, 0)
+        cfg_result = await db.execute(select(ConfiguracionNegocio))
+        cfg_map = {c.clave: c.valor for c in cfg_result.scalars().all()}
+        if cfg_map.get("temporada_modo") == "alta":
+            envio = int(cfg_map.get("temporada_envio_unico", "9900"))
+        else:
+            tarifas = {
+                "Morada": int(cfg_map.get("zona_tarifa_morada", "9900")),
+                "Azul": int(cfg_map.get("zona_tarifa_azul", "15900")),
+                "Verde": int(cfg_map.get("zona_tarifa_verde", "19900")),
+            }
+            envio = tarifas.get(zona, 0)
 
     # Discounts from frontend
     descuento = data.get("descuento_total", 0)
@@ -751,8 +760,17 @@ async def pos_completar_pedido(
     envio = 0
     zona = data.get("zona_envio")
     if tipo == "domicilio" and zona:
-        tarifas = {"Morada": 9900, "Azul": 15900, "Verde": 19900}
-        envio = tarifas.get(zona, 0)
+        cfg_result = await db.execute(select(ConfiguracionNegocio))
+        cfg_map = {c.clave: c.valor for c in cfg_result.scalars().all()}
+        if cfg_map.get("temporada_modo") == "alta":
+            envio = int(cfg_map.get("temporada_envio_unico", "9900"))
+        else:
+            tarifas = {
+                "Morada": int(cfg_map.get("zona_tarifa_morada", "9900")),
+                "Azul": int(cfg_map.get("zona_tarifa_azul", "15900")),
+                "Verde": int(cfg_map.get("zona_tarifa_verde", "19900")),
+            }
+            envio = tarifas.get(zona, 0)
     if tipo == "funeral" and data.get("funeraria_id"):
         fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
         if fun:
@@ -1022,6 +1040,28 @@ async def pos_corte_caja(
         "total_transacciones": len(pedidos),
         "total": round(total / 100, 2),
         "por_metodo": {k: round(v / 100, 2) for k, v in por_metodo.items()},
+    }
+
+
+@router.get("/temporada-config")
+async def pos_temporada_config(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in result.scalars().all()}
+    return {
+        "modo": cfg.get("temporada_modo", "regular"),
+        "categoria": cfg.get("temporada_categoria", ""),
+        "fecha_fuerte": cfg.get("temporada_fecha_fuerte", ""),
+        "dias_restriccion": int(cfg.get("temporada_dias_restriccion", "2")),
+        "acepta_funerales": cfg.get("temporada_acepta_funerales", "true") == "true",
+        "envio_unico": int(cfg.get("temporada_envio_unico", "9900")),
+        "zona_tarifa_morada": int(cfg.get("zona_tarifa_morada", "9900")),
+        "zona_tarifa_azul": int(cfg.get("zona_tarifa_azul", "15900")),
+        "zona_tarifa_verde": int(cfg.get("zona_tarifa_verde", "19900")),
     }
 
 

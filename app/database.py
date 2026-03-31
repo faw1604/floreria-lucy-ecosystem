@@ -79,6 +79,15 @@ async def inicializar_db():
         from sqlalchemy import text
         _seeds = [
             ("clave_admin_pos", "1234", "Clave admin para cancelar/editar transacciones en POS"),
+            ("temporada_modo", "regular", "Modo de temporada: regular o alta"),
+            ("temporada_categoria", "", "Categoría de productos para temporada alta"),
+            ("temporada_fecha_fuerte", "", "Fecha exacta del día fuerte (YYYY-MM-DD)"),
+            ("temporada_dias_restriccion", "2", "Días antes de fecha fuerte para restringir catálogo"),
+            ("temporada_acepta_funerales", "true", "Aceptar pedidos funerales en temporada alta"),
+            ("temporada_envio_unico", "9900", "Precio envío único temporada alta en centavos"),
+            ("zona_tarifa_morada", "9900", "Tarifa envío zona Morada en centavos"),
+            ("zona_tarifa_azul", "15900", "Tarifa envío zona Azul en centavos"),
+            ("zona_tarifa_verde", "19900", "Tarifa envío zona Verde en centavos"),
         ]
         for clave, valor, desc in _seeds:
             try:

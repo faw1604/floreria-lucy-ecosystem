@@ -727,17 +727,109 @@ async function importarProductos(input) {
   input.value = '';
 }
 
-// ══════ CLAUDIA ══════
+// ══════ CLAUDIA + TEMPORADA ══════
 async function loadClaudia() {
   try {
+    // Load config
     const r = await fetch(API + '/configuracion/', {credentials:'include'});
     const data = await r.json();
     const cfg = {};
     data.forEach(c => cfg[c.clave] = c.valor);
+
+    // Bot controls
     document.getElementById('claudia-toggle').checked = cfg.claudia_activa === 'true';
-    document.getElementById('claudia-temp').checked = cfg.claudia_temporada_alta === 'true';
     document.getElementById('claudia-msg').value = cfg.claudia_mensaje_bienvenida || '';
-  } catch(e) {}
+
+    // Temporada mode
+    const modo = cfg.temporada_modo || 'regular';
+    actualizarModoUI(modo);
+
+    // Alta config fields
+    document.getElementById('temp-envio').value = Math.round(parseInt(cfg.temporada_envio_unico || '9900') / 100);
+    document.getElementById('temp-fecha').value = cfg.temporada_fecha_fuerte || '';
+    document.getElementById('temp-dias').value = cfg.temporada_dias_restriccion || '2';
+    document.getElementById('temp-funerales').checked = (cfg.temporada_acepta_funerales || 'true') === 'true';
+
+    // Zone tariffs
+    document.getElementById('zona-morada').value = Math.round(parseInt(cfg.zona_tarifa_morada || '9900') / 100);
+    document.getElementById('zona-azul').value = Math.round(parseInt(cfg.zona_tarifa_azul || '15900') / 100);
+    document.getElementById('zona-verde').value = Math.round(parseInt(cfg.zona_tarifa_verde || '19900') / 100);
+
+    // Load categories for dropdown
+    await cargarCategoriasTemporada(cfg.temporada_categoria || '');
+  } catch(e) { console.error('loadClaudia error:', e); }
+}
+
+async function cargarCategoriasTemporada(selectedCat) {
+  try {
+    const r = await fetch(API + '/api/admin/categorias', {credentials:'include'});
+    const cats = await r.json();
+    const sel = document.getElementById('temp-categoria');
+    // Keep first option (placeholder)
+    sel.innerHTML = '<option value="">— Seleccionar categoría —</option>';
+    cats.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.nombre;
+      opt.textContent = `${c.nombre} (${c.productos_activos} productos)`;
+      if (c.nombre === selectedCat) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error(e); }
+}
+
+function seleccionarModo(modo) {
+  actualizarModoUI(modo);
+  toggleConfig('temporada_modo', modo);
+}
+
+function actualizarModoUI(modo) {
+  const isAlta = modo === 'alta';
+  const regCard = document.getElementById('mode-regular');
+  const altaCard = document.getElementById('mode-alta');
+  const badge = document.getElementById('temporada-badge');
+  const altaConfig = document.getElementById('temporada-alta-config');
+  const zonasNote = document.getElementById('zonas-temporada-note');
+
+  regCard.style.borderColor = isAlta ? 'var(--borde)' : 'var(--verde)';
+  regCard.style.background = isAlta ? '' : 'rgba(45,90,61,0.06)';
+  altaCard.style.borderColor = isAlta ? 'var(--dorado)' : 'var(--borde)';
+  altaCard.style.background = isAlta ? 'rgba(212,168,67,0.08)' : '';
+
+  badge.textContent = isAlta ? 'TEMPORADA ALTA' : 'TEMPORADA REGULAR';
+  badge.style.background = isAlta ? 'rgba(212,168,67,0.15)' : 'rgba(45,90,61,0.1)';
+  badge.style.color = isAlta ? 'var(--dorado)' : 'var(--verde)';
+
+  altaConfig.style.display = isAlta ? '' : 'none';
+  if (zonasNote) zonasNote.style.display = isAlta ? '' : 'none';
+}
+
+async function guardarTemporada() {
+  const categoria = document.getElementById('temp-categoria').value;
+  const envio = parseInt(document.getElementById('temp-envio').value || '99') * 100;
+  const fecha = document.getElementById('temp-fecha').value;
+  const dias = document.getElementById('temp-dias').value;
+  const funerales = document.getElementById('temp-funerales').checked;
+
+  const saves = [
+    toggleConfig('temporada_categoria', categoria),
+    toggleConfig('temporada_envio_unico', String(envio)),
+    toggleConfig('temporada_fecha_fuerte', fecha),
+    toggleConfig('temporada_dias_restriccion', dias),
+    toggleConfig('temporada_acepta_funerales', String(funerales)),
+  ];
+  await Promise.all(saves);
+}
+
+async function guardarZonas() {
+  const morada = parseInt(document.getElementById('zona-morada').value || '99') * 100;
+  const azul = parseInt(document.getElementById('zona-azul').value || '159') * 100;
+  const verde = parseInt(document.getElementById('zona-verde').value || '199') * 100;
+
+  await Promise.all([
+    toggleConfig('zona_tarifa_morada', String(morada)),
+    toggleConfig('zona_tarifa_azul', String(azul)),
+    toggleConfig('zona_tarifa_verde', String(verde)),
+  ]);
 }
 
 async function toggleConfig(clave, valor) {
