@@ -1092,52 +1092,14 @@ function closeDetail() {
 
 // ====== CLASSIC MODE ======
 let sectionFilter = 'general';
-let typeFilter = null;
-let flowerFilter = null;
+let catFilter = null;
 let searchQuery = '';
 
 const FUNERAL_CATS = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
-const TYPE_MAP = {
-  'Ramos': ['ramo', 'ramillete', 'bouquet'],
-  'Cajas': ['caja'],
-  'Canastas': ['canasta'],
-  'Jarrones': ['jarron', 'jarrón', 'violetero'],
-  'Peceras': ['pecera'],
-  'Bases': ['base', 'arreglo en base', 'arreglos en base'],
-  'Detalles y regalos': [],
-};
-const DETALLES_CATS = ['chocolates gourmet', 'peluches', 'globos', 'dulces y regalos', 'extras'];
-const FLOWER_MAP = {
-  'Rosas': ['rosa'],
-  'Gerberas': ['gerbera'],
-  'Girasoles': ['girasol'],
-  'Lirios': ['lili', 'lirio'],
-  'Margaritas': ['margarita'],
-  'Mixto': ['primaveral', 'mixto', 'varios'],
-};
 
-function classifyProduct(p) {
-  const name = p.nombre.toLowerCase();
-  const cat = p.categoria.toLowerCase();
-  const text = name + ' ' + cat;
-  return { name, cat, text };
-}
-
-function matchesType(p, type) {
-  if (!type) return true;
-  if (type === 'Detalles y regalos') {
-    return DETALLES_CATS.some(c => p.categoria.toLowerCase() === c);
-  }
-  const { text } = classifyProduct(p);
-  const keywords = TYPE_MAP[type] || [];
-  return keywords.some(k => text.includes(k));
-}
-
-function matchesFlower(p, flower) {
-  if (!flower) return true;
-  const { text } = classifyProduct(p);
-  const keywords = FLOWER_MAP[flower] || [];
-  return keywords.some(k => text.includes(k));
+function matchesCat(p, cat) {
+  if (!cat) return true;
+  return p.categoria === cat;
 }
 
 function matchesSection(p, section) {
@@ -1161,8 +1123,7 @@ async function initClassic() {
     return;
   }
   renderSectionTabs();
-  renderTypePills();
-  renderFlowerPills();
+  renderCatPills();
   renderClassicGrid();
 }
 
@@ -1174,53 +1135,35 @@ function renderSectionTabs() {
   ).join('');
 }
 
-function renderTypePills() {
-  const types = ['Todos', ...Object.keys(TYPE_MAP), 'Otros'];
-  document.getElementById('type-pills').innerHTML = types.map(t => {
-    const val = t === 'Todos' ? null : t;
-    return `<button class="filter-pill ${typeFilter === val ? 'active' : ''}" onclick="setType(${val ? `'${val}'` : 'null'})">${t}</button>`;
-  }).join('');
+function renderCatPills() {
+  // Extract categories from products that match current section
+  const sectionProducts = allProducts.filter(p => matchesSection(p, sectionFilter));
+  const catCounts = {};
+  sectionProducts.forEach(p => {
+    catCounts[p.categoria] = (catCounts[p.categoria] || 0) + 1;
+  });
+  const cats = Object.keys(catCounts).sort();
+  const pills = [
+    `<button class="filter-pill ${catFilter === null ? 'active' : ''}" onclick="setCat(null)">Todos (${sectionProducts.length})</button>`
+  ];
+  cats.forEach(c => {
+    pills.push(`<button class="filter-pill ${catFilter === c ? 'active' : ''}" onclick="setCat('${c.replace(/'/g, "\\'")}')">${c} (${catCounts[c]})</button>`);
+  });
+  document.getElementById('type-pills').innerHTML = pills.join('');
+  document.getElementById('flower-pills').innerHTML = '';
 }
 
-function renderFlowerPills() {
-  const flowers = ['Todas', ...Object.keys(FLOWER_MAP)];
-  document.getElementById('flower-pills').innerHTML = flowers.map(f => {
-    const val = f === 'Todas' ? null : f;
-    return `<button class="filter-pill ${flowerFilter === val ? 'active' : ''}" onclick="setFlower(${val ? `'${val}'` : 'null'})">${f}</button>`;
-  }).join('');
-}
-
-function setSection(s) { sectionFilter = s; renderSectionTabs(); renderClassicGrid(); }
-function setType(t) { typeFilter = t; renderTypePills(); renderClassicGrid(); }
-function setFlower(f) { flowerFilter = f; renderFlowerPills(); renderClassicGrid(); }
+function setSection(s) { sectionFilter = s; catFilter = null; renderSectionTabs(); renderCatPills(); renderClassicGrid(); }
+function setCat(c) { catFilter = c; renderCatPills(); renderClassicGrid(); }
 function onSearch() { searchQuery = document.getElementById('search-input').value; renderClassicGrid(); }
-
-function isDetallesProduct(p) {
-  return DETALLES_CATS.some(c => p.categoria.toLowerCase() === c);
-}
 
 function renderClassicGrid() {
   let filtered = allProducts.filter(p => {
     if (!matchesSection(p, sectionFilter)) return false;
-    if (!matchesType(p, typeFilter)) return false;
+    if (!matchesCat(p, catFilter)) return false;
     if (!matchesSearch(p, searchQuery)) return false;
-    // When a specific flower is selected, hide non-floral products automatically
-    if (flowerFilter && isDetallesProduct(p)) return false;
-    if (!matchesFlower(p, flowerFilter)) return false;
     return true;
   });
-
-  // "Otros" type: exclude all known types and detalles
-  if (typeFilter === 'Otros') {
-    filtered = allProducts.filter(p => {
-      if (!matchesSection(p, sectionFilter) || !matchesSearch(p, searchQuery)) return false;
-      if (flowerFilter && isDetallesProduct(p)) return false;
-      if (!matchesFlower(p, flowerFilter)) return false;
-      if (isDetallesProduct(p)) return false;
-      const { text } = classifyProduct(p);
-      return !Object.values(TYPE_MAP).flat().some(k => text.includes(k));
-    });
-  }
 
   const grid = document.getElementById('classic-grid');
   if (!filtered.length) {
