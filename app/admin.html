@@ -67,7 +67,7 @@
     <div class="sec-actions">
       <input type="text" id="prod-search" placeholder="Buscar producto..." oninput="debounceProdSearch()" class="search-input">
       <select id="prod-cat-filter" onchange="loadProductos()"><option value="">Todas las categorías</option></select>
-      <select id="prod-status-filter" onchange="loadProductos()"><option value="">Todos</option><option value="1">Activos</option><option value="0">Inactivos</option></select>
+      <select id="prod-status-filter" onchange="loadProductos()"><option value="1" selected>Activos</option><option value="">Todos</option><option value="0">Inactivos</option></select>
       <button class="btn-sm" onclick="abrirModalCategorias()">Gestionar categorías</button>
       <button class="btn-sm" onclick="exportarProductos()">📥 Exportar Excel</button>
       <button class="btn-sm" onclick="document.getElementById('import-file').click()">📤 Importar Excel</button>
