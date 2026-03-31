@@ -640,9 +640,10 @@ function saveCart() {
 function updateCartFab() {
   const fab = document.getElementById('cart-fab');
   const badge = document.getElementById('cart-badge');
-  if (cart.length > 0) {
+  const totalItems = cart.reduce((s, p) => s + (p.qty || 1), 0);
+  if (totalItems > 0) {
     fab.style.display = 'flex';
-    badge.textContent = cart.length;
+    badge.textContent = totalItems;
   } else {
     fab.style.display = 'none';
   }
@@ -650,10 +651,24 @@ function updateCartFab() {
 
 function addToCart(product) {
   if (product.sin_stock) return;
-  if (!cart.find(p => p.id === product.id)) {
-    cart.push(product);
-    saveCart();
+  const existing = cart.find(p => p.id === product.id);
+  if (existing) {
+    existing.qty = (existing.qty || 1) + 1;
+  } else {
+    cart.push({...product, qty: 1});
   }
+  saveCart();
+}
+
+function changeQty(index, delta) {
+  const item = cart[index];
+  if (!item) return;
+  item.qty = (item.qty || 1) + delta;
+  if (item.qty <= 0) {
+    cart.splice(index, 1);
+  }
+  saveCart();
+  renderCart();
 }
 
 function removeFromCart(index) {
@@ -1029,15 +1044,23 @@ function renderCart() {
     return;
   }
   actions.style.display = 'flex';
-  list.innerHTML = cart.map((p, idx) => `
+  list.innerHTML = cart.map((p, idx) => {
+    const qty = p.qty || 1;
+    return `
     <div class="cart-item" id="cart-item-${idx}" data-idx="${idx}">
       <img src="${p.imagen_url}" alt="${p.nombre}">
       <div class="cart-item-info">
         <div class="cart-item-name">${p.nombre}</div>
         <div class="cart-item-price">${renderPrice(p, 'cart-item-price')}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <button onclick="event.stopPropagation();changeQty(${idx},-1)" style="width:26px;height:26px;border:1px solid var(--borde);border-radius:6px;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+          <span style="font-size:14px;font-weight:600;min-width:20px;text-align:center">${qty}</span>
+          <button onclick="event.stopPropagation();changeQty(${idx},1)" style="width:26px;height:26px;border:1px solid var(--borde);border-radius:6px;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+        </div>
       </div>
       <button class="cart-item-remove" onclick="removeFromCart(${idx})">&times;</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   initCartSwipe();
 }
 
@@ -1458,7 +1481,7 @@ function regFinish() {
     const msg = `Hola, me interesa el ${p.nombre} que vi en su catálogo 🌸`;
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
   } else if (regPendingAction.type === 'all') {
-    let list = cart.map(p => `- ${p.nombre} (${getDisplayPrice(p)})`).join('\n');
+    let list = cart.map(p => `- ${p.nombre}${(p.qty||1) > 1 ? ' x'+(p.qty||1) : ''} (${getDisplayPrice(p)})`).join('\n');
     const msg = `Hola, me interesan estos arreglos que vi en su catálogo 🌸\n\n${list}\n\n¿Me pueden ayudar?`;
     window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
   }
@@ -1584,12 +1607,13 @@ function renderOrderStep1() {
   let sub = 0;
   list.innerHTML = cart.map(p => {
     const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
-    sub += precio;
+    const qty = p.qty || 1;
+    sub += precio * qty;
     return `<div class="order-summary-item">
       <img src="${p.imagen_url}" alt="${p.nombre}">
       <div class="order-summary-info">
-        <div class="order-summary-name">${p.nombre}</div>
-        <div class="order-summary-price">$${(precio/100).toLocaleString()}</div>
+        <div class="order-summary-name">${p.nombre}${qty > 1 ? ` <span style="color:var(--texto2)">x${qty}</span>` : ''}</div>
+        <div class="order-summary-price">$${((precio * qty)/100).toLocaleString()}</div>
       </div>
     </div>`;
   }).join('');
@@ -2162,7 +2186,7 @@ async function submitOrder() {
   try {
     const body = {
       tipo: pedidoWeb.tipo,
-      items: cart.map(p => ({producto_id: p.id, cantidad: 1})),
+      items: cart.map(p => ({producto_id: p.id, cantidad: p.qty || 1})),
       cliente_nombre: pedidoWeb.cliente_nombre,
       cliente_telefono: pedidoWeb.telefono_completo,
       cliente_email: pedidoWeb.cliente_email || null,
