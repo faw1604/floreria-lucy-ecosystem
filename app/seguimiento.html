@@ -458,7 +458,11 @@ function renderTracking(data) {
     `;
   }
 
+  // Preserve textarea value during re-render
+  const prevMsg = document.getElementById('respuesta-msg')?.value || '';
   c.innerHTML = html;
+  const newTextarea = document.getElementById('respuesta-msg');
+  if (newTextarea && prevMsg) newTextarea.value = prevMsg;
 }
 
 async function responderCambio(acepta) {
