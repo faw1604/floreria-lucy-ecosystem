@@ -26,6 +26,13 @@ function navTo(sec) {
     config: loadConfig,
   };
   if (loaders[sec]) loaders[sec]();
+  // Claudia chat polling
+  if (sec === 'claudia') {
+    if (!_clChatInterval) _clChatInterval = setInterval(() => { if (!document.hidden) loadClaudiaChats(); }, 15000);
+  } else if (_clChatInterval) {
+    clearInterval(_clChatInterval);
+    _clChatInterval = null;
+  }
 }
 
 // Init from hash
@@ -777,6 +784,9 @@ async function loadClaudia() {
     // Load categories for dropdown
     await cargarCategoriasTemporada(cfg.temporada_categoria || '');
   } catch(e) { console.error('loadClaudia error:', e); }
+
+  // Load chats
+  loadClaudiaChats();
 }
 
 async function cargarCategoriasTemporada(selectedCat) {
@@ -862,6 +872,273 @@ async function toggleConfig(clave, valor) {
 async function saveConfigField(clave, valor) {
   await toggleConfig(clave, valor);
 }
+
+// ══════ CLAUDIA CHATS ══════
+let _clChatsData = [];
+let _clChatInterval = null;
+let _clResponderTel = '';
+
+async function loadClaudiaChats() {
+  try {
+    const r = await fetch(API + '/api/claudia/chats', {credentials:'include'});
+    if (!r.ok) return;
+    _clChatsData = await r.json();
+    renderClaudiaChats();
+    updateClaudiaBadge();
+  } catch(e) { console.error('loadClaudiaChats:', e); }
+}
+
+function renderClaudiaChats() {
+  const search = (document.getElementById('claudia-chat-search')?.value || '').toLowerCase();
+  const now = Date.now();
+  const h24 = 24 * 60 * 60 * 1000;
+
+  const activos = [], espera = [], archivados = [];
+  _clChatsData.forEach(c => {
+    if (search && !c.telefono.includes(search)) return;
+    const ts = c.timestamp ? new Date(c.timestamp).getTime() : 0;
+    if (c.estado === 'esperando_humano') {
+      espera.push(c);
+    } else if (now - ts > h24) {
+      archivados.push(c);
+    } else {
+      activos.push(c);
+    }
+  });
+
+  document.getElementById('cl-count-activos').textContent = activos.length ? `(${activos.length})` : '';
+  document.getElementById('cl-count-espera').textContent = espera.length ? `(${espera.length})` : '';
+  document.getElementById('cl-count-archivados').textContent = archivados.length ? `(${archivados.length})` : '';
+
+  document.getElementById('cl-activos-list').innerHTML = activos.length ? activos.map(renderChatRow).join('') : '<div class="cl-empty">Sin chats activos</div>';
+  document.getElementById('cl-espera-list').innerHTML = espera.length ? espera.map(renderChatRow).join('') : '<div class="cl-empty">Sin chats esperando</div>';
+  document.getElementById('cl-archivados-list').innerHTML = archivados.length ? archivados.map(renderChatRow).join('') : '<div class="cl-empty">Sin chats archivados</div>';
+}
+
+function renderChatRow(c) {
+  const esEspera = c.estado === 'esperando_humano';
+  const dotClass = esEspera ? 'espera' : 'activo';
+  const estadoClass = esEspera ? 'espera' : 'activo';
+  const estadoLabel = esEspera ? 'Esperando humano' : 'Activo';
+  const rolIcon = c.rol === 'user' ? '👤' : '🤖';
+  const msg = esc(c.ultimo_mensaje || '');
+  const time = c.timestamp ? fmtDateTime(c.timestamp) : '';
+  const wait = esEspera && c.estado_desde ? `<div class="cl-chat-wait">⏱ ${tiempoEspera(c.estado_desde)}</div>` : '';
+
+  const btnAccion = esEspera
+    ? `<button class="btn-liberar" onclick="liberarChat('${c.telefono}')">Devolver a Claudia</button>`
+    : `<button class="btn-intervenir" onclick="intervenirChat('${c.telefono}')">Intervenir</button>`;
+
+  return `<div class="cl-chat-row">
+    <div class="cl-chat-dot ${dotClass}"></div>
+    <div class="cl-chat-info">
+      <div class="cl-chat-tel">${esc(c.telefono)} <span class="cl-estado ${estadoClass}">${estadoLabel}</span></div>
+      <div class="cl-chat-msg">${rolIcon} ${msg}</div>
+      ${wait}
+    </div>
+    <div class="cl-chat-meta">
+      <div class="cl-chat-time">${time}</div>
+    </div>
+    <div class="cl-chat-actions">
+      <button class="btn-responder" onclick="abrirResponder('${c.telefono}')">Responder</button>
+      ${btnAccion}
+      <button onclick="toggleNotasClaudia('${c.telefono}',this)" title="Notas">📝</button>
+    </div>
+  </div>
+  <div class="cl-notas-panel" id="notas-${c.telefono}"></div>`;
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-MX', {day:'2-digit',month:'short',timeZone:'America/Chihuahua'}) + ' ' +
+    d.toLocaleTimeString('es-MX', {hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'});
+}
+
+function tiempoEspera(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h < 24) return `hace ${h}h ${m}min`;
+  return `hace ${Math.floor(h / 24)}d`;
+}
+
+function filtrarChatsClaudia() { renderClaudiaChats(); }
+
+function claudiaSubTab(id, btn) {
+  document.querySelectorAll('#claudia-sub-tabs .sub-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['cl-activos','cl-espera','cl-archivados'].forEach(t => {
+    document.getElementById(t + '-content').style.display = t === id ? '' : 'none';
+  });
+}
+
+async function intervenirChat(tel) {
+  try {
+    await fetch(API + '/api/claudia/bloquear', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({telefono: tel})
+    });
+    showToast('Chat bloqueado — Claudia no responde');
+    loadClaudiaChats();
+  } catch(e) { console.error(e); }
+}
+
+async function liberarChat(tel) {
+  try {
+    await fetch(API + '/api/claudia/liberar', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({telefono: tel})
+    });
+    showToast('Chat devuelto a Claudia');
+    loadClaudiaChats();
+  } catch(e) { console.error(e); }
+}
+
+// --- Responder modal ---
+async function abrirResponder(tel) {
+  _clResponderTel = tel;
+  document.getElementById('modal-responder-title').textContent = 'Responder a ' + tel;
+  document.getElementById('responder-input').value = '';
+  document.getElementById('responder-historial').innerHTML = '<div style="text-align:center;color:var(--texto2);padding:20px">Cargando...</div>';
+  document.getElementById('modal-responder').classList.add('active');
+
+  try {
+    const r = await fetch(API + '/api/claudia/historial/' + tel, {credentials:'include'});
+    if (!r.ok) { document.getElementById('responder-historial').innerHTML = '<div class="cl-empty">Error al cargar historial</div>'; return; }
+    const msgs = await r.json();
+    renderHistorial(msgs);
+  } catch(e) {
+    document.getElementById('responder-historial').innerHTML = '<div class="cl-empty">Error de conexion</div>';
+  }
+
+  setTimeout(() => document.getElementById('responder-input').focus(), 100);
+}
+
+function renderHistorial(msgs) {
+  const container = document.getElementById('responder-historial');
+  if (!msgs.length) { container.innerHTML = '<div class="cl-empty">Sin mensajes</div>'; return; }
+  container.innerHTML = msgs.map(m => {
+    const time = m.timestamp ? fmtDateTime(m.timestamp) : '';
+    return `<div class="cl-msg ${m.role}">
+      <div>${esc(m.content)}</div>
+      <div class="cl-msg-time">${time}</div>
+    </div>`;
+  }).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+async function enviarMensajeHumano() {
+  const input = document.getElementById('responder-input');
+  const msg = input.value.trim();
+  if (!msg || !_clResponderTel) return;
+
+  const btn = document.getElementById('btn-enviar-humano');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const r = await fetch(API + '/api/claudia/enviar-mensaje', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({telefono: _clResponderTel, mensaje: msg})
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      showToast(err.detail || 'Error al enviar');
+      return;
+    }
+    showToast('Mensaje enviado');
+    input.value = '';
+    // Refresh historial
+    const r2 = await fetch(API + '/api/claudia/historial/' + _clResponderTel, {credentials:'include'});
+    if (r2.ok) renderHistorial(await r2.json());
+    // Refresh chat list
+    loadClaudiaChats();
+  } catch(e) {
+    showToast('Error de conexion');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enviar';
+  }
+}
+
+// --- Notas ---
+async function toggleNotasClaudia(tel, btn) {
+  const panel = document.getElementById('notas-' + tel);
+  if (!panel) return;
+  if (panel.classList.contains('show')) {
+    panel.classList.remove('show');
+    return;
+  }
+  panel.innerHTML = '<div style="padding:8px;color:var(--texto2);font-size:12px">Cargando...</div>';
+  panel.classList.add('show');
+
+  try {
+    const r = await fetch(API + '/api/claudia/notas/' + tel, {credentials:'include'});
+    const notas = r.ok ? await r.json() : [];
+    let html = notas.map(n => `<div class="cl-nota-item">
+      <span class="cl-nota-texto">${esc(n.nota)}</span>
+      <span class="cl-nota-time">${fmtDateTime(n.timestamp)}</span>
+      <button class="cl-nota-del" onclick="eliminarNotaClaudia(${n.id},'${tel}')">&times;</button>
+    </div>`).join('');
+    html += `<div style="display:flex;gap:6px;margin-top:8px">
+      <input type="text" id="nota-input-${tel}" placeholder="Nueva nota..." style="flex:1;padding:6px 10px;border:1px solid var(--borde);border-radius:6px;font-size:12px;font-family:inherit">
+      <button class="btn-sm" onclick="guardarNotaClaudia('${tel}')">Guardar</button>
+    </div>`;
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = '<div style="padding:8px;color:var(--rojo);font-size:12px">Error</div>';
+  }
+}
+
+async function guardarNotaClaudia(tel) {
+  const input = document.getElementById('nota-input-' + tel);
+  const nota = input?.value.trim();
+  if (!nota) return;
+  try {
+    await fetch(API + '/api/claudia/notas', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({telefono: tel, nota})
+    });
+    toggleNotasClaudia(tel); // close
+    setTimeout(() => toggleNotasClaudia(tel), 100); // reopen to refresh
+  } catch(e) { console.error(e); }
+}
+
+async function eliminarNotaClaudia(id, tel) {
+  try {
+    await fetch(API + '/api/claudia/notas/' + id, {method:'DELETE', credentials:'include'});
+    toggleNotasClaudia(tel);
+    setTimeout(() => toggleNotasClaudia(tel), 100);
+  } catch(e) { console.error(e); }
+}
+
+// Badge global (even when not on Claudia section)
+function updateClaudiaBadge() {
+  const esperando = _clChatsData.filter(c => c.estado === 'esperando_humano').length;
+  const badge = document.getElementById('badge-claudia');
+  if (badge) {
+    if (esperando > 0) { badge.style.display = 'flex'; badge.textContent = esperando > 9 ? '9+' : esperando; }
+    else badge.style.display = 'none';
+  }
+}
+
+// Poll badge every 30s even outside Claudia section
+setInterval(async () => {
+  try {
+    const r = await fetch(API + '/api/claudia/chats', {credentials:'include'});
+    if (!r.ok) return;
+    const chats = await r.json();
+    const esperando = chats.filter(c => c.estado === 'esperando_humano').length;
+    const badge = document.getElementById('badge-claudia');
+    if (badge) {
+      if (esperando > 0) { badge.style.display = 'flex'; badge.textContent = esperando > 9 ? '9+' : esperando; }
+      else badge.style.display = 'none';
+    }
+  } catch(e) {}
+}, 30000);
 
 // ══════ PÁGINA WEB ══════
 let webCfg = {};

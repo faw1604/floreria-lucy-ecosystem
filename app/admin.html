@@ -21,7 +21,7 @@
     <div class="sb-item" onclick="navTo('clientes')" id="sb-clientes"><span class="sb-ico">👤</span><span class="sb-label">Clientes</span></div>
     <div class="sb-item" onclick="navTo('productos')" id="sb-productos"><span class="sb-ico">📦</span><span class="sb-label">Productos</span></div>
     <div class="sb-item" onclick="navTo('entregas')" id="sb-entregas"><span class="sb-ico">📦</span><span class="sb-label">Entregas</span></div>
-    <div class="sb-item" onclick="navTo('claudia')" id="sb-claudia"><span class="sb-ico">🤖</span><span class="sb-label">Claudia</span></div>
+    <div class="sb-item" onclick="navTo('claudia')" id="sb-claudia"><span class="sb-ico">🤖<span class="badge" id="badge-claudia" style="display:none">0</span></span><span class="sb-label">Claudia</span></div>
     <div class="sb-item" onclick="navTo('web')" id="sb-web"><span class="sb-ico">🌐</span><span class="sb-label">Página Web</span></div>
     <div class="sb-item" onclick="navTo('finanzas')" id="sb-finanzas"><span class="sb-ico">📊</span><span class="sb-label">Finanzas</span></div>
     <div class="sb-item" onclick="navTo('estadisticas')" id="sb-estadisticas"><span class="sb-ico">📈</span><span class="sb-label">Estadísticas</span></div>
@@ -212,6 +212,44 @@
       <p id="zonas-temporada-note" style="display:none;margin-top:12px;font-size:12px;color:var(--dorado);font-weight:600;text-align:center">🔶 En temporada alta todas las zonas se cobran al precio único configurado arriba</p>
     </div>
 
+    <!-- ═══ INBOX DE CHATS ═══ -->
+    <div class="config-card" style="margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px">Inbox de Chats</h3>
+        <button class="btn-sm" onclick="loadClaudiaChats()" title="Refrescar">Refrescar</button>
+      </div>
+      <div style="margin-bottom:12px">
+        <input type="text" id="claudia-chat-search" placeholder="Buscar por telefono..." style="width:100%;padding:8px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit" oninput="filtrarChatsClaudia()">
+      </div>
+      <div class="sub-tabs" id="claudia-sub-tabs">
+        <button class="sub-tab active" onclick="claudiaSubTab('cl-activos',this)">Activos <span id="cl-count-activos" style="font-size:11px;opacity:.7"></span></button>
+        <button class="sub-tab" onclick="claudiaSubTab('cl-espera',this)">Esperando humano <span id="cl-count-espera" style="font-size:11px;opacity:.7"></span></button>
+        <button class="sub-tab" onclick="claudiaSubTab('cl-archivados',this)">Archivados <span id="cl-count-archivados" style="font-size:11px;opacity:.7"></span></button>
+      </div>
+      <div class="sub-content" id="cl-activos-content">
+        <div id="cl-activos-list" class="cl-chat-list"><div style="padding:20px;text-align:center;color:var(--texto2);font-size:13px">Cargando chats...</div></div>
+      </div>
+      <div class="sub-content" id="cl-espera-content" style="display:none">
+        <div id="cl-espera-list" class="cl-chat-list"></div>
+      </div>
+      <div class="sub-content" id="cl-archivados-content" style="display:none">
+        <div id="cl-archivados-list" class="cl-chat-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Responder Chat -->
+<div class="modal-bg" id="modal-responder" onclick="if(event.target===this)cerrarModal('modal-responder')">
+  <div class="modal" style="max-width:520px;width:95%">
+    <button class="modal-close" onclick="cerrarModal('modal-responder')">&times;</button>
+    <h3 id="modal-responder-title" style="margin:0 0 12px;font-size:15px">Responder a...</h3>
+    <div id="responder-historial" class="cl-historial"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input type="text" id="responder-input" placeholder="Escribe tu mensaje..." style="flex:1;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey)enviarMensajeHumano()">
+      <button class="btn-primary" onclick="enviarMensajeHumano()" id="btn-enviar-humano">Enviar</button>
+    </div>
   </div>
 </div>
 

@@ -110,6 +110,43 @@ select{padding:8px 12px;border:1px solid var(--borde);border-radius:8px;font-siz
 .toast{position:fixed;bottom:20px;right:20px;background:var(--verde);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:300;transform:translateY(100px);opacity:0;transition:all .3s}
 .toast.show{transform:translateY(0);opacity:1}
 
+/* CLAUDIA CHATS */
+.cl-chat-list{display:flex;flex-direction:column;gap:6px}
+.cl-chat-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--borde);border-radius:10px;background:var(--blanco);transition:background .15s}
+.cl-chat-row:hover{background:var(--crema)}
+.cl-chat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cl-chat-dot.activo{background:#27ae60}
+.cl-chat-dot.espera{background:#f39c12}
+.cl-chat-info{flex:1;min-width:0}
+.cl-chat-tel{font-size:13px;font-weight:600}
+.cl-chat-msg{font-size:12px;color:var(--texto2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;max-width:320px}
+.cl-chat-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cl-chat-time{font-size:11px;color:var(--texto2);white-space:nowrap}
+.cl-chat-wait{font-size:10px;color:#e67e22;margin-top:2px}
+.cl-estado{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.cl-estado.activo{background:#d5f5e3;color:#2e7d32}
+.cl-estado.espera{background:#fff3cd;color:#856404}
+.cl-chat-actions{display:flex;gap:4px;flex-shrink:0}
+.cl-chat-actions button{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--borde);background:var(--blanco);cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s}
+.cl-chat-actions button:hover{border-color:var(--verde);color:var(--verde)}
+.cl-chat-actions .btn-responder{background:var(--verde);color:#fff;border-color:var(--verde)}
+.cl-chat-actions .btn-responder:hover{background:var(--verde-m)}
+.cl-chat-actions .btn-intervenir{background:#fff3cd;color:#856404;border-color:#f0d78c}
+.cl-chat-actions .btn-liberar{background:#d5f5e3;color:#2e7d32;border-color:#a3ddb5}
+.cl-notas-panel{background:var(--crema);border:1px solid var(--borde);border-radius:8px;padding:10px 12px;margin-top:6px;display:none}
+.cl-notas-panel.show{display:block}
+.cl-nota-item{display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:12px;border-bottom:1px solid var(--borde)}
+.cl-nota-item:last-child{border-bottom:none}
+.cl-nota-texto{flex:1;color:var(--texto)}
+.cl-nota-time{font-size:10px;color:var(--texto2);white-space:nowrap}
+.cl-nota-del{background:none;border:none;color:var(--rojo);cursor:pointer;font-size:14px;padding:0 2px}
+.cl-historial{max-height:400px;overflow-y:auto;border:1px solid var(--borde);border-radius:10px;padding:12px;background:var(--crema);display:flex;flex-direction:column;gap:6px}
+.cl-msg{max-width:80%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.4;word-wrap:break-word}
+.cl-msg.user{background:#d5f5e3;align-self:flex-start;border-bottom-left-radius:4px}
+.cl-msg.assistant{background:#e3f2fd;align-self:flex-end;border-bottom-right-radius:4px}
+.cl-msg-time{font-size:10px;color:var(--texto2);margin-top:2px}
+.cl-empty{padding:24px;text-align:center;color:var(--texto2);font-size:13px}
+
 /* RESPONSIVE */
 @media(max-width:768px){
   .sidebar{width:64px}
