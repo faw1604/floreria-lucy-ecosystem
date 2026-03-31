@@ -32,6 +32,12 @@ async def seguimiento_page():
     html_path = Path(__file__).parent.parent / "seguimiento.html"
     return HTMLResponse(html_path.read_text(encoding="utf-8"))
 
+@router.get("/producto.html")
+async def producto_page():
+    from pathlib import Path
+    html_path = Path(__file__).parent.parent / "producto.html"
+    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+
 @router.get("/historia", response_class=HTMLResponse)
 async def historia_html():
     try:
@@ -162,6 +168,34 @@ async def catalogo_productos(
         }
         for p in productos
     ]
+
+
+@router.get("/producto/{producto_id}")
+async def catalogo_producto_detalle(producto_id: int, db: AsyncSession = Depends(get_db)):
+    """Public endpoint for single product detail (shareable link)."""
+    result = await db.execute(
+        select(Producto).where(Producto.id == producto_id, Producto.activo == True)
+    )
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return {
+        "id": p.id,
+        "codigo": p.codigo,
+        "nombre": p.nombre,
+        "categoria": p.categoria,
+        "precio": p.precio,
+        "precio_descuento": p.precio_descuento,
+        "precio_display": f"${p.precio // 100:,}",
+        "precio_descuento_display": f"${p.precio_descuento // 100:,}" if p.precio_descuento else None,
+        "descripcion": p.descripcion,
+        "imagen_url": p.imagen_url,
+        "etiquetas": p.etiquetas,
+        "dimensiones": p.dimensiones,
+        "medida_alto": float(p.medida_alto) if p.medida_alto else None,
+        "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None,
+        "sin_stock": p.stock_activo and p.stock <= 0,
+    }
 
 
 @router.get("/catalogos-fiscales")

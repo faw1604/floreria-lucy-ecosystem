@@ -155,8 +155,9 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .filter-tabs{display:flex;gap:0;background:var(--blanco);border-radius:10px;border:1px solid var(--borde);overflow:hidden;margin-bottom:10px}
 .filter-tab{flex:1;padding:10px 8px;border:none;background:none;font-size:13px;font-weight:500;color:var(--texto2);cursor:pointer;font-family:'Inter',sans-serif;text-align:center;transition:all .15s}
 .filter-tab.active{background:var(--verde);color:var(--blanco)}
-.filter-pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch}
+.filter-pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .filter-pills::-webkit-scrollbar{display:none}
+.filter-pills:hover{cursor:grab}
 .filter-pill{white-space:nowrap;padding:7px 14px;border-radius:20px;border:1px solid var(--borde);background:var(--blanco);font-size:12px;font-weight:500;color:var(--texto2);cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;flex-shrink:0}
 .filter-pill.active{background:var(--verde);color:var(--blanco);border-color:var(--verde)}
 .filter-pill:hover{border-color:var(--verde-c)}
@@ -1125,6 +1126,13 @@ function openDetail(index, source) {
     ${tagsHtml}
     ${p.descripcion ? `<div class="detail-desc">${p.descripcion}</div>` : ''}
     ${p.codigo ? `<div class="detail-code">Código: ${p.codigo}</div>` : ''}
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button onclick="compartirProducto(${p.id})" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.624-1.467A11.96 11.96 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.587-5.932-1.609l-.425-.252-2.74.87.88-2.668-.276-.44A9.798 9.798 0 0 1 2.182 12c0-5.418 4.4-9.818 9.818-9.818S21.818 6.582 21.818 12 17.418 21.818 12 21.818z"/></svg>
+        Compartir por WhatsApp
+      </button>
+      <button onclick="copiarLinkProducto(${p.id})" style="padding:10px 14px;background:#fff;border:1px solid var(--borde);border-radius:10px;font-size:13px;cursor:pointer" title="Copiar enlace">🔗</button>
+    </div>
   `;
   document.getElementById('detail-overlay').classList.add('open');
   document.getElementById('detail-panel').classList.add('open');
@@ -1133,6 +1141,24 @@ function openDetail(index, source) {
 function closeDetail() {
   document.getElementById('detail-overlay').classList.remove('open');
   document.getElementById('detail-panel').classList.remove('open');
+}
+
+function compartirProducto(id) {
+  const p = allProducts.find(x => x.id === id) || detailProduct;
+  if (!p) return;
+  const url = `${window.location.origin}/catalogo/producto.html?id=${id}`;
+  const precio = p.precio_descuento && p.precio_descuento < p.precio ? p.precio_descuento : p.precio;
+  const msg = `🌸 *${p.nombre}*\n💰 $${(precio/100).toLocaleString()}\n\nVer detalles: ${url}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function copiarLinkProducto(id) {
+  const url = `${window.location.origin}/catalogo/producto.html?id=${id}`;
+  navigator.clipboard.writeText(url).then(() => {
+    alert('Enlace copiado');
+  }).catch(() => {
+    prompt('Copia este enlace:', url);
+  });
 }
 
 // Detail panel swipe-down to close
@@ -1166,9 +1192,37 @@ const FLOWER_MAP = {
   'Tulipanes': ['tulipan', 'tulipán'], 'Margaritas': ['margarita'],
 };
 
-function matchesCat(p, cat) {
-  if (!cat) return true;
-  return p.categoria === cat;
+// Fixed level-2 pills per section
+const SECTION_PILLS = {
+  general: [
+    {label: 'Todos', filter: null},
+    {label: 'Ramos', filter: 'ramos', keywords: ['ramo', 'ramillete', 'bouquet']},
+    {label: 'Arreglos', filter: 'arreglos', keywords: null},  // everything else
+  ],
+  funeral: [
+    {label: 'Todo', filter: null},
+    {label: 'Coronas y Medallones', filter: 'coronas', keywords: ['corona', 'medallon', 'medallón', 'lagrima', 'lágrima', 'cruz tradicional']},
+    {label: 'Pies de caja y Arreglos', filter: 'pies', keywords: ['pie de caja', 'cubrecaja', 'cubrecajas', 'cruz floral', 'arreglo']},
+  ],
+  regalos: [
+    {label: 'Todo', filter: null},
+    {label: 'Chocolates', filter: 'chocolates', keywords: ['chocolate', 'chocolates gourmet']},
+    {label: 'Peluches', filter: 'peluches', keywords: ['peluche']},
+    {label: 'Regalos', filter: 'regalos_otros', keywords: null},  // everything else in regalos
+  ],
+  temporada: [],  // no level 2
+};
+
+function matchesCatPill(p, pill) {
+  if (!pill || !pill.filter) return true;
+  const text = p.nombre.toLowerCase() + ' ' + p.categoria.toLowerCase();
+  if (pill.keywords) {
+    return pill.keywords.some(k => text.includes(k));
+  }
+  // "everything else" — exclude items that match other pills in the same section
+  const section = SECTION_PILLS[sectionFilter] || [];
+  const otherPills = section.filter(sp => sp.filter && sp.filter !== pill.filter && sp.keywords);
+  return !otherPills.some(sp => sp.keywords.some(k => text.includes(k)));
 }
 
 function matchesFlower(p, flower) {
@@ -1185,7 +1239,6 @@ function matchesSection(p, section) {
   if (section === 'funeral') return isFuneral;
   if (section === 'regalos') return isRegalos;
   if (section === 'temporada') return seasonCategory ? p.categoria === seasonCategory : false;
-  // general = everything except funeral and regalos
   return !isFuneral && !isRegalos;
 }
 
@@ -1216,21 +1269,19 @@ function renderSectionTabs() {
 }
 
 function renderCatPills() {
-  const sectionProducts = allProducts.filter(p => matchesSection(p, sectionFilter));
-  const catCounts = {};
-  sectionProducts.forEach(p => { catCounts[p.categoria] = (catCounts[p.categoria] || 0) + 1; });
-  const cats = Object.keys(catCounts).sort();
-  const pills = [
-    `<button class="filter-pill ${catFilter === null ? 'active' : ''}" onclick="setCat(null)">Todos (${sectionProducts.length})</button>`
-  ];
-  cats.forEach(c => {
-    pills.push(`<button class="filter-pill ${catFilter === c ? 'active' : ''}" onclick="setCat('${c.replace(/'/g, "\\'")}')">${c} (${catCounts[c]})</button>`);
-  });
-  document.getElementById('type-pills').innerHTML = pills.join('');
+  const pills = SECTION_PILLS[sectionFilter] || [];
+  if (!pills.length) {
+    document.getElementById('type-pills').innerHTML = '';
+    return;
+  }
+  const currentPill = pills.find(p => p.filter === catFilter) || pills[0];
+  document.getElementById('type-pills').innerHTML = pills.map(pill => {
+    const active = catFilter === pill.filter;
+    return `<button class="filter-pill ${active ? 'active' : ''}" onclick="setCat(${pill.filter ? `'${pill.filter}'` : 'null'})">${pill.label}</button>`;
+  }).join('');
 }
 
 function renderFlowerPills() {
-  // Only show flower pills for general section
   if (sectionFilter !== 'general') {
     document.getElementById('flower-pills').innerHTML = '';
     return;
@@ -1248,9 +1299,11 @@ function setFlower(f) { flowerFilter = f; renderFlowerPills(); renderClassicGrid
 function onSearch() { searchQuery = document.getElementById('search-input').value; renderClassicGrid(); }
 
 function renderClassicGrid() {
+  const pills = SECTION_PILLS[sectionFilter] || [];
+  const activePill = pills.find(p => p.filter === catFilter) || null;
   let filtered = allProducts.filter(p => {
     if (!matchesSection(p, sectionFilter)) return false;
-    if (!matchesCat(p, catFilter)) return false;
+    if (!matchesCatPill(p, activePill)) return false;
     if (!matchesFlower(p, flowerFilter)) return false;
     if (!matchesSearch(p, searchQuery)) return false;
     return true;
