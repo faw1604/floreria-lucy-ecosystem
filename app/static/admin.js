@@ -521,7 +521,14 @@ async function editarProducto(id) {
 
 async function eliminarProducto(id, nombre) {
   if (!confirm(`¿Eliminar el producto "${nombre}"?\nSe desactivará y dejará de aparecer en el catálogo.`)) return;
+  const clave = prompt('Ingresa la clave de administrador para confirmar:');
+  if (!clave) return;
   try {
+    const v = await fetch(API + '/pos/verificar-clave-admin', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({clave})
+    });
+    if (!v.ok) { alert('Clave incorrecta'); return; }
     const r = await fetch(API + '/productos/' + id, {method:'DELETE', credentials:'include'});
     if (!r.ok) { const e = await r.json(); alert(e.detail || 'Error'); return; }
     showToast('Producto eliminado ✓');

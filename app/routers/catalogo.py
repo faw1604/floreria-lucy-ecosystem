@@ -122,6 +122,7 @@ async def catalogo_productos(
         .where(
             Producto.activo == True,
             Producto.disponible_hoy == True,
+            Producto.visible_catalogo == True,
             Producto.imagen_url.isnot(None),
         )
         .order_by(Producto.categoria, Producto.nombre)
