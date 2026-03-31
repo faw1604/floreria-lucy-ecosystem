@@ -317,6 +317,10 @@ async def _crear_pedido_web_inner(request, db):
 
     # Validar tipo funeral
     if tipo == "funeral":
+        from app.core.utils import ahora
+        hora_actual = ahora()
+        if hora_actual.hour * 60 + hora_actual.minute >= 18 * 60 + 30:
+            raise HTTPException(status_code=400, detail="Los pedidos de funeral solo se aceptan hasta las 6:30 PM")
         if not data.get("nombre_fallecido"):
             raise HTTPException(status_code=400, detail="Nombre del fallecido es obligatorio")
 

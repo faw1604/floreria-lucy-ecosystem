@@ -1616,8 +1616,22 @@ function selectOrderType(tipo) {
   document.querySelectorAll('.order-tipo-btn').forEach(b => b.classList.remove('selected'));
   event.target.closest('.order-tipo-btn').classList.add('selected');
 
-  // Funeral validation (T6)
+  // Funeral validation — hora máxima 6:30 PM
   if (tipo === 'funeral') {
+    const now = new Date();
+    const chihuahuaTime = new Date(now.toLocaleString('en-US', {timeZone: 'America/Chihuahua'}));
+    const horaActual = chihuahuaTime.getHours() * 60 + chihuahuaTime.getMinutes();
+    if (horaActual >= 18 * 60 + 30) {
+      const warn = document.getElementById('order-funeral-warn');
+      warn.style.display = '';
+      warn.innerHTML = `<div class="order-funeral-warn">
+        ⚠ Lo sentimos, los pedidos de funeral solo se aceptan hasta las 6:30 PM.<br>
+        Por favor contáctanos por WhatsApp para casos urgentes.
+        <br>
+        <button style="background:var(--borde);color:var(--texto);margin-top:8px" onclick="pedidoWeb.tipo=null;document.querySelectorAll('.order-tipo-btn').forEach(b=>b.classList.remove('selected'));document.getElementById('order-funeral-warn').style.display='none'">Entendido</button>
+      </div>`;
+      return;
+    }
     const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
     const nonFuneral = cart.filter(p => !funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
     if (nonFuneral.length > 0) {
