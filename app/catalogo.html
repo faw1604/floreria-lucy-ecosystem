@@ -814,6 +814,19 @@ async function initDynamic() {
   maybeShowTutorial();
 }
 
+// Map occasions to keyword hints for tag/name matching
+const OCCASION_HINTS = {
+  'cumpleanos': ['cumpleaños', 'cumpleanos', 'birthday', 'felicidades'],
+  'amor': ['amor', 'romantico', 'romántico', 'love', 'corazon', 'corazón', 'rosa', 'rosas'],
+  'aniversario': ['aniversario', 'anniversary', 'amor', 'romántico'],
+  'maternidad': ['mamá', 'mama', 'bebe', 'bebé', 'maternidad', 'baby'],
+  'felicitaciones': ['felicitaciones', 'congratulations', 'exito', 'éxito'],
+  'recuperacion': ['recuperacion', 'recuperación', 'salud', 'ánimo', 'animo', 'pronta'],
+  'graduacion': ['graduacion', 'graduación', 'grad'],
+  'corporativo': ['corporativo', 'empresa', 'oficina', 'ejecutivo'],
+  'celebracion': ['celebracion', 'celebración', 'fiesta', 'party'],
+};
+
 function buildQueue() {
   let items = dynFilterCategory
     ? allProducts.filter(p => p.categoria === dynFilterCategory)
@@ -825,10 +838,34 @@ function buildQueue() {
   } else if (selectedOccasion && selectedOccasion !== 'sin_ocasion') {
     items = items.filter(p => !funeralCatsLower.some(f => p.categoria.toLowerCase().includes(f)));
   }
+
+  // Score products by occasion relevance (tags + name matching)
+  const hints = selectedOccasion ? (OCCASION_HINTS[selectedOccasion] || []) : [];
+  function occasionScore(p) {
+    if (!hints.length) return 0;
+    let score = 0;
+    const nameLow = p.nombre.toLowerCase();
+    // Check etiquetas
+    if (p.etiquetas) {
+      try {
+        const tags = JSON.parse(p.etiquetas);
+        if (Array.isArray(tags)) {
+          tags.forEach(t => {
+            const tl = t.toLowerCase();
+            if (hints.some(h => tl.includes(h))) score += 5;
+          });
+        }
+      } catch(e) {}
+    }
+    // Check product name
+    if (hints.some(h => nameLow.includes(h))) score += 3;
+    return score;
+  }
+
   if (likedCount > 0) {
     const avgPrice = likedPriceSum / likedCount;
     items.sort((a, b) => {
-      let sa = 0, sb = 0;
+      let sa = occasionScore(a), sb = occasionScore(b);
       if (likedCategories[a.categoria]) sa += likedCategories[a.categoria] * 2;
       if (likedCategories[b.categoria]) sb += likedCategories[b.categoria] * 2;
       sa -= Math.abs(a.precio - avgPrice) / 10000;
@@ -838,10 +875,12 @@ function buildQueue() {
       return sb - sa;
     });
   } else {
-    for (let i = items.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [items[i], items[j]] = [items[j], items[i]];
-    }
+    // Shuffle but prioritize occasion-relevant products
+    items.sort((a, b) => {
+      const da = occasionScore(a), db = occasionScore(b);
+      if (da !== db) return db - da;
+      return Math.random() - 0.5;
+    });
   }
   return items;
 }
