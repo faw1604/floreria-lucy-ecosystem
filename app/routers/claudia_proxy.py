@@ -16,6 +16,8 @@ router = APIRouter()
 AGENTKIT_URL = os.getenv("AGENTKIT_URL", "https://whatsapp-agentkit-production-4e69.up.railway.app")
 AGENTKIT_API_KEY = os.getenv("AGENTKIT_API_KEY", "")
 
+logger.info(f"[CLAUDIA PROXY] URL={AGENTKIT_URL}, API_KEY={'SET' if AGENTKIT_API_KEY else 'EMPTY'}")
+
 
 def _auth(panel_session):
     if not verificar_sesion(panel_session):
@@ -30,102 +32,96 @@ def _headers() -> dict:
     return h
 
 
+async def _proxy_get(url, params=None):
+    """GET request al agentkit con manejo de errores."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.get(url, headers=_headers(), params=params)
+            if r.status_code != 200:
+                logger.error(f"[CLAUDIA PROXY] GET {url} → {r.status_code}: {r.text[:200]}")
+                raise HTTPException(status_code=r.status_code, detail=f"Agentkit error: {r.status_code}")
+            return r.json()
+    except httpx.HTTPError as e:
+        logger.error(f"[CLAUDIA PROXY] GET {url} → httpx error: {e}")
+        raise HTTPException(status_code=502, detail=f"Error conectando al agentkit: {e}")
+
+
+async def _proxy_post(url, data):
+    """POST request al agentkit con manejo de errores."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(url, json=data, headers=_headers())
+            if r.status_code != 200:
+                logger.error(f"[CLAUDIA PROXY] POST {url} → {r.status_code}: {r.text[:200]}")
+                detail = "Error del agentkit"
+                try:
+                    detail = r.json().get("detail", detail)
+                except Exception:
+                    pass
+                raise HTTPException(status_code=r.status_code, detail=detail)
+            return r.json()
+    except httpx.HTTPError as e:
+        logger.error(f"[CLAUDIA PROXY] POST {url} → httpx error: {e}")
+        raise HTTPException(status_code=502, detail=f"Error conectando al agentkit: {e}")
+
+
+async def _proxy_delete(url):
+    """DELETE request al agentkit con manejo de errores."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.delete(url, headers=_headers())
+            if r.status_code != 200:
+                logger.error(f"[CLAUDIA PROXY] DELETE {url} → {r.status_code}: {r.text[:200]}")
+                raise HTTPException(status_code=r.status_code, detail=f"Agentkit error: {r.status_code}")
+            return r.json()
+    except httpx.HTTPError as e:
+        logger.error(f"[CLAUDIA PROXY] DELETE {url} → httpx error: {e}")
+        raise HTTPException(status_code=502, detail=f"Error conectando al agentkit: {e}")
+
+
 @router.get("/chats")
 async def claudia_chats(panel_session: str | None = Cookie(default=None)):
-    """Lista chats activos desde el agentkit."""
     _auth(panel_session)
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(f"{AGENTKIT_URL}/chats-activos", headers=_headers())
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail="Error al obtener chats")
-        return r.json()
+    return await _proxy_get(f"{AGENTKIT_URL}/chats-activos")
 
 
 @router.post("/bloquear")
 async def claudia_bloquear(request: Request, panel_session: str | None = Cookie(default=None)):
-    """Bloquea chat para intervención humana."""
     _auth(panel_session)
-    data = await request.json()
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.post(f"{AGENTKIT_URL}/bloquear-chat", json=data, headers=_headers())
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail="Error al bloquear chat")
-        return r.json()
+    return await _proxy_post(f"{AGENTKIT_URL}/bloquear-chat", await request.json())
 
 
 @router.post("/liberar")
 async def claudia_liberar(request: Request, panel_session: str | None = Cookie(default=None)):
-    """Libera chat de vuelta a Claudia."""
     _auth(panel_session)
-    data = await request.json()
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.post(f"{AGENTKIT_URL}/liberar-chat", json=data, headers=_headers())
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail="Error al liberar chat")
-        return r.json()
+    return await _proxy_post(f"{AGENTKIT_URL}/liberar-chat", await request.json())
 
 
 @router.get("/historial/{telefono}")
 async def claudia_historial(telefono: str, limite: int = 50, panel_session: str | None = Cookie(default=None)):
-    """Obtiene historial de conversación."""
     _auth(panel_session)
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(
-            f"{AGENTKIT_URL}/historial-chat/{telefono}",
-            params={"limite": limite},
-            headers=_headers(),
-        )
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail="Error al obtener historial")
-        return r.json()
+    return await _proxy_get(f"{AGENTKIT_URL}/historial-chat/{telefono}", params={"limite": limite})
 
 
 @router.post("/enviar-mensaje")
 async def claudia_enviar_mensaje(request: Request, panel_session: str | None = Cookie(default=None)):
-    """Envía mensaje de WhatsApp en nombre del humano."""
     _auth(panel_session)
-    data = await request.json()
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(f"{AGENTKIT_URL}/enviar-mensaje-humano", json=data, headers=_headers())
-        if r.status_code != 200:
-            detail = "Error al enviar mensaje"
-            try:
-                detail = r.json().get("detail", detail)
-            except Exception:
-                pass
-            raise HTTPException(status_code=r.status_code, detail=detail)
-        return r.json()
+    return await _proxy_post(f"{AGENTKIT_URL}/enviar-mensaje-humano", await request.json())
 
 
 @router.get("/notas/{telefono}")
 async def claudia_notas(telefono: str, panel_session: str | None = Cookie(default=None)):
-    """Obtiene notas internas de un chat."""
     _auth(panel_session)
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(f"{AGENTKIT_URL}/notas-chat/{telefono}", headers=_headers())
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail="Error al obtener notas")
-        return r.json()
+    return await _proxy_get(f"{AGENTKIT_URL}/notas-chat/{telefono}")
 
 
 @router.post("/notas")
 async def claudia_guardar_nota(request: Request, panel_session: str | None = Cookie(default=None)):
-    """Guarda nota interna para un chat."""
     _auth(panel_session)
-    data = await request.json()
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.post(f"{AGENTKIT_URL}/notas-chat", json=data, headers=_headers())
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail="Error al guardar nota")
-        return r.json()
+    return await _proxy_post(f"{AGENTKIT_URL}/notas-chat", await request.json())
 
 
 @router.delete("/notas/{nota_id}")
 async def claudia_eliminar_nota(nota_id: int, panel_session: str | None = Cookie(default=None)):
-    """Elimina nota interna."""
     _auth(panel_session)
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.delete(f"{AGENTKIT_URL}/notas-chat/{nota_id}", headers=_headers())
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail="Error al eliminar nota")
-        return r.json()
+    return await _proxy_delete(f"{AGENTKIT_URL}/notas-chat/{nota_id}")
