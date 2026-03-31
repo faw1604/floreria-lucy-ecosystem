@@ -401,6 +401,7 @@ function renderTracking(data) {
       html += `
         <div class="change-card" id="change-card">
           <h3>${titulo}</h3>
+          ${data.florista_cambio.item_original ? `<p style="font-size:13px;margin-bottom:6px">Para reemplazar: <strong>${escHtml(data.florista_cambio.item_original)}</strong></p>` : ''}
           ${data.florista_cambio.nota ? `<div class="nota">${escHtml(data.florista_cambio.nota)}</div>` : ''}
           <p style="font-size:13px;font-weight:600;margin-bottom:10px">Elige una opción:</p>
           <div id="cambio-opciones" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">

@@ -507,6 +507,7 @@ async def seguimiento_pedido(token: str, db: AsyncSession = Depends(get_db)):
             florista_cambio = {
                 "tipo": "cambio",
                 "nota": cambio_data.get("nota", ""),
+                "item_original": cambio_data.get("item_original"),
                 "opciones": opciones,
                 "requiere_respuesta": True,
             }

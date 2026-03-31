@@ -295,15 +295,24 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
 <!-- Modal: Sugerir Cambio de Arreglo -->
 <div class="modal-overlay" id="modal-cambio" onclick="if(event.target===this)closeModal('modal-cambio')">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:500px">
     <button class="modal-close" onclick="closeModal('modal-cambio')">&times;</button>
     <div class="modal-title">Sugerir cambio de arreglo</div>
-    <p style="font-size:12px;color:var(--texto2);margin-bottom:8px">Selecciona hasta 3 opciones para el cliente</p>
-    <div id="cambio-selected" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
-    <input class="modal-input" id="cambio-buscar" placeholder="Buscar producto..." oninput="buscarProductosCambio()">
-    <div id="cambio-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;margin-bottom:12px"></div>
-    <div class="field" style="margin-bottom:12px"><label style="font-size:12px;color:var(--texto2)">Nota para el cliente (opcional)</label><input class="modal-input" id="cambio-nota" placeholder="Ej: No tenemos rosas rojas, te sugerimos estas opciones..."></div>
-    <button class="modal-submit" id="cambio-submit" disabled>Confirmar sugerencia</button>
+    <!-- Step 1: Select which item to change -->
+    <div id="cambio-step-items">
+      <p style="font-size:12px;color:var(--texto2);margin-bottom:8px">¿Cuál arreglo quieres cambiar?</p>
+      <div id="cambio-items-list"></div>
+    </div>
+    <!-- Step 2: Select replacement options -->
+    <div id="cambio-step-options" style="display:none">
+      <div id="cambio-item-changing" style="font-size:13px;font-weight:600;margin-bottom:8px;padding:8px;background:#fef3c7;border-radius:8px"></div>
+      <p style="font-size:12px;color:var(--texto2);margin-bottom:8px">Selecciona hasta 3 opciones de reemplazo</p>
+      <div id="cambio-selected" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+      <input class="modal-input" id="cambio-buscar" placeholder="Buscar producto..." oninput="buscarProductosCambio()">
+      <div id="cambio-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;margin-bottom:12px"></div>
+      <div class="field" style="margin-bottom:12px"><label style="font-size:12px;color:var(--texto2)">Nota para el cliente (opcional)</label><input class="modal-input" id="cambio-nota" placeholder="Ej: No tenemos rosas rojas, te sugerimos estas opciones..."></div>
+      <button class="modal-submit" id="cambio-submit" disabled>Confirmar sugerencia</button>
+    </div>
   </div>
 </div>
 
@@ -687,12 +696,14 @@ function formatFecha(str) {
 }
 
 // ─── LOAD: Nuevos ───
+let nuevosCache = {};
 async function loadNuevos() {
   try {
     const r = await fetch(`${TALLER_API}/nuevos`, {credentials:'include'});
     if (r.status === 401) { window.location.href = '/panel/'; return; }
     if (!r.ok) return;
     const data = await r.json();
+    data.forEach(p => nuevosCache[p.id] = p);
     const el = document.getElementById('nuevos-body');
     if (!data.length) { el.innerHTML = '<div class="empty">🌸 No hay pedidos nuevos</div>'; return; }
     el.innerHTML = '<div class="kds-grid">' + data.map(renderCardNuevos).join('') + '</div>';
@@ -920,13 +931,50 @@ function accionModificar(id) {
 // 3. 🔄 SUGERIR CAMBIO DE ARREGLO — modal buscar producto, estado_florista=cambio_sugerido
 let allProductosBuscar = [];
 let selectedProductosCambio = [];
+let cambioItemOriginal = null;
 
 function accionCambio(id) {
   currentModalId = id;
   selectedProductosCambio = [];
+  cambioItemOriginal = null;
+  const pedido = nuevosCache[id];
+  const items = pedido ? pedido.items : [];
+
+  // If single item, skip item selection step
+  if (items.length <= 1) {
+    cambioItemOriginal = items[0] || null;
+    showCambioStep2();
+  } else {
+    // Show item selection step
+    document.getElementById('cambio-step-items').style.display = '';
+    document.getElementById('cambio-step-options').style.display = 'none';
+    document.getElementById('cambio-items-list').innerHTML = items.map((it, i) =>
+      `<div onclick="selectCambioItem(${i})" style="display:flex;align-items:center;gap:10px;padding:10px;border:2px solid var(--borde);border-radius:10px;cursor:pointer;margin-bottom:6px;transition:all .2s" onmouseover="this.style.borderColor='var(--dorado)'" onmouseout="this.style.borderColor='var(--borde)'">
+        ${it.imagen_url ? `<img src="${esc(it.imagen_url)}" style="width:40px;height:40px;border-radius:6px;object-fit:cover">` : '<div style="width:40px;height:40px;background:var(--borde);border-radius:6px"></div>'}
+        <div style="flex:1"><div style="font-weight:600;font-size:13px">${esc(it.nombre)}</div><div style="font-size:11px;color:var(--texto2)">${it.codigo || ''} x${it.cantidad}</div></div>
+      </div>`
+    ).join('');
+  }
+  document.getElementById('modal-cambio').classList.add('active');
+  if (!allProductosBuscar.length) loadProductosBuscar();
+}
+
+function selectCambioItem(index) {
+  const pedido = nuevosCache[currentModalId];
+  cambioItemOriginal = pedido.items[index];
+  showCambioStep2();
+}
+
+function showCambioStep2() {
+  document.getElementById('cambio-step-items').style.display = 'none';
+  document.getElementById('cambio-step-options').style.display = '';
+  document.getElementById('cambio-item-changing').innerHTML = cambioItemOriginal
+    ? `Cambiando: <strong>${esc(cambioItemOriginal.nombre)}</strong>${cambioItemOriginal.codigo ? ' ('+esc(cambioItemOriginal.codigo)+')' : ''}`
+    : '';
   document.getElementById('cambio-buscar').value = '';
   document.getElementById('cambio-results').innerHTML = '';
   document.getElementById('cambio-nota').value = '';
+  selectedProductosCambio = [];
   renderCambioSelected();
   document.getElementById('cambio-submit').disabled = true;
   document.getElementById('cambio-submit').onclick = async () => {
@@ -935,7 +983,11 @@ function accionCambio(id) {
       id: p.id, nombre: p.nombre, codigo: p.codigo, precio: p.precio, imagen_url: p.imagen_url
     }));
     const nota_text = document.getElementById('cambio-nota').value.trim();
-    const payload = JSON.stringify({opciones, nota: nota_text});
+    const payload = JSON.stringify({
+      item_original: cambioItemOriginal ? cambioItemOriginal.nombre : null,
+      opciones,
+      nota: nota_text
+    });
     await fetch(`${TALLER_API}/pedidos/${currentModalId}/sugerir-cambio`, {
       method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
       body: JSON.stringify({nota: payload})
@@ -943,8 +995,6 @@ function accionCambio(id) {
     closeModal('modal-cambio');
     loadNuevos(); loadBadges();
   };
-  document.getElementById('modal-cambio').classList.add('active');
-  if (!allProductosBuscar.length) loadProductosBuscar();
 }
 
 async function loadProductosBuscar() {
