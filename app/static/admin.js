@@ -1307,7 +1307,14 @@ async function guardarEgreso(id) {
     }
     cerrarModal('modal-egreso');
     showToast('Gasto guardado ✓');
-    await loadEgresos();
+    // Ajustar filtro para que incluya la fecha del gasto guardado
+    const {desde, hasta} = getFinDates();
+    if (body.fecha < desde || body.fecha > hasta) {
+      document.getElementById('fin-periodo').value = 'mes';
+      onFinPeriodoChange();
+    } else {
+      await loadEgresos();
+    }
   } catch(e) {
     alert('Error de conexión al guardar egreso');
   }
