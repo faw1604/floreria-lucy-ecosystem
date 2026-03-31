@@ -867,6 +867,9 @@ function renderRealizados(data) {
         <div class="kds-items" style="font-size:12px">${itemsCompacto(p.items)}</div>
         <div class="kds-detail">🔧 Listo: ${listoTime} — 📦 Entregado: ${entregadoTime}${duracion ? ` — ⏱ ${duracion}` : ''}</div>
       </div>
+      <div class="kds-actions" style="padding:8px 12px;border-top:1px solid var(--borde)">
+        <button class="act-btn btn-secondary" onclick="event.stopPropagation();imprimirEtiqueta(${p.id})" style="font-size:12px">🖨 Reimprimir etiqueta</button>
+      </div>
     </div>`;
   });
   html += '</div>';

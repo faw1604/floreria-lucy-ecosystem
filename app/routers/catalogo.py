@@ -407,6 +407,7 @@ async def _crear_pedido_web_inner(request, db):
         envio=0,
         total=subtotal,
         tipo_especial="Funeral" if tipo == "funeral" else ("Recoger" if tipo == "recoger" else None),
+        metodo_entrega="funeral_envio" if tipo == "funeral" else ("recoger" if tipo == "recoger" else "envio"),
         requiere_factura=data.get("requiere_factura", False),
         tracking_token=tracking_token,
     )
