@@ -73,3 +73,18 @@ async def inicializar_db():
             _log.info("Tabla reservas: OK")
         except Exception as e:
             _log.error(f"Tabla reservas ERROR: {e}")
+
+    # 4. Seed configuración negocio
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        _seeds = [
+            ("clave_admin_pos", "1234", "Clave admin para cancelar/editar transacciones en POS"),
+        ]
+        for clave, valor, desc in _seeds:
+            try:
+                await conn.execute(text(
+                    "INSERT INTO configuracion_negocio (clave, valor, descripcion) "
+                    "VALUES (:c, :v, :d) ON CONFLICT (clave) DO NOTHING"
+                ), {"c": clave, "v": valor, "d": desc})
+            except Exception:
+                pass

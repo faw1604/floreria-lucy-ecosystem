@@ -13,6 +13,7 @@ from app.models.clientes import Cliente
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.pagos import MetodoPago
 from app.models.funerarias import Funeraria
+from app.models.configuracion import ConfiguracionNegocio
 from app.core.config import TZ
 from app.core.utils import ahora, hoy, generar_folio
 from app.core.estados import EstadoPedido as EP, EstadoFlorista as EF, MetodoEntrega as ME
@@ -1022,6 +1023,27 @@ async def pos_corte_caja(
         "total": round(total / 100, 2),
         "por_metodo": {k: round(v / 100, 2) for k, v in por_metodo.items()},
     }
+
+
+@router.post("/verificar-clave-admin")
+async def pos_verificar_clave_admin(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    data = await request.json()
+    clave_ingresada = data.get("clave", "")
+    result = await db.execute(
+        select(ConfiguracionNegocio).where(ConfiguracionNegocio.clave == "clave_admin_pos")
+    )
+    config = result.scalar_one_or_none()
+    if not config:
+        raise HTTPException(status_code=500, detail="Clave admin no configurada")
+    if clave_ingresada != config.valor:
+        raise HTTPException(status_code=403, detail="Clave incorrecta")
+    return {"ok": True}
 
 
 @router.patch("/pedido/{pedido_id}/cancelar")

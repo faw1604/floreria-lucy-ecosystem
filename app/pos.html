@@ -403,6 +403,19 @@
   </div>
 </div>
 
+<!-- Modal: Clave admin para acciones en transacciones -->
+<div class="modal-bg" id="modal-clave-admin" onclick="if(event.target===this)cerrarClaveAdmin()">
+  <div class="modal" style="max-width:360px;text-align:center">
+    <button class="close" onclick="cerrarClaveAdmin()">&times;</button>
+    <div style="font-size:28px;margin-bottom:8px">🔐</div>
+    <h3 style="margin-bottom:4px">Autorización requerida</h3>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:16px">Ingresa la clave de administrador para continuar</p>
+    <input type="password" id="clave-admin-input" placeholder="Clave de administrador" style="width:100%;padding:10px 12px;border:1px solid var(--borde);border-radius:8px;font-size:14px;text-align:center;letter-spacing:4px;margin-bottom:8px" onkeydown="if(event.key==='Enter')validarClaveAdmin()">
+    <p id="clave-admin-error" style="color:var(--rojo);font-size:12px;margin-bottom:8px;display:none">Clave incorrecta</p>
+    <button onclick="validarClaveAdmin()" style="width:100%;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px">Confirmar</button>
+  </div>
+</div>
+
 <!-- Modal: Cancelar transacción -->
 <div class="modal-bg" id="modal-cancelar-trans" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="modal" style="max-width:360px;text-align:center">

@@ -1943,12 +1943,48 @@ function filtrarTablaTrans() {
   renderTransTable(filtered);
 }
 
-// Cancelar desde transacciones — modal con advertencia de finanzas
+// ═══════════════════════════════════════════
+// CLAVE ADMIN — protege cancelar/editar en transacciones
+// ═══════════════════════════════════════════
+let _claveAdminCallback = null;
+function pedirClaveAdmin(callback) {
+  _claveAdminCallback = callback;
+  document.getElementById('clave-admin-input').value = '';
+  document.getElementById('clave-admin-error').style.display = 'none';
+  document.getElementById('modal-clave-admin').classList.add('active');
+  setTimeout(() => document.getElementById('clave-admin-input').focus(), 100);
+}
+function cerrarClaveAdmin() {
+  document.getElementById('modal-clave-admin').classList.remove('active');
+  _claveAdminCallback = null;
+}
+async function validarClaveAdmin() {
+  const clave = document.getElementById('clave-admin-input').value;
+  if (!clave) return;
+  try {
+    const r = await fetch('/pos/verificar-clave-admin', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ clave })
+    });
+    if (!r.ok) {
+      document.getElementById('clave-admin-error').style.display = 'block';
+      document.getElementById('clave-admin-input').value = '';
+      document.getElementById('clave-admin-input').focus();
+      return;
+    }
+    document.getElementById('modal-clave-admin').classList.remove('active');
+    if (_claveAdminCallback) { _claveAdminCallback(); _claveAdminCallback = null; }
+  } catch(e) { alert('Error de red'); }
+}
+
+// Cancelar desde transacciones — requiere clave admin
 let cancelTransId = null;
 function pedirCancelarTrans(id, folio) {
   cancelTransId = id;
   document.getElementById('cancel-trans-folio').textContent = folio;
-  document.getElementById('modal-cancelar-trans').classList.add('active');
+  pedirClaveAdmin(() => {
+    document.getElementById('modal-cancelar-trans').classList.add('active');
+  });
 }
 async function confirmarCancelarTrans() {
   document.getElementById('modal-cancelar-trans').classList.remove('active');
@@ -2598,6 +2634,9 @@ function addReservaAlCarrito(id, nombre, precio, imgUrl, productoId) {
 // EDITAR FECHA DE PEDIDO
 // ═══════════════════════════════════════════
 function editarFechaPedido(id, folio, fecha, horario, hora) {
+  pedirClaveAdmin(() => _abrirEditarFecha(id, folio, fecha, horario, hora));
+}
+function _abrirEditarFecha(id, folio, fecha, horario, hora) {
   const html = `<div class="modal-bg active" id="modal-edit-fecha" onclick="if(event.target===this)this.classList.remove('active')">
     <div class="modal">
       <button class="close" onclick="document.getElementById('modal-edit-fecha').remove()">&times;</button>
