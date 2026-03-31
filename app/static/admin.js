@@ -899,7 +899,8 @@ async function enviarCatalogo() {
   const result = document.getElementById('catalogo-result');
   if (!tel || tel.length < 7) { result.textContent = 'Ingresa un telefono valido'; result.style.color = 'var(--rojo)'; return; }
 
-  const telefono = pais + tel;
+  // Mexico: agregar "1" después del código de país (521XXXXXXXXXX)
+  const telefono = pais === '52' ? '521' + tel : pais + tel;
   const baseUrl = location.origin + '/catalogo/';
   let mensaje = '';
   if (_catalogoTipo === 'general') {
