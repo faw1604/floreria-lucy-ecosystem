@@ -571,11 +571,39 @@ async def responder_seguimiento(token: str, request: Request, db: AsyncSession =
     if acepta:
         pedido.estado_florista = "pendiente_aprobacion"
         if producto_elegido_id:
-            # Look up product name for the note
+            # Look up the new product
             prod_result = await db.execute(select(Producto).where(Producto.id == producto_elegido_id))
             prod = prod_result.scalar_one_or_none()
             prod_name = prod.nombre if prod else f"ID:{producto_elegido_id}"
             nota_respuesta = f"[CLIENTE ELIGE: {prod_name}] {mensaje}".strip()
+
+            # Replace the original item in the order
+            if prod and pedido.nota_florista:
+                import json
+                try:
+                    cambio_data = json.loads(pedido.nota_florista)
+                    item_original_name = cambio_data.get("item_original")
+                    if item_original_name:
+                        # Find the ItemPedido matching the original product name
+                        items_result = await db.execute(
+                            select(ItemPedido).where(ItemPedido.pedido_id == pedido.id)
+                        )
+                        for item in items_result.scalars().all():
+                            old_prod = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+                            old_prod = old_prod.scalar_one_or_none()
+                            if old_prod and old_prod.nombre == item_original_name:
+                                # Replace with new product
+                                old_price = item.precio_unitario * item.cantidad
+                                item.producto_id = prod.id
+                                new_price_unit = prod.precio_descuento if (prod.precio_descuento and prod.precio_descuento < prod.precio) else prod.precio
+                                item.precio_unitario = new_price_unit
+                                # Recalculate totals
+                                new_price = new_price_unit * item.cantidad
+                                pedido.subtotal = pedido.subtotal - old_price + new_price
+                                pedido.total = pedido.total - old_price + new_price
+                                break
+                except (json.JSONDecodeError, TypeError):
+                    pass
         else:
             nota_respuesta = f"[CLIENTE ACEPTA CAMBIO] {mensaje}" if mensaje else "[CLIENTE ACEPTA CAMBIO]"
     else:
