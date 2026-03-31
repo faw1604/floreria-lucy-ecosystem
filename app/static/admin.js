@@ -771,6 +771,10 @@ async function loadClaudia() {
     const modo = cfg.temporada_modo || 'regular';
     actualizarModoUI(modo);
 
+    // Show/hide temporada catalog button
+    const btnTemp = document.getElementById('btn-catalogo-temporada');
+    if (btnTemp) btnTemp.style.display = modo === 'alta' ? '' : 'none';
+
     // Alta config fields
     document.getElementById('temp-envio').value = Math.round(parseInt(cfg.temporada_envio_unico || '9900') / 100);
     document.getElementById('temp-fecha').value = cfg.temporada_fecha_fuerte || '';
@@ -872,6 +876,67 @@ async function toggleConfig(clave, valor) {
 
 async function saveConfigField(clave, valor) {
   await toggleConfig(clave, valor);
+}
+
+// ══════ ENVIAR CATÁLOGO ══════
+let _catalogoTipo = 'general';
+
+function selCatalogoTipo(tipo, btn) {
+  _catalogoTipo = tipo;
+  document.querySelectorAll('.catalogo-tipo-btn').forEach(b => {
+    b.classList.remove('active');
+    b.style.borderColor = 'var(--borde)';
+    b.style.background = '';
+  });
+  btn.classList.add('active');
+  btn.style.borderColor = 'var(--verde)';
+  btn.style.background = 'rgba(45,90,61,0.08)';
+}
+
+async function enviarCatalogo() {
+  const pais = document.getElementById('catalogo-pais').value;
+  const tel = document.getElementById('catalogo-telefono').value.trim().replace(/\D/g, '');
+  const result = document.getElementById('catalogo-result');
+  if (!tel || tel.length < 7) { result.textContent = 'Ingresa un telefono valido'; result.style.color = 'var(--rojo)'; return; }
+
+  const telefono = pais + tel;
+  const baseUrl = location.origin + '/catalogo/';
+  let mensaje = '';
+  if (_catalogoTipo === 'general') {
+    mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de Floreria Lucy: ${baseUrl}`;
+  } else if (_catalogoTipo === 'funeral') {
+    mensaje = `🕊️ Aqui te comparto nuestro catalogo de arreglos funerales: ${baseUrl}`;
+  } else if (_catalogoTipo === 'temporada') {
+    mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de temporada: ${baseUrl}`;
+  }
+
+  const btn = document.getElementById('btn-enviar-catalogo');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  result.textContent = '';
+
+  try {
+    const r = await fetch(API + '/api/claudia/enviar-catalogo', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({telefono, mensaje})
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      result.textContent = err.detail || 'Error al enviar';
+      result.style.color = 'var(--rojo)';
+      return;
+    }
+    result.textContent = 'Enviado ✓';
+    result.style.color = 'var(--verde)';
+    document.getElementById('catalogo-telefono').value = '';
+    showToast('Catalogo enviado por WhatsApp');
+    // Refresh chats
+    setTimeout(loadClaudiaChats, 2000);
+  } catch(e) {
+    result.textContent = 'Error de conexion';
+    result.style.color = 'var(--rojo)';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enviar por Claudia';
+  }
 }
 
 // ══════ CLAUDIA CHATS ══════

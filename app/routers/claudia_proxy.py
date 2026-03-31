@@ -109,6 +109,13 @@ async def claudia_enviar_mensaje(request: Request, panel_session: str | None = C
     return await _proxy_post(f"{AGENTKIT_URL}/enviar-mensaje-humano", await request.json())
 
 
+@router.post("/enviar-catalogo")
+async def claudia_enviar_catalogo(request: Request, panel_session: str | None = Cookie(default=None)):
+    """Envía mensaje como Claudia (sin bloquear chat). Para catálogos, etc."""
+    _auth(panel_session)
+    return await _proxy_post(f"{AGENTKIT_URL}/enviar-mensaje-claudia", await request.json())
+
+
 @router.get("/notas/{telefono}")
 async def claudia_notas(telefono: str, panel_session: str | None = Cookie(default=None)):
     _auth(panel_session)
