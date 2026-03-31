@@ -326,11 +326,7 @@ async def aceptar_con_cambios(
     data = await request.json()
     nota = data.get("nota", "")
     pedido = await _get_pedido(pedido_id, db)
-    if pedido.pago_confirmado or pedido.canal == "Mostrador":
-        pedido.estado = EP.EN_PRODUCCION
-        pedido.produccion_at = ahora()
-    else:
-        pedido.estado = EP.PENDIENTE_PAGO
+    # No avanzar estado — esperar respuesta del cliente
     pedido.estado_florista = EF.APROBADO_CON_MODIFICACION
     pedido.nota_florista = nota
     await db.commit()
