@@ -4,6 +4,7 @@
 
 const API = '';
 const WHATSAPP = '5216143349392';
+let _clChatInterval = null;
 
 // ══════ NAVIGATION ══════
 function navTo(sec) {
@@ -875,7 +876,6 @@ async function saveConfigField(clave, valor) {
 
 // ══════ CLAUDIA CHATS ══════
 let _clChatsData = [];
-let _clChatInterval = null;
 let _clResponderTel = '';
 
 async function loadClaudiaChats() {
