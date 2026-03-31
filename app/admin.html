@@ -110,6 +110,13 @@
         <label>Bot activo</label>
         <input type="checkbox" id="claudia-toggle" onchange="toggleConfig('claudia_activa', this.checked)">
       </div>
+      <div class="toggle-row">
+        <div>
+          <label>Tienda abierta</label>
+          <div style="font-size:11px;color:var(--texto2)">Desactivar para cierre manual (vacaciones, cierre especial)</div>
+        </div>
+        <input type="checkbox" id="claudia-abierto" onchange="toggleConfig('claudia_abierto', this.checked)">
+      </div>
       <div class="config-field" style="margin-top:12px">
         <label>Mensaje de bienvenida</label>
         <textarea id="claudia-msg" rows="3" onchange="saveConfigField('claudia_mensaje_bienvenida', this.value)"></textarea>

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Cookie
+import os
+from fastapi import APIRouter, Depends, HTTPException, Cookie, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
@@ -7,11 +8,28 @@ from app.routers.auth import verificar_sesion
 
 router = APIRouter()
 
+CLAUDIA_API_KEY = os.getenv("CLAUDIA_API_KEY", "")
+
 
 async def obtener_config_dict(db: AsyncSession) -> dict:
     """Retorna todas las configs como dict {clave: valor}."""
     result = await db.execute(select(ConfiguracionNegocio))
     return {c.clave: c.valor for c in result.scalars().all()}
+
+
+@router.get("/claudia-config")
+async def config_para_claudia(
+    x_claudia_key: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Endpoint para que Claudia lea su config del ecosistema."""
+    if not CLAUDIA_API_KEY or x_claudia_key != CLAUDIA_API_KEY:
+        raise HTTPException(status_code=401, detail="API key inválida")
+    cfg = await obtener_config_dict(db)
+    return {
+        "claudia_activa": cfg.get("claudia_activa", "true") == "true",
+        "abierto": cfg.get("claudia_abierto", "true") == "true",
+    }
 
 
 @router.get("/")

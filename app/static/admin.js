@@ -765,6 +765,7 @@ async function loadClaudia() {
 
     // Bot controls
     document.getElementById('claudia-toggle').checked = cfg.claudia_activa === 'true';
+    document.getElementById('claudia-abierto').checked = (cfg.claudia_abierto || 'true') === 'true';
     document.getElementById('claudia-msg').value = cfg.claudia_mensaje_bienvenida || '';
 
     // Temporada mode
