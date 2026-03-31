@@ -2104,6 +2104,7 @@ async function loadConfig() {
     ], cfg);
     renderCfgBancarios(cfg);
     renderCfgSection('cfg-ticket', [
+      {k:'clave_admin_pos',l:'Clave admin (cancelar/editar transacciones)',secret:true},
       {k:'ticket_mostrar_rfc',l:'Mostrar RFC en tickets',type:'toggle'},
       {k:'ticket_mensaje_footer',l:'Footer ticket digital'},
       {k:'ticket_termico_mensaje',l:'Footer ticket térmico'},
