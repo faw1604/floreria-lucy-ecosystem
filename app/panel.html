@@ -325,17 +325,35 @@ async function loadRefInfo(id) {
   } catch(e) {}
 }
 
+let panelPollingIds = [];
 function initPanel() {
-  updateClock();
-  setInterval(updateClock, 30000);
-  loadStats();
-  loadPedidosHoy();
-  loadAlertasFechas();
-  loadBadgePagosPend();
-  setInterval(loadStats, 60000);
-  setInterval(loadPedidosHoy, 60000);
-  setInterval(loadBadgePagosPend, 60000);
+    updateClock();
+    setInterval(updateClock, 30000);
+    // Load all in parallel
+    Promise.all([loadStats(), loadPedidosHoy(), loadAlertasFechas(), loadBadgePagosPend()]);
+    startPanelPolling();
 }
+function startPanelPolling() {
+    stopPanelPolling();
+    panelPollingIds = [
+        setInterval(loadStats, 60000),
+        setInterval(loadPedidosHoy, 60000),
+        setInterval(loadBadgePagosPend, 60000),
+    ];
+}
+function stopPanelPolling() {
+    panelPollingIds.forEach(id => clearInterval(id));
+    panelPollingIds = [];
+}
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        Promise.all([loadStats(), loadPedidosHoy(), loadBadgePagosPend()]);
+        startPanelPolling();
+    } else {
+        stopPanelPolling();
+    }
+});
+window.addEventListener('focus', () => { loadBadgePagosPend(); });
 
 async function loadAlertasFechas() {
   try {

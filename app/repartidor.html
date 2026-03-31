@@ -675,7 +675,17 @@ function verFotoFull(url) {
 }
 
 // ─── Polling ───
-setInterval(() => loadEntregas(), 30000);
+let repartidorPollingId = setInterval(() => loadEntregas(), 30000);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        loadEntregas();
+        if (!repartidorPollingId) repartidorPollingId = setInterval(() => loadEntregas(), 30000);
+    } else {
+        clearInterval(repartidorPollingId);
+        repartidorPollingId = null;
+    }
+});
+window.addEventListener('focus', () => { loadEntregas(); });
 
 // ─── Init ───
 checkSession();

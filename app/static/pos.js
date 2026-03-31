@@ -2469,12 +2469,14 @@ async function updateBadgePend() {
   } catch(e) { /* silent */ }
 }
 updateBadgePend();
-setInterval(updateBadgePend, 15000);
-
-// Auto-refresh on tab visibility change (user returns to browser)
+let posPollingId = setInterval(updateBadgePend, 15000);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     updateBadgePend();
+    if (!posPollingId) posPollingId = setInterval(updateBadgePend, 15000);
+  } else {
+    clearInterval(posPollingId);
+    posPollingId = null;
   }
 });
 window.addEventListener('focus', () => { updateBadgePend(); });

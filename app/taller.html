@@ -1362,10 +1362,23 @@ setInterval(updateClock, 1000);
 checkFechaFuerte();
 loadNuevos();
 loadBadges();
-setInterval(() => {
+let tallerPollingId = setInterval(() => {
   loadBadges();
   refreshTab(currentTab);
 }, 15000);
+
+// Refresh immediately when user returns, pause when hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    loadBadges();
+    refreshTab(currentTab);
+    if (!tallerPollingId) tallerPollingId = setInterval(() => { loadBadges(); refreshTab(currentTab); }, 15000);
+  } else {
+    clearInterval(tallerPollingId);
+    tallerPollingId = null;
+  }
+});
+window.addEventListener('focus', () => { loadBadges(); });
 </script>
 </body>
 </html>
