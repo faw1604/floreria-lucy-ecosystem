@@ -438,10 +438,12 @@ async def _crear_pedido_web_inner(request, db):
     await db.commit()
     await db.refresh(pedido)
 
-    # Enviar WhatsApp de confirmación (fire-and-forget)
+    # Enviar WhatsApp de confirmación con link de seguimiento (fire-and-forget)
+    tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={tracking_token}"
     msg = (
         f"Hola {nombre_cliente.split()[0]} 🌸 Recibimos tu pedido {numero} en Florería Lucy.\n"
-        f"En cuanto verifiquemos disponibilidad te contactamos con los datos para el pago.\n"
+        f"En cuanto verifiquemos disponibilidad te contactamos con los datos para el pago.\n\n"
+        f"Sigue el estado de tu pedido aquí:\n{tracking_url}\n\n"
         f"¡Gracias por tu preferencia!"
     )
     try:
