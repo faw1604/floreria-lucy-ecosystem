@@ -392,14 +392,16 @@ function renderTracking(data) {
 
   // Florista change suggestion
   if (data.florista_cambio && data.florista_cambio.requiere_respuesta && !respondido) {
+    const esCambio = data.florista_cambio.tipo === 'cambio';
+    const titulo = esCambio ? '🔄 Nuestro florista sugiere un cambio' : '✏️ Nuestro florista hizo una modificación';
     html += `
       <div class="change-card" id="change-card">
-        <h3>💬 Mensaje de nuestro florista</h3>
+        <h3>${titulo}</h3>
         <div class="nota">${escHtml(data.florista_cambio.nota)}</div>
         <textarea id="respuesta-msg" placeholder="Escribe un mensaje (opcional)"></textarea>
         <div class="change-btns">
           <button class="btn-reject" onclick="responderCambio(false)">No acepto</button>
-          <button class="btn-accept" onclick="responderCambio(true)">Acepto el cambio</button>
+          <button class="btn-accept" onclick="responderCambio(true)">${esCambio ? 'Acepto el cambio' : 'De acuerdo'}</button>
         </div>
       </div>
     `;

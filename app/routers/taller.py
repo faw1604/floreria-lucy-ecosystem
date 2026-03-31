@@ -334,6 +334,28 @@ async def aceptar_con_cambios(
     pedido.estado_florista = EF.APROBADO_CON_MODIFICACION
     pedido.nota_florista = nota
     await db.commit()
+
+    # Notify customer via WhatsApp with tracking link
+    if pedido.tracking_token and pedido.customer_id:
+        try:
+            from sqlalchemy import select as sel
+            from app.models.clientes import Cliente
+            cliente_result = await db.execute(sel(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                msg = (
+                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"Nuestro florista hizo una modificación a tu pedido {pedido.numero}:\n\n"
+                    f"✏️ \"{nota}\"\n\n"
+                    f"Revisa los detalles aquí:\n{tracking_url}"
+                )
+                from app.routers.catalogo import _enviar_whatsapp
+                await _enviar_whatsapp(cliente.telefono, msg)
+        except Exception as e:
+            import logging
+            logging.getLogger("floreria").error(f"WhatsApp modificación: {e}")
+
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
 
@@ -351,6 +373,28 @@ async def sugerir_cambio(
     pedido.estado_florista = EF.CAMBIO_SUGERIDO
     pedido.nota_florista = nota
     await db.commit()
+
+    # Notify customer via WhatsApp with tracking link
+    if pedido.tracking_token and pedido.customer_id:
+        try:
+            from sqlalchemy import select as sel
+            from app.models.clientes import Cliente
+            cliente_result = await db.execute(sel(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                msg = (
+                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"Nuestro florista tiene una sugerencia para tu pedido {pedido.numero}:\n\n"
+                    f"💬 \"{nota}\"\n\n"
+                    f"Revisa y responde aquí:\n{tracking_url}"
+                )
+                from app.routers.catalogo import _enviar_whatsapp
+                await _enviar_whatsapp(cliente.telefono, msg)
+        except Exception as e:
+            import logging
+            logging.getLogger("floreria").error(f"WhatsApp cambio sugerido: {e}")
+
     return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
 
 

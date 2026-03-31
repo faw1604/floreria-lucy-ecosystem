@@ -497,11 +497,19 @@ async def seguimiento_pedido(token: str, db: AsyncSession = Depends(get_db)):
     florista_cambio = None
     if pedido.estado_florista == "cambio_sugerido" and pedido.nota_florista:
         florista_cambio = {
+            "tipo": "cambio",
+            "nota": pedido.nota_florista,
+            "requiere_respuesta": True,
+        }
+    elif pedido.estado_florista == "aprobado_con_modificacion" and pedido.nota_florista:
+        florista_cambio = {
+            "tipo": "modificacion",
             "nota": pedido.nota_florista,
             "requiere_respuesta": True,
         }
     elif pedido.estado_florista == "rechazado":
         florista_cambio = {
+            "tipo": "rechazo",
             "nota": pedido.nota_florista or "No fue posible procesar tu pedido",
             "requiere_respuesta": False,
         }
@@ -533,7 +541,7 @@ async def responder_seguimiento(token: str, request: Request, db: AsyncSession =
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
-    if pedido.estado_florista != "cambio_sugerido":
+    if pedido.estado_florista not in ("cambio_sugerido", "aprobado_con_modificacion"):
         raise HTTPException(status_code=400, detail="No hay cambio pendiente de respuesta")
 
     data = await request.json()
