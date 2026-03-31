@@ -251,10 +251,10 @@ async def realizados(
     result = await db.execute(
         select(Pedido)
         .where(
-            Pedido.estado.in_([EP.ENTREGADO]),
+            Pedido.estado.in_(EP.FINALIZADOS + [EP.LISTO_TALLER, EP.EN_CAMINO]),
             Pedido.fecha_entrega == f,
         )
-        .order_by(Pedido.entregado_at.desc())
+        .order_by(Pedido.entregado_at.desc().nulls_last(), Pedido.fecha_pedido.desc())
     )
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]

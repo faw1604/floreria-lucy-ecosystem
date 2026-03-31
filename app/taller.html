@@ -950,14 +950,16 @@ function buscarProductosCambio() {
   ).slice(0, 10);
   document.getElementById('cambio-results').innerHTML = matches.map(p => {
     const sel = selectedProductoCambio && selectedProductoCambio.id === p.id;
-    return `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;${sel?'background:#dcfce7':''}" onclick="seleccionarProductoCambio(${p.id},'${esc(p.nombre)}','${esc(p.codigo||'')}')">
-      <span>${p.nombre}</span><span style="color:var(--texto2)">${p.codigo||''} — $${(p.precio||0)/100}</span>
+    return `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;${sel?'background:#dcfce7':''}" data-prod-id="${p.id}" onclick="seleccionarProductoCambioById(${p.id})">
+      <span>${esc(p.nombre)}</span><span style="color:var(--texto2)">${esc(p.codigo||'')} — $${(p.precio||0)/100}</span>
     </div>`;
   }).join('') || '<div style="padding:10px 12px;color:var(--texto2);font-size:13px">Sin resultados</div>';
 }
 
-function seleccionarProductoCambio(id, nombre, codigo) {
-  selectedProductoCambio = {id, nombre, codigo};
+function seleccionarProductoCambioById(id) {
+  const p = allProductosBuscar.find(x => x.id === id);
+  if (!p) return;
+  selectedProductoCambio = {id: p.id, nombre: p.nombre, codigo: p.codigo || ''};
   document.getElementById('cambio-submit').disabled = false;
   buscarProductosCambio();
 }
