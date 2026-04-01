@@ -321,8 +321,9 @@ function zonaBadge(z) {
 function telLink(t) {
   if (!t) return '';
   const d = t.replace(/\D/g,'');
-  const num = d.length === 10 ? '52' + d : d;
-  return `<a href="tel:${num}" style="color:var(--azul)">📞 ${t}</a>`;
+  // Para marcación local: solo 10 dígitos, sin prefijo 52
+  const num = d.startsWith('52') && d.length > 10 ? d.slice(d.length - 10) : d;
+  return `<a href="tel:${num}" style="color:var(--azul)">📞 ${num}</a>`;
 }
 function mapsLink(dir) {
   if (!dir) return '';
