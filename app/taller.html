@@ -656,10 +656,13 @@ function renderCardNuevos(p) {
     <div class="kds-body">
       ${pagoBanner}
       <div class="kds-badges">${badges}</div>
-      <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
+      <div class="kds-cliente">👤 ${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}${p.cliente_telefono ? ` · ${p.cliente_telefono}` : ''}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
-      ${p.fecha_entrega ? `<div class="kds-detail">📅 ${formatFecha(p.fecha_entrega)} — ${horarioLabel(p.horario_entrega, p.hora_exacta)}</div>` : ''}
+      <div class="kds-detail" style="font-weight:600">💰 $${((p.total||0)/100).toLocaleString()}</div>
+      ${p.fecha_entrega ? `<div class="kds-detail">📅 ${formatFecha(p.fecha_entrega)}${horarioLabel(p.horario_entrega, p.hora_exacta) ? ' — ' + horarioLabel(p.horario_entrega, p.hora_exacta) : ''}</div>` : ''}
       ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.direccion_entrega}</div>` : ''}
+      ${p.receptor_nombre && p.receptor_nombre !== p.cliente_nombre ? `<div class="kds-detail">🎁 Recibe: ${p.receptor_nombre}${p.receptor_telefono ? ' · ' + p.receptor_telefono : ''}</div>` : ''}
+      ${!p.direccion_entrega && p.receptor_telefono && p.receptor_nombre === p.cliente_nombre ? `<div class="kds-detail">📱 ${p.receptor_telefono}</div>` : ''}
       ${p.dedicatoria ? `<div class="kds-dedicatoria">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
       ${p.nota_florista ? `<div class="kds-notas" style="border-left-color:var(--azul)">Nota florista: ${p.nota_florista}</div>` : ''}
