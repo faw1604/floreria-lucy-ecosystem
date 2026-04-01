@@ -53,5 +53,6 @@ app.include_router(claudia_proxy.router, prefix="/api/claudia", tags=["claudia"]
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 @app.get("/")
-async def health_check():
-    return {"status": "ok", "service": "floreria-lucy-ecosystem"}
+async def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/catalogo/")
