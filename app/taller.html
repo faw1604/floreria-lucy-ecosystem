@@ -691,15 +691,22 @@ function renderCardProduccion(p) {
   const urg = urgencyClass(p);
   const cd = countdownHtml(p);
   const timerProd = tiempoDesde(p.produccion_at);
+  const esPendientePago = p.estado === 'pendiente_pago';
 
-  return `<div class="kds-card ${urg}" data-id="${p.id}">
+  let pagoBanner = '';
+  if (esPendientePago) {
+    pagoBanner = '<div style="background:#f59e0b;color:#fff;font-size:12px;font-weight:700;padding:8px 12px;margin:0 0 4px;text-align:center;border-radius:8px">⚠️ NO REALIZAR — FALTA PAGO</div>';
+  }
+
+  return `<div class="kds-card ${esPendientePago ? '' : urg}" data-id="${p.id}" ${esPendientePago ? 'style="opacity:.75;border:2px dashed #f59e0b"' : ''}>
     <div class="kds-card-head">
       <div>
         <div class="kds-num">${tipoIcon(p)} ${p.numero}</div>
       </div>
-      ${cd}
+      ${esPendientePago ? '<span style="color:#f59e0b;font-size:12px;font-weight:700">⏳ Pendiente pago</span>' : cd}
     </div>
     <div class="kds-body">
+      ${pagoBanner}
       <div class="kds-badges">${badges}</div>
       <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
@@ -707,13 +714,13 @@ function renderCardProduccion(p) {
       ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.zona_entrega ? 'Zona '+p.zona_entrega+' — ' : ''}${p.direccion_entrega}</div>` : ''}
       ${p.dedicatoria ? `<div class="kds-dedicatoria">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
-      ${timerProd ? `<div class="kds-detail" style="margin-top:4px">🔧 En produccion ${timerProd}</div>` : ''}
+      ${!esPendientePago && timerProd ? `<div class="kds-detail" style="margin-top:4px">🔧 En produccion ${timerProd}</div>` : ''}
     </div>
-    <div class="kds-actions">
+    ${esPendientePago ? '' : `<div class="kds-actions">
       <button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')">📷 Ver foto</button>
       <button class="act-btn btn-secondary" onclick="listoCurrentId=${p.id};listoImprimirEtiqueta2x1()">🏷 Etiqueta</button>
       <button class="act-btn btn-listo" onclick="accionListo(${p.id})">✅ LISTO</button>
-    </div>
+    </div>`}
   </div>`;
 }
 
