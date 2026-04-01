@@ -2886,7 +2886,9 @@ async function abrirCajon() {
   try {
     const cfg = qz.configs.create(QZ_PRINTER);
     // ESC p 0 25 250 — comando estándar apertura cajón ESC/POS
-    const data = [{type:'raw', format:'hex', data:'1B700019FA'}];
+    const data = [
+      { type: 'raw', format: 'base64', data: btoa('\x1B\x70\x00\x19\xFA') }
+    ];
     await qz.print(cfg, data);
     console.log('[QZ] Cajón abierto');
   } catch(e) {
