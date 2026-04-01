@@ -247,7 +247,12 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
       <input type="date" id="realizados-fecha" onchange="loadRealizados()" style="padding:8px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit">
       <span id="realizados-count" style="font-size:13px;color:var(--texto2);white-space:nowrap"></span>
     </div>
-    <div id="realizados-body"><div class="empty">Cargando...</div></div>
+    <div style="display:flex;gap:0;border-bottom:2px solid var(--borde);margin-bottom:12px" id="realizados-tabs">
+      <button class="sub-tab active" onclick="realizadosSubTab('pendientes',this)">Pendientes <span id="realizados-count-pend" style="font-size:11px;opacity:.7"></span></button>
+      <button class="sub-tab" onclick="realizadosSubTab('entregados',this)">Entregados <span id="realizados-count-ent" style="font-size:11px;opacity:.7"></span></button>
+    </div>
+    <div id="realizados-pend"><div class="empty">Cargando...</div></div>
+    <div id="realizados-ent" style="display:none"><div class="empty">Cargando...</div></div>
   </div>
 
   <!-- RESERVAS -->
@@ -854,17 +859,46 @@ async function loadRealizados() {
   } catch(e) {}
 }
 
+let _realizadosSub = 'pendientes';
+
+function realizadosSubTab(tab, btn) {
+  _realizadosSub = tab;
+  document.querySelectorAll('#realizados-tabs .sub-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('realizados-pend').style.display = tab === 'pendientes' ? '' : 'none';
+  document.getElementById('realizados-ent').style.display = tab === 'entregados' ? '' : 'none';
+}
+
 function renderRealizados(data) {
-  const el = document.getElementById('realizados-body');
   const countEl = document.getElementById('realizados-count');
   countEl.textContent = `${data.length} pedido${data.length !== 1 ? 's' : ''}`;
-  if (!data.length) { el.innerHTML = '<div class="empty">Sin pedidos realizados</div>'; return; }
+
+  const pendientes = data.filter(p => p.estado === 'listo_taller' || p.estado === 'En camino');
+  const entregados = data.filter(p => p.estado !== 'listo_taller' && p.estado !== 'En camino');
+
+  document.getElementById('realizados-count-pend').textContent = pendientes.length ? `(${pendientes.length})` : '';
+  document.getElementById('realizados-count-ent').textContent = entregados.length ? `(${entregados.length})` : '';
+
+  document.getElementById('realizados-pend').innerHTML = pendientes.length ? _renderRealizadosGrid(pendientes) : '<div class="empty">Sin pedidos pendientes de entrega</div>';
+  document.getElementById('realizados-ent').innerHTML = entregados.length ? _renderRealizadosGrid(entregados) : '<div class="empty">Sin pedidos entregados</div>';
+}
+
+function _renderRealizadosGrid(data) {
   let html = '<div class="kds-grid">';
   data.forEach(p => {
     const m = p.metodo_entrega || '';
-    let tag = '<span class="realizado-tag tag-enviado">🚗 Entregado</span>';
-    if (m === 'mostrador') tag = '<span class="realizado-tag tag-mostrador">🏪 Mostrador</span>';
-    else if (m === 'recoger' || m === 'funeral_recoger') tag = '<span class="realizado-tag tag-recogido">✅ Recogido</span>';
+    const esPendiente = p.estado === 'listo_taller' || p.estado === 'En camino';
+    let tag = '';
+    if (esPendiente) {
+      if (m === 'mostrador') tag = '<span class="realizado-tag tag-mostrador">🏪 En lobby</span>';
+      else if (m === 'recoger' || m === 'funeral_recoger') tag = '<span class="realizado-tag tag-recogido">📦 Por recoger</span>';
+      else if (p.estado === 'En camino') tag = '<span class="realizado-tag tag-enviado">🚗 En camino</span>';
+      else tag = '<span class="realizado-tag tag-enviado">📦 Listo para envio</span>';
+    } else {
+      if (m === 'mostrador') tag = '<span class="realizado-tag tag-mostrador">🏪 Mostrador</span>';
+      else if (m === 'recoger' || m === 'funeral_recoger') tag = '<span class="realizado-tag tag-recogido">✅ Recogido</span>';
+      else tag = '<span class="realizado-tag tag-enviado">🚗 Entregado</span>';
+    }
 
     const listoTime = p.listo_at ? new Date(p.listo_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
     const entregadoTime = p.entregado_at ? new Date(p.entregado_at).toLocaleTimeString('es-MX',{timeZone:'America/Chihuahua',hour:'2-digit',minute:'2-digit'}) : '—';
@@ -877,7 +911,7 @@ function renderRealizados(data) {
       duracion = `${dh > 0 ? dh+'h ':''}${dm}m`;
     }
 
-    html += `<div class="kds-card" style="border-left-color:var(--gris)" data-folio="${(p.numero||'').toLowerCase()}" data-cliente="${(p.cliente_nombre||p.receptor_nombre||'').toLowerCase()}">
+    html += `<div class="kds-card" style="border-left-color:${esPendiente ? 'var(--naranja)' : 'var(--gris)'}" data-folio="${(p.numero||'').toLowerCase()}" data-cliente="${(p.cliente_nombre||p.receptor_nombre||'').toLowerCase()}">
       <div class="kds-card-head">
         <div class="kds-num" style="font-size:16px">${p.numero}</div>
         ${tag}
@@ -885,7 +919,7 @@ function renderRealizados(data) {
       <div class="kds-body">
         <div class="kds-cliente" style="font-size:14px">${p.cliente_nombre || p.receptor_nombre || '—'}</div>
         <div class="kds-items" style="font-size:12px">${itemsCompacto(p.items)}</div>
-        <div class="kds-detail">🔧 Listo: ${listoTime} — 📦 Entregado: ${entregadoTime}${duracion ? ` — ⏱ ${duracion}` : ''}</div>
+        <div class="kds-detail">🔧 Listo: ${listoTime}${esPendiente ? '' : ` — 📦 Entregado: ${entregadoTime}`}${duracion ? ` — ⏱ ${duracion}` : ''}</div>
       </div>
       <div class="kds-actions" style="padding:8px 12px;border-top:1px solid var(--borde)">
         <button class="act-btn btn-secondary" onclick="event.stopPropagation();listoCurrentId=${p.id};listoImprimirEtiqueta2x1()" style="font-size:12px">🏷 Reimprimir etiqueta</button>
@@ -893,7 +927,7 @@ function renderRealizados(data) {
     </div>`;
   });
   html += '</div>';
-  el.innerHTML = html;
+  return html;
 }
 
 function filterRealizados() {
