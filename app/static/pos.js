@@ -2884,20 +2884,37 @@ async function abrirCajon() {
   const ok = await qzConnect();
   if (!ok) { console.warn('[QZ] Sin conexión, cajón no se abre'); return; }
   try {
-    // Enviar directo via websocket — evita bug de versionCompare
-    const msg = {
-      call: 'print',
-      promise: { uid: 'drawer-' + Date.now() },
-      params: {
-        printer: { name: QZ_PRINTER },
-        options: { encoding: null },
-        data: [{ data: 'G3AAGfo=', type: 'raw', format: 'base64' }]
-      }
-    };
-    qz.websocket.getConnection().send(JSON.stringify(msg));
-    console.log('[QZ] Cajón abierto (raw ws)');
+    const cfg = qz.configs.create(QZ_PRINTER);
+    // Formato que QZ 2.2 acepta: array de objetos con type raw
+    const data = [{
+      type: 'raw',
+      format: 'command',
+      data: '\x1B\x70\x00\x19\xFA',
+      flavor: 'plain'
+    }];
+    await qz.print(cfg, data);
+    console.log('[QZ] Cajón abierto');
   } catch(e) {
-    console.error('[QZ] Error abriendo cajón:', e);
+    console.error('[QZ] Error qz.print:', e);
+    // Fallback: websocket directo a QZ Tray
+    try {
+      const ws = new WebSocket('wss://localhost:8181');
+      ws.onopen = () => {
+        ws.send(JSON.stringify({
+          call: 'print',
+          promise: {uid: 'drawer'},
+          params: {
+            printer: {name: QZ_PRINTER},
+            options: {},
+            data: [{data:'G3AAGfo=', type:'raw', format:'base64'}]
+          }
+        }));
+        console.log('[QZ] Cajón abierto (ws fallback)');
+        setTimeout(() => ws.close(), 2000);
+      };
+    } catch(e2) {
+      console.error('[QZ] Fallback falló:', e2);
+    }
   }
 }
 
