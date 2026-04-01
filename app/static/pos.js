@@ -1558,7 +1558,17 @@ function renderPendTable(rows) {
     const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
     const fecha = formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
     const ec = estadoClass(p.estado);
-    return `<tr>
+    // Delivery details sub-row
+    const horLbl = p.hora_exacta || {manana:'Mañana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'}[p.horario_entrega] || p.horario_entrega || '';
+    let detParts = [];
+    if (p.fecha_entrega) detParts.push(`📅 ${formatearFecha(p.fecha_entrega)}`);
+    if (horLbl) detParts.push(`🕐 ${horLbl}`);
+    if (p.receptor_nombre) detParts.push(`👤 ${p.receptor_nombre}${p.receptor_telefono ? ' · ' + p.receptor_telefono : ''}`);
+    if (p.direccion_entrega) detParts.push(`📍 ${p.direccion_entrega}`);
+    if (p.dedicatoria) detParts.push(`💌 "${p.dedicatoria}"`);
+    if (p.notas_internas) detParts.push(`📝 ${p.notas_internas}`);
+    const detailRow = detParts.length ? `<tr><td colspan="9" style="padding:0 12px 8px;font-size:11px;color:var(--texto2);line-height:1.6;border-top:none">${detParts.join(' &nbsp;·&nbsp; ')}</td></tr>` : '';
+    return `<tr${detParts.length ? ' style="border-bottom:none"' : ''}>
       <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}${p.requiere_factura ? ' <span style="background:#d4a843;color:#193a2c;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:700;vertical-align:middle">FACTURA</span>' : ''}</td>
       <td style="white-space:nowrap;font-size:11px">${fecha}</td>
       <td>${p.cliente_nombre || 'Mostrador'}</td>
@@ -1574,7 +1584,7 @@ function renderPendTable(rows) {
         ${ec === 'pendiente_pago' ? `<button class="btn-fin" onclick="finalizarPendiente(${p.id},${p.total})">Finalizar</button>` : ''}
         ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelar(${p.id},'${esc(p.folio)}')">Cancelar</button>` : ''}
       </td>
-    </tr>`;
+    </tr>${detailRow}`;
   }).join('');
 }
 

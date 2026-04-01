@@ -443,6 +443,7 @@ async def _serializar_pedido_pos(p, db):
         "direccion_entrega": p.direccion_entrega, "receptor_nombre": p.receptor_nombre,
         "receptor_telefono": p.receptor_telefono, "dedicatoria": p.dedicatoria,
         "notas_internas": p.notas_internas, "ruta": p.ruta,
+        "metodo_entrega": p.metodo_entrega,
         "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
         "comprobante_pago_url": p.comprobante_pago_url,
         "requiere_factura": p.requiere_factura,

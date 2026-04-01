@@ -323,7 +323,7 @@ async def aceptar(
 
     await db.commit()
 
-    # Webhook a Claudia
+    # Webhook a Claudia (pedidos WhatsApp)
     if pedido.webhook_url:
         from app.routers.pedidos import _disparar_webhook
         _disparar_webhook(pedido.webhook_url, pedido.numero, EP.ESPERANDO_VALIDACION, pedido.estado, extra={
@@ -331,6 +331,24 @@ async def aceptar(
             "telefono_cliente": await _tel_cliente(pedido, db),
             "fecha_entrega": str(pedido.fecha_entrega) if pedido.fecha_entrega else None,
         })
+    elif pedido.tracking_token and pedido.customer_id and pedido.estado == EP.PENDIENTE_PAGO:
+        # Pedido web aceptado — notificar cliente por WhatsApp
+        try:
+            from app.models.clientes import Cliente
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                msg = (
+                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"¡Tu pedido {pedido.numero} fue aceptado! En un momento te enviamos los datos de pago por aquí.\n\n"
+                    f"Puedes ver el estatus de tu pedido aquí:\n{tracking_url}"
+                )
+                from app.routers.catalogo import _enviar_whatsapp
+                await _enviar_whatsapp(cliente.telefono, msg)
+        except Exception as e:
+            import logging
+            logging.getLogger("floreria").error(f"WhatsApp aceptación web: {e}")
 
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
@@ -366,7 +384,7 @@ async def aceptar_con_cambios(
             cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
-                tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
                 msg = (
                     f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
                     f"Nuestro florista hizo una modificación a tu pedido {pedido.numero}:\n\n"
@@ -410,7 +428,7 @@ async def sugerir_cambio(
             cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
-                tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
                 msg = (
                     f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
                     f"Nuestro florista tiene una sugerencia para tu pedido {pedido.numero}:\n\n"

@@ -476,7 +476,7 @@ async def _crear_pedido_web_inner(request, db):
 
     # Enviar WhatsApp de confirmación (solo para pedidos web, no Claudia)
     if not data.get("skip_whatsapp"):
-        tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={tracking_token}"
+        tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={tracking_token}"
         msg = (
             f"Hola {nombre_cliente.split()[0]} 🌸 Recibimos tu pedido {numero} en Florería Lucy.\n"
             f"En cuanto verifiquemos disponibilidad te contactamos con los datos para el pago.\n\n"
