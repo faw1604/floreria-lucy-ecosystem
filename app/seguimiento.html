@@ -366,6 +366,10 @@ function renderTracking(data) {
   const step = data.estado_step;
   const isCancelled = data.estado === 'Cancelado';
   const isDelivered = data.estado === 'Entregado';
+  // Clean up localStorage when order reaches terminal state
+  if (isCancelled || isDelivered) {
+    try { localStorage.removeItem('fl_tracking_token'); } catch(e) {}
+  }
 
   let progressHTML = '<div class="progress-bar">';
   const stepLabels = ['', '🔍', '💳', '🌺', '🎀', '🚗', '🎉'];
