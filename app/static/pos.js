@@ -2863,11 +2863,36 @@ setInterval(async()=>{
 const QZ_PRINTER = 'impresora 80mm automatica';
 let _qzReady = false;
 
+const QZ_CERT = `-----BEGIN CERTIFICATE-----
+MIIECzCCAvOgAwIBAgIGAZ1HNW7lMA0GCSqGSIb3DQEBCwUAMIGiMQswCQYDVQQG
+EwJVUzELMAkGA1UECAwCTlkxEjAQBgNVBAcMCUNhbmFzdG90YTEbMBkGA1UECgwS
+UVogSW5kdXN0cmllcywgTExDMRswGQYDVQQLDBJRWiBJbmR1c3RyaWVzLCBMTEMx
+HDAaBgkqhkiG9w0BCQEWDXN1cHBvcnRAcXouaW8xGjAYBgNVBAMMEVFaIFRyYXkg
+RGVtbyBDZXJ0MB4XDTI2MDMzMTA0MDI1N1oXDTQ2MDMzMTA0MDI1N1owgaIxCzAJ
+BgNVBAYTAlVTMQswCQYDVQQIDAJOWTESMBAGA1UEBwwJQ2FuYXN0b3RhMRswGQYD
+VQQKDBJRWiBJbmR1c3RyaWVzLCBMTEMxGzAZBgNVBAsMElFaIEluZHVzdHJpZXMs
+IExMQzEcMBoGCSqGSIb3DQEJARYNc3VwcG9ydEBxei5pbzEaMBgGA1UEAwwRUVog
+VHJheSBEZW1vIENlcnQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCI
+aIyvEBQQ06JRIeAaG418yL2/HT72G+Zieb3PjUeonh1a07AcfJq0Vy9s8//Sw302
+ZAYAVCJt+tGYZdvYkcaEkJIe3Ue2RLsglZL77a01L1C+EyEcTlanmBsmzCWW6wdb
+qg4LO/c2gGjrZoqfjjr2VvhuoOM4edAK8nFbRPDOK+89C5i7/fICHeU4Qcgcn4++
+lcSdIAhcob0grf3DD2ZT9f4nlio9ZrPHAw66MyIEyiKCbvh/hewExgllR7BBaf7P
+E0ewyVPZ7rGgsXKnBod0uKqDZNwjESGlvrd/DMorEqX313MS/tYiFghSJDGzJ60c
+IDTVe729WcNx+5K26Zg/AgMBAAGjRTBDMBIGA1UdEwEB/wQIMAYBAf8CAQEwDgYD
+VR0PAQH/BAQDAgEGMB0GA1UdDgQWBBQu8MVBAd6OXR6kL9FlMTpp/1hIXDANBgkq
+hkiG9w0BAQsFAAOCAQEADeya39Hb/xfEftOM5+29iE07W6EALVRB3xCVy7mA8G4u
+WsR3mqACc4kYzBYsKw5+IIIwJV1aNHkSXz3R54Od38dkqscdS+WWmWHRCmAhwIHi
+B1x2GOdH2jCAiRDnmyrLrY3SVCSgeocWf41RSqBz3zyy5XwWOR8oQ9jTVp7M1H7C
+nktwQecgGroCwekarsXqu050cdNlVPINk5vyLTKuTlWMH8WrBTtYex9E9sNoWrv+
+VR6Fhz+ALIP2XjedHV7lBc5SaNe0GaFoi9WtGoGI4X8DQrCCMgECRyKO3wH6I/vp
+L70DkyPgHV5GnWNeXiTeFp32/6CqpN0o8zhZ8tUzvg==
+-----END CERTIFICATE-----`;
+
 async function qzConnect() {
   if (_qzReady) return true;
   try {
     if (!qz.websocket.isActive()) {
-      qz.security.setCertificatePromise(() => Promise.resolve(''));
+      qz.security.setCertificatePromise(() => Promise.resolve(QZ_CERT));
       qz.security.setSignaturePromise(() => () => Promise.resolve(''));
       await qz.websocket.connect();
     }
