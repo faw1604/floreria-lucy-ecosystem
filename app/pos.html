@@ -54,7 +54,7 @@
   <!-- Catalog -->
   <div class="w1-cat">
     <div class="cat-toolbar">
-      <input type="text" id="cat-search" placeholder="Buscar producto..." oninput="debounceFetchProds()">
+      <input type="text" id="cat-search" placeholder="Buscar producto..." oninput="debounceFetchProds()" autocomplete="off">
       <select id="cat-filter" onchange="fetchProds()"><option value="">Todas</option></select>
       <div class="view-toggle">
         <button id="vt-list" onclick="setView('lista')">☰</button>
