@@ -313,7 +313,7 @@ async def _pos_crear_pedido_inner(request, db):
         _metodo = ME.MOSTRADOR
     elif tipo == "recoger":
         _metodo = ME.RECOGER
-    elif es_funeral and data.get("direccion_entrega"):
+    elif es_funeral and (data.get("direccion_entrega") or data.get("funeraria_id")):
         _metodo = ME.FUNERAL_ENVIO
     elif es_funeral:
         _metodo = ME.FUNERAL_RECOGER
