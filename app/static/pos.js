@@ -2917,20 +2917,6 @@ SgfeVGVyJtzrES2nOCvghU1Y/iCAOAXKcMEPE7MrvNdr7dgAsBiXP4lFve6q3pNT
 Gsa+G3ZLtJ3U5MGLsWAqQg==
 -----END PRIVATE KEY-----`;
 
-// Capturar websocket de QZ Tray al conectar
-let _qzWs = null;
-const _OrigWS = window.WebSocket;
-window.WebSocket = function(url, protocols) {
-  const ws = protocols ? new _OrigWS(url, protocols) : new _OrigWS(url);
-  if (url && url.includes('localhost:8181')) _qzWs = ws;
-  return ws;
-};
-window.WebSocket.prototype = _OrigWS.prototype;
-window.WebSocket.CONNECTING = _OrigWS.CONNECTING;
-window.WebSocket.OPEN = _OrigWS.OPEN;
-window.WebSocket.CLOSING = _OrigWS.CLOSING;
-window.WebSocket.CLOSED = _OrigWS.CLOSED;
-
 async function qzConnect() {
   if (_qzReady) return true;
   try {
@@ -2959,8 +2945,9 @@ async function qzConnect() {
 async function abrirCajon() {
   const ok = await qzConnect();
   if (!ok) { console.warn('[QZ] Sin conexión'); return; }
-  if (_qzWs && _qzWs.readyState === 1) {
-    _qzWs.send(JSON.stringify({
+  const ws = window._qzWs;
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({
       call: 'print',
       promise: {uid: 'drawer-' + Date.now()},
       params: {
@@ -2971,7 +2958,7 @@ async function abrirCajon() {
     }));
     console.log('[QZ] Cajón abierto');
   } else {
-    console.warn('[QZ] Websocket no disponible');
+    console.warn('[QZ] Websocket no disponible, readyState:', ws?.readyState);
   }
 }
 

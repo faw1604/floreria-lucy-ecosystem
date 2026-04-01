@@ -6,6 +6,23 @@
 <title>POS — Floreria Lucy</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+// Interceptar WebSocket ANTES de cargar QZ Tray para capturar la conexión
+window._qzWs = null;
+(function(){
+  const O = window.WebSocket;
+  window.WebSocket = function(u,p){
+    const ws = p ? new O(u,p) : new O(u);
+    if(u && u.indexOf('localhost')!==-1 && u.indexOf('8181')!==-1) window._qzWs = ws;
+    return ws;
+  };
+  window.WebSocket.prototype = O.prototype;
+  window.WebSocket.CONNECTING = O.CONNECTING;
+  window.WebSocket.OPEN = O.OPEN;
+  window.WebSocket.CLOSING = O.CLOSING;
+  window.WebSocket.CLOSED = O.CLOSED;
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsrsasign@11.1.0/lib/jsrsasign-all-min.js"></script>
 <link rel="stylesheet" href="/static/pos.css">
