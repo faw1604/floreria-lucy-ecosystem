@@ -2917,6 +2917,20 @@ SgfeVGVyJtzrES2nOCvghU1Y/iCAOAXKcMEPE7MrvNdr7dgAsBiXP4lFve6q3pNT
 Gsa+G3ZLtJ3U5MGLsWAqQg==
 -----END PRIVATE KEY-----`;
 
+// Capturar websocket de QZ Tray al conectar
+let _qzWs = null;
+const _OrigWS = window.WebSocket;
+window.WebSocket = function(url, protocols) {
+  const ws = protocols ? new _OrigWS(url, protocols) : new _OrigWS(url);
+  if (url && url.includes('localhost:8181')) _qzWs = ws;
+  return ws;
+};
+window.WebSocket.prototype = _OrigWS.prototype;
+window.WebSocket.CONNECTING = _OrigWS.CONNECTING;
+window.WebSocket.OPEN = _OrigWS.OPEN;
+window.WebSocket.CLOSING = _OrigWS.CLOSING;
+window.WebSocket.CLOSED = _OrigWS.CLOSED;
+
 async function qzConnect() {
   if (_qzReady) return true;
   try {
@@ -2944,39 +2958,20 @@ async function qzConnect() {
 
 async function abrirCajon() {
   const ok = await qzConnect();
-  if (!ok) { console.warn('[QZ] Sin conexión, cajón no se abre'); return; }
-  try {
-    const cfg = qz.configs.create(QZ_PRINTER);
-    // Formato que QZ 2.2 acepta: array de objetos con type raw
-    const data = [{
-      type: 'raw',
-      format: 'command',
-      data: '\x1B\x70\x00\x19\xFA',
-      flavor: 'plain'
-    }];
-    await qz.print(cfg, data);
+  if (!ok) { console.warn('[QZ] Sin conexión'); return; }
+  if (_qzWs && _qzWs.readyState === 1) {
+    _qzWs.send(JSON.stringify({
+      call: 'print',
+      promise: {uid: 'drawer-' + Date.now()},
+      params: {
+        printer: {name: QZ_PRINTER},
+        options: {},
+        data: [{data: 'G3AAGfo=', type: 'raw', format: 'base64'}]
+      }
+    }));
     console.log('[QZ] Cajón abierto');
-  } catch(e) {
-    console.error('[QZ] Error qz.print:', e);
-    // Fallback: websocket directo a QZ Tray
-    try {
-      const ws = new WebSocket('wss://localhost:8181');
-      ws.onopen = () => {
-        ws.send(JSON.stringify({
-          call: 'print',
-          promise: {uid: 'drawer'},
-          params: {
-            printer: {name: QZ_PRINTER},
-            options: {},
-            data: [{data:'G3AAGfo=', type:'raw', format:'base64'}]
-          }
-        }));
-        console.log('[QZ] Cajón abierto (ws fallback)');
-        setTimeout(() => ws.close(), 2000);
-      };
-    } catch(e2) {
-      console.error('[QZ] Fallback falló:', e2);
-    }
+  } else {
+    console.warn('[QZ] Websocket no disponible');
   }
 }
 
