@@ -279,33 +279,35 @@ def _formatear_telefono(tel: str) -> str:
 
 
 async def _enviar_whatsapp(telefono: str, mensaje: str):
-    """Envía mensaje WhatsApp vía Whapi. Fire-and-forget."""
-    token = os.getenv("WHAPI_TOKEN", "")
-    if not token:
-        logger.warning("[WHAPI] No hay WHAPI_TOKEN configurado")
-        return
+    """Envía mensaje WhatsApp vía Claudia (agentkit) proxy."""
+    agentkit_url = os.getenv("AGENTKIT_URL", "https://whatsapp-agentkit-production-4e69.up.railway.app")
+    agentkit_key = os.getenv("AGENTKIT_API_KEY", "")
     # Normalizar a solo dígitos
     digitos = "".join(c for c in telefono if c.isdigit())
-    # Asegurar formato internacional México: 521XXXXXXXXXX
     if len(digitos) == 10:
         digitos = "521" + digitos
-    elif len(digitos) == 12 and digitos.startswith("52"):
-        digitos = "521" + digitos[2:]
     elif not digitos.startswith("521"):
-        digitos = "52" + digitos
-    logger.info(f"[WHAPI] Intentando enviar a {digitos} (token={token[:8]}...)")
+        if digitos.startswith("52"):
+            digitos = "521" + digitos[2:]
+        else:
+            digitos = "521" + digitos
+    logger.info(f"[WHAPI] Enviando via Claudia a {digitos}")
     try:
-        async with httpx.AsyncClient() as client:
+        headers = {"Content-Type": "application/json"}
+        if agentkit_key:
+            headers["X-Admin-Key"] = agentkit_key
+        async with httpx.AsyncClient(timeout=30) as client:
             r = await client.post(
-                "https://gate.whapi.cloud/messages/text",
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                json={"to": digitos, "body": mensaje},
-                timeout=15,
+                f"{agentkit_url}/enviar-mensaje-claudia",
+                headers=headers,
+                json={"telefono": digitos, "mensaje": mensaje},
             )
-        logger.info(f"[WHAPI] Respuesta {r.status_code}: {r.text[:500]}")
+        if r.status_code >= 400:
+            logger.error(f"[WHAPI] Error via Claudia {r.status_code}: {r.text[:300]}")
+        else:
+            logger.info(f"[WHAPI] WhatsApp enviado via Claudia — {r.status_code}")
     except Exception as e:
-        import traceback
-        logger.error(f"[WHAPI] Excepcion enviando a {digitos}: {type(e).__name__}: {e}\n{traceback.format_exc()}")
+        logger.error(f"[WHAPI] Error enviando via Claudia: {type(e).__name__}: {e}")
 
 
 @router.post("/pedido")

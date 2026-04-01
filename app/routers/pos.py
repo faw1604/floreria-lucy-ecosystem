@@ -1120,16 +1120,16 @@ async def pos_enviar_whatsapp_cliente(
     data = await request.json()
     telefono = "".join(c for c in data.get("telefono", "") if c.isdigit())
     if len(telefono) == 10:
-        telefono = "521" + telefono
-    elif len(telefono) == 12 and telefono.startswith("52"):
-        telefono = "521" + telefono[2:]
-    elif not telefono.startswith("521"):
+        telefono = "52" + telefono
+    elif len(telefono) == 13 and telefono.startswith("521"):
+        telefono = "52" + telefono[3:]
+    elif not telefono.startswith("52"):
         telefono = "52" + telefono
     mensaje = data.get("mensaje", "")
     if not mensaje.strip():
         return {"error": "Mensaje vacio"}
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             r = await client.post(
                 "https://gate.whapi.cloud/messages/text",
                 headers={"Authorization": f"Bearer {whapi_token}", "Content-Type": "application/json"},
@@ -1162,13 +1162,13 @@ async def pos_enviar_ticket_whatsapp(
     nombre = data.get("nombre_cliente", "")
     imagen_b64 = data.get("imagen_base64", "")
 
-    # Format phone: digits only, ensure 521 prefix for Mexico
+    # Format phone: digits only, 52XXXXXXXXXX format
     telefono = "".join(c for c in telefono if c.isdigit())
     if len(telefono) == 10:
-        telefono = "521" + telefono
-    elif len(telefono) == 12 and telefono.startswith("52"):
-        telefono = "521" + telefono[2:]
-    elif not telefono.startswith("521"):
+        telefono = "52" + telefono
+    elif len(telefono) == 13 and telefono.startswith("521"):
+        telefono = "52" + telefono[3:]
+    elif not telefono.startswith("52"):
         telefono = "52" + telefono
 
     # Get folio
