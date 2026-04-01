@@ -332,8 +332,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     <p style="font-size:14px;color:var(--texto2);margin-bottom:16px" id="listo-folio"></p>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="act-btn btn-secondary" style="font-size:14px;padding:12px 20px" onclick="listoImprimirTicket()">🖨 Imprimir ticket digital</button>
-      <button class="act-btn btn-secondary" style="font-size:14px;padding:12px 20px" onclick="listoImprimirEtiqueta()">🏷 Imprimir etiqueta termica</button>
-      <button class="act-btn btn-secondary" style="font-size:14px;padding:12px 20px" onclick="listoImprimirEtiqueta2x1()">🏷 Imprimir etiqueta(s) 2x1</button>
+      <button class="act-btn btn-secondary" style="font-size:14px;padding:12px 20px" onclick="listoImprimirEtiqueta2x1()">🏷 Imprimir etiqueta(s)</button>
     </div>
     <button class="act-btn" style="margin-top:16px;background:var(--verde);color:#fff;width:100%;justify-content:center;font-size:14px;padding:12px" onclick="closeModal('modal-listo')">Cerrar</button>
   </div>
@@ -691,7 +690,7 @@ function renderCardProduccion(p) {
     </div>
     <div class="kds-actions">
       <button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')">📷 Ver foto</button>
-      <button class="act-btn btn-secondary" onclick="imprimirEtiqueta(${p.id})">🖨 Etiqueta</button>
+      <button class="act-btn btn-secondary" onclick="listoCurrentId=${p.id};listoImprimirEtiqueta2x1()">🏷 Etiqueta</button>
       <button class="act-btn btn-listo" onclick="accionListo(${p.id})">✅ LISTO</button>
     </div>
   </div>`;
@@ -735,7 +734,7 @@ async function loadProduccion() {
       if (!data.length) { el.innerHTML = '<div class="empty">Sin pedidos para manana</div>'; return; }
       el.innerHTML = `<div class="toolbar">
         <div class="toolbar-title">Pedidos de manana (${data.length})</div>
-        <button class="act-btn btn-secondary" onclick="imprimirEtiquetasManana()" style="font-size:14px;padding:10px 20px">🖨 Imprimir etiquetas de manana</button>
+        <button class="act-btn btn-secondary" onclick="imprimirEtiquetas2x1Manana()" style="font-size:14px;padding:10px 20px">🏷 Imprimir etiquetas de manana</button>
       </div>
       <div class="kds-grid">${data.map(p => renderCardProduccion(p)).join('')}</div>`;
       return;
@@ -889,7 +888,7 @@ function renderRealizados(data) {
         <div class="kds-detail">🔧 Listo: ${listoTime} — 📦 Entregado: ${entregadoTime}${duracion ? ` — ⏱ ${duracion}` : ''}</div>
       </div>
       <div class="kds-actions" style="padding:8px 12px;border-top:1px solid var(--borde)">
-        <button class="act-btn btn-secondary" onclick="event.stopPropagation();imprimirEtiqueta(${p.id})" style="font-size:12px">🖨 Reimprimir etiqueta</button>
+        <button class="act-btn btn-secondary" onclick="event.stopPropagation();listoCurrentId=${p.id};listoImprimirEtiqueta2x1()" style="font-size:12px">🏷 Reimprimir etiqueta</button>
       </div>
     </div>`;
   });
@@ -1143,6 +1142,43 @@ async function listoImprimirEtiqueta2x1() {
     pw.document.close();
     pw.onload = () => { pw.print(); };
     // fallback if onload already fired
+    setTimeout(() => { try { pw.print(); } catch(e){} }, 300);
+  } catch(e) { alert('Error al imprimir etiquetas'); console.error(e); }
+}
+
+async function imprimirEtiquetas2x1Manana() {
+  try {
+    const r = await fetch(`${TALLER_API}/etiquetas-manana-data`, {credentials:'include'});
+    if (!r.ok) { alert('Error al obtener datos'); return; }
+    const pedidos = await r.json();
+    if (!pedidos.length) { alert('Sin pedidos para manana'); return; }
+    let html = '';
+    pedidos.forEach(d => {
+      d.items.forEach((nombre, i) => {
+        html += `<div class="etq">
+          <div class="etq-row1"><span class="etq-folio">${normTxt(d.folio)}</span><span class="etq-badge">${i+1} de ${d.total_items}</span></div>
+          <div class="etq-sep"></div>
+          <div class="etq-prod">${normTxt(nombre)}</div>
+          <div class="etq-para">Para: ${normTxt(d.receptor_nombre || '---')}</div>
+        </div>`;
+      });
+    });
+    const pw = window.open('', '_blank', 'width=250,height=200');
+    pw.document.write(`<!DOCTYPE html><html><head><style>
+      @page{size:2in 1in;margin:0}
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{margin:0;padding:0}
+      .etq{width:2in;height:1in;border:2px solid #000;border-radius:3px;background:#fff;padding:3px 6px;font-family:'Inter','Segoe UI',sans-serif;color:#000;overflow:hidden;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
+      .etq:last-child{page-break-after:avoid}
+      .etq-row1{display:flex;justify-content:space-between;align-items:center}
+      .etq-folio{font-size:11.5px;font-weight:700}
+      .etq-badge{font-size:10px;font-weight:700;background:#000;color:#fff;padding:1px 5px;border-radius:3px}
+      .etq-sep{border-top:2px solid #000;margin:2px 0}
+      .etq-prod{font-size:11px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .etq-para{font-size:10.5px;font-weight:500;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    </style></head><body>${html}</body></html>`);
+    pw.document.close();
+    pw.onload = () => { pw.print(); };
     setTimeout(() => { try { pw.print(); } catch(e){} }, 300);
   } catch(e) { alert('Error al imprimir etiquetas'); console.error(e); }
 }

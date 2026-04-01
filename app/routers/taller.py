@@ -571,6 +571,41 @@ async def imprimir_etiqueta(
     return PlainTextResponse(texto)
 
 
+@router.get("/etiquetas-manana-data")
+async def etiquetas_manana_data(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Datos de etiquetas 2x1 para todos los pedidos de mañana."""
+    _auth(panel_session)
+    manana = hoy() + timedelta(days=1)
+    result = await db.execute(
+        select(Pedido)
+        .where(Pedido.fecha_entrega == manana)
+        .where(Pedido.estado.in_([EP.PAGADO, EP.EN_PRODUCCION, EP.LISTO_TALLER]))
+        .order_by(Pedido.horario_entrega, Pedido.hora_exacta)
+    )
+    pedidos_list = result.scalars().all()
+    all_etiquetas = []
+    for p in pedidos_list:
+        items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == p.id))
+        items_db = items_result.scalars().all()
+        items = []
+        for item in items_db:
+            prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+            prod = prod_result.scalar_one_or_none()
+            nombre = item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto")
+            for _ in range(item.cantidad):
+                items.append(nombre)
+        all_etiquetas.append({
+            "folio": p.numero,
+            "receptor_nombre": p.receptor_nombre or "",
+            "items": items,
+            "total_items": len(items),
+        })
+    return all_etiquetas
+
+
 @router.post("/imprimir-etiquetas-manana")
 async def imprimir_etiquetas_manana(
     panel_session: str | None = Cookie(default=None),
