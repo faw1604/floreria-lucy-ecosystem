@@ -1556,12 +1556,12 @@ function renderPendTable(rows) {
   empty.style.display = 'none';
   tbody.innerHTML = rows.map(p => {
     const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
-    const fecha = formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
+    const fecha = formatearFecha(p.fecha_entrega) || '';
     const ec = estadoClass(p.estado);
     // Delivery details sub-row
     const horLbl = p.hora_exacta || {manana:'Mañana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'}[p.horario_entrega] || p.horario_entrega || '';
     let detParts = [];
-    if (p.fecha_entrega) detParts.push(`📅 Entrega: ${formatearFecha(p.fecha_entrega)}${horLbl ? ' — ' + horLbl : ''}`);
+    if (horLbl) detParts.push(`🕐 ${horLbl}`);
     if (p.receptor_nombre) detParts.push(`🎁 Recibe: ${p.receptor_nombre}${p.receptor_telefono ? ' · ' + p.receptor_telefono : ''}`);
     if (p.direccion_entrega) detParts.push(`📍 ${p.direccion_entrega}`);
     if (p.zona_entrega) detParts.push(`🗺️ Zona: ${p.zona_entrega}`);
