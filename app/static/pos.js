@@ -2888,16 +2888,53 @@ VR6Fhz+ALIP2XjedHV7lBc5SaNe0GaFoi9WtGoGI4X8DQrCCMgECRyKO3wH6I/vp
 L70DkyPgHV5GnWNeXiTeFp32/6CqpN0o8zhZ8tUzvg==
 -----END CERTIFICATE-----`;
 
+const QZ_KEY = `-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCIaIyvEBQQ06JR
+IeAaG418yL2/HT72G+Zieb3PjUeonh1a07AcfJq0Vy9s8//Sw302ZAYAVCJt+tGY
+ZdvYkcaEkJIe3Ue2RLsglZL77a01L1C+EyEcTlanmBsmzCWW6wdbqg4LO/c2gGjr
+Zoqfjjr2VvhuoOM4edAK8nFbRPDOK+89C5i7/fICHeU4Qcgcn4++lcSdIAhcob0g
+rf3DD2ZT9f4nlio9ZrPHAw66MyIEyiKCbvh/hewExgllR7BBaf7PE0ewyVPZ7rGg
+sXKnBod0uKqDZNwjESGlvrd/DMorEqX313MS/tYiFghSJDGzJ60cIDTVe729WcNx
++5K26Zg/AgMBAAECggEAMnYatRhJk//2Z/UUJhRTPvoz12NGS1z+2ScYJJOrEqGL
+UnJFEAS4ZkZqcO/Cj4Fp7JkL70swgWbr6mij73Xd7mRc6bYKNU8vuloayb+e97HN
+OMNy2DnSrKUERlH3BeFkE3DRSS6hwTO3nH2Ogn/nKAH8XVB/PgEyCRqu/IiAXIQx
+5pkf1vvS+YEc1i+0l2piO3Ws0YnsU+9s1p3DYe/jbGNlfoY/3ya1Il6vW5Y+i3y6
+38igBYIvFNySwhE8whatfd3n+4VdJUnrdnuKauLs2p26OD4XRqzFaZHotN8v34sg
+KLLYTzOPyWQS/CarKb3On11k3UIdBpvQw5s/9gYYgQKBgQDAd538yTBjf0XNA1m+
+N5NgbmAfKDcpxCFpsjlwKCcJlLDNL1ELtfr6KF33DowU1CbbyAoCEG0b3QFPvYZ+
+S5c97ad70153M/TVeXCZ731EN+2RuacxPnsor6P7/7Bfy1giIi8ioxrx4HtnXoJm
+G4IDltz6zHG5VJiPO/anCU9kbwKBgQC1b7JjTqFbGCbici/a2gjUpxeyeVubwbo5
+mlrEbqaVo0eJZPL8F0Dvi5kJXs5aFfOWK8Oz7hTAiaLFPh6NSMh+hSOX5eSVJ6d9
+SMIKcmEuptLm4pK3o/ZbZEQvc57DK4itm+3+uoZYx17xibnLFMkuDHbA9JCabaU1
+D9YrJbQRMQKBgBrPTsGMoOHrM6ToJ5MYmL3hAiC08GIwANuBSQD3huCNxsb+JVL1
+SX2ZK+WjMB4iozsQNVyuPxSXh3w9EUP8cZfdx+u2uLzwDtXBsc6vjop3I++dpc11
+P6CePsB2kHH3mFJA4sH3aGRy+Z2fi5h/km+/jw6cdeb0AsBJAQWphVafAoGAcjZw
+/jCWREjM2Yl19HeCTZMtyKy6bS8jcnVnI/ZfqRzSwHuqteRRfTnMSWjDz1O4NdUw
+6cg6igVaUH3NL7UceQCIqmsOXJJMzgIKHBdqc7qSUsNYBoARafCRN6m5zDRQYrEg
+vVRfk+1VKAlBysQ37GPuMYMCsCPLdr6UXC7szlECgYASnhXV2eGVMZaKgHLz8gC7
+txzOB1dlkS2ID/SAsuaPM2G4mqNLQ9rlo3RP0SCf3TLncuhzfiIrZq5DFbOuUYI0
+SgfeVGVyJtzrES2nOCvghU1Y/iCAOAXKcMEPE7MrvNdr7dgAsBiXP4lFve6q3pNT
+Gsa+G3ZLtJ3U5MGLsWAqQg==
+-----END PRIVATE KEY-----`;
+
 async function qzConnect() {
   if (_qzReady) return true;
   try {
     if (!qz.websocket.isActive()) {
       qz.security.setCertificatePromise(() => Promise.resolve(QZ_CERT));
-      qz.security.setSignaturePromise(() => () => Promise.resolve(''));
+      qz.security.setSignaturePromise((toSign) => {
+        return (resolve) => {
+          const pk = KEYUTIL.getKey(QZ_KEY);
+          const sig = new KJUR.crypto.Signature({alg: 'SHA256withRSA'});
+          sig.init(pk);
+          sig.updateString(toSign);
+          resolve(hextob64(sig.sign()));
+        };
+      });
       await qz.websocket.connect();
     }
     _qzReady = true;
-    console.log('[QZ] Conectado');
+    console.log('[QZ] Conectado (trusted)');
     return true;
   } catch(e) {
     console.warn('[QZ] No se pudo conectar:', e.message || e);
