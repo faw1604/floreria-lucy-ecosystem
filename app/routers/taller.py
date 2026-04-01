@@ -323,7 +323,10 @@ async def aceptar(
 
     await db.commit()
 
-    # Webhook a Claudia (pedidos WhatsApp)
+    # Webhook / WhatsApp al aceptar
+    import logging as _log
+    _logger = _log.getLogger("floreria")
+    _logger.info(f"[ACEPTAR] {pedido.numero} estado={pedido.estado} canal={pedido.canal} webhook={pedido.webhook_url} token={bool(pedido.tracking_token)} cid={pedido.customer_id}")
     if pedido.webhook_url:
         from app.routers.pedidos import _disparar_webhook
         _disparar_webhook(pedido.webhook_url, pedido.numero, EP.ESPERANDO_VALIDACION, pedido.estado, extra={
@@ -333,6 +336,7 @@ async def aceptar(
         })
     elif pedido.tracking_token and pedido.customer_id and pedido.estado == EP.PENDIENTE_PAGO:
         # Pedido web aceptado — notificar cliente por WhatsApp
+        _logger.info(f"[ACEPTAR] Enviando WhatsApp web para {pedido.numero}")
         try:
             from app.models.clientes import Cliente
             cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
