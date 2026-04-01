@@ -41,4 +41,8 @@ async def generar_folio(db: AsyncSession) -> str:
             last = 0
     else:
         last = 0
+    # Mínimos por año: 2026 empieza en 5000, 2027+ en 1000
+    minimo = 4999 if yr == "2026" else 999
+    if last < minimo:
+        last = minimo
     return f"{prefix}{str(last + 1).zfill(4)}"

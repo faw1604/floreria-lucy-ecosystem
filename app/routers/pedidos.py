@@ -145,6 +145,24 @@ async def claudia_test():
     return {"ok": True, "api": "floreria-lucy-ecosystem"}
 
 
+@router.delete("/limpiar-pruebas")
+async def limpiar_pedidos_prueba(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """TEMPORAL: Borra todos los pedidos e items. Solo admin."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    from app.models.pedidos import ItemPedido
+    # Borrar items primero (FK)
+    await db.execute(select(ItemPedido))  # warmup
+    from sqlalchemy import delete
+    r1 = await db.execute(delete(ItemPedido))
+    r2 = await db.execute(delete(Pedido))
+    await db.commit()
+    return {"ok": True, "items_borrados": r1.rowcount, "pedidos_borrados": r2.rowcount}
+
+
 @router.get("/estado-cliente/{telefono}")
 async def estado_pedido_cliente(
     telefono: str,
