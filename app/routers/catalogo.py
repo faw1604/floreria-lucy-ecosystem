@@ -301,9 +301,12 @@ async def _enviar_whatsapp(telefono: str, mensaje: str):
                 json={"to": digitos, "body": mensaje},
                 timeout=15,
             )
-        logger.info(f"[WHAPI] WhatsApp enviado a {digitos} — status {r.status_code}")
+        if r.status_code >= 400:
+            logger.error(f"[WHAPI] Error {r.status_code} enviando a {digitos}: {r.text[:300]}")
+        else:
+            logger.info(f"[WHAPI] WhatsApp enviado a {digitos} — status {r.status_code}")
     except Exception as e:
-        logger.error(f"[WHAPI] Error enviando WhatsApp: {e}")
+        logger.error(f"[WHAPI] Error enviando WhatsApp a {digitos}: {type(e).__name__}: {e}")
 
 
 @router.post("/pedido")
