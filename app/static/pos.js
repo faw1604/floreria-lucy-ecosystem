@@ -2740,6 +2740,20 @@ async function posLoadChats() {
   } catch(e) {}
 }
 
+// Chats archivados manualmente
+const _posArchivedChats = JSON.parse(localStorage.getItem('fl_archived_chats') || '[]');
+function posArchivarChat(tel) {
+  if (!_posArchivedChats.includes(tel)) _posArchivedChats.push(tel);
+  localStorage.setItem('fl_archived_chats', JSON.stringify(_posArchivedChats));
+  posRenderChats();
+}
+function posDesarchivarChat(tel) {
+  const i = _posArchivedChats.indexOf(tel);
+  if (i >= 0) _posArchivedChats.splice(i, 1);
+  localStorage.setItem('fl_archived_chats', JSON.stringify(_posArchivedChats));
+  posRenderChats();
+}
+
 function posRenderChats() {
   const search = (document.getElementById('pos-chat-search')?.value||'').toLowerCase();
   const now = Date.now(), h24 = 86400000;
@@ -2747,7 +2761,8 @@ function posRenderChats() {
   _posClData.forEach(c => {
     if (search && !c.telefono.includes(search)) return;
     const ts = c.timestamp ? new Date(c.timestamp).getTime() : 0;
-    if (c.estado==='esperando_humano') espera.push(c);
+    if (_posArchivedChats.includes(c.telefono)) archivados.push(c);
+    else if (c.estado==='esperando_humano') espera.push(c);
     else if (now-ts>h24) archivados.push(c);
     else activos.push(c);
   });
@@ -2766,9 +2781,13 @@ function posRenderRow(c) {
   const msg = (c.ultimo_mensaje||'').replace(/</g,'&lt;').substring(0,80);
   const time = c.timestamp ? new Date(c.timestamp).toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'America/Chihuahua'})+' '+new Date(c.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'}) : '';
   const wait = esEspera && c.estado_desde ? `<div class="pos-cl-wait">⏱ ${posTiempoEspera(c.estado_desde)}</div>` : '';
+  const esArchivado = _posArchivedChats.includes(c.telefono);
   const btnAcc = esEspera
     ? `<button onclick="posLiberar('${c.telefono}')">Devolver a Claudia</button>`
     : `<button onclick="posIntervenir('${c.telefono}')">Intervenir</button>`;
+  const btnArch = esArchivado
+    ? `<button onclick="posDesarchivarChat('${c.telefono}')" style="font-size:11px;color:var(--verde)">📂 Desarchivar</button>`
+    : `<button onclick="posArchivarChat('${c.telefono}')" style="font-size:11px;color:var(--texto2)">📥 Archivar</button>`;
   return `<div class="pos-cl-row">
     <div class="pos-cl-dot ${dot}"></div>
     <div class="pos-cl-info">
@@ -2780,6 +2799,7 @@ function posRenderRow(c) {
     <div class="pos-cl-actions">
       <button class="btn-resp" onclick="posAbrirResp('${c.telefono}')">Responder</button>
       ${btnAcc}
+      ${btnArch}
     </div>
   </div>`;
 }
