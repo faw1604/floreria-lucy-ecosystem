@@ -304,7 +304,9 @@ async def _pos_crear_pedido_inner(request, db):
 
     from datetime import date as date_type
     fecha_str = data.get("fecha_entrega")
+    logger.info(f"[POS CREAR] tipo={tipo}, fecha_entrega_raw='{fecha_str}', all_keys={list(data.keys())}")
     fecha_entrega = date_type.fromisoformat(fecha_str) if fecha_str else datetime.now(TZ).date()
+    logger.info(f"[POS CREAR] fecha_entrega_parsed={fecha_entrega}")
 
     # Determinar metodo_entrega y estado correcto
     es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral", "recoger", "domicilio"))
@@ -1117,7 +1119,11 @@ async def pos_enviar_whatsapp_cliente(
         return {"error": "WHAPI_TOKEN no configurado"}
     data = await request.json()
     telefono = "".join(c for c in data.get("telefono", "") if c.isdigit())
-    if not telefono.startswith("52"):
+    if len(telefono) == 10:
+        telefono = "521" + telefono
+    elif len(telefono) == 12 and telefono.startswith("52"):
+        telefono = "521" + telefono[2:]
+    elif not telefono.startswith("521"):
         telefono = "52" + telefono
     mensaje = data.get("mensaje", "")
     if not mensaje.strip():
@@ -1153,9 +1159,13 @@ async def pos_enviar_ticket_whatsapp(
     nombre = data.get("nombre_cliente", "")
     imagen_b64 = data.get("imagen_base64", "")
 
-    # Format phone: digits only, prepend 52 if needed
+    # Format phone: digits only, ensure 521 prefix for Mexico
     telefono = "".join(c for c in telefono if c.isdigit())
-    if not telefono.startswith("52"):
+    if len(telefono) == 10:
+        telefono = "521" + telefono
+    elif len(telefono) == 12 and telefono.startswith("52"):
+        telefono = "521" + telefono[2:]
+    elif not telefono.startswith("521"):
         telefono = "52" + telefono
 
     # Get folio
