@@ -2409,7 +2409,10 @@ const _meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov
 function formatearFecha(str) {
   if (!str) return '';
   // Accept "2026-03-27 22:30" or "2026-03-27" or ISO
-  const d = new Date(str.replace(' ', 'T'));
+  // For date-only strings, append T12:00:00 to avoid UTC midnight → local previous day
+  let s = str.replace(' ', 'T');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) s = str + 'T12:00:00';
+  const d = new Date(s);
   if (isNaN(d)) return str;
   const dia = _dias[d.getDay()];
   const dd = d.getDate();
