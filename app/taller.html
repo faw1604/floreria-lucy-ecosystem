@@ -631,7 +631,7 @@ function renderCardNuevos(p) {
   else if (ef === 'rechazado') badges += '<span class="kds-badge" style="background:#fee2e2;color:#991b1b">RECHAZADO — REQUIERE INTERVENCION</span>';
 
   // POS pendiente_pago: banner rojo, botones deshabilitados
-  const esPagoPendiente = p.estado === 'pendiente_pago' || (p.canal === 'Mostrador' && !p.pago_confirmado);
+  const esPagoPendiente = p.estado === 'Pendiente pago' || p.estado === 'pendiente_pago' || (p.canal === 'Mostrador' && !p.pago_confirmado);
   const esEsperandoValidacion = p.estado === 'esperando_validacion';
   const mostrarBotones = esEsperandoValidacion && !esPagoPendiente;
   const yaRespondido = ef && ef !== 'pendiente_aprobacion';
@@ -691,7 +691,7 @@ function renderCardProduccion(p) {
   const urg = urgencyClass(p);
   const cd = countdownHtml(p);
   const timerProd = tiempoDesde(p.produccion_at);
-  const esPendientePago = p.estado === 'pendiente_pago';
+  const esPendientePago = p.estado === 'Pendiente pago' || p.estado === 'pendiente_pago';
 
   let pagoBanner = '';
   if (esPendientePago) {
