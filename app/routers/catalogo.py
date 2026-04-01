@@ -284,16 +284,24 @@ async def _enviar_whatsapp(telefono: str, mensaje: str):
     if not token:
         logger.warning("[WHAPI] No hay WHAPI_TOKEN configurado")
         return
-    chat_id = f"52{telefono}@s.whatsapp.net"
+    # Normalizar a solo dígitos
+    digitos = "".join(c for c in telefono if c.isdigit())
+    # Asegurar formato internacional México: 521XXXXXXXXXX
+    if len(digitos) == 10:
+        digitos = "521" + digitos
+    elif len(digitos) == 12 and digitos.startswith("52"):
+        digitos = "521" + digitos[2:]
+    elif not digitos.startswith("521"):
+        digitos = "52" + digitos
     try:
         async with httpx.AsyncClient() as client:
-            await client.post(
+            r = await client.post(
                 "https://gate.whapi.cloud/messages/text",
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                json={"to": chat_id, "body": mensaje},
+                json={"to": digitos, "body": mensaje},
                 timeout=15,
             )
-        logger.info(f"[WHAPI] WhatsApp enviado a {telefono}")
+        logger.info(f"[WHAPI] WhatsApp enviado a {digitos} — status {r.status_code}")
     except Exception as e:
         logger.error(f"[WHAPI] Error enviando WhatsApp: {e}")
 
