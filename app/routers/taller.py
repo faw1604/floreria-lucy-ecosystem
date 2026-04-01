@@ -341,8 +341,11 @@ async def aceptar(
                 tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
                 msg = (
                     f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
-                    f"¡Tu pedido {pedido.numero} fue aceptado! En un momento te enviamos los datos de pago por aquí.\n\n"
-                    f"Puedes ver el estatus de tu pedido aquí:\n{tracking_url}"
+                    f"Tu pedido {pedido.numero} fue aceptado!\n\n"
+                    f"Para proceder con el pago, como prefieres pagar?\n\n"
+                    f"1. Transferencia bancaria\n"
+                    f"2. Deposito en OXXO\n\n"
+                    f"Puedes ver el estatus de tu pedido aqui:\n{tracking_url}"
                 )
                 from app.routers.catalogo import _enviar_whatsapp
                 await _enviar_whatsapp(cliente.telefono, msg)

@@ -649,6 +649,20 @@ async def confirmar_pago(
             "telefono_cliente": tel_cliente,
             "fecha_entrega": str(pedido.fecha_entrega) if pedido.fecha_entrega else None,
         })
+    elif pedido.canal == "Web" and pedido.tracking_token and pedido.customer_id:
+        try:
+            cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cli = cli_r.scalar_one_or_none()
+            if cli and cli.telefono:
+                tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                from app.routers.catalogo import _enviar_whatsapp
+                await _enviar_whatsapp(cli.telefono,
+                    f"Hola {cli.nombre.split()[0]} 🌸\n\n"
+                    f"Tu pago para el pedido {pedido.numero} fue confirmado! Tu arreglo sera elaborado pronto.\n\n"
+                    f"Sigue el estatus aqui:\n{tracking_url}"
+                )
+        except Exception:
+            pass
 
     return {"ok": True, "folio": pedido.numero}
 

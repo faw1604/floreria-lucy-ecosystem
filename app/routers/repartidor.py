@@ -201,6 +201,24 @@ async def entregar(
     pedido.entregado_at = ts_now
     pedido.foto_entrega_url = foto_url
     await db.commit()
+
+    # WhatsApp al cliente: pedido entregado
+    if pedido.customer_id:
+        try:
+            from app.models.clientes import Cliente
+            cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cli = cli_r.scalar_one_or_none()
+            if cli and cli.telefono:
+                from app.routers.catalogo import _enviar_whatsapp
+                await _enviar_whatsapp(cli.telefono,
+                    f"Hola {cli.nombre.split()[0]} 🌸\n\n"
+                    f"Tu pedido {pedido.numero} fue entregado!\n\n"
+                    f"Gracias por tu preferencia. Esperamos verte pronto!\n"
+                    f"— Floreria Lucy"
+                )
+        except Exception:
+            pass
+
     return {"ok": True, "foto_url": foto_url}
 
 

@@ -663,6 +663,23 @@ async def _pos_finalizar_inner(pedido_id, request, db):
     pedido.pago_confirmado_at = ahora()
     pedido.forma_pago = ", ".join(p.get("nombre", "") for p in pagos if p.get("nombre"))
     await db.commit()
+
+    # WhatsApp al cliente web: pago confirmado
+    if pedido.canal == "Web" and pedido.tracking_token and pedido.customer_id:
+        try:
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                from app.routers.catalogo import _enviar_whatsapp
+                await _enviar_whatsapp(cliente.telefono,
+                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"Tu pago para el pedido {pedido.numero} fue confirmado! Tu arreglo sera elaborado pronto.\n\n"
+                    f"Sigue el estatus aqui:\n{tracking_url}"
+                )
+        except Exception:
+            pass
+
     return {"ok": True, "folio": pedido.numero, "estado": pedido.estado}
 
 
