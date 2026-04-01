@@ -1578,6 +1578,7 @@ function renderPendTable(rows) {
       <td><span class="badge-estado ${ec}">${estadoLabel(p.estado)}</span></td>
       <td style="white-space:nowrap;font-size:11px">${tipoIcon(p)} ${tipoLabel(p)}</td>
       <td class="pend-actions">
+        <button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:16px;cursor:pointer" title="Ver ticket">🎫</button>
         <button class="btn-edit" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
         ${ec === 'comprobante_recibido' ? `<button class="btn-fin" style="background:#e67e22" onclick="confirmarPagoPos(${p.id})">Confirmar pago</button>` : ''}
         ${ec === 'comprobante_recibido' && p.comprobante_pago_url ? `<a href="${p.comprobante_pago_url}" target="_blank" class="btn-edit" style="text-decoration:none">Ver comprobante</a>` : ''}
