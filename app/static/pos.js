@@ -2884,13 +2884,18 @@ async function abrirCajon() {
   const ok = await qzConnect();
   if (!ok) { console.warn('[QZ] Sin conexión, cajón no se abre'); return; }
   try {
-    const cfg = qz.configs.create(QZ_PRINTER);
-    // ESC p 0 25 250 — comando estándar apertura cajón ESC/POS
-    const data = [
-      { type: 'raw', format: 'base64', data: btoa('\x1B\x70\x00\x19\xFA') }
-    ];
-    await qz.print(cfg, data);
-    console.log('[QZ] Cajón abierto');
+    // Enviar directo via websocket — evita bug de versionCompare
+    const msg = {
+      call: 'print',
+      promise: { uid: 'drawer-' + Date.now() },
+      params: {
+        printer: { name: QZ_PRINTER },
+        options: { encoding: null },
+        data: [{ data: 'G3AAGfo=', type: 'raw', format: 'base64' }]
+      }
+    };
+    qz.websocket.getConnection().send(JSON.stringify(msg));
+    console.log('[QZ] Cajón abierto (raw ws)');
   } catch(e) {
     console.error('[QZ] Error abriendo cajón:', e);
   }
