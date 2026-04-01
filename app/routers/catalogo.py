@@ -293,6 +293,7 @@ async def _enviar_whatsapp(telefono: str, mensaje: str):
         digitos = "521" + digitos[2:]
     elif not digitos.startswith("521"):
         digitos = "52" + digitos
+    logger.info(f"[WHAPI] Intentando enviar a {digitos} (token={token[:8]}...)")
     try:
         async with httpx.AsyncClient() as client:
             r = await client.post(
@@ -301,12 +302,10 @@ async def _enviar_whatsapp(telefono: str, mensaje: str):
                 json={"to": digitos, "body": mensaje},
                 timeout=15,
             )
-        if r.status_code >= 400:
-            logger.error(f"[WHAPI] Error {r.status_code} enviando a {digitos}: {r.text[:300]}")
-        else:
-            logger.info(f"[WHAPI] WhatsApp enviado a {digitos} — status {r.status_code}")
+        logger.info(f"[WHAPI] Respuesta {r.status_code}: {r.text[:500]}")
     except Exception as e:
-        logger.error(f"[WHAPI] Error enviando WhatsApp a {digitos}: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"[WHAPI] Excepcion enviando a {digitos}: {type(e).__name__}: {e}\n{traceback.format_exc()}")
 
 
 @router.post("/pedido")

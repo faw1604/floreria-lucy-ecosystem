@@ -1130,14 +1130,17 @@ async def pos_enviar_whatsapp_cliente(
         return {"error": "Mensaje vacio"}
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            await client.post(
+            r = await client.post(
                 "https://gate.whapi.cloud/messages/text",
                 headers={"Authorization": f"Bearer {whapi_token}", "Content-Type": "application/json"},
                 json={"to": telefono, "body": mensaje},
             )
+        if r.status_code >= 400:
+            return {"error": f"Whapi {r.status_code}: {r.text[:300]}"}
         return {"ok": True}
     except Exception as e:
-        return {"error": f"Error al enviar: {str(e)}"}
+        import traceback
+        return {"error": f"Error al enviar: {type(e).__name__}: {e}", "trace": traceback.format_exc()}
 
 
 @router.post("/enviar-ticket-whatsapp")
