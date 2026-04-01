@@ -17,6 +17,48 @@ async def obtener_config_dict(db: AsyncSession) -> dict:
     return {c.clave: c.valor for c in result.scalars().all()}
 
 
+@router.get("/datos-pago")
+async def datos_pago_para_claudia(
+    x_claudia_key: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Endpoint para que Claudia obtenga datos de pago activos."""
+    if not CLAUDIA_API_KEY or x_claudia_key != CLAUDIA_API_KEY:
+        raise HTTPException(status_code=401, detail="API key inválida")
+
+    cfg = await obtener_config_dict(db)
+
+    # Cuentas de transferencia activas
+    from app.models.cuentas import CuentaTransferencia
+    ctas_result = await db.execute(
+        select(CuentaTransferencia).where(CuentaTransferencia.activa == True)
+    )
+    cuentas = ctas_result.scalars().all()
+    transferencias = [
+        {"banco": c.banco, "titular": c.titular, "tarjeta": c.tarjeta, "clabe": c.clabe}
+        for c in cuentas
+    ]
+
+    # OXXO
+    oxxo = None
+    if cfg.get("oxxo_activo") == "true":
+        oxxo = {
+            "nombre": cfg.get("oxxo_nombre", ""),
+            "tarjeta": cfg.get("oxxo_tarjeta", ""),
+        }
+
+    # Instrucciones
+    instrucciones_normal = cfg.get("mensaje_pago_normal", "")
+    instrucciones_funeral = cfg.get("mensaje_pago_funeral", "")
+
+    return {
+        "transferencias": transferencias,
+        "oxxo": oxxo,
+        "instrucciones_normal": instrucciones_normal,
+        "instrucciones_funeral": instrucciones_funeral,
+    }
+
+
 @router.get("/claudia-config")
 async def config_para_claudia(
     x_claudia_key: str | None = Header(default=None),

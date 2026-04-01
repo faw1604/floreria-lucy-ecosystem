@@ -94,6 +94,16 @@ def _auth(panel_session: str | None):
         raise HTTPException(status_code=401, detail="No autenticado")
 
 
+async def _tel_cliente(pedido, db) -> str | None:
+    """Obtiene teléfono del cliente asociado al pedido."""
+    if pedido.customer_id:
+        from app.models.clientes import Cliente
+        r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cli = r.scalar_one_or_none()
+        return cli.telefono if cli else None
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Badge counts (polling every 15s)
 # ---------------------------------------------------------------------------
@@ -312,6 +322,16 @@ async def aceptar(
                         insumo.cantidad = max(0, insumo.cantidad - ip.cantidad_consumida * item.cantidad)
 
     await db.commit()
+
+    # Webhook a Claudia
+    if pedido.webhook_url:
+        from app.routers.pedidos import _disparar_webhook
+        _disparar_webhook(pedido.webhook_url, pedido.numero, EP.ESPERANDO_VALIDACION, pedido.estado, extra={
+            "accion": "florista_acepta",
+            "telefono_cliente": await _tel_cliente(pedido, db),
+            "fecha_entrega": str(pedido.fecha_entrega) if pedido.fecha_entrega else None,
+        })
+
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
 
@@ -331,12 +351,19 @@ async def aceptar_con_cambios(
     pedido.nota_florista = nota
     await db.commit()
 
-    # Notify customer via WhatsApp with tracking link
-    if pedido.tracking_token and pedido.customer_id:
+    # Webhook a Claudia (si es pedido de WhatsApp)
+    if pedido.webhook_url:
+        from app.routers.pedidos import _disparar_webhook
+        _disparar_webhook(pedido.webhook_url, pedido.numero, pedido.estado, pedido.estado, extra={
+            "accion": "florista_modifica",
+            "nota": nota,
+            "telefono_cliente": await _tel_cliente(pedido, db),
+        })
+    elif pedido.tracking_token and pedido.customer_id:
+        # Pedido web — enviar WhatsApp directo
         try:
-            from sqlalchemy import select as sel
             from app.models.clientes import Cliente
-            cliente_result = await db.execute(sel(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
                 tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={pedido.tracking_token}"
@@ -370,12 +397,17 @@ async def sugerir_cambio(
     pedido.nota_florista = nota
     await db.commit()
 
-    # Notify customer via WhatsApp with tracking link
-    if pedido.tracking_token and pedido.customer_id:
+    if pedido.webhook_url:
+        from app.routers.pedidos import _disparar_webhook
+        _disparar_webhook(pedido.webhook_url, pedido.numero, pedido.estado, pedido.estado, extra={
+            "accion": "florista_sugiere_cambio",
+            "nota": nota,
+            "telefono_cliente": await _tel_cliente(pedido, db),
+        })
+    elif pedido.tracking_token and pedido.customer_id:
         try:
-            from sqlalchemy import select as sel
             from app.models.clientes import Cliente
-            cliente_result = await db.execute(sel(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
                 tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={pedido.tracking_token}"
@@ -409,6 +441,15 @@ async def no_aceptar(
     pedido.nota_florista = razon
     pedido.requiere_humano = True
     await db.commit()
+
+    if pedido.webhook_url:
+        from app.routers.pedidos import _disparar_webhook
+        _disparar_webhook(pedido.webhook_url, pedido.numero, pedido.estado, pedido.estado, extra={
+            "accion": "florista_rechaza",
+            "nota": razon,
+            "telefono_cliente": await _tel_cliente(pedido, db),
+        })
+
     return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
 
 

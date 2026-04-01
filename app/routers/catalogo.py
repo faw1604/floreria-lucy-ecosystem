@@ -474,20 +474,21 @@ async def _crear_pedido_web_inner(request, db):
     await db.commit()
     await db.refresh(pedido)
 
-    # Enviar WhatsApp de confirmación con link de seguimiento (fire-and-forget)
-    tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={tracking_token}"
-    msg = (
-        f"Hola {nombre_cliente.split()[0]} 🌸 Recibimos tu pedido {numero} en Florería Lucy.\n"
-        f"En cuanto verifiquemos disponibilidad te contactamos con los datos para el pago.\n\n"
-        f"Sigue el estado de tu pedido aquí:\n{tracking_url}\n\n"
-        f"¡Gracias por tu preferencia!"
-    )
-    try:
-        await _enviar_whatsapp(telefono, msg)
-    except Exception:
-        pass  # No fallar si WhatsApp falla
+    # Enviar WhatsApp de confirmación (solo para pedidos web, no Claudia)
+    if not data.get("skip_whatsapp"):
+        tracking_url = f"https://floreria-lucy-ecosystem-production.up.railway.app/catalogo/seguimiento.html?token={tracking_token}"
+        msg = (
+            f"Hola {nombre_cliente.split()[0]} 🌸 Recibimos tu pedido {numero} en Florería Lucy.\n"
+            f"En cuanto verifiquemos disponibilidad te contactamos con los datos para el pago.\n\n"
+            f"Sigue el estado de tu pedido aquí:\n{tracking_url}\n\n"
+            f"¡Gracias por tu preferencia!"
+        )
+        try:
+            await _enviar_whatsapp(telefono, msg)
+        except Exception:
+            pass
 
-    return {"ok": True, "folio": numero, "tracking_token": tracking_token}
+    return {"ok": True, "folio": numero, "tracking_token": tracking_token, "pedido_id": pedido.id}
 
 
 @router.get("/seguimiento/{token}")

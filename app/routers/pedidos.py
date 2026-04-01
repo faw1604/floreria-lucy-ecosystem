@@ -144,6 +144,50 @@ async def pedidos_realizados(
 async def claudia_test():
     return {"ok": True, "api": "floreria-lucy-ecosystem"}
 
+
+@router.get("/estado-cliente/{telefono}")
+async def estado_pedido_cliente(
+    telefono: str,
+    x_claudia_key: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Claudia consulta el pedido más reciente de un cliente por teléfono."""
+    expected_key = os.getenv("CLAUDIA_API_KEY", "")
+    if not expected_key or x_claudia_key != expected_key:
+        raise HTTPException(status_code=401, detail="API key inválida")
+
+    # Buscar cliente por teléfono (probar con y sin prefijo 521)
+    cliente = None
+    for tel in [telefono, telefono.lstrip("521"), telefono.lstrip("52")]:
+        result = await db.execute(select(Cliente).where(Cliente.telefono == tel))
+        cliente = result.scalar_one_or_none()
+        if cliente:
+            break
+
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    # Pedido más reciente
+    from app.core.estados import EP
+    result = await db.execute(
+        select(Pedido)
+        .where(Pedido.customer_id == cliente.id)
+        .order_by(Pedido.id.desc())
+        .limit(1)
+    )
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Sin pedidos")
+
+    return {
+        "folio": pedido.numero,
+        "estado": pedido.estado,
+        "estado_florista": pedido.estado_florista,
+        "fecha_entrega": str(pedido.fecha_entrega) if pedido.fecha_entrega else None,
+        "total": pedido.total,
+        "pago_confirmado": pedido.pago_confirmado,
+    }
+
 @router.post("/desde-claudia")
 async def crear_pedido_desde_claudia(
     request: Request,
@@ -540,19 +584,22 @@ async def actualizar_estado(
     return {"id": pedido.id, "numero": pedido.numero, "estado": pedido.estado, "estado_florista": pedido.estado_florista}
 
 
-def _disparar_webhook(url: str, folio: str, estado_anterior: str, estado_nuevo: str):
+def _disparar_webhook(url: str, folio: str, estado_anterior: str, estado_nuevo: str, extra: dict | None = None):
     """Fire-and-forget webhook notification."""
     import asyncio
     import httpx
 
     async def _send():
         try:
+            payload = {
+                "folio": folio,
+                "estado_anterior": estado_anterior,
+                "estado_nuevo": estado_nuevo,
+            }
+            if extra:
+                payload.update(extra)
             async with httpx.AsyncClient() as client:
-                await client.post(url, json={
-                    "folio": folio,
-                    "estado_anterior": estado_anterior,
-                    "estado_nuevo": estado_nuevo,
-                }, timeout=10)
+                await client.post(url, json=payload, timeout=10)
         except Exception as e:
             logger.warning(f"Webhook falló para {folio}: {e}")
 
@@ -589,7 +636,17 @@ async def confirmar_pago(
     await db.commit()
 
     if pedido.webhook_url:
-        _disparar_webhook(pedido.webhook_url, pedido.numero, estado_anterior, "pagado")
+        # Obtener teléfono cliente
+        tel_cliente = None
+        if pedido.customer_id:
+            cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cli = cli_r.scalar_one_or_none()
+            tel_cliente = cli.telefono if cli else None
+        _disparar_webhook(pedido.webhook_url, pedido.numero, estado_anterior, "pagado", extra={
+            "accion": "pago_confirmado",
+            "telefono_cliente": tel_cliente,
+            "fecha_entrega": str(pedido.fecha_entrega) if pedido.fecha_entrega else None,
+        })
 
     return {"ok": True, "folio": pedido.numero}
 
