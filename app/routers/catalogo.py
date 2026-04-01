@@ -10,6 +10,7 @@ from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
 from app.models.configuracion import HorarioEspecifico, CodigoDescuento, ConfiguracionNegocio
 from app.core.config import TZ
+from app.core.estados import EstadoPedido as EP, EstadoFlorista as EF
 from datetime import date as date_type
 
 logger = logging.getLogger("floreria")
@@ -655,9 +656,18 @@ async def responder_seguimiento(token: str, request: Request, db: AsyncSession =
         else:
             nota_respuesta = f"[CLIENTE ACEPTA CAMBIO] {mensaje}" if mensaje else "[CLIENTE ACEPTA CAMBIO]"
     else:
-        pedido.estado_florista = "requiere_atencion"
-        pedido.requiere_humano = True
-        nota_respuesta = f"[CLIENTE RECHAZA CAMBIO] {mensaje}" if mensaje else "[CLIENTE RECHAZA CAMBIO]"
+        era_modificacion = pedido.estado_florista == "aprobado_con_modificacion"
+        if era_modificacion:
+            # Cliente rechaza modificación → cancelar pedido
+            pedido.estado = EP.CANCELADO
+            pedido.estado_florista = EF.RECHAZADO
+            pedido.cancelado_razon = "Cliente rechazó la modificación del florista"
+            nota_respuesta = f"[CLIENTE RECHAZA MODIFICACION — CANCELADO] {mensaje}" if mensaje else "[CLIENTE RECHAZA MODIFICACION — CANCELADO]"
+        else:
+            # Cliente rechaza cambio de producto → requiere atención humana
+            pedido.estado_florista = "requiere_atencion"
+            pedido.requiere_humano = True
+            nota_respuesta = f"[CLIENTE RECHAZA CAMBIO] {mensaje}" if mensaje else "[CLIENTE RECHAZA CAMBIO]"
 
     # Append to notas_internas
     if pedido.notas_internas:
@@ -666,4 +676,21 @@ async def responder_seguimiento(token: str, request: Request, db: AsyncSession =
         pedido.notas_internas = nota_respuesta
 
     await db.commit()
-    return {"ok": True, "nuevo_estado": pedido.estado_florista}
+
+    # Si se canceló por rechazo de modificación, notificar por WhatsApp
+    if not acepta and pedido.estado == EP.CANCELADO and pedido.customer_id:
+        try:
+            from app.models.clientes import Cliente
+            cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cli_r.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                msg = (
+                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"Tu pedido {pedido.numero} ha sido cancelado porque la modificación propuesta no fue aceptada.\n\n"
+                    f"Si deseas, puedes hacer un nuevo pedido:\nhttps://www.florerialucy.com/catalogo/"
+                )
+                await _enviar_whatsapp(cliente.telefono, msg)
+        except Exception:
+            pass
+
+    return {"ok": True, "nuevo_estado": pedido.estado_florista, "estado": pedido.estado}
