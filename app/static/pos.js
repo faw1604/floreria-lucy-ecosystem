@@ -664,7 +664,7 @@ async function registrarCliente() {
     document.getElementById('modal-cliente').classList.remove('active');
     buildW3Form();
   } catch(e) {
-    document.getElementById('reg-err').textContent = 'Error de red';
+    document.getElementById('reg-err').textContent = 'Error de red: ' + (e.message || e);
     document.getElementById('reg-err').style.display = '';
   }
 }

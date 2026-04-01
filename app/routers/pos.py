@@ -118,7 +118,7 @@ async def pos_crear_cliente(
         email=data.get("email"),
         direccion_default=data.get("direccion"),
         fuente="Mostrador",
-        codigo_referido=generar_codigo_referido(),
+        codigo_referido=generar_codigo_referido(data.get("nombre", ""), telefono),
     )
     db.add(cliente)
     await db.commit()
