@@ -182,11 +182,16 @@ async def entregar(
     contenido = await foto.read()
 
     try:
-        upload_result = cloudinary.uploader.upload(
-            contenido,
-            folder="entregas/",
-            public_id=f"{folio}_{ts_int}",
-            resource_type="image",
+        import asyncio
+        loop = asyncio.get_event_loop()
+        upload_result = await loop.run_in_executor(
+            None,
+            lambda: cloudinary.uploader.upload(
+                contenido,
+                folder="entregas/",
+                public_id=f"{folio}_{ts_int}",
+                resource_type="image",
+            )
         )
         foto_url = upload_result.get("secure_url", "")
     except Exception as e:

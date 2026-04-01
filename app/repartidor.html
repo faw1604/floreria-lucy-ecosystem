@@ -554,10 +554,10 @@ async function confirmarEntrega(id) {
   fd.append('foto', input.files[0]);
   try {
     const r = await fetch(`/repartidor/entregar/${id}`, {method:'POST', credentials:'include', body: fd});
-    if (!r.ok) { const d = await r.json().catch(()=>({})); document.getElementById('err-'+id).textContent = d.detail||'Error'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; return; }
+    if (!r.ok) { const d = await r.json().catch(()=>({})); document.getElementById('err-'+id).textContent = d.detail||'Error al subir'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; return; }
     await loadEntregas();
     checkCierreRuta();
-  } catch(e) { document.getElementById('err-'+id).textContent = 'Error de conexion'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; }
+  } catch(e) { document.getElementById('err-'+id).textContent = 'Error de conexion. Intenta de nuevo.'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; alert('No se pudo subir la foto. Verifica tu conexion e intenta de nuevo.'); }
 }
 
 // ─── No entrega ───
