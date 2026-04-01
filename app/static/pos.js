@@ -1576,7 +1576,7 @@ function renderPendTable(rows) {
       <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
       <td style="font-weight:600">$${((p.total||0)/100).toLocaleString()}</td>
       <td><span class="badge-estado ${ec}">${estadoLabel(p.estado)}</span></td>
-      <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
+      <td style="white-space:nowrap;font-size:11px">${tipoIcon(p)} ${tipoLabel(p)}</td>
       <td class="pend-actions">
         <button class="btn-edit" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
         ${ec === 'comprobante_recibido' ? `<button class="btn-fin" style="background:#e67e22" onclick="confirmarPagoPos(${p.id})">Confirmar pago</button>` : ''}
@@ -1937,7 +1937,7 @@ function renderTransTable(rows) {
       <td>${canalLabel(p.canal)}</td>
       <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
       ${showMoney ? `<td style="font-weight:600;white-space:nowrap">${pagoIcon(p.forma_pago)} $${((p.total||0)/100).toLocaleString()}</td>` : ''}
-      <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
+      <td style="white-space:nowrap;font-size:11px">${tipoIcon(p)} ${tipoLabel(p)}</td>
       <td>${obsIcon(p)}</td>
       <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:16px;cursor:pointer" title="Ver ticket">🎫</button></td>
       <td class="pend-actions">
@@ -2183,7 +2183,7 @@ async function verPedidosCliente(id, nombre) {
         <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>
         <td style="font-weight:600">$${((p.total||0)/100).toLocaleString()}</td>
         <td><span class="badge-estado ${ec}">${estadoLabel(p.estado)}</span></td>
-        <td title="${tipoLabel(p)}">${tipoIcon(p)}</td>
+        <td style="white-space:nowrap;font-size:11px">${tipoIcon(p)} ${tipoLabel(p)}</td>
         <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:14px;cursor:pointer" title="Ver ticket">🎫</button></td>
       </tr>`;
     }).join('');

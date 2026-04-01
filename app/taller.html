@@ -482,6 +482,18 @@ function tipoIcon(p) {
   return '🚗';
 }
 
+function tipoEntregaLabel(p) {
+  const m = p.metodo_entrega || '';
+  if (m === 'mostrador') return '🏪 Mostrador';
+  if (m === 'recoger' || m === 'funeral_recoger') return '📦 Pasa a recoger';
+  if (m === 'funeral_envio') return '⚰️ Envío a funeraria';
+  if (m === 'envio') return '🚚 Envío a domicilio';
+  if (p.tipo_especial === 'Funeral') return '⚰️ Funeral';
+  if (p.tipo_especial === 'Recoger') return '📦 Pasa a recoger';
+  if (p.direccion_entrega) return '🚚 Envío a domicilio';
+  return '🏪 Mostrador';
+}
+
 function tipoBadge(p) {
   const m = p.metodo_entrega || '';
   if (m === 'mostrador') return '<span class="kds-badge badge-mostrador">MOSTRADOR</span>';
@@ -659,7 +671,8 @@ function renderCardNuevos(p) {
       <div class="kds-cliente">👤 ${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}${p.cliente_telefono ? ` · ${p.cliente_telefono}` : ''}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
       <div class="kds-detail" style="font-weight:600">💰 $${((p.total||0)/100).toLocaleString()}</div>
-      ${p.fecha_entrega ? `<div class="kds-detail">📅 ${formatFecha(p.fecha_entrega)}${horarioLabel(p.horario_entrega, p.hora_exacta) ? ' — ' + horarioLabel(p.horario_entrega, p.hora_exacta) : ''}</div>` : ''}
+      <div class="kds-detail" style="font-weight:600">${tipoEntregaLabel(p)}${(p.metodo_entrega||'').includes('envio') && horarioLabel(p.horario_entrega, p.hora_exacta) ? ' — ' + horarioLabel(p.horario_entrega, p.hora_exacta) : ''}</div>
+      ${p.fecha_entrega ? `<div class="kds-detail">📅 ${formatFecha(p.fecha_entrega)}</div>` : ''}
       ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.direccion_entrega}</div>` : ''}
       ${p.receptor_nombre && p.receptor_nombre !== p.cliente_nombre ? `<div class="kds-detail">🎁 Recibe: ${p.receptor_nombre}${p.receptor_telefono ? ' · ' + p.receptor_telefono : ''}</div>` : ''}
       ${!p.direccion_entrega && p.receptor_telefono && p.receptor_nombre === p.cliente_nombre ? `<div class="kds-detail">📱 ${p.receptor_telefono}</div>` : ''}
