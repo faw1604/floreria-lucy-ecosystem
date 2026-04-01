@@ -455,20 +455,40 @@ async def no_aceptar(
     data = await request.json()
     razon = data.get("razon", "")
     pedido = await _get_pedido(pedido_id, db)
+    estado_anterior = pedido.estado
+    pedido.estado = EP.CANCELADO
     pedido.estado_florista = EF.RECHAZADO
     pedido.nota_florista = razon
-    pedido.requiere_humano = True
+    pedido.cancelado_razon = razon or "Rechazado por florista"
     await db.commit()
 
     if pedido.webhook_url:
         from app.routers.pedidos import _disparar_webhook
-        _disparar_webhook(pedido.webhook_url, pedido.numero, pedido.estado, pedido.estado, extra={
+        _disparar_webhook(pedido.webhook_url, pedido.numero, estado_anterior, EP.CANCELADO, extra={
             "accion": "florista_rechaza",
             "nota": razon,
             "telefono_cliente": await _tel_cliente(pedido, db),
         })
+    elif pedido.tracking_token and pedido.customer_id:
+        # Pedido web — notificar cancelación al cliente
+        try:
+            from app.models.clientes import Cliente
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                msg = (
+                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"Lamentamos informarte que tu pedido {pedido.numero} no pudo ser procesado.\n\n"
+                    f"Motivo: {razon or 'No disponible'}\n\n"
+                    f"Si deseas, puedes hacer un nuevo pedido en nuestro catálogo:\nhttps://www.florerialucy.com/catalogo/"
+                )
+                from app.routers.catalogo import _enviar_whatsapp
+                await _enviar_whatsapp(cliente.telefono, msg)
+        except Exception as e:
+            import logging
+            logging.getLogger("floreria").error(f"WhatsApp cancelación web: {e}")
 
-    return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
+    return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 
 
 @router.post("/pedidos/{pedido_id}/cancelar")
