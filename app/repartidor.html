@@ -676,11 +676,11 @@ function verFotoFull(url) {
 }
 
 // ─── Polling ───
-let repartidorPollingId = setInterval(() => loadEntregas(), 30000);
+let repartidorPollingId = setInterval(() => loadEntregas(), 10000);
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
         loadEntregas();
-        if (!repartidorPollingId) repartidorPollingId = setInterval(() => loadEntregas(), 30000);
+        if (!repartidorPollingId) repartidorPollingId = setInterval(() => loadEntregas(), 10000);
     } else {
         clearInterval(repartidorPollingId);
         repartidorPollingId = null;
