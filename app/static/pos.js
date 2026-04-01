@@ -1062,7 +1062,10 @@ async function finalizarVenta() {
     alert(`Exceso de $${((asignado - t.total)/100).toFixed(0)} en metodos de pago`);
     return;
   }
+  const tieneEfectivo = selectedPays['Efectivo'] !== undefined;
   await submitPedido('pagado');
+  // Abrir cajón si el pago incluye efectivo
+  if (tieneEfectivo && typeof abrirCajon === 'function') abrirCajon();
 }
 
 async function submitPedido(estado) {
@@ -2855,3 +2858,41 @@ setInterval(async()=>{
     if(b){if(n>0){b.style.display='flex';b.textContent=n>9?'9+':n}else b.style.display='none';}
   }catch(e){}
 }, 30000);
+
+// ══════ QZ TRAY — CAJÓN DE DINERO ══════
+const QZ_PRINTER = 'impresora 80mm automatica';
+let _qzReady = false;
+
+async function qzConnect() {
+  if (_qzReady) return true;
+  try {
+    if (!qz.websocket.isActive()) {
+      qz.security.setCertificatePromise(() => Promise.resolve(''));
+      qz.security.setSignaturePromise(() => () => Promise.resolve(''));
+      await qz.websocket.connect();
+    }
+    _qzReady = true;
+    console.log('[QZ] Conectado');
+    return true;
+  } catch(e) {
+    console.warn('[QZ] No se pudo conectar:', e.message || e);
+    return false;
+  }
+}
+
+async function abrirCajon() {
+  const ok = await qzConnect();
+  if (!ok) { console.warn('[QZ] Sin conexión, cajón no se abre'); return; }
+  try {
+    const cfg = qz.configs.create(QZ_PRINTER);
+    // ESC p 0 25 250 — comando estándar apertura cajón ESC/POS
+    const data = ['\x1B\x70\x00\x19\xFA'];
+    await qz.print(cfg, data);
+    console.log('[QZ] Cajón abierto');
+  } catch(e) {
+    console.error('[QZ] Error abriendo cajón:', e);
+  }
+}
+
+// Conectar al cargar
+qzConnect();
