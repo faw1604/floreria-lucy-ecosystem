@@ -46,6 +46,7 @@ let debounceCliSearchTimer = null;
 // ═══════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════
+let _posClInterval = null;
 function navTo(sec) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(s => s.classList.remove('active'));
@@ -54,6 +55,8 @@ function navTo(sec) {
   if (sec === 'pendientes') loadPendientes();
   if (sec === 'transacciones') loadTransacciones();
   if (sec === 'entregas') loadEntregas();
+  if (sec === 'claudia') { posLoadChats(); if(!_posClInterval) _posClInterval=setInterval(()=>{if(!document.hidden)posLoadChats()},15000); }
+  else if (_posClInterval) { clearInterval(_posClInterval); _posClInterval=null; }
 }
 
 function saveFiscalInputs() {
@@ -2676,3 +2679,179 @@ async function guardarFechaPedido(id) {
     loadTransacciones();
   } catch(e) { alert('Error de conexion'); }
 }
+
+// ══════ CLAUDIA POS ══════
+let _posClData = [];
+let _posCatTipo = 'general';
+let _posRespTel = '';
+
+function posSelCatTipo(tipo, btn) {
+  _posCatTipo = tipo;
+  document.querySelectorAll('.pos-cat-btn').forEach(b => { b.classList.remove('active'); b.style.borderColor='var(--borde)'; b.style.background='#fff'; });
+  btn.classList.add('active'); btn.style.borderColor='var(--verde)'; btn.style.background='rgba(45,90,61,0.08)';
+}
+
+async function posEnviarCatalogo() {
+  const pais = document.getElementById('pos-catalogo-pais').value;
+  const tel = document.getElementById('pos-catalogo-tel').value.trim().replace(/\D/g,'');
+  const result = document.getElementById('pos-cat-result');
+  if (!tel || tel.length < 7) { result.textContent='Ingresa un telefono valido'; result.style.color='var(--rojo)'; return; }
+  const telefono = pais === '52' ? '521' + tel : pais + tel;
+  const baseUrl = location.origin + '/catalogo/';
+  let mensaje = '';
+  if (_posCatTipo === 'general') mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de Floreria Lucy: ${baseUrl}`;
+  else if (_posCatTipo === 'funeral') mensaje = `🕊️ Aqui te comparto nuestro catalogo de arreglos funerales: ${baseUrl}`;
+  const btn = document.getElementById('pos-btn-enviar-cat');
+  btn.disabled = true; btn.textContent = 'Enviando...'; result.textContent = '';
+  try {
+    const r = await fetch('/api/claudia/enviar-catalogo', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({telefono, mensaje})});
+    if (!r.ok) { const e = await r.json().catch(()=>({})); result.textContent = e.detail||'Error'; result.style.color='var(--rojo)'; return; }
+    result.textContent = 'Enviado ✓'; result.style.color = 'var(--verde)';
+    document.getElementById('pos-catalogo-tel').value = '';
+    setTimeout(posLoadChats, 2000);
+  } catch(e) { result.textContent = 'Error de conexion'; result.style.color = 'var(--rojo)'; }
+  finally { btn.disabled = false; btn.textContent = 'Enviar por Claudia'; }
+}
+
+async function posLoadChats() {
+  try {
+    const r = await fetch('/api/claudia/chats', {credentials:'include'});
+    if (!r.ok) return;
+    _posClData = await r.json();
+    posRenderChats();
+    posUpdateBadge();
+  } catch(e) {}
+}
+
+function posRenderChats() {
+  const search = (document.getElementById('pos-chat-search')?.value||'').toLowerCase();
+  const now = Date.now(), h24 = 86400000;
+  const activos=[], espera=[], archivados=[];
+  _posClData.forEach(c => {
+    if (search && !c.telefono.includes(search)) return;
+    const ts = c.timestamp ? new Date(c.timestamp).getTime() : 0;
+    if (c.estado==='esperando_humano') espera.push(c);
+    else if (now-ts>h24) archivados.push(c);
+    else activos.push(c);
+  });
+  document.getElementById('pos-cl-count-activos').textContent = activos.length ? `(${activos.length})` : '';
+  document.getElementById('pos-cl-count-espera').textContent = espera.length ? `(${espera.length})` : '';
+  document.getElementById('pos-cl-count-archivados').textContent = archivados.length ? `(${archivados.length})` : '';
+  document.getElementById('pos-cl-activos').innerHTML = activos.length ? activos.map(posRenderRow).join('') : '<div class="pos-cl-empty">Sin chats activos</div>';
+  document.getElementById('pos-cl-espera').innerHTML = espera.length ? espera.map(posRenderRow).join('') : '<div class="pos-cl-empty">Sin chats esperando</div>';
+  document.getElementById('pos-cl-archivados').innerHTML = archivados.length ? archivados.map(posRenderRow).join('') : '<div class="pos-cl-empty">Sin chats archivados</div>';
+}
+
+function posRenderRow(c) {
+  const esEspera = c.estado==='esperando_humano';
+  const dot = esEspera?'espera':'activo';
+  const rolIco = c.rol==='user'?'👤':'🤖';
+  const msg = (c.ultimo_mensaje||'').replace(/</g,'&lt;').substring(0,80);
+  const time = c.timestamp ? new Date(c.timestamp).toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'America/Chihuahua'})+' '+new Date(c.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'}) : '';
+  const wait = esEspera && c.estado_desde ? `<div class="pos-cl-wait">⏱ ${posTiempoEspera(c.estado_desde)}</div>` : '';
+  const btnAcc = esEspera
+    ? `<button onclick="posLiberar('${c.telefono}')">Devolver a Claudia</button>`
+    : `<button onclick="posIntervenir('${c.telefono}')">Intervenir</button>`;
+  return `<div class="pos-cl-row">
+    <div class="pos-cl-dot ${dot}"></div>
+    <div class="pos-cl-info">
+      <div class="pos-cl-tel">${c.telefono}<span class="pos-cl-estado ${dot}">${esEspera?'Esperando':'Activo'}</span></div>
+      <div class="pos-cl-msg">${rolIco} ${msg}</div>
+      ${wait}
+    </div>
+    <div class="pos-cl-time">${time}</div>
+    <div class="pos-cl-actions">
+      <button class="btn-resp" onclick="posAbrirResp('${c.telefono}')">Responder</button>
+      ${btnAcc}
+    </div>
+  </div>`;
+}
+
+function posTiempoEspera(iso) {
+  const d = Date.now() - new Date(iso).getTime(), m = Math.floor(d/60000);
+  if (m<60) return `hace ${m} min`;
+  const h=Math.floor(m/60); return h<24 ? `hace ${h}h ${m%60}min` : `hace ${Math.floor(h/24)}d`;
+}
+
+function posFilterChats() { posRenderChats(); }
+
+function posSubTab(id, btn) {
+  document.querySelectorAll('#pos-chat-tabs .pos-chat-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  ['pos-cl-activos','pos-cl-espera','pos-cl-archivados'].forEach(t => {
+    document.getElementById(t).style.display = t===id ? '' : 'none';
+  });
+}
+
+async function posIntervenir(tel) {
+  await fetch('/api/claudia/bloquear',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({telefono:tel})});
+  posLoadChats();
+}
+
+async function posLiberar(tel) {
+  await fetch('/api/claudia/liberar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({telefono:tel})});
+  posLoadChats();
+}
+
+async function posAbrirResp(tel) {
+  _posRespTel = tel;
+  document.getElementById('pos-responder-title').textContent = 'Responder a ' + tel;
+  document.getElementById('pos-responder-input').value = '';
+  document.getElementById('pos-responder-historial').innerHTML = '<div style="text-align:center;color:var(--texto2);padding:16px">Cargando...</div>';
+  document.getElementById('pos-modal-responder').classList.add('active');
+  try {
+    const r = await fetch('/api/claudia/historial/'+tel, {credentials:'include'});
+    const msgs = r.ok ? await r.json() : [];
+    const container = document.getElementById('pos-responder-historial');
+    if (!msgs.length) { container.innerHTML='<div class="pos-cl-empty">Sin mensajes</div>'; return; }
+    container.innerHTML = msgs.map(m => {
+      const t = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'}) : '';
+      return `<div class="pos-msg ${m.role}"><div>${(m.content||'').replace(/</g,'&lt;')}</div><div class="pos-msg-time">${t}</div></div>`;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch(e) {}
+  setTimeout(()=>document.getElementById('pos-responder-input').focus(),100);
+}
+
+async function posEnviarMsg() {
+  const input = document.getElementById('pos-responder-input');
+  const msg = input.value.trim();
+  if (!msg || !_posRespTel) return;
+  const btn = document.getElementById('pos-btn-enviar-msg');
+  btn.disabled=true; btn.textContent='Enviando...';
+  try {
+    const r = await fetch('/api/claudia/enviar-mensaje',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({telefono:_posRespTel,mensaje:msg})});
+    if (!r.ok) { const e=await r.json().catch(()=>({})); alert(e.detail||'Error'); return; }
+    input.value='';
+    const r2 = await fetch('/api/claudia/historial/'+_posRespTel, {credentials:'include'});
+    if (r2.ok) {
+      const msgs = await r2.json();
+      const container = document.getElementById('pos-responder-historial');
+      container.innerHTML = msgs.map(m => {
+        const t = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'}) : '';
+        return `<div class="pos-msg ${m.role}"><div>${(m.content||'').replace(/</g,'&lt;')}</div><div class="pos-msg-time">${t}</div></div>`;
+      }).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+    posLoadChats();
+  } catch(e) { alert('Error'); }
+  finally { btn.disabled=false; btn.textContent='Enviar'; }
+}
+
+function posUpdateBadge() {
+  const n = _posClData.filter(c=>c.estado==='esperando_humano').length;
+  const b = document.getElementById('badge-claudia');
+  if (b) { if(n>0){b.style.display='flex';b.textContent=n>9?'9+':n}else b.style.display='none'; }
+}
+
+// Badge polling every 30s
+setInterval(async()=>{
+  try {
+    const r = await fetch('/api/claudia/chats',{credentials:'include'});
+    if(!r.ok)return;
+    const d=await r.json();
+    const n=d.filter(c=>c.estado==='esperando_humano').length;
+    const b=document.getElementById('badge-claudia');
+    if(b){if(n>0){b.style.display='flex';b.textContent=n>9?'9+':n}else b.style.display='none';}
+  }catch(e){}
+}, 30000);

@@ -322,3 +322,28 @@ input,select,textarea{font-family:inherit;font-size:13px}
   #print-frame .mini-ticket{page-break-after:always;padding:4px 0}
   #print-frame .mini-ticket:last-child{page-break-after:avoid}
 }
+
+/* Claudia POS */
+.pos-chat-tab{padding:8px 14px;font-size:13px;font-weight:500;color:var(--texto2);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:inherit}
+.pos-chat-tab.active{color:var(--verde);border-bottom-color:var(--verde);font-weight:600}
+.pos-cl-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--borde);border-radius:10px;background:#fff;margin-bottom:5px}
+.pos-cl-row:hover{background:var(--crema)}
+.pos-cl-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pos-cl-dot.activo{background:#27ae60}
+.pos-cl-dot.espera{background:#f39c12}
+.pos-cl-info{flex:1;min-width:0}
+.pos-cl-tel{font-size:13px;font-weight:600}
+.pos-cl-msg{font-size:12px;color:var(--texto2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;max-width:280px}
+.pos-cl-time{font-size:11px;color:var(--texto2);white-space:nowrap;flex-shrink:0}
+.pos-cl-actions{display:flex;gap:4px;flex-shrink:0}
+.pos-cl-actions button{font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid var(--borde);background:#fff;cursor:pointer;font-family:inherit;white-space:nowrap}
+.pos-cl-actions .btn-resp{background:var(--verde);color:#fff;border-color:var(--verde)}
+.pos-cl-estado{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;display:inline-block;margin-left:6px}
+.pos-cl-estado.activo{background:#d5f5e3;color:#2e7d32}
+.pos-cl-estado.espera{background:#fff3cd;color:#856404}
+.pos-cl-wait{font-size:10px;color:#e67e22;margin-top:1px}
+.pos-cl-empty{padding:20px;text-align:center;color:var(--texto2);font-size:13px}
+.pos-msg{max-width:80%;padding:7px 11px;border-radius:12px;font-size:13px;line-height:1.4;word-wrap:break-word}
+.pos-msg.user{background:#d5f5e3;align-self:flex-start;border-bottom-left-radius:4px}
+.pos-msg.assistant{background:#e3f2fd;align-self:flex-end;border-bottom-right-radius:4px}
+.pos-msg-time{font-size:10px;color:var(--texto2);margin-top:1px}

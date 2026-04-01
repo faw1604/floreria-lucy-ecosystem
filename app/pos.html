@@ -37,7 +37,7 @@
   <div class="sb-item" onclick="navTo('transacciones')" id="sb-transacciones"><span class="ico">💰</span>Transacc.</div>
   <div class="sb-item" onclick="navTo('clientes')" id="sb-clientes"><span class="ico">👤</span>Clientes</div>
   <div class="sb-item" onclick="navTo('entregas')" id="sb-entregas"><span class="ico">📦<span class="badge-notif" id="badge-entregas" style="display:none">0</span></span>Entregas</div>
-  <div class="sb-item" onclick="navTo('claudia')" id="sb-claudia"><span class="ico">🤖</span>Claudia</div>
+  <div class="sb-item" onclick="navTo('claudia')" id="sb-claudia"><span class="ico">🤖<span class="badge-notif" id="badge-claudia" style="display:none">0</span></span>Claudia</div>
   <div class="sb-bottom"><a href="/panel/">← Panel</a><a href="/auth/logout" style="color:#f87171">Salir</a></div>
 </div>
 
@@ -253,16 +253,62 @@
 
 <!-- ════════════ SECTION: CLAUDIA ════════════ -->
 <div class="section" id="sec-claudia">
-  <div class="sec-pad" style="display:flex;align-items:center;justify-content:center;text-align:center">
-    <div>
-      <div style="font-size:48px;margin-bottom:12px">🤖</div>
-      <h2 style="color:var(--verde);margin-bottom:8px">Claudia</h2>
-      <p style="color:var(--texto2);font-size:14px">Panel de WhatsApp — Proximamente</p>
+  <div class="sec-pad">
+    <h2 style="font-family:'Playfair Display',serif;color:var(--verde);margin-bottom:16px">Claudia — WhatsApp</h2>
+
+    <!-- Enviar Catálogo -->
+    <div style="background:#fff;border:1px solid var(--borde);border-radius:12px;padding:16px;margin-bottom:16px">
+      <h3 style="margin:0 0 12px;font-size:15px">Enviar Catalogo por WhatsApp</h3>
+      <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+        <select id="pos-catalogo-pais" style="width:90px;padding:7px;border:1px solid var(--borde);border-radius:8px;font-size:13px">
+          <option value="52" selected>MX +52</option>
+          <option value="1">US +1</option>
+        </select>
+        <input type="text" id="pos-catalogo-tel" placeholder="Ej: 6141234567" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="pos-cat-btn active" onclick="posSelCatTipo('general',this)" style="padding:6px 14px;border:2px solid var(--verde);border-radius:8px;background:rgba(45,90,61,0.08);font-size:12px;cursor:pointer;font-family:inherit">Catalogo General</button>
+        <button class="pos-cat-btn" onclick="posSelCatTipo('funeral',this)" style="padding:6px 14px;border:1px solid var(--borde);border-radius:8px;background:#fff;font-size:12px;cursor:pointer;font-family:inherit">Catalogo Funeral</button>
+      </div>
+      <button style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="posEnviarCatalogo()" id="pos-btn-enviar-cat">Enviar por Claudia</button>
+      <span id="pos-cat-result" style="margin-left:10px;font-size:12px"></span>
+    </div>
+
+    <!-- Inbox de Chats -->
+    <div style="background:#fff;border:1px solid var(--borde);border-radius:12px;padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="margin:0;font-size:15px">Inbox de Chats</h3>
+        <button style="background:#fff;border:1px solid var(--borde);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit" onclick="posLoadChats()">Refrescar</button>
+      </div>
+      <div style="margin-bottom:10px">
+        <input type="text" id="pos-chat-search" placeholder="Buscar por telefono..." style="width:100%;padding:7px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit" oninput="posFilterChats()">
+      </div>
+      <div style="display:flex;gap:0;border-bottom:2px solid var(--borde);margin-bottom:12px" id="pos-chat-tabs">
+        <button class="pos-chat-tab active" onclick="posSubTab('pos-cl-activos',this)">Activos <span id="pos-cl-count-activos" style="font-size:11px;opacity:.7"></span></button>
+        <button class="pos-chat-tab" onclick="posSubTab('pos-cl-espera',this)">Esperando <span id="pos-cl-count-espera" style="font-size:11px;opacity:.7"></span></button>
+        <button class="pos-chat-tab" onclick="posSubTab('pos-cl-archivados',this)">Archivados <span id="pos-cl-count-archivados" style="font-size:11px;opacity:.7"></span></button>
+      </div>
+      <div id="pos-cl-activos" class="pos-cl-tab-content"><div style="padding:16px;text-align:center;color:var(--texto2);font-size:13px">Cargando chats...</div></div>
+      <div id="pos-cl-espera" class="pos-cl-tab-content" style="display:none"></div>
+      <div id="pos-cl-archivados" class="pos-cl-tab-content" style="display:none"></div>
     </div>
   </div>
 </div>
 
 </div><!-- /main -->
+
+<!-- Modal Responder Chat (POS) -->
+<div class="modal-bg" id="pos-modal-responder" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:520px;width:95%">
+    <button class="close" onclick="document.getElementById('pos-modal-responder').classList.remove('active')">&times;</button>
+    <h3 id="pos-responder-title">Responder a...</h3>
+    <div id="pos-responder-historial" style="max-height:380px;overflow-y:auto;border:1px solid var(--borde);border-radius:10px;padding:10px;background:#faf8f5;display:flex;flex-direction:column;gap:5px"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input type="text" id="pos-responder-input" placeholder="Escribe tu mensaje..." style="flex:1;padding:9px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit" onkeydown="if(event.key==='Enter'&&!event.shiftKey)posEnviarMsg()">
+      <button style="background:var(--verde);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="posEnviarMsg()" id="pos-btn-enviar-msg">Enviar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ MODALS ═══ -->
 
