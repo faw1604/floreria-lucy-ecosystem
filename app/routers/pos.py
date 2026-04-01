@@ -304,9 +304,7 @@ async def _pos_crear_pedido_inner(request, db):
 
     from datetime import date as date_type
     fecha_str = data.get("fecha_entrega")
-    logger.info(f"[POS CREAR] tipo={tipo}, fecha_entrega_raw='{fecha_str}', all_keys={list(data.keys())}")
     fecha_entrega = date_type.fromisoformat(fecha_str) if fecha_str else datetime.now(TZ).date()
-    logger.info(f"[POS CREAR] fecha_entrega_parsed={fecha_entrega}")
 
     # Determinar metodo_entrega y estado correcto
     es_mostrador = tipo == "mostrador" or (not data.get("direccion_entrega") and not zona and tipo not in ("envio", "funeral", "recoger", "domicilio"))
