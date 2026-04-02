@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floreria Lucy — Arreglos florales en Chihuahua</title>
+<meta name="description" content="Floreria Lucy, arreglos florales y ramos con entrega a domicilio en Chihuahua. Explora nuestro catalogo con un desliz.">
+<link rel="icon" type="image/png" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_32,h_32,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">
+<link rel="apple-touch-icon" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_180,h_180,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        verde: { DEFAULT: '#193a2c', medio: '#2d5a3d', claro: '#4a8c5c' },
+        dorado: { DEFAULT: '#d4a843', claro: '#e8c96a' },
+        crema: '#faf8f5',
+        lavanda: { DEFAULT: '#8B7DA8', claro: '#B8ACD0', oscuro: '#6B5F87' },
+      },
+      fontFamily: {
+        serif: ['Playfair Display', 'serif'],
+        sans: ['Inter', 'sans-serif'],
+      },
+    }
+  }
+}
+</script>
+<style>
+  /* ====== BASE ANIMATIONS ====== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-12px) rotate(2deg); }
+  }
+  @keyframes floatDelay {
+    0%, 100% { transform: translateY(0) rotate(1deg); }
+    50% { transform: translateY(-8px) rotate(-1deg); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes swipeHint {
+    0%, 100% { transform: translateX(0) rotate(0deg); }
+    25% { transform: translateX(-20px) rotate(-3deg); }
+    75% { transform: translateX(20px) rotate(3deg); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .7; }
+  }
+
+  /* ====== NEW: Typewriter ====== */
+  @keyframes typewriter {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+  @keyframes blink-caret {
+    0%, 100% { border-color: transparent; }
+    50% { border-color: #d4a843; }
+  }
+  .typewriter {
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 2px solid #d4a843;
+    width: 0;
+    animation: typewriter 2.5s steps(30) .8s forwards, blink-caret .75s step-end infinite;
+    display: inline-block;
+  }
+
+  /* ====== NEW: Blob animation ====== */
+  @keyframes blob {
+    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(0deg) scale(1); }
+    33% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: rotate(120deg) scale(1.05); }
+    66% { border-radius: 50% 60% 30% 60% / 30% 50% 70% 50%; transform: rotate(240deg) scale(.95); }
+  }
+  .blob {
+    animation: blob 8s ease-in-out infinite;
+  }
+
+  /* ====== NEW: Gradient shift ====== */
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .gradient-shift {
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease-in-out infinite;
+  }
+
+  /* Lavanda accents */
+  .lavanda-glow {
+    box-shadow: 0 0 40px rgba(139,125,168,.15);
+  }
+
+  /* ====== NEW: Marquee ====== */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .marquee-track {
+    animation: marquee 20s linear infinite;
+  }
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+
+  /* ====== NEW: Counter ====== */
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ====== Utility classes ====== */
+  .fade-up { animation: fadeUp .6s ease-out both; }
+  .fade-up-d1 { animation-delay: .1s; }
+  .fade-up-d2 { animation-delay: .2s; }
+  .fade-up-d3 { animation-delay: .3s; }
+  .fade-up-d4 { animation-delay: .4s; }
+  .fade-up-d5 { animation-delay: .5s; }
+  .float-card { animation: float 4s ease-in-out infinite; }
+  .float-card-delay { animation: floatDelay 4.5s ease-in-out infinite; }
+  .swipe-hint { animation: swipeHint 3s ease-in-out infinite; }
+  .skeleton-load {
+    background: linear-gradient(90deg, #e5e0d8 25%, #f0ebe3 50%, #e5e0d8 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Scroll reveal with stagger */
+  .reveal { opacity: 0; transform: translateY(24px); transition: all .6s cubic-bezier(.22,1,.36,1); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* Glass card */
+  .glass-card {
+    background: rgba(255,255,255,.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.3);
+  }
+
+  /* Phone mockup */
+  .phone-frame {
+    width: 260px; height: 520px;
+    border-radius: 36px; border: 6px solid #1a1a1a;
+    background: #fff; position: relative; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(25,58,44,.2), 0 0 0 2px rgba(25,58,44,.05);
+  }
+  .phone-notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 28px; background: #1a1a1a;
+    border-radius: 0 0 18px 18px; z-index: 10;
+  }
+  .phone-screen {
+    width: 100%; height: 100%;
+    padding: 36px 12px 12px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px; position: relative;
+  }
+  .mock-card {
+    position: absolute; width: 200px; height: 280px;
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    transition: transform .3s ease;
+  }
+  .mock-card img { width: 100%; height: 100%; object-fit: cover; }
+  .mock-card-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0,0,0,.6));
+    color: #fff;
+  }
+
+  /* ====== NEW: 3D Tilt on hover ====== */
+  .tilt-card {
+    transition: transform .2s ease, box-shadow .2s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .tilt-card:hover {
+    box-shadow: 0 16px 40px rgba(25,58,44,.15);
+  }
+
+  /* ====== NEW: Magnetic button ====== */
+  .magnetic-btn {
+    transition: transform .15s ease-out;
+    will-change: transform;
+  }
+
+  /* CTA hover */
+  .btn-dorado { transition: all .2s ease; }
+  .btn-dorado:hover {
+    background: #c49a3a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(212,168,67,.3);
+  }
+
+  /* ====== Reduced motion ====== */
+  @media (prefers-reduced-motion: reduce) {
+    .fade-up, .float-card, .float-card-delay, .swipe-hint, .blob,
+    .typewriter, .marquee-track, .gradient-shift { animation: none; }
+    .typewriter { width: 100%; border-right: none; }
+    .reveal { transition: none; opacity: 1; transform: none; }
+    .tilt-card, .magnetic-btn, .btn-dorado { transition: none; }
+  }
+
+  html { scroll-behavior: smooth; }
+</style>
+</head>
+<body class="bg-crema font-sans text-[#1a1a1a] antialiased overflow-x-hidden">
+
+<!-- ========== NAVBAR ========== -->
+<nav class="fixed top-0 left-0 right-0 z-50 transition-all duration-300" id="navbar">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16 sm:h-20">
+      <a href="/" class="flex items-center gap-2">
+        <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/w_160,q_auto/v1775163240/floreria-lucy/logo.png"
+             alt="Floreria Lucy" class="h-12 sm:h-14 w-auto hidden" id="nav-logo-img">
+        <span class="font-serif text-xl sm:text-2xl font-bold text-white" id="nav-logo-text">
+          Floreria <span class="text-dorado">Lucy</span>
+        </span>
+      </a>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#catalogo" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-1">Catalogo</a>
+        <a href="#categorias" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-2">Categorias</a>
+        <a href="#combos" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-3">Combos</a>
+        <a href="#contacto" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-4">Contacto</a>
+        <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+           class="magnetic-btn btn-dorado inline-flex items-center gap-2 bg-dorado text-verde font-semibold text-sm px-5 py-2.5 rounded-full cursor-pointer">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.332 0-4.487-.753-6.24-2.03l-.436-.33-3.264 1.094 1.094-3.264-.33-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+          WhatsApp
+        </a>
+      </div>
+      <button class="md:hidden flex flex-col gap-1.5 p-2 cursor-pointer" onclick="toggleMobileNav()" aria-label="Menu de navegacion">
+        <span class="block w-6 h-0.5 bg-white transition-all" id="ham-1"></span>
+        <span class="block w-6 h-0.5 bg-white transition-all" id="ham-2"></span>
+        <span class="block w-6 h-0.5 bg-white transition-all" id="ham-3"></span>
+      </button>
+    </div>
+  </div>
+  <div class="md:hidden overflow-hidden max-h-0 transition-all duration-300 bg-verde/95 backdrop-blur-md" id="mobile-menu">
+    <div class="px-6 py-4 flex flex-col gap-3">
+      <a href="#catalogo" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Catalogo</a>
+      <a href="#categorias" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Categorias</a>
+      <a href="#combos" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Combos</a>
+      <a href="#contacto" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Contacto</a>
+      <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+         class="btn-dorado bg-dorado text-verde font-semibold text-center py-3 rounded-full mt-2 cursor-pointer">
+        Pedir por WhatsApp
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ========== HERO ========== -->
+<section class="relative min-h-screen flex items-center overflow-hidden" id="hero-section">
+  <!-- Parallax Background -->
+  <div class="absolute inset-0" id="hero-bg" style="will-change:transform">
+    <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/q_auto,f_auto,w_1600/v1774476982/floreria-lucy/hero.jpg"
+         alt="Floreria Lucy arreglos florales"
+         class="w-full h-[120%] object-cover"
+         loading="eager" fetchpriority="high">
+    <div class="absolute inset-0 bg-gradient-to-r from-verde/85 via-verde/60 to-lavanda-oscuro/30"></div>
+  </div>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 w-full">
+    <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <!-- Text -->
+      <div class="text-center lg:text-left">
+        <p class="fade-up text-dorado font-semibold text-sm tracking-widest uppercase mb-4">Desde 1988 en Chihuahua</p>
+        <h1 class="fade-up fade-up-d1 font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight mb-6">
+          La expresion<br>del <span class="text-dorado italic">amor</span>
+        </h1>
+        <!-- Typewriter subtitle -->
+        <p class="fade-up fade-up-d2 text-lg sm:text-xl text-white/80 max-w-lg mx-auto lg:mx-0 mb-10 leading-relaxed">
+          <span class="typewriter">Descubre el arreglo perfecto deslizando como nunca antes.</span>
+        </p>
+        <div class="fade-up fade-up-d3 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+          <a href="/catalogo/?modo=dynamic"
+             class="magnetic-btn btn-dorado inline-flex items-center justify-center gap-3 bg-dorado text-verde font-bold text-base px-8 py-4 rounded-full cursor-pointer shadow-lg">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+            Explorar deslizando
+          </a>
+          <a href="/catalogo/?modo=classic"
+             class="magnetic-btn inline-flex items-center justify-center gap-2 bg-white/15 backdrop-blur-sm text-white font-semibold text-base px-8 py-4 rounded-full border border-white/20 hover:bg-white/25 transition-all cursor-pointer">
+            Ver catalogo completo
+          </a>
+        </div>
+      </div>
+
+      <!-- Phone Mockup with Blob -->
+      <div class="fade-up fade-up-d4 hidden lg:flex justify-center">
+        <div class="relative">
+          <!-- Animated blob behind phone -->
+          <div class="blob absolute -inset-16 bg-gradient-to-br from-dorado/20 via-lavanda/15 to-verde-claro/10 -z-10"></div>
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen bg-crema">
+              <div class="mock-card float-card-delay" style="top:60px;left:18px;transform:rotate(-4deg) scale(.92);opacity:.5;">
+                <div class="w-full h-full skeleton-load"></div>
+              </div>
+              <div class="mock-card float-card" style="top:50px;left:22px;transform:rotate(2deg) scale(.96);opacity:.7;">
+                <div class="w-full h-full skeleton-load"></div>
+              </div>
+              <div class="mock-card swipe-hint" id="mock-card-front" style="top:40px;left:26px;z-index:3;">
+                <div class="w-full h-full skeleton-load" id="mock-card-img"></div>
+                <div class="mock-card-overlay">
+                  <p class="font-serif text-base font-semibold" id="mock-card-name">Cargando...</p>
+                  <p class="text-sm text-white/80" id="mock-card-price"></p>
+                </div>
+              </div>
+              <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-6 z-10">
+                <div class="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center">
+                  <svg class="w-5 h-5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center">
+                  <svg class="w-5 h-5 text-dorado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <div class="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center">
+                  <svg class="w-5 h-5 text-verde" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll indicator -->
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2" style="animation:pulse-soft 2s infinite">
+    <span class="text-white/60 text-xs font-medium tracking-wider uppercase">Descubre mas</span>
+    <svg class="w-5 h-5 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+  </div>
+</section>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section id="catalogo" class="py-20 sm:py-28 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16 reveal">
+      <p class="text-dorado font-semibold text-sm tracking-widest uppercase mb-3">Una experiencia unica</p>
+      <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-verde mb-4">
+        Descubre deslizando
+      </h2>
+      <p class="text-lg text-gray-500 max-w-2xl mx-auto">
+        Nuestro catalogo interactivo te permite explorar cada arreglo con un simple desliz.
+        Como nunca antes habias elegido flores.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
+      <div class="reveal text-center" style="transition-delay:0s">
+        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-verde/5 flex items-center justify-center">
+          <svg class="w-8 h-8 text-verde" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
+        </div>
+        <h3 class="font-serif text-xl font-semibold text-verde mb-2">Desliza</h3>
+        <p class="text-gray-500 leading-relaxed">Explora arreglos uno por uno. Desliza a la derecha los que te gustan, a la izquierda los que no.</p>
+      </div>
+      <div class="reveal text-center" style="transition-delay:.1s">
+        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-lavanda/10 flex items-center justify-center">
+          <svg class="w-8 h-8 text-lavanda" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </div>
+        <h3 class="font-serif text-xl font-semibold text-verde mb-2">Elige tus favoritos</h3>
+        <p class="text-gray-500 leading-relaxed">Los arreglos que te encanten se guardan en tu carrito. Sin presion, a tu ritmo.</p>
+      </div>
+      <div class="reveal text-center" style="transition-delay:.2s">
+        <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-verde-claro/10 flex items-center justify-center">
+          <svg class="w-8 h-8 text-verde-claro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <h3 class="font-serif text-xl font-semibold text-verde mb-2">Haz tu pedido</h3>
+        <p class="text-gray-500 leading-relaxed">Completa tu pedido en minutos. Entrega a domicilio o recoge en tienda.</p>
+      </div>
+    </div>
+
+    <div class="text-center mt-14 reveal">
+      <a href="/catalogo/?modo=dynamic"
+         class="magnetic-btn btn-dorado inline-flex items-center gap-3 bg-dorado text-verde font-bold text-lg px-10 py-4 rounded-full cursor-pointer shadow-lg">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+        Probar ahora
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CATEGORIES ========== -->
+<section id="categorias" class="py-20 sm:py-28 bg-crema">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-14 reveal">
+      <p class="text-dorado font-semibold text-sm tracking-widest uppercase mb-3">Para cada ocasion</p>
+      <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-verde">
+        Nuestras categorias
+      </h2>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6" id="categories-grid">
+      <div class="skeleton-load rounded-2xl h-48 sm:h-56"></div>
+      <div class="skeleton-load rounded-2xl h-48 sm:h-56"></div>
+      <div class="skeleton-load rounded-2xl h-48 sm:h-56"></div>
+      <div class="skeleton-load rounded-2xl h-48 sm:h-56"></div>
+      <div class="skeleton-load rounded-2xl h-48 sm:h-56"></div>
+      <div class="skeleton-load rounded-2xl h-48 sm:h-56"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MARQUEE ========== -->
+<section class="py-6 bg-gradient-to-r from-verde via-lavanda-oscuro to-verde overflow-hidden">
+  <div class="flex whitespace-nowrap">
+    <div class="marquee-track flex items-center gap-8 text-white/30 text-sm font-medium uppercase tracking-widest">
+      <span>Arreglos</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Ramos</span><span class="text-dorado/50">&#10022;</span>
+      <span>Coronas</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Plantas</span><span class="text-dorado/50">&#10022;</span>
+      <span>Globos</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Chocolates</span><span class="text-dorado/50">&#10022;</span>
+      <span>Peluches</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Vinos</span><span class="text-dorado/50">&#10022;</span>
+      <span>Funeral</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Bodas</span><span class="text-dorado/50">&#10022;</span>
+      <span>Arreglos</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Ramos</span><span class="text-dorado/50">&#10022;</span>
+      <span>Coronas</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Plantas</span><span class="text-dorado/50">&#10022;</span>
+      <span>Globos</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Chocolates</span><span class="text-dorado/50">&#10022;</span>
+      <span>Peluches</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Vinos</span><span class="text-dorado/50">&#10022;</span>
+      <span>Funeral</span><span class="text-lavanda-claro/50">&#10022;</span>
+      <span>Bodas</span><span class="text-dorado/50">&#10022;</span>
+    </div>
+  </div>
+</section>
+
+<!-- ========== COMBOS FLORES + CHOCOLATES ========== -->
+<section id="combos" class="py-20 sm:py-28 relative overflow-hidden gradient-shift" style="background:linear-gradient(135deg,#193a2c 0%,#2d3a4d 25%,#6B5F87 50%,#2d3a4d 75%,#193a2c 100%);background-size:200% 200%">
+  <div class="absolute top-0 right-0 w-96 h-96 bg-lavanda/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+  <div class="absolute bottom-0 left-0 w-80 h-80 bg-dorado/8 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+
+  <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-14 reveal">
+      <p class="text-dorado font-semibold text-sm tracking-widest uppercase mb-3">La Flore Chocolatier</p>
+      <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+        Flores + Chocolates
+      </h2>
+      <p class="text-lg text-white/70 max-w-2xl mx-auto">
+        Nuestros chocolates bean-to-bar artesanales combinados con los arreglos mas hermosos.
+        El regalo perfecto.
+      </p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6" id="combos-grid">
+      <div class="glass-card rounded-2xl p-6 reveal">
+        <div class="skeleton-load rounded-xl h-48 mb-4"></div>
+        <div class="skeleton-load rounded h-4 w-3/4 mb-2"></div>
+        <div class="skeleton-load rounded h-4 w-1/2"></div>
+      </div>
+      <div class="glass-card rounded-2xl p-6 reveal" style="transition-delay:.1s">
+        <div class="skeleton-load rounded-xl h-48 mb-4"></div>
+        <div class="skeleton-load rounded h-4 w-3/4 mb-2"></div>
+        <div class="skeleton-load rounded h-4 w-1/2"></div>
+      </div>
+      <div class="glass-card rounded-2xl p-6 reveal sm:col-span-2 lg:col-span-1" style="transition-delay:.2s">
+        <div class="skeleton-load rounded-xl h-48 mb-4"></div>
+        <div class="skeleton-load rounded h-4 w-3/4 mb-2"></div>
+        <div class="skeleton-load rounded h-4 w-1/2"></div>
+      </div>
+    </div>
+
+    <div class="text-center mt-12 reveal">
+      <a href="/catalogo/?modo=classic"
+         class="magnetic-btn inline-flex items-center gap-3 bg-dorado text-verde font-bold text-base px-8 py-4 rounded-full btn-dorado cursor-pointer">
+        Ver todos los combos
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== TRUST / ANIMATED COUNTERS ========== -->
+<section class="py-16 sm:py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid sm:grid-cols-3 gap-8 text-center">
+      <div class="reveal">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-verde/5 flex items-center justify-center">
+          <svg class="w-7 h-7 text-verde" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3 class="font-serif text-2xl font-bold text-verde mb-1">Desde <span class="counter" data-target="1988" data-is-year="true">1988</span></h3>
+        <p class="text-gray-500">Mas de <span class="counter" data-target="37">0</span> anos creando arreglos con amor en Chihuahua</p>
+      </div>
+      <div class="reveal" style="transition-delay:.1s">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-dorado/10 flex items-center justify-center">
+          <svg class="w-7 h-7 text-dorado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <h3 class="font-serif text-2xl font-bold text-verde mb-1">Entrega local</h3>
+        <p class="text-gray-500">Envio a domicilio en toda la ciudad de Chihuahua y alrededores</p>
+      </div>
+      <div class="reveal" style="transition-delay:.2s">
+        <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-verde-claro/10 flex items-center justify-center">
+          <svg class="w-7 h-7 text-verde-claro" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3 class="font-serif text-2xl font-bold text-verde mb-1">Calidad garantizada</h3>
+        <p class="text-gray-500">Flores frescas seleccionadas a diario. Tu satisfaccion es primero</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CTA FINAL ========== -->
+<section class="py-20 sm:py-28 bg-crema">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center reveal">
+    <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-verde mb-6">
+      Encuentra el arreglo perfecto
+    </h2>
+    <p class="text-lg text-gray-500 mb-10">
+      Desliza, elige, y haz tu pedido en minutos. Entrega el mismo dia disponible.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="/catalogo/?modo=dynamic"
+         class="magnetic-btn btn-dorado inline-flex items-center justify-center gap-3 bg-dorado text-verde font-bold text-lg px-10 py-4 rounded-full cursor-pointer shadow-lg">
+        Explorar catalogo
+      </a>
+      <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+         class="magnetic-btn inline-flex items-center justify-center gap-2 bg-verde text-white font-semibold text-lg px-10 py-4 rounded-full hover:bg-verde-medio transition-colors cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.332 0-4.487-.753-6.24-2.03l-.436-.33-3.264 1.094 1.094-3.264-.33-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+        Hablar por WhatsApp
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer id="contacto" class="bg-verde text-white py-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+      <div class="sm:col-span-2 lg:col-span-1">
+        <div class="bg-white/90 rounded-xl inline-block px-3 py-2 mb-3">
+          <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/w_180,q_auto/v1775163240/floreria-lucy/logo.png"
+               alt="Floreria Lucy" class="h-14 w-auto">
+        </div>
+        <p class="text-white/60 text-sm leading-relaxed">La expresion del amor desde 1988. Arreglos florales, ramos y detalles para cada ocasion en Chihuahua.</p>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Ubicacion</h4>
+        <p class="text-white/70 text-sm leading-relaxed">
+          C. Sabino 610<br>Las Granjas, 31100<br>Chihuahua, Chih., Mexico
+        </p>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Horarios</h4>
+        <div class="text-white/70 text-sm space-y-1">
+          <p>Lun — Vie: 9:00 - 19:00</p>
+          <p>Sabado: 10:00 - 18:00</p>
+          <p>Domingo: 11:00 - 15:00</p>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Contacto</h4>
+        <div class="space-y-3">
+          <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.332 0-4.487-.753-6.24-2.03l-.436-.33-3.264 1.094 1.094-3.264-.33-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+            614 334 9392
+          </a>
+          <a href="tel:+526144143787"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            (614) 414 3787
+          </a>
+          <a href="mailto:contacto@florerialucy.com"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            contacto@florerialucy.com
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <p class="text-white/40 text-sm">&copy; 2026 Floreria Lucy. Todos los derechos reservados.</p>
+      <div class="flex gap-6">
+        <a href="/catalogo/legal" class="text-white/40 hover:text-white/70 text-sm transition-colors cursor-pointer">Aviso de privacidad</a>
+        <a href="/catalogo/facturacion" class="text-white/40 hover:text-white/70 text-sm transition-colors cursor-pointer">Facturacion</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ========== JAVASCRIPT ========== -->
+<script>
+// --- Navbar scroll ---
+const navbar = document.getElementById('navbar');
+const navLogoImg = document.getElementById('nav-logo-img');
+const navLogoText = document.getElementById('nav-logo-text');
+const navLinks = ['nav-link-1','nav-link-2','nav-link-3','nav-link-4'].map(id => document.getElementById(id));
+const hamLines = ['ham-1','ham-2','ham-3'].map(id => document.getElementById(id));
+
+function updateNavbar() {
+  const s = window.scrollY > 60;
+  navbar.classList.toggle('bg-white', s);
+  navbar.classList.toggle('shadow-md', s);
+  // Over hero: text logo (white). Scrolled: image logo (original colors)
+  if (navLogoImg && navLogoText) {
+    navLogoImg.classList.toggle('hidden', !s);
+    navLogoText.classList.toggle('hidden', s);
+  }
+  navLinks.forEach(l => {
+    if (!l) return;
+    l.classList.toggle('text-gray-600', s);
+    l.classList.toggle('hover:text-verde', s);
+    l.classList.toggle('text-white/80', !s);
+    l.classList.toggle('hover:text-white', !s);
+  });
+  hamLines.forEach(h => {
+    if (!h) return;
+    h.classList.toggle('bg-verde', s);
+    h.classList.toggle('bg-white', !s);
+  });
+}
+window.addEventListener('scroll', updateNavbar, { passive: true });
+updateNavbar();
+
+// --- Mobile nav ---
+let mobileOpen = false;
+function toggleMobileNav() {
+  mobileOpen = !mobileOpen;
+  const m = document.getElementById('mobile-menu');
+  m.style.maxHeight = mobileOpen ? m.scrollHeight + 'px' : '0';
+}
+function closeMobileNav() {
+  mobileOpen = false;
+  document.getElementById('mobile-menu').style.maxHeight = '0';
+}
+
+// --- PARALLAX on hero background ---
+const heroBg = document.getElementById('hero-bg');
+window.addEventListener('scroll', () => {
+  if (window.scrollY < window.innerHeight) {
+    heroBg.style.transform = `translateY(${window.scrollY * 0.3}px)`;
+  }
+}, { passive: true });
+
+// --- Scroll reveal with stagger ---
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+
+// --- COUNTER animation ---
+function animateCounter(el) {
+  const target = parseInt(el.dataset.target);
+  const isYear = el.dataset.isYear === 'true';
+  const start = isYear ? 1950 : 0;
+  const duration = 1500;
+  const startTime = performance.now();
+
+  function tick(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    const current = Math.round(start + (target - start) * eased);
+    el.textContent = current;
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+const counterObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      animateCounter(e.target);
+      counterObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('.counter').forEach(el => counterObs.observe(el));
+
+// --- MAGNETIC BUTTONS ---
+document.querySelectorAll('.magnetic-btn').forEach(btn => {
+  btn.addEventListener('mousemove', (e) => {
+    const rect = btn.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
+  });
+  btn.addEventListener('mouseleave', () => {
+    btn.style.transform = 'translate(0, 0)';
+  });
+});
+
+// --- 3D TILT on category cards ---
+function initTilt(card) {
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    const rotateX = (y - 0.5) * -8;
+    const rotateY = (x - 0.5) * 8;
+    card.style.transform = `perspective(600px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'perspective(600px) rotateX(0) rotateY(0) scale(1)';
+  });
+}
+
+// --- Load categories ---
+async function loadCategories() {
+  try {
+    const res = await fetch('/catalogo/productos');
+    const products = await res.json();
+    const catMap = {};
+    products.forEach(p => {
+      if (!catMap[p.categoria]) catMap[p.categoria] = { name: p.categoria, image: p.imagen_url, count: 0 };
+      catMap[p.categoria].count++;
+    });
+    const categories = Object.values(catMap);
+    const grid = document.getElementById('categories-grid');
+    if (!categories.length) return;
+
+    grid.innerHTML = categories.map((cat, i) => `
+      <a href="/catalogo/?modo=classic&cat=${encodeURIComponent(cat.name)}"
+         class="tilt-card group relative rounded-2xl overflow-hidden cursor-pointer h-48 sm:h-56 reveal visible"
+         style="transition-delay:${i * .05}s">
+        <img src="${cat.image}?w=400&q=auto&f=auto" alt="${cat.name}"
+             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+        <div class="absolute inset-0 bg-gradient-to-t from-verde/70 via-verde/20 to-transparent"></div>
+        <div class="absolute bottom-0 left-0 right-0 p-4">
+          <h3 class="font-serif text-lg font-semibold text-white">${cat.name}</h3>
+          <p class="text-white/70 text-sm">${cat.count} arreglos</p>
+        </div>
+      </a>
+    `).join('');
+
+    // Init tilt on new cards
+    grid.querySelectorAll('.tilt-card').forEach(initTilt);
+
+    // Populate phone mockup
+    if (products.length > 0) {
+      const p = products[0];
+      const img = document.getElementById('mock-card-img');
+      if (img) { const i = document.createElement('img'); i.src = p.imagen_url+'?w=400&q=auto&f=auto'; i.alt = p.nombre; i.className = 'w-full h-full object-cover'; img.replaceWith(i); }
+      const name = document.getElementById('mock-card-name'); if (name) name.textContent = p.nombre;
+      const price = document.getElementById('mock-card-price'); if (price) price.textContent = p.precio_display || ('$'+(p.precio/100).toLocaleString('es-MX'));
+    }
+    if (products.length > 1) {
+      document.querySelectorAll('.mock-card .skeleton-load').forEach((sk, i) => {
+        if (products[i+1]) { const img = document.createElement('img'); img.src = products[i+1].imagen_url+'?w=300&q=auto&f=auto'; img.alt = products[i+1].nombre; img.className = 'w-full h-full object-cover'; sk.replaceWith(img); }
+      });
+    }
+  } catch (e) { console.warn('No se pudieron cargar productos:', e); }
+}
+
+// --- Load combos ---
+async function loadCombos() {
+  try {
+    const res = await fetch('/catalogo/productos');
+    const products = await res.json();
+    const combos = products.filter(p =>
+      p.categoria.toLowerCase().includes('chocolate') ||
+      p.categoria.toLowerCase().includes('combo') ||
+      p.nombre.toLowerCase().includes('combo') ||
+      p.nombre.toLowerCase().includes('chocolate')
+    ).slice(0, 3);
+    const items = combos.length >= 2 ? combos : products.slice(0, 3);
+    const grid = document.getElementById('combos-grid');
+    if (!items.length) return;
+
+    grid.innerHTML = items.map((p, i) => `
+      <div class="glass-card rounded-2xl overflow-hidden reveal visible group cursor-pointer tilt-card"
+           style="transition-delay:${i * .1}s"
+           onclick="window.location.href='/catalogo/?modo=classic'">
+        <div class="relative h-56 overflow-hidden">
+          <img src="${p.imagen_url}?w=500&q=auto&f=auto" alt="${p.nombre}"
+               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+          ${p.precio_descuento ? '<span class="absolute top-3 right-3 bg-dorado text-verde text-xs font-bold px-3 py-1 rounded-full">Oferta</span>' : ''}
+        </div>
+        <div class="p-5">
+          <h3 class="font-serif text-lg font-semibold text-white mb-1">${p.nombre}</h3>
+          <p class="text-white/60 text-sm mb-3 line-clamp-2">${p.descripcion || p.categoria}</p>
+          <div class="flex items-center gap-3">
+            <span class="font-bold text-dorado text-lg">${p.precio_display || ('$'+(p.precio/100).toLocaleString('es-MX'))}</span>
+            ${p.precio_descuento ? `<span class="text-white/40 line-through text-sm">${p.precio_descuento_display||''}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    grid.querySelectorAll('.tilt-card').forEach(initTilt);
+  } catch (e) { console.warn('No se pudieron cargar combos:', e); }
+}
+
+// --- Init ---
+document.addEventListener('DOMContentLoaded', () => {
+  loadCategories();
+  loadCombos();
+});
+</script>
+</body>
+</html>

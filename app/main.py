@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from app.database import inicializar_db
 from app.core.config import settings
@@ -52,7 +53,11 @@ app.include_router(claudia_proxy.router, prefix="/api/claudia", tags=["claudia"]
 
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
-@app.get("/")
-async def root():
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/catalogo/")
+@app.get("/", response_class=HTMLResponse)
+async def landing():
+    try:
+        with open("app/landing.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    except FileNotFoundError:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/catalogo/")
