@@ -332,26 +332,33 @@ async def aceptar(
             "fecha_entrega": str(pedido.fecha_entrega) if pedido.fecha_entrega else None,
         })
     elif pedido.tracking_token and pedido.customer_id and pedido.estado == EP.PENDIENTE_PAGO:
-        # Pedido web aceptado — notificar cliente por WhatsApp
+        # Pedido web aceptado — notificar en background
         try:
             from app.models.clientes import Cliente
             cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
                 tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
-                msg = (
-                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
-                    f"Tu pedido {pedido.numero} fue aceptado!\n\n"
-                    f"Para proceder con el pago, como prefieres pagar?\n\n"
-                    f"1. Transferencia bancaria\n"
-                    f"2. Deposito en OXXO\n\n"
-                    f"Puedes ver el estatus de tu pedido aqui:\n{tracking_url}"
-                )
-                from app.routers.catalogo import _enviar_whatsapp
-                await _enviar_whatsapp(cliente.telefono, msg)
-        except Exception as e:
-            import logging
-            logging.getLogger("floreria").error(f"WhatsApp aceptación web: {e}")
+                _tel = cliente.telefono
+                _nombre = cliente.nombre.split()[0]
+                _folio = pedido.numero
+                import asyncio
+                async def _send():
+                    try:
+                        from app.routers.catalogo import _enviar_whatsapp
+                        await _enviar_whatsapp(_tel,
+                            f"Hola {_nombre} 🌸\n\n"
+                            f"Tu pedido {_folio} fue aceptado!\n\n"
+                            f"Para proceder con el pago, como prefieres pagar?\n\n"
+                            f"1. Transferencia bancaria\n"
+                            f"2. Deposito en OXXO\n\n"
+                            f"Puedes ver el estatus de tu pedido aqui:\n{tracking_url}"
+                        )
+                    except Exception:
+                        pass
+                asyncio.create_task(_send())
+        except Exception:
+            pass
 
     return {"ok": True, "id": pedido.id, "estado": pedido.estado}
 

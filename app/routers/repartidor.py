@@ -200,24 +200,34 @@ async def entregar(
     pedido.estado = EP.ENTREGADO
     pedido.entregado_at = ts_now
     pedido.foto_entrega_url = foto_url
+    # Guardar datos para WhatsApp antes del commit
+    _wa_tel = None
+    _wa_nombre = None
+    _wa_folio = pedido.numero
+    if pedido.customer_id:
+        from app.models.clientes import Cliente
+        cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cli = cli_r.scalar_one_or_none()
+        if cli and cli.telefono:
+            _wa_tel = cli.telefono
+            _wa_nombre = cli.nombre.split()[0] if cli.nombre else ""
     await db.commit()
 
-    # WhatsApp al cliente: pedido entregado
-    if pedido.customer_id:
-        try:
-            from app.models.clientes import Cliente
-            cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
-            cli = cli_r.scalar_one_or_none()
-            if cli and cli.telefono:
+    # WhatsApp al cliente en background — no bloquear al repartidor
+    if _wa_tel:
+        import asyncio
+        async def _send_wa():
+            try:
                 from app.routers.catalogo import _enviar_whatsapp
-                await _enviar_whatsapp(cli.telefono,
-                    f"Hola {cli.nombre.split()[0]} 🌸\n\n"
-                    f"Tu pedido {pedido.numero} fue entregado!\n\n"
+                await _enviar_whatsapp(_wa_tel,
+                    f"Hola {_wa_nombre} 🌸\n\n"
+                    f"Tu pedido {_wa_folio} fue entregado!\n\n"
                     f"Gracias por tu preferencia. Esperamos verte pronto!\n"
                     f"— Floreria Lucy"
                 )
-        except Exception:
-            pass
+            except Exception:
+                pass
+        asyncio.create_task(_send_wa())
 
     return {"ok": True, "foto_url": foto_url}
 
