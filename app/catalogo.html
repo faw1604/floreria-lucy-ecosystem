@@ -2462,6 +2462,22 @@ function startFechaEspecial() {
   if (modo === 'dynamic' || modo === 'classic') {
     startMode(modo);
   }
+  // Pick up products added from producto.html page
+  const pending = JSON.parse(localStorage.getItem('fl_add_to_cart') || '[]');
+  if (pending.length > 0) {
+    localStorage.removeItem('fl_add_to_cart');
+    // Wait for products to load, then add to cart
+    const waitAndAdd = setInterval(() => {
+      if (allProducts.length > 0) {
+        clearInterval(waitAndAdd);
+        pending.forEach(item => {
+          const found = allProducts.find(p => p.id === item.id);
+          if (found) addToCart(found);
+        });
+      }
+    }, 200);
+    setTimeout(() => clearInterval(waitAndAdd), 5000);
+  }
 })();
 </script>
 </body>
