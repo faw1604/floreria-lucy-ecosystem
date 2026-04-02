@@ -39,37 +39,25 @@ async def producto_page():
     html_path = Path(__file__).parent.parent / "producto.html"
     return HTMLResponse(html_path.read_text(encoding="utf-8"))
 
-@router.get("/historia", response_class=HTMLResponse)
-async def historia_html():
-    try:
-        with open("app/pages/historia.html", "r", encoding="utf-8") as f:
-            return HTMLResponse(f.read())
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Página no encontrada")
+@router.get("/historia")
+async def historia_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/historia", status_code=301)
 
-@router.get("/contacto", response_class=HTMLResponse)
-async def contacto_html():
-    try:
-        with open("app/pages/contacto.html", "r", encoding="utf-8") as f:
-            return HTMLResponse(f.read())
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Página no encontrada")
+@router.get("/contacto")
+async def contacto_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/contacto", status_code=301)
 
-@router.get("/facturacion", response_class=HTMLResponse)
-async def facturacion_html():
-    try:
-        with open("app/pages/facturacion.html", "r", encoding="utf-8") as f:
-            return HTMLResponse(f.read())
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Página no encontrada")
+@router.get("/facturacion")
+async def facturacion_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/facturacion", status_code=301)
 
-@router.get("/legal", response_class=HTMLResponse)
-async def legal_html():
-    try:
-        with open("app/pages/legal.html", "r", encoding="utf-8") as f:
-            return HTMLResponse(f.read())
-    except FileNotFoundError:
-        raise HTTPException(status_code=404, detail="Página no encontrada")
+@router.get("/legal")
+async def legal_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/legal", status_code=301)
 
 @router.get("/config")
 async def catalogo_config(db: AsyncSession = Depends(get_db)):

@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from app.database import inicializar_db
 from app.core.config import settings
-from app.routers import pedidos, productos, clientes, flores, funerarias, pagos, panel, auth, catalogo, inventario, repartidor, pos, configuracion, admin, taller, reservas, claudia_proxy
+from app.routers import pedidos, productos, clientes, flores, funerarias, pagos, panel, auth, catalogo, inventario, repartidor, pos, configuracion, admin, taller, reservas, claudia_proxy, pages
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +50,8 @@ app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(taller.router, prefix="/api/taller", tags=["taller"])
 app.include_router(reservas.router, prefix="/api/reservas", tags=["reservas"])
 app.include_router(claudia_proxy.router, prefix="/api/claudia", tags=["claudia"])
+
+app.include_router(pages.router, tags=["pages"])
 
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
