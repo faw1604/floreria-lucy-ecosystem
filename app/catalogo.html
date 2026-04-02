@@ -2415,6 +2415,15 @@ function startFechaEspecial() {
     document.body.appendChild(banner);
   } catch(e) {}
 })();
+
+// === Auto-start mode from URL param ?modo=dynamic|classic ===
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const modo = params.get('modo');
+  if (modo === 'dynamic' || modo === 'classic') {
+    startMode(modo);
+  }
+})();
 </script>
 </body>
 </html>
