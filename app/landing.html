@@ -71,8 +71,17 @@ tailwind.config = {
     white-space: nowrap;
     border-right: 2px solid #d4a843;
     width: 0;
+    max-width: 100%;
     animation: typewriter 2.5s steps(30) .8s forwards, blink-caret .75s step-end infinite;
     display: inline-block;
+  }
+  @media (max-width: 640px) {
+    .typewriter {
+      white-space: normal;
+      width: auto;
+      border-right: none;
+      animation: fadeUp .8s ease-out .5s both;
+    }
   }
 
   /* ====== NEW: Blob animation ====== */
