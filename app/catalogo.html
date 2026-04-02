@@ -1193,14 +1193,14 @@ function closeDetail() {
 function compartirProducto(id) {
   const p = allProducts.find(x => x.id === id) || detailProduct;
   if (!p) return;
-  const url = `${window.location.origin}/catalogo/producto.html?id=${id}`;
+  const url = `https://www.florerialucy.com/catalogo/producto.html?id=${id}`;
   const precio = p.precio_descuento && p.precio_descuento < p.precio ? p.precio_descuento : p.precio;
   const msg = `🌸 *${p.nombre}*\n💰 $${(precio/100).toLocaleString()}\n\nVer detalles: ${url}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function copiarLinkProducto(id) {
-  const url = `${window.location.origin}/catalogo/producto.html?id=${id}`;
+  const url = `https://www.florerialucy.com/catalogo/producto.html?id=${id}`;
   navigator.clipboard.writeText(url).then(() => {
     alert('Enlace copiado');
   }).catch(() => {
@@ -1374,7 +1374,7 @@ function renderClassicGrid() {
     const globalIdx = allProducts.indexOf(p);
     const agotado = p.sin_stock;
     return `
-    <div class="prod-card ${agotado ? 'agotado' : ''}" style="position:relative;animation-delay:${i * 0.04}s" onclick="openDetail(${globalIdx},'classic')">
+    <div class="prod-card ${agotado ? 'agotado' : ''}" style="position:relative;animation-delay:${i * 0.04}s" onclick="window.location.href='/catalogo/producto.html?id=${p.id}'">
       ${agotado ? '<div class="agotado-badge">Agotado</div>' : ''}
       <img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
       <div class="prod-card-body">

@@ -2714,7 +2714,7 @@ async function posEnviarCatalogo() {
   const result = document.getElementById('pos-cat-result');
   if (!tel || tel.length < 7) { result.textContent='Ingresa un telefono valido'; result.style.color='var(--rojo)'; return; }
   const telefono = pais === '52' ? '521' + tel : pais + tel;
-  const baseUrl = location.origin + '/catalogo/';
+  const baseUrl = 'https://www.florerialucy.com/catalogo/';
   let mensaje = '';
   if (_posCatTipo === 'general') mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de Floreria Lucy: ${baseUrl}`;
   else if (_posCatTipo === 'funeral') mensaje = `🕊️ Aqui te comparto nuestro catalogo de arreglos funerales: ${baseUrl}`;

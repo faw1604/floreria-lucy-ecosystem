@@ -902,7 +902,7 @@ async function enviarCatalogo() {
 
   // Mexico: agregar "1" después del código de país (521XXXXXXXXXX)
   const telefono = pais === '52' ? '521' + tel : pais + tel;
-  const baseUrl = location.origin + '/catalogo/';
+  const baseUrl = 'https://www.florerialucy.com/catalogo/';
   let mensaje = '';
   if (_catalogoTipo === 'general') {
     mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de Floreria Lucy: ${baseUrl}`;
