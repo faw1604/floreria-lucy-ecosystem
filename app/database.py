@@ -102,3 +102,54 @@ async def inicializar_db():
                 ), {"c": clave, "v": valor, "d": desc})
             except Exception:
                 pass
+
+    # 5. Seed funerarias nuevas + actualizar dirección Elian Perches
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        _nuevas_funerarias = [
+            {"nombre": "Réquiem Hernández", "zona": "Azul", "costo_envio": 15900},
+            {"nombre": "Lux Nostra", "zona": "Morada", "costo_envio": 9900},
+            {"nombre": "Lozano Escudero", "zona": "Morada", "costo_envio": 9900},
+            {"nombre": "Jardines Eternos", "zona": "Verde", "costo_envio": 19900},
+            {"nombre": "Funeraria y Cementerio Jardines de Santa Fe", "zona": "Azul", "costo_envio": 15900},
+            {"nombre": "Protectodeco Bolívar", "zona": "Morada", "costo_envio": 9900},
+            {"nombre": "Velatorio IMSS", "zona": "Morada", "costo_envio": 9900},
+            {"nombre": "Memorial", "zona": "Morada", "costo_envio": 9900},
+            {"nombre": "La Nueva Luz (Calle Aldama)", "zona": "Morada", "costo_envio": 9900,
+             "direccion": "C. Juan Aldama #3313, Zona Dorada, 31000 Chihuahua, Chih."},
+            {"nombre": "Funerales La Nueva Luz (Cerro de la Cruz)", "zona": "Azul", "costo_envio": 15900,
+             "direccion": "C. 70a. 2404, Cerro de la Cruz, 31460 Chihuahua, Chih."},
+            {"nombre": "Funerales La Nueva Luz (Plaza Nogales)", "zona": "Azul", "costo_envio": 15900,
+             "direccion": "Vialidad Los Nogales 1301, Atanasio Ortega, 31137 Chihuahua, Chih."},
+            {"nombre": "Funerales La Nueva Luz (Villa Juárez)", "zona": "Verde", "costo_envio": 19900,
+             "direccion": "16 de Septiembre 1003, Villa Juárez, 31064 Chihuahua, Chih."},
+            {"nombre": "El Legado", "zona": "Morada", "costo_envio": 9900},
+            {"nombre": "La Cineraria Zarco", "zona": "Morada", "costo_envio": 9900},
+            {"nombre": "La Piedad Funeraria", "zona": "Verde", "costo_envio": 19900},
+        ]
+        for f in _nuevas_funerarias:
+            try:
+                direccion_val = f.get("direccion")
+                if direccion_val:
+                    await conn.execute(text(
+                        "INSERT INTO funerarias (nombre, zona, costo_envio, direccion) "
+                        "SELECT :nombre, :zona, :costo, :dir "
+                        "WHERE NOT EXISTS (SELECT 1 FROM funerarias WHERE nombre = :nombre)"
+                    ), {"nombre": f["nombre"], "zona": f["zona"], "costo": f["costo_envio"], "dir": direccion_val})
+                else:
+                    await conn.execute(text(
+                        "INSERT INTO funerarias (nombre, zona, costo_envio) "
+                        "SELECT :nombre, :zona, :costo "
+                        "WHERE NOT EXISTS (SELECT 1 FROM funerarias WHERE nombre = :nombre)"
+                    ), {"nombre": f["nombre"], "zona": f["zona"], "costo": f["costo_envio"]})
+            except Exception as e:
+                _log.warning(f"Seed funeraria {f['nombre']}: {e}")
+
+        # Actualizar dirección de Elian Perches
+        try:
+            await conn.execute(text(
+                "UPDATE funerarias SET direccion = :dir WHERE LOWER(nombre) LIKE '%elian%perches%'"
+            ), {"dir": "C. Vigésimo Novena #505, Centro, 31000 Chihuahua, Chih."})
+            _log.info("Funeraria Elian Perches: dirección actualizada")
+        except Exception as e:
+            _log.warning(f"Update Elian Perches: {e}")

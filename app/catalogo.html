@@ -22,7 +22,9 @@
   --radius: 16px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none}
+img{-webkit-user-drag:none;user-drag:none}
+.search-bar input,.order-field input,.order-field textarea,.order-field select{-webkit-user-select:text;user-select:text}
 
 /* ====== HEADER ====== */
 .cat-header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--blanco);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;transition:box-shadow .2s}
@@ -2009,10 +2011,8 @@ function renderStep3Fields() {
     </div>
     <div class="order-field"><label>Nombre del fallecido <span class="required">*</span></label><input type="text" id="of-fallecido" value="${pedidoWeb.nombre_fallecido||''}" placeholder="Nombre completo"></div>
     <div class="order-field"><label>Sala</label><input type="text" id="of-sala" value="${pedidoWeb.sala||''}" placeholder="Número o nombre de sala"></div>
-    <div class="order-field"><label>Texto de la banda <span style="font-size:11px;color:var(--texto2)">(máx 36 caracteres)</span></label>
-      <input type="text" id="of-banda" value="${pedidoWeb.banda||''}" placeholder="Ej: DE PARTE DE TUS AMIGOS" maxlength="36" oninput="updateBandaCount()">
-      <div id="of-banda-count" style="font-size:11px;color:var(--texto2);text-align:right;margin-top:2px">${36 - (pedidoWeb.banda||'').length} caracteres restantes</div>
-    </div>
+    <div id="of-bandas-container"></div>
+    <div id="extra-bandas-cost" style="font-size:12px;color:var(--dorado);font-weight:500;margin-top:4px"></div>
     <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje...">${pedidoWeb.dedicatoria||''}</textarea></div>
     <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}" onchange="onFechaChange()"></div>
     <div id="of-wa-restriction" style="display:none"></div>
@@ -2027,7 +2027,7 @@ function renderStep3Fields() {
     setTimeout(() => onFechaChange(), 50);
   }
   // Load funerarias dropdown
-  if (tipo === 'funeral') loadAllFunerarias().then(() => filterFunerarias());
+  if (tipo === 'funeral') { loadAllFunerarias().then(() => filterFunerarias()); renderBandas(); }
 }
 
 function selectHorario(h) {
@@ -2078,7 +2078,7 @@ async function onFechaChange() {
       if (fecha === mananaStr) {
         minHour = 11.5; // 11:30
       } else {
-        minHour = 9.5; // 9:30
+        minHour = 10; // 10:00
       }
     }
     // Round up to next half hour
@@ -2186,10 +2186,86 @@ function verifyMaps() {
   if (dir) window.open(`https://www.google.com/maps/search/${encodeURIComponent(dir + ', Chihuahua, México')}`, '_blank');
 }
 
-function updateBandaCount() {
-  const input = document.getElementById('of-banda');
-  const counter = document.getElementById('of-banda-count');
-  if (input && counter) counter.textContent = (36 - input.value.length) + ' caracteres restantes';
+let extraBandaCount = 0;
+
+function renderBandas() {
+  const container = document.getElementById('of-bandas-container');
+  if (!container) return;
+  let bandaCount = 0;
+  const bandaItems = [];
+
+  cart.forEach((p, idx) => {
+    const cat = (p.categoria || '').toLowerCase();
+    const isConjunto = cat.includes('conjuntos funebres') || cat.includes('conjuntos fúnebres');
+    const numBandas = isConjunto ? 2 : 1;
+    for (let b = 0; b < numBandas; b++) {
+      bandaItems.push({
+        productIdx: idx,
+        productName: p.nombre,
+        bandaNum: b + 1,
+        totalForProduct: numBandas,
+        globalIdx: bandaCount
+      });
+      bandaCount++;
+    }
+  });
+
+  let html = '<div style="font-size:13px;color:var(--texto2);margin-bottom:8px">' + bandaCount + ' banda' + (bandaCount !== 1 ? 's' : '') + ' incluida' + (bandaCount !== 1 ? 's' : '') + '</div>';
+
+  bandaItems.forEach((b, i) => {
+    const label = b.totalForProduct > 1
+      ? b.productName + ' — Banda ' + b.bandaNum
+      : b.productName;
+    html += '<div class="order-field" style="margin-bottom:8px">' +
+      '<label style="font-size:12px;color:var(--texto2)">' + label + ' <span style="font-size:11px">(máx 36 chars)</span></label>' +
+      '<input type="text" class="banda-input" data-idx="' + i + '" maxlength="36" placeholder="Ej: DE PARTE DE TUS AMIGOS" oninput="updateBandaCharCount(this)" style="font-size:13px;text-transform:uppercase">' +
+      '<div class="banda-char-count" style="font-size:10px;color:var(--texto2);text-align:right;margin-top:1px">36 caracteres</div>' +
+      '</div>';
+  });
+
+  html += '<div id="extra-bandas-list"></div>' +
+    '<button type="button" onclick="addExtraBanda()" style="margin-top:8px;padding:8px 16px;background:none;border:1px dashed var(--borde);border-radius:8px;font-size:13px;color:var(--verde);cursor:pointer;font-family:Inter,sans-serif;width:100%;display:flex;align-items:center;justify-content:center;gap:6px">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>' +
+    'Agregar banda extra (+$80)</button>';
+
+  container.innerHTML = html;
+  extraBandaCount = 0;
+}
+
+function updateBandaCharCount(input) {
+  const countEl = input.nextElementSibling;
+  if (countEl && countEl.classList.contains('banda-char-count')) countEl.textContent = (36 - input.value.length) + ' caracteres';
+}
+
+function addExtraBanda() {
+  extraBandaCount++;
+  const list = document.getElementById('extra-bandas-list');
+  const div = document.createElement('div');
+  div.className = 'order-field';
+  div.style.cssText = 'margin-bottom:8px;position:relative';
+  div.innerHTML =
+    '<label style="font-size:12px;color:var(--dorado)">Banda extra #' + extraBandaCount + ' (+$80)</label>' +
+    '<div style="display:flex;gap:6px">' +
+    '<input type="text" class="banda-extra-input" maxlength="36" placeholder="Texto de la banda" oninput="updateBandaCharCount(this)" style="font-size:13px;flex:1;text-transform:uppercase">' +
+    '<button type="button" onclick="this.closest(\'.order-field\').remove();updateExtraBandaCost()" style="padding:6px 10px;background:#fef5f5;border:1px solid #fca5a5;border-radius:6px;color:#c0392b;cursor:pointer;font-size:12px;flex-shrink:0">✕</button>' +
+    '</div>' +
+    '<div class="banda-char-count" style="font-size:10px;color:var(--texto2);text-align:right;margin-top:1px">36 caracteres</div>';
+  list.appendChild(div);
+  updateExtraBandaCost();
+}
+
+function updateExtraBandaCost() {
+  const extras = document.querySelectorAll('.banda-extra-input').length;
+  const hint = document.getElementById('extra-bandas-cost');
+  if (hint) {
+    hint.textContent = extras > 0 ? extras + ' banda' + (extras > 1 ? 's' : '') + ' extra' + (extras > 1 ? 's' : '') + ': +$' + (extras * 80) : '';
+  }
+}
+
+function collectBandas() {
+  const included = Array.from(document.querySelectorAll('.banda-input')).map(i => i.value.trim().toUpperCase());
+  const extras = Array.from(document.querySelectorAll('.banda-extra-input')).map(i => i.value.trim().toUpperCase());
+  return { included, extras, extraCount: extras.length, extraCost: extras.length * 8000 };
 }
 
 function showFunerariaDropdown() {
@@ -2213,7 +2289,11 @@ function filterFunerarias() {
     return;
   }
   dd.style.display = '';
-  dd.innerHTML = filtered.map(f =>
+  const domicilioOption = `<div style="padding:10px 12px;cursor:pointer;border-bottom:2px solid var(--dorado);background:#faf8f5;font-weight:500;color:var(--verde)" onclick="selectFunerariaDomicilio()">
+    <strong>\u{1F3E0} Funeral en domicilio particular</strong>
+    <br><span style="font-size:11px;color:var(--texto2)">Ingresa la dirección de entrega</span>
+  </div>`;
+  dd.innerHTML = domicilioOption + filtered.map(f =>
     `<div style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);transition:background .1s" onmouseover="this.style.background='#f0f7f2'" onmouseout="this.style.background=''" onclick="selectFuneraria(${f.id},'${f.nombre.replace(/'/g,"\\'")}','${(f.direccion||'').replace(/'/g,"\\'")}')">
       <strong>${f.nombre}</strong>${f.direccion ? '<br><span style="font-size:11px;color:var(--texto2)">'+f.direccion+'</span>' : ''}
     </div>`
@@ -2221,11 +2301,56 @@ function filterFunerarias() {
 }
 
 function selectFuneraria(id, nombre, direccion) {
+  pedidoWeb.funeral_domicilio = false;
+  const addrDiv = document.getElementById('of-funeral-domicilio-fields');
+  if (addrDiv) addrDiv.style.display = 'none';
   pedidoWeb.funeraria_id = id;
   pedidoWeb.funeraria_nombre = nombre;
   document.getElementById('of-funeraria').value = nombre;
   document.getElementById('of-funeraria-dropdown').style.display = 'none';
   document.getElementById('of-funeraria-results').innerHTML = `<span style="color:var(--verde)">✓ ${nombre}${direccion ? ' — '+direccion : ''}</span>`;
+}
+
+function selectFunerariaDomicilio() {
+  pedidoWeb.funeraria_id = null;
+  pedidoWeb.funeraria_nombre = 'Domicilio particular';
+  pedidoWeb.funeral_domicilio = true;
+  document.getElementById('of-funeraria').value = 'Funeral en domicilio particular';
+  document.getElementById('of-funeraria-dropdown').style.display = 'none';
+  document.getElementById('of-funeraria-results').innerHTML = '<span style="color:var(--verde)">✓ Domicilio particular — ingresa la dirección abajo</span>';
+
+  let addrDiv = document.getElementById('of-funeral-domicilio-fields');
+  if (!addrDiv) {
+    addrDiv = document.createElement('div');
+    addrDiv.id = 'of-funeral-domicilio-fields';
+    addrDiv.innerHTML =
+      '<div class="order-field" style="margin-top:12px">' +
+        '<label>Dirección de entrega <span class="required">*</span></label>' +
+        '<input type="text" id="of-funeral-direccion" placeholder="Calle, número, colonia" oninput="pedidoWeb.funeral_direccion=this.value">' +
+      '</div>' +
+      '<div class="order-field">' +
+        '<label>Referencias</label>' +
+        '<input type="text" id="of-funeral-referencias" placeholder="Entre calles, color de casa, etc." oninput="pedidoWeb.funeral_referencias=this.value">' +
+      '</div>' +
+      '<div class="order-field">' +
+        '<label>Zona de envío <span class="required">*</span></label>' +
+        '<select id="of-funeral-zona" onchange="updateFuneralDomicilioCost(this.value)" style="width:100%;padding:10px;border:1px solid var(--borde);border-radius:8px;font-family:Inter,sans-serif;font-size:14px">' +
+          '<option value="">Selecciona la zona</option>' +
+          '<option value="morada">Zona Morada — $99</option>' +
+          '<option value="azul">Zona Azul — $159</option>' +
+          '<option value="verde">Zona Verde — $199</option>' +
+        '</select>' +
+      '</div>';
+    const funerariaField = document.getElementById('of-funeraria').closest('.order-field');
+    funerariaField.parentNode.insertBefore(addrDiv, funerariaField.nextSibling);
+  }
+  addrDiv.style.display = '';
+}
+
+function updateFuneralDomicilioCost(zona) {
+  const costos = {morada: 9900, azul: 15900, verde: 19900};
+  pedidoWeb.funeral_domicilio_costo = costos[zona] || 0;
+  pedidoWeb.funeral_domicilio_zona = zona;
 }
 
 // Close dropdown when clicking outside
@@ -2261,7 +2386,10 @@ function saveStep3Data() {
   } else if (tipo === 'funeral') {
     pedidoWeb.nombre_fallecido = (document.getElementById('of-fallecido')?.value || '').trim();
     pedidoWeb.sala = (document.getElementById('of-sala')?.value || '').trim();
-    pedidoWeb.banda = (document.getElementById('of-banda')?.value || '').trim();
+    const bandasData = collectBandas();
+    pedidoWeb.bandas = bandasData.included;
+    pedidoWeb.bandas_extra = bandasData.extras;
+    pedidoWeb.bandas_extra_costo = bandasData.extraCost;
     pedidoWeb.dedicatoria = (document.getElementById('of-dedicatoria')?.value || '').trim();
     pedidoWeb.horario_velacion = document.getElementById('of-velacion')?.value || '';
   }
@@ -2286,6 +2414,10 @@ function validateStep3() {
   }
   if (tipo === 'funeral') {
     if (!pedidoWeb.nombre_fallecido) { alert('Nombre del fallecido es obligatorio'); return false; }
+    if (pedidoWeb.funeral_domicilio) {
+      if (!pedidoWeb.funeral_direccion) { alert('Dirección de entrega es obligatoria para funeral en domicilio'); return false; }
+      if (!pedidoWeb.funeral_domicilio_zona) { alert('Selecciona la zona de envío'); return false; }
+    }
   }
   return true;
 }
@@ -2317,7 +2449,12 @@ function renderOrderStep4() {
   } else if (tipo === 'recoger') {
     html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Fecha: ${pedidoWeb.fecha_entrega} — ${pedidoWeb.hora_especifica}</div>`;
   } else if (tipo === 'funeral') {
-    html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Fallecido: ${pedidoWeb.nombre_fallecido}${pedidoWeb.funeraria_nombre ? '<br>Funeraria: '+pedidoWeb.funeraria_nombre : ''}${pedidoWeb.sala ? '<br>Sala: '+pedidoWeb.sala : ''}<br>Fecha: ${pedidoWeb.fecha_entrega}</div>`;
+    let funerariaInfo = pedidoWeb.funeraria_nombre || '';
+    if (pedidoWeb.funeral_domicilio && pedidoWeb.funeral_direccion) funerariaInfo += '<br>Dirección: ' + pedidoWeb.funeral_direccion;
+    html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Fallecido: ${pedidoWeb.nombre_fallecido}${funerariaInfo ? '<br>Funeraria: '+funerariaInfo : ''}${pedidoWeb.sala ? '<br>Sala: '+pedidoWeb.sala : ''}<br>Fecha: ${pedidoWeb.fecha_entrega}</div>`;
+    const allBandas = [...(pedidoWeb.bandas||[]), ...(pedidoWeb.bandas_extra||[])].filter(b => b);
+    if (allBandas.length > 0) html += `<div style="font-size:13px;color:var(--texto2);margin-top:4px">Bandas: ${allBandas.join(' | ')}</div>`;
+    if (pedidoWeb.bandas_extra_costo > 0) html += `<div style="font-size:12px;color:var(--dorado);margin-top:2px">Bandas extra: +$${(pedidoWeb.bandas_extra_costo/100).toLocaleString()}</div>`;
   }
   document.getElementById('order-review').innerHTML = html;
   // Reset factura checkbox
@@ -2393,9 +2530,17 @@ async function submitOrder() {
       horario_entrega: pedidoWeb.horario_entrega || null,
       hora_especifica: pedidoWeb.hora_especifica || null,
       funeraria_id: pedidoWeb.funeraria_id || null,
+      funeraria_nombre: pedidoWeb.funeraria_nombre || null,
+      funeral_domicilio: pedidoWeb.funeral_domicilio || false,
+      funeral_direccion: pedidoWeb.funeral_direccion || null,
+      funeral_referencias: pedidoWeb.funeral_referencias || null,
+      funeral_domicilio_zona: pedidoWeb.funeral_domicilio_zona || null,
+      funeral_domicilio_costo: pedidoWeb.funeral_domicilio_costo || 0,
       nombre_fallecido: pedidoWeb.nombre_fallecido || null,
       sala: pedidoWeb.sala || null,
-      banda: pedidoWeb.banda || null,
+      banda: pedidoWeb.bandas ? pedidoWeb.bandas.join(' | ') : null,
+      bandas_extra: pedidoWeb.bandas_extra ? pedidoWeb.bandas_extra.join(' | ') : null,
+      bandas_extra_costo: pedidoWeb.bandas_extra_costo || 0,
       horario_velacion: pedidoWeb.horario_velacion || null,
       codigo_descuento: appliedDiscount ? appliedDiscount.codigo : null,
       requiere_factura: document.getElementById('of-factura')?.checked || false,
@@ -2544,6 +2689,11 @@ function startFechaEspecial() {
     setTimeout(() => clearInterval(waitAndAdd), 5000);
   }
 })();
+
+// Anti-copia — block right-click and long-press on images
+document.addEventListener('contextmenu', e => {
+  if (e.target.tagName === 'IMG') e.preventDefault();
+});
 </script>
 </body>
 </html>
