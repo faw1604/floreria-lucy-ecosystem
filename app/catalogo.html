@@ -72,8 +72,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
 /* ====== DYNAMIC MODE ====== */
 .dyn-container{display:flex;flex-direction:column;align-items:center;padding:16px;max-width:420px;margin:0 auto}
-.dyn-progress{width:100%;height:3px;background:var(--borde);border-radius:3px;margin-bottom:12px;overflow:hidden}
-.dyn-progress-bar{height:100%;background:var(--verde-c);border-radius:3px;transition:width .3s}
+.dyn-progress{width:100%;height:6px;background:var(--borde);border-radius:6px;margin-bottom:14px;overflow:hidden}
+.dyn-progress-bar{height:100%;background:linear-gradient(90deg,var(--verde-c),var(--dorado));border-radius:6px;transition:width .4s cubic-bezier(.22,1,.36,1)}
 .dyn-card-wrapper{position:relative;width:100%;aspect-ratio:3/4;max-height:62vh;margin-bottom:16px;perspective:1000px;transition:transform .15s ease-out}
 .dyn-card{position:absolute;inset:0;background:var(--blanco);border-radius:20px;box-shadow:var(--sombra-lg);overflow:hidden;cursor:grab;transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .3s;touch-action:none;user-select:none}
 .dyn-card.swiping{transition:none}
@@ -105,7 +105,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* ====== CART (was favorites) ====== */
-.cart-fab{position:fixed;bottom:24px;right:20px;z-index:90;background:var(--verde);color:var(--blanco);border:none;border-radius:50px;padding:14px 22px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(25,58,44,.3);display:none;align-items:center;gap:8px;transition:transform .15s}
+.cart-fab{position:fixed;bottom:24px;right:20px;z-index:90;background:var(--verde);color:var(--blanco);border:none;border-radius:50px;padding:14px 22px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 24px rgba(25,58,44,.35);display:none;align-items:center;gap:8px;transition:transform .15s;animation:fabPulse 2s ease-in-out infinite}
+@keyframes fabPulse{0%,100%{box-shadow:0 4px 24px rgba(25,58,44,.35)}50%{box-shadow:0 4px 32px rgba(25,58,44,.5),0 0 0 6px rgba(25,58,44,.08)}}
 .cart-fab:active{transform:scale(.95)}
 .cart-fab svg{width:20px;height:20px}
 .cart-fab .cart-badge{background:var(--dorado);color:var(--verde);font-size:12px;font-weight:700;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center}
@@ -144,11 +145,12 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .classic-container{padding:12px;max-width:960px;margin:0 auto}
 
 /* Search */
-.search-bar{position:relative;margin-bottom:12px}
-.search-bar input{width:100%;padding:12px 16px 12px 42px;border:1px solid var(--borde);border-radius:12px;font-size:14px;font-family:'Inter',sans-serif;background:var(--blanco);color:var(--texto);outline:none;transition:border-color .15s}
-.search-bar input:focus{border-color:var(--verde-c)}
-.search-bar input::placeholder{color:#aaa}
-.search-bar svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--texto2)}
+.search-bar{position:relative;margin-bottom:14px}
+.search-bar input{width:100%;padding:14px 18px 14px 46px;border:2px solid var(--borde);border-radius:14px;font-size:15px;font-family:'Inter',sans-serif;background:var(--blanco);color:var(--texto);outline:none;transition:border-color .2s,box-shadow .2s}
+.search-bar input:focus{border-color:var(--dorado);box-shadow:0 0 0 3px rgba(212,168,67,.15)}
+.search-bar input::placeholder{color:#b0a898}
+.search-bar svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--texto2);transition:color .2s}
+.search-bar:focus-within svg{color:var(--dorado)}
 
 /* Filters */
 .filter-section{margin-bottom:10px}
@@ -168,7 +170,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 @media(min-width:900px){.classic-grid{grid-template-columns:repeat(4,1fr)}}
 .prod-card{background:var(--blanco);border-radius:var(--radius);box-shadow:var(--sombra);overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:pointer}
 .prod-card:hover{transform:perspective(600px) rotateX(0) rotateY(0) scale(1.02);box-shadow:0 12px 32px rgba(25,58,44,.12);transition:transform .2s ease,box-shadow .2s ease}
-.prod-card img{width:100%;aspect-ratio:1;object-fit:cover}
+.prod-card img{width:100%;aspect-ratio:4/3;object-fit:cover}
 .prod-card-body{padding:12px}
 .prod-card-name{font-size:13px;font-weight:500;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
 .prod-card-price{font-size:16px;font-weight:600;color:var(--verde);margin-bottom:10px}
@@ -189,13 +191,19 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .tutorial-box{background:var(--blanco);border-radius:24px;max-width:320px;width:100%;padding:36px 28px;text-align:center}
 .tutorial-step{display:none}
 .tutorial-step.active{display:block}
-.tutorial-icon{font-size:44px;margin-bottom:16px}
+.tutorial-icon{display:flex;align-items:center;justify-content:center;margin-bottom:16px}
 .tutorial-text{font-size:15px;color:var(--texto);line-height:1.6;margin-bottom:24px;font-weight:400}
 .tutorial-dots{display:flex;gap:6px;justify-content:center;margin-bottom:24px}
 .tutorial-dot{width:8px;height:8px;border-radius:50%;background:var(--borde);transition:background .2s}
 .tutorial-dot.active{background:var(--verde)}
 .tutorial-btn{background:var(--verde);color:var(--blanco);border:none;border-radius:12px;padding:14px 32px;font-size:14px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
 .tutorial-btn:hover{background:var(--verde-m)}
+@keyframes tutSwipeLeft{0%,100%{transform:translateX(0);opacity:.3}50%{transform:translateX(-12px);opacity:1}}
+@keyframes tutSwipeRight{0%,100%{transform:translateX(0);opacity:.3}50%{transform:translateX(12px);opacity:1}}
+@keyframes tutSwipeUp{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-12px);opacity:1}}
+.tut-swipe-left{animation:tutSwipeLeft 1.8s ease-in-out infinite}
+.tut-swipe-right{animation:tutSwipeRight 1.8s ease-in-out infinite}
+.tut-swipe-up{animation:tutSwipeUp 1.8s ease-in-out infinite}
 
 /* ====== SEASON SCREEN ====== */
 .season-screen{position:fixed;inset:0;z-index:180;background:var(--crema);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center}
@@ -206,21 +214,23 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
 /* ====== OCCASION SCREEN ====== */
 .occasion-screen{position:fixed;inset:0;z-index:170;background:var(--crema);overflow-y:auto;padding:60px 20px 40px;display:none}
-.occasion-screen.active{display:block}
+.occasion-screen.active{display:block;animation:fadeUp .4s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 .occasion-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--verde);text-align:center;margin-bottom:24px}
 .occasion-sub{font-size:14px;color:var(--texto2);text-align:center;margin-bottom:20px}
 .occasion-options{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:400px;margin:0 auto}
 .occasion-card{display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--texto);transition:all .15s;width:calc(50% - 5px);min-width:150px}
 .occasion-card:hover{border-color:var(--verde-c);background:#f0f7f2}
 .occasion-card.selected{border-color:var(--verde);background:#e8f5ec}
-.occasion-card .oc-icon{font-size:22px;flex-shrink:0}
+.occasion-card .oc-icon{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:22px;height:22px}
 .occasion-who{display:flex;gap:10px;justify-content:center;max-width:400px;margin:0 auto 28px}
-.occasion-who-btn{flex:1;padding:14px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;color:var(--texto);text-align:center;transition:all .15s}
-.occasion-who-btn:hover{border-color:var(--verde-c)}
-.occasion-who-btn.selected{border-color:var(--verde);background:#e8f5ec}
+.occasion-who-btn{flex:1;padding:18px 14px;background:var(--blanco);border:2px solid var(--borde);border-radius:16px;cursor:pointer;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;color:var(--texto);text-align:center;transition:all .2s ease;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.occasion-who-btn:hover{border-color:var(--verde-c);transform:translateY(-2px);box-shadow:0 6px 20px rgba(25,58,44,.1)}
+.occasion-who-btn.selected{border-color:var(--verde);background:#e8f5ec;transform:scale(.98)}
 .occasion-continue{display:block;margin:24px auto 0;background:var(--verde);color:var(--blanco);border:none;border-radius:12px;padding:14px 40px;font-size:15px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
 .occasion-continue:hover{background:var(--verde-m)}
 .occasion-continue:disabled{opacity:.4;cursor:not-allowed}
+@keyframes occasionCardIn{from{opacity:0;transform:translateY(12px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
 
 /* ====== REGISTER MODAL ====== */
 .reg-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)}
@@ -563,8 +573,14 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <div class="occasion-title" id="occasion-q">¿Para quién es el arreglo?</div>
   <div id="occasion-step-1">
     <div class="occasion-who" id="occasion-who">
-      <button class="occasion-who-btn" onclick="selectWho('self')">Para mí</button>
-      <button class="occasion-who-btn" onclick="selectWho('other')">Para alguien más</button>
+      <button class="occasion-who-btn" onclick="selectWho('self')" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Para mi
+      </button>
+      <button class="occasion-who-btn" onclick="selectWho('other')" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Para alguien mas
+      </button>
     </div>
   </div>
   <div id="occasion-step-2" style="display:none">
@@ -578,15 +594,46 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 <div class="tutorial-overlay" id="tutorial-overlay" style="display:none">
   <div class="tutorial-box">
     <div class="tutorial-step active" data-step="0">
-      <div class="tutorial-icon">👈</div>
+      <div class="tutorial-icon">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <rect x="15" y="10" width="50" height="60" rx="8" fill="#faf8f5" stroke="#e5e0d8" stroke-width="2"/>
+          <rect x="20" y="15" width="40" height="30" rx="4" fill="#d4a843" opacity=".15"/>
+          <g class="tut-swipe-left">
+            <circle cx="40" cy="58" r="6" fill="#193a2c" opacity=".2"/>
+            <path d="M40 58 L22 58" stroke="#c0392b" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="4 3"/>
+            <path d="M26 54 L22 58 L26 62" stroke="#c0392b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </div>
       <div class="tutorial-text">Desliza a la <strong>izquierda</strong> si no te convence</div>
     </div>
     <div class="tutorial-step" data-step="1">
-      <div class="tutorial-icon">👉</div>
+      <div class="tutorial-icon">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <rect x="15" y="10" width="50" height="60" rx="8" fill="#faf8f5" stroke="#e5e0d8" stroke-width="2"/>
+          <rect x="20" y="15" width="40" height="30" rx="4" fill="#d4a843" opacity=".15"/>
+          <g class="tut-swipe-right">
+            <circle cx="40" cy="58" r="6" fill="#193a2c" opacity=".2"/>
+            <path d="M40 58 L58 58" stroke="#193a2c" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="4 3"/>
+            <path d="M54 54 L58 58 L54 62" stroke="#193a2c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+          <path d="M54 20 C54 17,58 17,58 20 L56 28 L54 28 Z" fill="#c0392b" opacity=".6"/>
+        </svg>
+      </div>
       <div class="tutorial-text">Desliza a la <strong>derecha</strong> si te gusta — lo guardamos en tu carrito</div>
     </div>
     <div class="tutorial-step" data-step="2">
-      <div class="tutorial-icon">👆</div>
+      <div class="tutorial-icon">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <rect x="15" y="10" width="50" height="60" rx="8" fill="#faf8f5" stroke="#e5e0d8" stroke-width="2"/>
+          <rect x="20" y="15" width="40" height="30" rx="4" fill="#d4a843" opacity=".15"/>
+          <g class="tut-swipe-up">
+            <circle cx="40" cy="58" r="6" fill="#193a2c" opacity=".2"/>
+            <path d="M40 58 L40 38" stroke="#d4a843" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="4 3"/>
+            <path d="M36 42 L40 38 L44 42" stroke="#d4a843" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </svg>
+      </div>
       <div class="tutorial-text">Desliza <strong>hacia arriba</strong> para ordenarlo de inmediato</div>
     </div>
     <div class="tutorial-dots">
@@ -699,6 +746,13 @@ function addToCart(product) {
     cart.push({...product, qty: 1});
   }
   saveCart();
+  // Show toast
+  const toast = document.createElement('div');
+  toast.textContent = '\u2713 Agregado al carrito';
+  toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#193a2c;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:all .3s ease;font-family:Inter,sans-serif';
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => toast.remove(), 300); }, 1800);
   // Cart bounce animation
   const cartFab = document.querySelector('.cart-fab');
   if (cartFab) {
@@ -1324,7 +1378,8 @@ function renderCatPills() {
   const currentPill = pills.find(p => p.filter === catFilter) || pills[0];
   document.getElementById('type-pills').innerHTML = pills.map(pill => {
     const active = catFilter === pill.filter;
-    return `<button class="filter-pill ${active ? 'active' : ''}" onclick="setCat(${pill.filter ? `'${pill.filter}'` : 'null'})">${pill.label}</button>`;
+    const count = allProducts.filter(p => matchesSection(p, sectionFilter) && matchesCatPill(p, pill)).length;
+    return `<button class="filter-pill ${active ? 'active' : ''}" onclick="setCat(${pill.filter ? `'${pill.filter}'` : 'null'})">${pill.label} (${count})</button>`;
   }).join('');
 }
 
@@ -1377,6 +1432,7 @@ function renderClassicGrid() {
     <div class="prod-card ${agotado ? 'agotado' : ''}" style="position:relative;animation-delay:${i * 0.04}s" onclick="window.location.href='/catalogo/producto.html?id=${p.id}'">
       ${agotado ? '<div class="agotado-badge">Agotado</div>' : ''}
       <img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
+      ${p.precio_descuento && p.precio_descuento < p.precio ? '<div style="position:absolute;top:8px;right:8px;background:var(--dorado);color:var(--verde);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Oferta</div>' : ''}
       <div class="prod-card-body">
         <div class="prod-card-name">${p.nombre}</div>
         <div class="prod-card-price">${renderPrice(p, 'prod-card-price')}</div>
@@ -1391,18 +1447,26 @@ function renderClassicGrid() {
 let selectedWho = null;
 let selectedOccasion = null;
 
-const OCCASIONS = [
-  {id: 'cumpleanos', icon: '💐', label: 'Cumpleaños'},
-  {id: 'amor', icon: '❤️', label: 'Amor / Romántico'},
-  {id: 'aniversario', icon: '💍', label: 'Aniversario'},
-  {id: 'sin_ocasion', icon: '🌸', label: 'Sin ocasión especial'},
-  {id: 'condolencias', icon: '🙏', label: 'Condolencias / Funeral'},
-  {id: 'maternidad', icon: '🍼', label: 'Maternidad / Bebé'},
-  {id: 'felicitaciones', icon: '🌟', label: 'Felicitaciones'},
-  {id: 'recuperacion', icon: '🏥', label: 'Recuperación'},
-  {id: 'graduacion', icon: '🎓', label: 'Graduación'},
-  {id: 'corporativo', icon: '💼', label: 'Corporativo'},
-  {id: 'celebracion', icon: '🎉', label: 'Celebración'},
+const OCCASIONS_OTHER = [
+  {id: 'cumpleanos', label: 'Cumpleanos', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
+  {id: 'amor', label: 'Amor / Romantico', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="#c0392b" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'},
+  {id: 'aniversario', label: 'Aniversario', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-7.07-15.07l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>'},
+  {id: 'condolencias', label: 'Condolencias / Funeral', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>'},
+  {id: 'maternidad', label: 'Maternidad / Bebe', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a8c5c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h6m-3-3v6"/><circle cx="12" cy="12" r="10"/></svg>'},
+  {id: 'felicitaciones', label: 'Felicitaciones', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'},
+  {id: 'recuperacion', label: 'Recuperacion', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a8c5c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>'},
+  {id: 'graduacion', label: 'Graduacion', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10l-10-5L2 10l10 5 10-5z"/><path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/></svg>'},
+  {id: 'corporativo', label: 'Corporativo', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>'},
+  {id: 'celebracion', label: 'Celebracion', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m-7 1l2.83 2.83M4 12H2m3.93 7.07l2.83-2.83M12 22v-4m7.07-1l-2.83-2.83M22 12h-2m-1.93-7.07l-2.83 2.83"/></svg>'},
+  {id: 'sin_ocasion', label: 'Sin ocasion especial', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B7DA8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="#8B7DA8"/><circle cx="15" cy="9" r="1" fill="#8B7DA8"/></svg>'},
+];
+
+const OCCASIONS_SELF = [
+  {id: 'decorar_hogar', label: 'Decorar mi hogar', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'},
+  {id: 'decorar_oficina', label: 'Decorar mi oficina', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#193a2c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M12 12v4"/></svg>'},
+  {id: 'consentirme', label: 'Consentirme', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'},
+  {id: 'detalle_espacio', label: 'Un detalle para mi espacio', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4a8c5c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'},
+  {id: 'sin_ocasion', label: 'Sin ocasion especial', svg: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B7DA8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><circle cx="9" cy="9" r="1" fill="#8B7DA8"/><circle cx="15" cy="9" r="1" fill="#8B7DA8"/></svg>'},
 ];
 
 function showOccasionScreen() {
@@ -1422,15 +1486,16 @@ function selectWho(who) {
   setTimeout(() => {
     document.getElementById('occasion-step-1').style.display = 'none';
     document.getElementById('occasion-step-2').style.display = '';
-    document.getElementById('occasion-q').textContent = '¿Cuál es la ocasión?';
+    document.getElementById('occasion-q').textContent = selectedWho === 'self' ? '¿Qué buscas?' : '¿Cuál es la ocasión?';
     renderOccasionOptions();
   }, 200);
 }
 
 function renderOccasionOptions() {
-  document.getElementById('occasion-options').innerHTML = OCCASIONS.map(o =>
-    `<div class="occasion-card" onclick="selectOccasion('${o.id}', this)">
-      <span class="oc-icon">${o.icon}</span>${o.label}
+  const list = selectedWho === 'self' ? OCCASIONS_SELF : OCCASIONS_OTHER;
+  document.getElementById('occasion-options').innerHTML = list.map((o, i) =>
+    `<div class="occasion-card" onclick="selectOccasion('${o.id}', this)" style="animation:occasionCardIn .4s ease-out ${i * 0.05}s both">
+      <span class="oc-icon">${o.svg}</span>${o.label}
     </div>`
   ).join('');
 }
