@@ -1,424 +1,291 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Facturación — Florería Lucy</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --verde: #193a2c;
-      --verde-m: #2d5a3d;
-      --crema: #faf8f5;
-      --dorado: #d4a843;
-      --blanco: #fff;
-      --texto: #1a1a1a;
-      --texto2: #5a5a5a;
-      --borde: #e5e0d8;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facturacion — Floreria Lucy</title>
+<meta name="description" content="Solicita tu factura electronica (CFDI) por tus compras en Floreria Lucy, Chihuahua.">
+<link rel="icon" type="image/png" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_32,h_32,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">
+<link rel="apple-touch-icon" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_180,h_180,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        verde: { DEFAULT: '#193a2c', medio: '#2d5a3d', claro: '#4a8c5c' },
+        dorado: { DEFAULT: '#d4a843', claro: '#e8c96a' },
+        crema: '#faf8f5',
+        lavanda: { DEFAULT: '#8B7DA8', claro: '#B8ACD0', oscuro: '#6B5F87' },
+      },
+      fontFamily: {
+        serif: ['Playfair Display', 'serif'],
+        sans: ['Inter', 'sans-serif'],
+      },
     }
+  }
+}
+</script>
+<style>
+  .reveal { opacity: 0; transform: translateY(24px); transition: all .6s cubic-bezier(.22,1,.36,1); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-d1 { transition-delay: .1s; }
+  .reveal-d2 { transition-delay: .2s; }
+  .reveal-d3 { transition-delay: .3s; }
+  .reveal-d4 { transition-delay: .4s; }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--crema);
-      color: var(--texto);
-      line-height: 1.7;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    h1, h2, h3 { font-family: 'Playfair Display', serif; }
-
-    /* ── Header ── */
-    header {
-      background: var(--verde);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 2px 12px rgba(0,0,0,.15);
-    }
-
-    .header-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 1.25rem;
-      height: 64px;
-    }
-
-    .logo a {
-      font-family: 'Playfair Display', serif;
-      font-weight: 700;
-      font-size: 1.35rem;
-      color: var(--dorado);
-      text-decoration: none;
-      letter-spacing: .3px;
-    }
-
-    /* ── Desktop nav ── */
-    nav ul {
-      list-style: none;
-      display: flex;
-      gap: 1.6rem;
-    }
-
-    nav a {
-      color: rgba(255,255,255,.85);
-      text-decoration: none;
-      font-size: .875rem;
-      font-weight: 500;
-      transition: color .2s;
-    }
-
-    nav a:hover,
-    nav a[aria-current="page"] {
-      color: var(--dorado);
-    }
-
-    /* ── Hamburger ── */
-    .hamburger {
-      display: none;
-      background: none;
-      border: none;
-      cursor: pointer;
-      flex-direction: column;
-      gap: 5px;
-      padding: 4px;
-    }
-
-    .hamburger span {
-      display: block;
-      width: 24px;
-      height: 2.5px;
-      background: var(--dorado);
-      border-radius: 2px;
-      transition: transform .3s, opacity .3s;
-    }
-
-    /* ── Mobile nav ── */
-    @media (max-width: 768px) {
-      .hamburger { display: flex; }
-
-      nav {
-        position: fixed;
-        inset: 64px 0 0 0;
-        background: var(--verde);
-        transform: translateX(100%);
-        transition: transform .35s ease;
-        padding: 2rem 1.5rem;
-        z-index: 99;
-      }
-
-      nav.open { transform: translateX(0); }
-
-      nav ul {
-        flex-direction: column;
-        gap: 0;
-      }
-
-      nav li {
-        border-bottom: 1px solid rgba(255,255,255,.1);
-      }
-
-      nav a {
-        display: block;
-        padding: .9rem 0;
-        font-size: 1rem;
-      }
-
-      .hamburger.active span:nth-child(1) {
-        transform: translateY(7.5px) rotate(45deg);
-      }
-      .hamburger.active span:nth-child(2) { opacity: 0; }
-      .hamburger.active span:nth-child(3) {
-        transform: translateY(-7.5px) rotate(-45deg);
-      }
-    }
-
-    /* ── Main ── */
-    main {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 2.5rem 1.25rem 4rem;
-    }
-
-    .page-title {
-      font-size: 2rem;
-      color: var(--verde);
-      margin-bottom: .35rem;
-    }
-
-    .page-subtitle {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.05rem;
-      font-weight: 500;
-      color: var(--texto2);
-      margin-bottom: 1.5rem;
-    }
-
-    .intro {
-      font-size: 1rem;
-      color: var(--texto2);
-      margin-bottom: 2.5rem;
-      line-height: 1.8;
-    }
-
-    /* ── Sections ── */
-    .section {
-      background: var(--blanco);
-      border: 1px solid var(--borde);
-      border-radius: 12px;
-      padding: 1.75rem 1.5rem;
-      margin-bottom: 1.75rem;
-    }
-
-    .section h2 {
-      font-size: 1.25rem;
-      color: var(--verde);
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: .55rem;
-    }
-
-    .section h2 .icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      background: var(--verde);
-      color: var(--dorado);
-      border-radius: 8px;
-      font-size: .85rem;
-      flex-shrink: 0;
-    }
-
-    .section ul,
-    .section ol {
-      padding-left: 1.25rem;
-      color: var(--texto);
-    }
-
-    .section li {
-      margin-bottom: .65rem;
-      font-size: .95rem;
-    }
-
-    .section li strong {
-      color: var(--verde-m);
-    }
-
-    /* ── Proceso ── */
-    .proceso-email {
-      display: inline-block;
-      background: var(--crema);
-      border: 1px solid var(--borde);
-      border-radius: 6px;
-      padding: .3rem .65rem;
-      font-weight: 600;
-      color: var(--verde);
-      font-size: .93rem;
-      word-break: break-all;
-    }
-
-    .proceso-asunto {
-      font-style: italic;
-      color: var(--texto2);
-    }
-
-    .proceso-tiempo {
-      display: inline-block;
-      margin-top: .75rem;
-      background: var(--verde);
-      color: var(--dorado);
-      padding: .35rem .85rem;
-      border-radius: 6px;
-      font-size: .85rem;
-      font-weight: 600;
-    }
-
-    /* ── Warning ── */
-    .warning {
-      background: #fffbf0;
-      border: 1px solid #f0d78c;
-      border-left: 4px solid var(--dorado);
-      border-radius: 10px;
-      padding: 1.5rem 1.5rem;
-      margin-bottom: 1.75rem;
-    }
-
-    .warning h2 {
-      font-size: 1.15rem;
-      color: #8a6d1b;
-      margin-bottom: .85rem;
-      display: flex;
-      align-items: center;
-      gap: .5rem;
-    }
-
-    .warning ul {
-      list-style: none;
-      padding: 0;
-    }
-
-    .warning li {
-      position: relative;
-      padding-left: 1.3rem;
-      margin-bottom: .6rem;
-      font-size: .93rem;
-      color: #5c4a10;
-    }
-
-    .warning li::before {
-      content: "\2022";
-      position: absolute;
-      left: 0;
-      color: var(--dorado);
-      font-weight: 700;
-    }
-
-    /* ── CTA Button ── */
-    .cta-wrap {
-      text-align: center;
-      margin-top: 2rem;
-    }
-
-    .cta-btn {
-      display: inline-block;
-      background: var(--verde);
-      color: var(--dorado);
-      font-family: 'Inter', sans-serif;
-      font-weight: 600;
-      font-size: 1rem;
-      padding: .9rem 2.2rem;
-      border-radius: 10px;
-      text-decoration: none;
-      transition: background .2s, transform .15s;
-    }
-
-    .cta-btn:hover {
-      background: var(--verde-m);
-      transform: translateY(-2px);
-    }
-
-    /* ── Footer ── */
-    footer {
-      background: var(--verde);
-      text-align: center;
-      padding: 1.5rem 1rem;
-      font-size: .82rem;
-      color: rgba(255,255,255,.55);
-    }
-
-    /* ── Responsive tweaks ── */
-    @media (min-width: 769px) {
-      .page-title { font-size: 2.4rem; }
-      .section { padding: 2rem 2rem; }
-    }
-  </style>
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
 </head>
-<body>
+<body class="bg-crema font-sans text-gray-800 antialiased">
 
-  <!-- Header -->
-  <header>
-    <div class="header-inner">
-      <div class="logo"><a href="/">Florería Lucy</a></div>
-      <button class="hamburger" id="hamburger" aria-label="Menú">
-        <span></span><span></span><span></span>
+<!-- ========== NAVBAR (scrolled state — white bg) ========== -->
+<nav class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md transition-all duration-300" id="navbar">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16 sm:h-20">
+      <a href="/" class="flex items-center gap-2">
+        <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/w_160,q_auto/v1775163240/floreria-lucy/logo.png"
+             alt="Floreria Lucy" class="h-12 sm:h-14 w-auto">
+      </a>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="/" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Inicio</a>
+        <a href="/catalogo/?modo=dynamic" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Catalogo</a>
+        <a href="/historia" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Historia</a>
+        <a href="/contacto" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Contacto</a>
+        <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 bg-dorado text-verde font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-[#c49a3a] hover:-translate-y-0.5 transition-all cursor-pointer">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.332 0-4.487-.753-6.24-2.03l-.436-.33-3.264 1.094 1.094-3.264-.33-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+          WhatsApp
+        </a>
+      </div>
+      <button class="md:hidden flex flex-col gap-1.5 p-2 cursor-pointer" onclick="toggleMobileNav()" aria-label="Menu de navegacion">
+        <span class="block w-6 h-0.5 bg-verde transition-all" id="ham-1"></span>
+        <span class="block w-6 h-0.5 bg-verde transition-all" id="ham-2"></span>
+        <span class="block w-6 h-0.5 bg-verde transition-all" id="ham-3"></span>
       </button>
-      <nav id="nav">
-        <ul>
-          <li><a href="/">Inicio</a></li>
-          <li><a href="/historia">Nuestra historia</a></li>
-          <li><a href="/contacto">Contacto</a></li>
-          <li><a href="/facturacion" aria-current="page">Facturación</a></li>
-          <li><a href="/legal">Aviso legal</a></li>
-        </ul>
-      </nav>
     </div>
-  </header>
-
-  <!-- Main content -->
-  <main>
-    <h1 class="page-title">Facturación</h1>
-    <p class="page-subtitle">Solicitud de factura electrónica (CFDI)</p>
-    <p class="intro">Con gusto emitimos factura electrónica por tus compras. Por favor lee cuidadosamente el proceso antes de solicitarla.</p>
-
-    <!-- Requisitos -->
-    <div class="section">
-      <h2><span class="icon">1</span> Requisitos</h2>
-      <ul>
-        <li>La solicitud debe realizarse <strong>dentro del mes</strong> en que se realizó la compra. No es posible facturar compras de meses anteriores.</li>
-        <li>Debes contar con tu <strong>RFC activo</strong> ante el SAT.</li>
-        <li>El <strong>comprobante de pago</strong> es indispensable (transferencia, estado de cuenta o ticket).</li>
-      </ul>
+  </div>
+  <div class="md:hidden overflow-hidden max-h-0 transition-all duration-300 bg-verde/95 backdrop-blur-md" id="mobile-menu">
+    <div class="px-6 py-4 flex flex-col gap-3">
+      <a href="/" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Inicio</a>
+      <a href="/catalogo/?modo=dynamic" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Catalogo</a>
+      <a href="/historia" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Historia</a>
+      <a href="/contacto" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Contacto</a>
+      <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+         class="bg-dorado text-verde font-semibold text-center py-3 rounded-full mt-2 cursor-pointer">
+        Pedir por WhatsApp
+      </a>
     </div>
+  </div>
+</nav>
 
-    <!-- Datos que necesitamos -->
-    <div class="section">
-      <h2><span class="icon">2</span> Datos que necesitamos</h2>
-      <ol>
-        <li>RFC completo con homoclave</li>
-        <li>Razón social (exactamente como aparece en el SAT)</li>
-        <li>Correo electrónico para envío del CFDI</li>
-        <li>Régimen fiscal</li>
-        <li>Código postal de tu dirección fiscal</li>
-        <li>Folio o número de pedido</li>
-        <li>Fecha de compra</li>
-        <li>Comprobante de pago (imagen o PDF)</li>
-      </ol>
+<!-- ========== HERO ========== -->
+<section class="relative bg-gradient-to-br from-verde via-verde-medio to-verde pt-32 sm:pt-36 pb-16 sm:pb-20 overflow-hidden">
+  <!-- Decorative elements -->
+  <div class="absolute inset-0 opacity-10">
+    <div class="absolute top-10 right-10 w-64 h-64 bg-dorado rounded-full blur-3xl"></div>
+    <div class="absolute bottom-10 left-10 w-48 h-48 bg-dorado rounded-full blur-3xl"></div>
+  </div>
+  <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <h1 class="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4">Facturacion</h1>
+    <p class="text-white/70 text-lg sm:text-xl font-light max-w-xl mx-auto mb-6">Solicitud de factura electronica (CFDI)</p>
+    <div class="w-16 h-1 bg-dorado rounded-full mx-auto"></div>
+  </div>
+</section>
+
+<!-- ========== CONTENT ========== -->
+<main class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+
+  <!-- Intro -->
+  <p class="reveal text-center text-gray-600 text-lg leading-relaxed mb-12 sm:mb-16 max-w-2xl mx-auto">
+    Con gusto emitimos factura electronica por tus compras. Por favor lee cuidadosamente el proceso antes de solicitarla.
+  </p>
+
+  <!-- Step 1: Requisitos -->
+  <div class="reveal reveal-d1 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
+    <div class="flex items-start gap-4 mb-5">
+      <div class="flex-shrink-0 w-10 h-10 bg-verde rounded-full flex items-center justify-center">
+        <span class="text-dorado font-bold text-lg">1</span>
+      </div>
+      <h2 class="font-serif text-xl sm:text-2xl font-semibold text-verde pt-1">Requisitos</h2>
     </div>
+    <ul class="space-y-4 ml-14">
+      <li class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-dorado flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-gray-700 leading-relaxed">La solicitud debe realizarse <span class="font-semibold text-verde">dentro del mes</span> en que se realizo la compra. No es posible facturar compras de meses anteriores.</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-dorado flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-gray-700 leading-relaxed">Debes contar con tu <span class="font-semibold text-verde">RFC activo</span> ante el SAT.</span>
+      </li>
+      <li class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-dorado flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-gray-700 leading-relaxed">El <span class="font-semibold text-verde">comprobante de pago</span> es indispensable (transferencia, estado de cuenta o ticket).</span>
+      </li>
+    </ul>
+  </div>
 
-    <!-- Proceso -->
-    <div class="section">
-      <h2><span class="icon">3</span> Proceso</h2>
-      <p style="margin-bottom:.75rem;">Envía <strong>todos</strong> los datos anteriores al correo:</p>
-      <p style="margin-bottom:.75rem;">
-        <span class="proceso-email">florerialucychihuahua@gmail.com</span>
-      </p>
-      <p style="margin-bottom:.5rem;">Con el asunto:</p>
-      <p class="proceso-asunto" style="margin-bottom:.75rem;">"Solicitud de factura - [tu nombre] - [fecha de compra]"</p>
-      <p><span class="proceso-tiempo">Tiempo de respuesta: 3 a 5 días hábiles</span></p>
+  <!-- Step 2: Datos que necesitamos -->
+  <div class="reveal reveal-d2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
+    <div class="flex items-start gap-4 mb-5">
+      <div class="flex-shrink-0 w-10 h-10 bg-verde rounded-full flex items-center justify-center">
+        <span class="text-dorado font-bold text-lg">2</span>
+      </div>
+      <h2 class="font-serif text-xl sm:text-2xl font-semibold text-verde pt-1">Datos que necesitamos</h2>
     </div>
+    <ol class="space-y-3 ml-14 list-decimal list-inside">
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">RFC completo</span> con homoclave</li>
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">Razon social</span> (exactamente como aparece en el SAT)</li>
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">Correo electronico</span> para envio del CFDI</li>
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">Regimen fiscal</span></li>
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">Codigo postal</span> de tu direccion fiscal</li>
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">Folio o numero</span> de pedido</li>
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">Fecha de compra</span></li>
+      <li class="text-gray-700 leading-relaxed"><span class="font-semibold text-verde">Comprobante de pago</span> (imagen o PDF)</li>
+    </ol>
+  </div>
 
-    <!-- Importante (warning) -->
-    <div class="warning">
-      <h2>&#9888; Importante</h2>
-      <ul>
-        <li>No se emiten facturas por pedidos pagados en efectivo sin comprobante.</li>
-        <li>No se hacen modificaciones a facturas ya emitidas.</li>
-        <li>Las facturas se envían únicamente al correo proporcionado.</li>
-        <li>Florería Lucy no se hace responsable por datos fiscales incorrectos proporcionados por el cliente.</li>
-      </ul>
+  <!-- Step 3: Proceso -->
+  <div class="reveal reveal-d3 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6">
+    <div class="flex items-start gap-4 mb-5">
+      <div class="flex-shrink-0 w-10 h-10 bg-verde rounded-full flex items-center justify-center">
+        <span class="text-dorado font-bold text-lg">3</span>
+      </div>
+      <h2 class="font-serif text-xl sm:text-2xl font-semibold text-verde pt-1">Proceso</h2>
     </div>
+    <div class="ml-14 space-y-4">
+      <p class="text-gray-700 leading-relaxed">Envia <span class="font-semibold text-verde">todos</span> los datos anteriores al correo:</p>
+      <div>
+        <a href="mailto:florerialucychihuahua@gmail.com"
+           class="inline-flex items-center gap-2 bg-verde text-dorado font-semibold text-sm sm:text-base px-5 py-2.5 rounded-full hover:bg-verde-medio transition-colors cursor-pointer">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          florerialucychihuahua@gmail.com
+        </a>
+      </div>
+      <p class="text-gray-700 leading-relaxed">Con el asunto:</p>
+      <p class="italic text-gray-500 bg-crema rounded-lg px-4 py-2.5 border border-gray-100">"Solicitud de factura - [tu nombre] - [fecha de compra]"</p>
+      <div>
+        <span class="inline-flex items-center gap-2 bg-verde/10 text-verde font-semibold text-sm px-4 py-2 rounded-full">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Tiempo de respuesta: 3 a 5 dias habiles
+        </span>
+      </div>
+    </div>
+  </div>
 
-  </main>
+  <!-- Warning -->
+  <div class="reveal reveal-d4 bg-amber-50 border border-amber-200 border-l-4 border-l-dorado rounded-2xl p-6 sm:p-8 mb-6">
+    <div class="flex items-center gap-3 mb-4">
+      <svg class="w-6 h-6 text-dorado flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      <h2 class="font-serif text-xl font-semibold text-amber-800">Importante</h2>
+    </div>
+    <ul class="space-y-3 ml-9">
+      <li class="flex items-start gap-2">
+        <span class="text-dorado font-bold mt-0.5">&#8226;</span>
+        <span class="text-amber-900/80 leading-relaxed">No se emiten facturas por pedidos pagados en efectivo sin comprobante.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-dorado font-bold mt-0.5">&#8226;</span>
+        <span class="text-amber-900/80 leading-relaxed">No se hacen modificaciones a facturas ya emitidas.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-dorado font-bold mt-0.5">&#8226;</span>
+        <span class="text-amber-900/80 leading-relaxed">Las facturas se envian unicamente al correo proporcionado.</span>
+      </li>
+      <li class="flex items-start gap-2">
+        <span class="text-dorado font-bold mt-0.5">&#8226;</span>
+        <span class="text-amber-900/80 leading-relaxed">Floreria Lucy no se hace responsable por datos fiscales incorrectos proporcionados por el cliente.</span>
+      </li>
+    </ul>
+  </div>
 
-  <!-- Footer -->
-  <footer>
-    &copy; 2026 Florería Lucy &mdash; Chihuahua, México
-  </footer>
+</main>
 
-  <!-- Hamburger toggle -->
-  <script>
-    const hamburger = document.getElementById('hamburger');
-    const nav = document.getElementById('nav');
-    hamburger.addEventListener('click', () => {
-      hamburger.classList.toggle('active');
-      nav.classList.toggle('open');
-    });
-    // Close menu on link click (mobile)
-    nav.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        hamburger.classList.remove('active');
-        nav.classList.remove('open');
-      });
-    });
-  </script>
+<!-- ========== FOOTER ========== -->
+<footer class="bg-verde text-white py-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+      <div class="sm:col-span-2 lg:col-span-1">
+        <div class="bg-white/90 rounded-xl inline-block px-3 py-2 mb-3">
+          <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/w_180,q_auto/v1775163240/floreria-lucy/logo.png"
+               alt="Floreria Lucy" class="h-14 w-auto">
+        </div>
+        <p class="text-white/60 text-sm leading-relaxed">La expresion del amor desde 1988. Arreglos florales, ramos y detalles para cada ocasion en Chihuahua.</p>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Ubicacion</h4>
+        <p class="text-white/70 text-sm leading-relaxed">
+          C. Sabino 610<br>Las Granjas, 31100<br>Chihuahua, Chih., Mexico
+        </p>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Horarios</h4>
+        <div class="text-white/70 text-sm space-y-1">
+          <p>Lun — Vie: 9:00 - 19:00</p>
+          <p>Sabado: 10:00 - 18:00</p>
+          <p>Domingo: 11:00 - 15:00</p>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Contacto</h4>
+        <div class="space-y-3">
+          <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.332 0-4.487-.753-6.24-2.03l-.436-.33-3.264 1.094 1.094-3.264-.33-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+            614 334 9392
+          </a>
+          <a href="tel:+526144143787"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            (614) 414 3787
+          </a>
+          <a href="mailto:contacto@florerialucy.com"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            contacto@florerialucy.com
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <p class="text-white/40 text-sm">&copy; 2026 Floreria Lucy. Todos los derechos reservados.</p>
+      <div class="flex gap-6">
+        <a href="/legal" class="text-white/40 hover:text-white/70 text-sm transition-colors cursor-pointer">Aviso de privacidad</a>
+        <a href="/facturacion" class="text-white/40 hover:text-white/70 text-sm transition-colors cursor-pointer">Facturacion</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ========== JAVASCRIPT ========== -->
+<script>
+// --- Mobile nav ---
+let mobileOpen = false;
+function toggleMobileNav() {
+  mobileOpen = !mobileOpen;
+  const m = document.getElementById('mobile-menu');
+  m.style.maxHeight = mobileOpen ? m.scrollHeight + 'px' : '0';
+}
+function closeMobileNav() {
+  mobileOpen = false;
+  document.getElementById('mobile-menu').style.maxHeight = '0';
+}
+
+// --- Scroll reveal with stagger ---
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+</script>
 </body>
 </html>

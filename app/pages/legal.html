@@ -3,191 +3,293 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Florería Lucy — Aviso legal y políticas</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>Floreria Lucy — Aviso legal y politicas</title>
+<meta name="description" content="Politicas de cancelacion, entregas y privacidad de Floreria Lucy. Transparencia y claridad en cada pedido.">
+<link rel="icon" type="image/png" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_32,h_32,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">
+<link rel="apple-touch-icon" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_180,h_180,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        verde: { DEFAULT: '#193a2c', medio: '#2d5a3d', claro: '#4a8c5c' },
+        dorado: { DEFAULT: '#d4a843', claro: '#e8c96a' },
+        crema: '#faf8f5',
+        lavanda: { DEFAULT: '#8B7DA8', claro: '#B8ACD0', oscuro: '#6B5F87' },
+      },
+      fontFamily: {
+        serif: ['Playfair Display', 'serif'],
+        sans: ['Inter', 'sans-serif'],
+      },
+    }
+  }
+}
+</script>
 <style>
-:root {
-  --verde: #193a2c;
-  --verde-m: #2d5a3d;
-  --crema: #faf8f5;
-  --dorado: #d4a843;
-  --blanco: #fff;
-  --texto: #1a1a1a;
-  --texto2: #5a5a5a;
-  --borde: #e5e0d8;
-  --sombra: 0 2px 20px rgba(25,58,44,.07);
-  --radius: 16px;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
-
-/* ====== HEADER ====== */
-.header{position:fixed;top:0;left:0;right:0;z-index:100;background:var(--blanco);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 12px rgba(0,0,0,.08)}
-.header-logo{font-family:'Playfair Display',serif;font-size:18px;color:var(--verde);font-weight:600;letter-spacing:-.02em;text-decoration:none}
-.header-logo span{color:var(--dorado)}
-
-/* Desktop nav */
-.nav-desktop{display:none;align-items:center;gap:6px}
-.nav-desktop a{font-size:13px;color:var(--texto2);text-decoration:none;padding:6px 12px;border-radius:8px;font-weight:500;transition:all .15s}
-.nav-desktop a:hover{color:var(--verde);background:rgba(25,58,44,.05)}
-.nav-desktop a.active{color:var(--verde);font-weight:600}
-
-/* Hamburger */
-.hamburger{display:flex;flex-direction:column;gap:4px;background:none;border:none;cursor:pointer;padding:8px}
-.hamburger span{display:block;width:20px;height:2px;background:var(--texto);border-radius:2px;transition:all .2s}
-.hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4px,4px)}
-.hamburger.open span:nth-child(2){opacity:0}
-.hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(4px,-4px)}
-
-/* Mobile menu */
-.mobile-menu{display:none;position:fixed;top:46px;left:0;right:0;background:var(--blanco);padding:8px 16px 16px;box-shadow:0 8px 30px rgba(0,0,0,.1);z-index:99}
-.mobile-menu.open{display:block}
-.mobile-menu a{display:block;font-size:14px;color:var(--texto2);text-decoration:none;padding:12px 8px;border-bottom:1px solid var(--borde);font-weight:500;transition:color .15s}
-.mobile-menu a:last-child{border-bottom:none}
-.mobile-menu a:hover,.mobile-menu a.active{color:var(--verde)}
-
-/* ====== PAGE CONTENT ====== */
-.page{padding:72px 16px 60px;max-width:720px;margin:0 auto}
-
-.page-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;color:var(--verde);text-align:center;margin-bottom:4px}
-.page-subtitle{font-family:'Playfair Display',serif;font-size:15px;color:var(--texto2);text-align:center;font-style:italic;margin-bottom:32px}
-.page-deco{width:50px;height:2px;background:var(--dorado);margin:0 auto 28px;border-radius:2px}
-
-/* ====== CARDS ====== */
-.card{background:var(--blanco);border-radius:var(--radius);box-shadow:var(--sombra);padding:28px 22px;margin-bottom:24px}
-.card-icon{width:44px;height:44px;background:rgba(25,58,44,.07);border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
-.card-icon svg{width:22px;height:22px;color:var(--verde)}
-.card h2{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;color:var(--verde);margin-bottom:16px}
-.card ul{list-style:none;padding:0}
-.card ul li{position:relative;padding:10px 0 10px 24px;border-bottom:1px solid var(--borde);font-size:14px;line-height:1.65;color:var(--texto)}
-.card ul li:last-child{border-bottom:none}
-.card ul li::before{content:'';position:absolute;left:0;top:16px;width:8px;height:8px;background:var(--dorado);border-radius:50%;opacity:.7}
-.card ul li strong{color:var(--verde);font-weight:600}
-
-/* Email link */
-.email-link{color:var(--verde-m);font-weight:500;text-decoration:underline;text-underline-offset:2px}
-.email-link:hover{color:var(--dorado)}
-
-/* Back button */
-.back-btn{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:14px 28px;background:var(--verde);color:var(--blanco);border:none;border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;transition:background .2s}
-.back-btn:hover{background:var(--verde-m)}
-.back-btn svg{width:16px;height:16px}
-.back-section{text-align:center;padding:20px 0 40px}
-
-/* ====== RESPONSIVE ====== */
-@media(min-width:768px){
-  .hamburger{display:none}
-  .nav-desktop{display:flex}
-  .page{padding-top:88px}
-  .page-title{font-size:34px}
-  .card{padding:36px 32px}
-  .card h2{font-size:22px}
-}
+  .reveal { opacity: 0; transform: translateY(24px); transition: all .6s cubic-bezier(.22,1,.36,1); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .btn-dorado { transition: all .2s ease; }
+  .btn-dorado:hover {
+    background: #c49a3a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(212,168,67,.3);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { transition: none; opacity: 1; transform: none; }
+    .btn-dorado { transition: none; }
+  }
+  html { scroll-behavior: smooth; }
 </style>
 </head>
-<body>
+<body class="bg-crema font-sans text-[#1a1a1a] antialiased overflow-x-hidden">
 
-<!-- HEADER -->
-<header class="header">
-  <a href="/" class="header-logo">Florería <span>Lucy</span></a>
-  <nav class="nav-desktop">
-    <a href="/">Inicio</a>
-    <a href="/historia">Nuestra historia</a>
-    <a href="/contacto">Contacto</a>
-    <a href="/facturacion">Facturación</a>
-    <a href="/legal" class="active">Aviso legal</a>
-  </nav>
-  <button class="hamburger" onclick="toggleMenu()" aria-label="Menú">
-    <span></span><span></span><span></span>
-  </button>
-</header>
-
-<!-- MOBILE MENU -->
-<nav class="mobile-menu" id="mobileMenu">
-  <a href="/">Inicio</a>
-  <a href="/historia">Nuestra historia</a>
-  <a href="/contacto">Contacto</a>
-  <a href="/facturacion">Facturación</a>
-  <a href="/legal" class="active">Aviso legal</a>
+<!-- ========== NAVBAR (scrolled state — fixed white) ========== -->
+<nav class="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16 sm:h-20">
+      <a href="/" class="flex items-center gap-2">
+        <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/w_160,q_auto/v1775163240/floreria-lucy/logo.png"
+             alt="Floreria Lucy" class="h-12 sm:h-14 w-auto">
+      </a>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="/" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Inicio</a>
+        <a href="/catalogo/?modo=dynamic" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Catalogo</a>
+        <a href="/historia" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Historia</a>
+        <a href="/contacto" class="text-sm font-medium text-gray-600 hover:text-verde transition-colors">Contacto</a>
+        <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+           class="btn-dorado inline-flex items-center gap-2 bg-dorado text-verde font-semibold text-sm px-5 py-2.5 rounded-full cursor-pointer">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.332 0-4.487-.753-6.24-2.03l-.436-.33-3.264 1.094 1.094-3.264-.33-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+          WhatsApp
+        </a>
+      </div>
+      <button class="md:hidden flex flex-col gap-1.5 p-2 cursor-pointer" onclick="toggleMobileNav()" aria-label="Menu de navegacion">
+        <span class="block w-6 h-0.5 bg-verde transition-all" id="ham-1"></span>
+        <span class="block w-6 h-0.5 bg-verde transition-all" id="ham-2"></span>
+        <span class="block w-6 h-0.5 bg-verde transition-all" id="ham-3"></span>
+      </button>
+    </div>
+  </div>
+  <div class="md:hidden overflow-hidden max-h-0 transition-all duration-300 bg-verde/95 backdrop-blur-md" id="mobile-menu">
+    <div class="px-6 py-4 flex flex-col gap-3">
+      <a href="/" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Inicio</a>
+      <a href="/catalogo/?modo=dynamic" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Catalogo</a>
+      <a href="/historia" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Historia</a>
+      <a href="/contacto" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Contacto</a>
+      <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+         class="btn-dorado bg-dorado text-verde font-semibold text-center py-3 rounded-full mt-2 cursor-pointer">
+        Pedir por WhatsApp
+      </a>
+    </div>
+  </div>
 </nav>
 
-<!-- PAGE -->
-<main class="page">
-  <h1 class="page-title">Aviso legal y políticas</h1>
-  <p class="page-subtitle">Transparencia y claridad en cada pedido</p>
-  <div class="page-deco"></div>
-
-  <!-- Cancelaciones y devoluciones -->
-  <section class="card">
-    <div class="card-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/>
-      </svg>
+<!-- ========== HERO ========== -->
+<section class="relative pt-16 sm:pt-20">
+  <div class="bg-gradient-to-br from-verde via-verde-medio to-verde py-20 sm:py-28 text-center px-4">
+    <div class="max-w-3xl mx-auto">
+      <h1 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
+        Aviso legal y politicas
+      </h1>
+      <p class="text-white/70 text-base sm:text-lg mb-6">Transparencia y claridad en cada pedido</p>
+      <div class="w-16 h-1 bg-dorado mx-auto rounded-full"></div>
     </div>
-    <h2>Política de cancelaciones y devoluciones</h2>
-    <ul>
-      <li><strong>No se aceptan cancelaciones ni devoluciones</strong> una vez confirmado el pago, ya que se trata de producto perecedero.</li>
-      <li><strong>Cancelación antes del pago:</strong> sin cargo alguno.</li>
-      <li><strong>Cancelación el mismo día</strong> (si la entrega no es el mismo día): se otorga un abono del 100% del monto, válido por 1 mes.</li>
-      <li>Si el cliente <strong>no acepta el abono</strong>, se procederá a la devolución del 50% del monto pagado.</li>
-      <li><strong>No se aceptan cambios de fecha</strong> cuando el arreglo floral ya ha sido elaborado.</li>
-    </ul>
-  </section>
+  </div>
+</section>
 
-  <!-- Entregas -->
-  <section class="card">
-    <div class="card-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0H6.375m11.25-4.5V6.75a1.125 1.125 0 0 0-1.125-1.125H3.375a1.125 1.125 0 0 0-1.125 1.125v11.25"/>
-      </svg>
+<!-- ========== CONTENT CARDS ========== -->
+<section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 pb-16 space-y-8">
+
+  <!-- Card 1: Cancelaciones y devoluciones -->
+  <div class="reveal bg-white rounded-2xl shadow-lg shadow-verde/5 p-8 sm:p-10" style="transition-delay:.1s">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 bg-verde/[.07] rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-verde" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/>
+        </svg>
+      </div>
+      <h2 class="font-serif text-xl sm:text-2xl font-bold text-verde pt-1.5">Politica de cancelaciones y devoluciones</h2>
     </div>
-    <h2>Política de entregas</h2>
-    <ul>
-      <li>Las entregas se realizan en <strong>horarios abiertos</strong>, no en horas específicas.</li>
-      <li><strong>Entrega a hora exacta:</strong> tiene un cargo adicional de $80 MXN, sujeto a disponibilidad.</li>
-      <li>Florería Lucy <strong>no se responsabiliza</strong> por retrasos causados por situaciones ajenas a su control (tráfico, clima, accesos restringidos, etc.).</li>
-      <li>Es <strong>responsabilidad del cliente</strong> proporcionar la dirección y el teléfono del receptor de forma correcta y completa.</li>
+    <ul class="space-y-4">
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">No se aceptan cancelaciones ni devoluciones</span> una vez confirmado el pago, ya que se trata de producto perecedero.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">Cancelacion antes del pago:</span> sin cargo alguno.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">Cancelacion el mismo dia</span> (si la entrega no es el mismo dia): se otorga un abono del 100% del monto, valido por 7 dias naturales dentro del mismo mes calendario.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">El abono es canjeable</span> unicamente por un solo arreglo de valor igual o inferior. No es fraccionable ni acumulable.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Si el cliente <span class="font-semibold text-verde">no acepta el abono</span>, se procedera a la devolucion del 50% del monto pagado.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">No se aceptan cambios de fecha</span> cuando el arreglo floral ya ha sido elaborado.</p>
+      </li>
     </ul>
-  </section>
+  </div>
 
-  <!-- Aviso de privacidad -->
-  <section class="card">
-    <div class="card-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
-      </svg>
+  <!-- Card 2: Entregas -->
+  <div class="reveal bg-white rounded-2xl shadow-lg shadow-verde/5 p-8 sm:p-10" style="transition-delay:.2s">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 bg-verde/[.07] rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-verde" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0H6.375m11.25-4.5V6.75a1.125 1.125 0 0 0-1.125-1.125H3.375a1.125 1.125 0 0 0-1.125 1.125v11.25"/>
+        </svg>
+      </div>
+      <h2 class="font-serif text-xl sm:text-2xl font-bold text-verde pt-1.5">Politica de entregas</h2>
     </div>
-    <h2>Aviso de privacidad simplificado</h2>
-    <ul>
-      <li>Los datos personales del cliente se utilizan <strong>únicamente</strong> para procesar y entregar el pedido solicitado.</li>
-      <li>Tu información <strong>no se comparte con terceros</strong> bajo ninguna circunstancia.</li>
-      <li>Para ejercer tus <strong>derechos ARCO</strong> (Acceso, Rectificación, Cancelación u Oposición), escríbenos a: <a href="mailto:florerialucychihuahua@gmail.com" class="email-link">florerialucychihuahua@gmail.com</a></li>
+    <ul class="space-y-4">
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Las entregas se realizan en <span class="font-semibold text-verde">horarios abiertos</span>, no en horas especificas.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">Entrega a hora exacta:</span> tiene un cargo adicional de $80 MXN, sujeto a disponibilidad.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Floreria Lucy <span class="font-semibold text-verde">no se responsabiliza</span> por retrasos causados por situaciones ajenas a su control (trafico, clima, accesos restringidos, etc.).</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Es <span class="font-semibold text-verde">responsabilidad del cliente</span> proporcionar la direccion y el telefono del receptor de forma correcta y completa.</p>
+      </li>
     </ul>
-  </section>
+  </div>
 
-  <!-- Back to catalog -->
-  <div class="back-section">
-    <a href="/" class="back-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>
+  <!-- Card 3: Aviso de privacidad -->
+  <div class="reveal bg-white rounded-2xl shadow-lg shadow-verde/5 p-8 sm:p-10" style="transition-delay:.3s">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 bg-verde/[.07] rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-verde" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z"/>
+        </svg>
+      </div>
+      <h2 class="font-serif text-xl sm:text-2xl font-bold text-verde pt-1.5">Aviso de privacidad simplificado</h2>
+    </div>
+    <ul class="space-y-4">
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Los datos personales del cliente se utilizan <span class="font-semibold text-verde">unicamente</span> para procesar y entregar el pedido solicitado.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Tu informacion <span class="font-semibold text-verde">no se comparte con terceros</span> bajo ninguna circunstancia.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Para ejercer tus <span class="font-semibold text-verde">derechos ARCO</span> (Acceso, Rectificacion, Cancelacion u Oposicion), escribenos a: <a href="mailto:florerialucychihuahua@gmail.com" class="text-verde-medio font-medium underline underline-offset-2 hover:text-dorado transition-colors">florerialucychihuahua@gmail.com</a></p>
+      </li>
+    </ul>
+  </div>
+
+  <!-- CTA -->
+  <div class="reveal text-center pt-4" style="transition-delay:.4s">
+    <a href="/catalogo/?modo=dynamic"
+       class="btn-dorado inline-flex items-center gap-2 bg-dorado text-verde font-semibold text-base px-8 py-3.5 rounded-full cursor-pointer">
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>
       </svg>
-      Ver nuestro catálogo
+      Ver catalogo
     </a>
   </div>
-</main>
 
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer class="bg-verde text-white py-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+      <div class="sm:col-span-2 lg:col-span-1">
+        <div class="bg-white/90 rounded-xl inline-block px-3 py-2 mb-3">
+          <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/w_180,q_auto/v1775163240/floreria-lucy/logo.png"
+               alt="Floreria Lucy" class="h-14 w-auto">
+        </div>
+        <p class="text-white/60 text-sm leading-relaxed">La expresion del amor desde 1988. Arreglos florales, ramos y detalles para cada ocasion en Chihuahua.</p>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Ubicacion</h4>
+        <p class="text-white/70 text-sm leading-relaxed">
+          C. Sabino 610<br>Las Granjas, 31100<br>Chihuahua, Chih., Mexico
+        </p>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Horarios</h4>
+        <div class="text-white/70 text-sm space-y-1">
+          <p>Lun — Vie: 9:00 - 19:00</p>
+          <p>Sabado: 10:00 - 18:00</p>
+          <p>Domingo: 11:00 - 15:00</p>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-semibold text-sm uppercase tracking-wider text-dorado mb-4">Contacto</h4>
+        <div class="space-y-3">
+          <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.611.611l4.458-1.495A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.332 0-4.487-.753-6.24-2.03l-.436-.33-3.264 1.094 1.094-3.264-.33-.436A9.96 9.96 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>
+            614 334 9392
+          </a>
+          <a href="tel:+526144143787"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            (614) 414 3787
+          </a>
+          <a href="mailto:contacto@florerialucy.com"
+             class="flex items-center gap-2 text-white/70 hover:text-dorado transition-colors text-sm cursor-pointer">
+            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            contacto@florerialucy.com
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <p class="text-white/40 text-sm">&copy; 2026 Floreria Lucy. Todos los derechos reservados.</p>
+      <div class="flex gap-6">
+        <a href="/legal" class="text-white/40 hover:text-white/70 text-sm transition-colors cursor-pointer">Aviso de privacidad</a>
+        <a href="/facturacion" class="text-white/40 hover:text-white/70 text-sm transition-colors cursor-pointer">Facturacion</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ========== JAVASCRIPT ========== -->
 <script>
-function toggleMenu(){
-  document.querySelector('.hamburger').classList.toggle('open');
-  document.getElementById('mobileMenu').classList.toggle('open');
+// --- Mobile nav ---
+let mobileOpen = false;
+function toggleMobileNav() {
+  mobileOpen = !mobileOpen;
+  const m = document.getElementById('mobile-menu');
+  m.style.maxHeight = mobileOpen ? m.scrollHeight + 'px' : '0';
 }
-// Close mobile menu when clicking a link
-document.querySelectorAll('.mobile-menu a').forEach(a=>{
-  a.addEventListener('click',()=>{
-    document.querySelector('.hamburger').classList.remove('open');
-    document.getElementById('mobileMenu').classList.remove('open');
+function closeMobileNav() {
+  mobileOpen = false;
+  document.getElementById('mobile-menu').style.maxHeight = '0';
+}
+
+// --- Scroll reveal ---
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      revealObs.unobserve(e.target);
+    }
   });
-});
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
 </script>
 </body>
 </html>
