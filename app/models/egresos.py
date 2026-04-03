@@ -58,4 +58,5 @@ class GastoRecurrente(Base):
     categoria: Mapped[str] = mapped_column(String(50))
     frecuencia: Mapped[str] = mapped_column(String(20))  # mensual|quincenal|semanal
     monto_sugerido: Mapped[int] = mapped_column(Integer)  # centavos
+    proveedor: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, default=True)

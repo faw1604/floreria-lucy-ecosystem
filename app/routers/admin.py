@@ -227,7 +227,8 @@ async def listar_gastos_recurrentes(
     result = await db.execute(select(GastoRecurrente).order_by(GastoRecurrente.nombre))
     return [
         {"id": g.id, "nombre": g.nombre, "categoria": g.categoria,
-         "frecuencia": g.frecuencia, "monto_sugerido": g.monto_sugerido, "activo": g.activo}
+         "frecuencia": g.frecuencia, "monto_sugerido": g.monto_sugerido,
+         "proveedor": g.proveedor, "activo": g.activo}
         for g in result.scalars().all()
     ]
 
@@ -243,7 +244,8 @@ async def crear_gasto_recurrente(
     g = GastoRecurrente(
         nombre=data["nombre"], categoria=data.get("categoria", "otro"),
         frecuencia=data.get("frecuencia", "mensual"),
-        monto_sugerido=data.get("monto_sugerido", 0), activo=True,
+        monto_sugerido=data.get("monto_sugerido", 0),
+        proveedor=data.get("proveedor") or None, activo=True,
     )
     db.add(g)
     await db.commit()
@@ -263,7 +265,7 @@ async def actualizar_gasto_recurrente(
     if not g:
         raise HTTPException(status_code=404, detail="No encontrado")
     data = await request.json()
-    for k in ["nombre", "categoria", "frecuencia", "monto_sugerido", "activo"]:
+    for k in ["nombre", "categoria", "frecuencia", "monto_sugerido", "proveedor", "activo"]:
         if k in data:
             setattr(g, k, data[k])
     await db.commit()

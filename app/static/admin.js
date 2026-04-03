@@ -1831,6 +1831,7 @@ async function eliminarEgreso(id) {
 // --- Gastos recurrentes ---
 async function abrirGastosRecurrentes() {
   await loadMetodosPago();
+  await loadProveedores();
   try {
     const r = await fetch(API+'/api/admin/gastos-recurrentes', {credentials:'include'});
     const data = await r.json();
@@ -1845,8 +1846,8 @@ async function abrirGastosRecurrentes() {
       ${data.filter(g=>g.activo).map(g => {
         const paid = paidNames.has(g.nombre);
         return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--borde)">
-          <div style="flex:1"><strong>${esc(g.nombre)}</strong><br><span style="font-size:11px;color:var(--texto2)">${g.categoria} · ${g.frecuencia} · ${fmt$(g.monto_sugerido)}</span></div>
-          ${paid ? '<span style="color:var(--verde);font-size:12px;font-weight:600">Pagado ✓</span>' : `<button class="btn-dorado" onclick="pagarRecurrente(${g.id},'${esc(g.nombre)}',${g.monto_sugerido},'${esc(g.categoria)}')">Marcar pagado</button>`}
+          <div style="flex:1"><strong>${esc(g.nombre)}</strong><br><span style="font-size:11px;color:var(--texto2)">${g.categoria} · ${g.frecuencia} · ${fmt$(g.monto_sugerido)}${g.proveedor ? ' · '+esc(g.proveedor) : ''}</span></div>
+          ${paid ? '<span style="color:var(--verde);font-size:12px;font-weight:600">Pagado ✓</span>' : `<button class="btn-dorado" onclick="pagarRecurrente(${g.id},'${esc(g.nombre)}',${g.monto_sugerido},'${esc(g.categoria)}','${esc(g.proveedor||'')}')">Marcar pagado</button>`}
           <button class="btn-sm" onclick="eliminarGastoRec(${g.id})" style="font-size:11px">🗑</button>
         </div>`;
       }).join('') || '<div style="color:var(--texto2);padding:12px">Sin gastos recurrentes</div>'}
@@ -1857,6 +1858,7 @@ async function abrirGastosRecurrentes() {
           <select id="gr-cat" style="padding:6px;font-size:12px"><option value="servicios">Servicios</option><option value="nomina">Nómina</option><option value="insumos">Insumos</option><option value="mantenimiento">Mantenimiento</option><option value="otro">Otro</option></select>
           <select id="gr-freq" style="padding:6px;font-size:12px"><option value="mensual">Mensual</option><option value="quincenal">Quincenal</option><option value="semanal">Semanal</option></select>
           <input type="number" id="gr-monto" placeholder="Monto sugerido" step="0.01" style="padding:6px 8px;border:1px solid var(--borde);border-radius:6px;font-size:12px">
+          <select id="gr-prov" style="padding:6px;font-size:12px;grid-column:1/-1"><option value="">Sin proveedor</option>${provOptions()}</select>
         </div>
         <button class="btn-primary" onclick="crearGastoRec()" style="margin-top:8px;width:100%">Agregar</button>
       </div>
@@ -1865,7 +1867,7 @@ async function abrirGastosRecurrentes() {
   } catch(e) {}
 }
 
-async function pagarRecurrente(id, nombre, monto, categoria) {
+async function pagarRecurrente(id, nombre, monto, categoria, proveedor) {
   await loadMetodosPago();
   document.getElementById('modal-egreso-body').innerHTML = `
     <h4>Pagar: ${esc(nombre)}</h4>
@@ -1873,6 +1875,7 @@ async function pagarRecurrente(id, nombre, monto, categoria) {
     <div class="field"><label>Método de pago *</label><select id="pr-mp"><option value="">Selecciona...</option>${mpOptions()}</select></div>
     <div class="field"><label>Fecha de pago</label><input type="date" id="pr-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
     <div class="field"><label>Notas</label><input id="pr-notas"></div>
+    <input type="hidden" id="pr-proveedor" value="${esc(proveedor||'')}">
     <button class="btn-primary" onclick="confirmarPagoRec('${esc(nombre)}','${esc(categoria)}')" style="width:100%;margin-top:8px">Confirmar pago</button>
   `;
   document.getElementById('modal-egreso').classList.add('active');
@@ -1884,6 +1887,7 @@ async function confirmarPagoRec(nombre, categoria) {
     concepto: nombre,
     categoria: categoria,
     metodo_pago: document.getElementById('pr-mp').value || null,
+    proveedor: document.getElementById('pr-proveedor')?.value?.trim() || null,
     monto: Math.round(parseFloat(document.getElementById('pr-monto').value||0)*100),
     notas: document.getElementById('pr-notas').value.trim() || null,
     es_recurrente: true,
@@ -1899,7 +1903,7 @@ async function crearGastoRec() {
   const nombre = document.getElementById('gr-nombre').value.trim();
   if (!nombre) return alert('Nombre requerido');
   await fetch(API+'/api/admin/gastos-recurrentes', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-    body: JSON.stringify({nombre, categoria: document.getElementById('gr-cat').value, frecuencia: document.getElementById('gr-freq').value, monto_sugerido: Math.round(parseFloat(document.getElementById('gr-monto').value||0)*100)})
+    body: JSON.stringify({nombre, categoria: document.getElementById('gr-cat').value, frecuencia: document.getElementById('gr-freq').value, monto_sugerido: Math.round(parseFloat(document.getElementById('gr-monto').value||0)*100), proveedor: document.getElementById('gr-prov')?.value?.trim() || null})
   });
   abrirGastosRecurrentes();
 }
