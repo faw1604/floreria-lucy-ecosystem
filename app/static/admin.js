@@ -248,8 +248,9 @@ function prodFilterUrl() {
   const status = document.getElementById('prod-status-filter')?.value || '';
   const cat = document.getElementById('prod-cat-filter')?.value || '';
   const q = (document.getElementById('prod-search')?.value || '').trim();
-  const activoVal = status === '1' ? 'true' : status === '0' ? 'false' : 'todos';
-  let url = API + '/productos/?activo=' + activoVal + '&offset=' + prodOffset + '&limit=' + PROD_PAGE;
+  const catVisible = status === '1' ? 'true' : status === '0' ? 'false' : '';
+  let url = API + '/productos/?activo=todos&offset=' + prodOffset + '&limit=' + PROD_PAGE;
+  if (catVisible) url += '&visible_catalogo=' + catVisible;
   if (cat) url += '&categoria=' + encodeURIComponent(cat);
   if (q) url += '&buscar=' + encodeURIComponent(q);
   return url;
@@ -294,7 +295,7 @@ function renderProdTable() {
     <td>${esc(p.categoria)}</td>
     <td style="font-weight:600">${p.precio_descuento ? '<span style="text-decoration:line-through;color:#999;font-weight:400">'+fmt$(p.precio)+'</span> '+fmt$(p.precio_descuento) : fmt$(p.precio)}</td>
     <td>${p.activo ? '<span style="color:var(--verde)">Si</span>' : '<span style="color:var(--rojo)">No</span>'}</td>
-    <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProdQuick(${p.id}, this.checked)" title="Visible en catálogo web"></td>
+    <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProdQuick(${p.id}, this.checked)" title="Mostrar en catalogo"></td>
     <td id="var-badge-${p.id}"></td>
     <td style="white-space:nowrap"><button class="btn-sm" onclick="editarProducto(${p.id})">Editar</button> <button class="btn-sm" style="color:var(--rojo);border-color:var(--rojo)" onclick="eliminarProducto(${p.id},'${esc(p.nombre)}')">Eliminar</button></td>
   </tr>`).join('');
@@ -422,9 +423,8 @@ async function abrirModalProducto(prod) {
       <div style="font-size:10px;color:var(--texto2);margin-top:4px">Medidas aproximadas — se muestran al cliente en el catálogo web.</div>
     </div>
     <div style="display:flex;gap:12px;margin:12px 0">
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-activo" ${prod?.activo !== false ? 'checked' : ''}> Activo</label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-web" ${prod?.visible_catalogo !== false ? 'checked' : ''}> Visible en web</label>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px;display:none" id="pf-funeral-wrap"><input type="checkbox" id="pf-funeral"> Es funeral</label>
+      <input type="hidden" id="pf-activo" value="true">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-web" ${prod?.visible_catalogo !== false ? 'checked' : ''}> Mostrar en catalogo</label>
     </div>
     <!-- STOCK -->
     <div style="border:1px solid var(--borde);border-radius:10px;padding:14px;margin:14px 0">
@@ -590,7 +590,7 @@ async function guardarProducto(id) {
     precio: Math.round(parseFloat(document.getElementById('pf-precio').value || 0) * 100),
     precio_descuento: document.getElementById('pf-precio-desc').value ? Math.round(parseFloat(document.getElementById('pf-precio-desc').value) * 100) : null,
     imagen_url: document.getElementById('pf-img').value.trim() || null,
-    activo: document.getElementById('pf-activo').checked,
+    activo: true,
     visible_catalogo: document.getElementById('pf-web').checked,
     stock_activo: document.getElementById('pf-stock-activo').checked,
     stock: parseInt(document.getElementById('pf-stock')?.value || 0),

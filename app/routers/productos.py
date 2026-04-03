@@ -12,6 +12,7 @@ async def listar_productos(
     categoria: str | None = None,
     solo_disponibles: bool = False,
     activo: str | None = None,
+    visible_catalogo: str | None = None,
     buscar: str | None = None,
     offset: int = 0,
     limit: int = 0,
@@ -33,6 +34,10 @@ async def listar_productos(
         pass
     else:
         query = query.where(Producto.activo == True)
+    if visible_catalogo == "true":
+        query = query.where(Producto.visible_catalogo == True)
+    elif visible_catalogo == "false":
+        query = query.where(Producto.visible_catalogo == False)
     if categoria:
         query = query.where(Producto.categoria == categoria)
     if buscar:
