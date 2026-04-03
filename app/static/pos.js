@@ -136,7 +136,7 @@ function renderProds() {
         ? `<span class="old">$${(p.precio/100).toLocaleString()}</span><span class="offer">$${(p.precio_descuento/100).toLocaleString()}</span>`
         : `$${(p.precio/100).toLocaleString()}`;
       return `<div class="pcard${nostock}" onclick="addToCart(${p.id})">
-        <img src="${p.imagen_url}" loading="lazy" alt="">
+        ${p.imagen_url ? `<img src="${p.imagen_url}" loading="lazy" alt="">` : `<div style="width:100%;aspect-ratio:1;background:var(--crema,#faf8f5);display:flex;align-items:center;justify-content:center;font-size:28px;color:#ccc">☕</div>`}
         <div class="pinfo"><div class="pname">${p.nombre}</div><div class="pprice">${price}</div></div>
       </div>`;
     }).join('');
@@ -158,7 +158,7 @@ function renderProds() {
       }
       const btnDisabled = (stockVal === 0 || p.disponible_hoy === false);
       return `<div class="pcard-list${nostock}" onclick="${btnDisabled ? '' : `addToCart(${p.id})`}">
-        <img src="${p.imagen_url}" alt="">
+        ${p.imagen_url ? `<img src="${p.imagen_url}" alt="">` : `<div style="width:48px;height:48px;background:#f0ede8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">☕</div>`}
         <div class="plname">${p.nombre}</div>
         <div class="plcode">${p.codigo||''}</div>
         <div class="plprice">$${(pr/100).toLocaleString()}</div>
