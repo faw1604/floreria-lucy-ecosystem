@@ -34,15 +34,19 @@ def _sort_key(p):
 
 
 async def _pedido_items_nombres(pedido_id: int, db: AsyncSession) -> list[str]:
-    result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido_id))
-    items = result.scalars().all()
+    """Obtener nombres de items en 1 query con JOIN (no N+1)."""
+    from sqlalchemy import outerjoin
+    result = await db.execute(
+        select(ItemPedido, Producto.nombre)
+        .outerjoin(Producto, ItemPedido.producto_id == Producto.id)
+        .where(ItemPedido.pedido_id == pedido_id)
+    )
     nombres = []
-    for item in items:
-        prod = (await db.execute(select(Producto).where(Producto.id == item.producto_id))).scalar_one_or_none()
+    for item, prod_nombre in result.all():
         if item.es_personalizado and item.nombre_personalizado:
             nombres.append(item.nombre_personalizado)
-        elif prod:
-            nombres.append(prod.nombre)
+        elif prod_nombre:
+            nombres.append(prod_nombre)
     return nombres
 
 
@@ -93,17 +97,21 @@ async def entregas_hoy(
 
     result = await db.execute(query)
     pedidos = sorted(result.scalars().all(), key=_sort_key)
+
+    # Pre-fetch all clientes in 1 query (avoid N+1)
+    customer_ids = [p.customer_id for p in pedidos if p.customer_id]
+    clientes_map = {}
+    if customer_ids:
+        cli_result = await db.execute(select(Cliente).where(Cliente.id.in_(customer_ids)))
+        for cli in cli_result.scalars().all():
+            clientes_map[cli.id] = cli
+
     out = []
     for p in pedidos:
         items = await _pedido_items_nombres(p.id, db)
-        cliente_nombre = None
-        cliente_telefono = None
-        if p.customer_id:
-            cr = await db.execute(select(Cliente).where(Cliente.id == p.customer_id))
-            cli = cr.scalar_one_or_none()
-            if cli:
-                cliente_nombre = cli.nombre
-                cliente_telefono = cli.telefono
+        cli = clientes_map.get(p.customer_id)
+        cliente_nombre = cli.nombre if cli else None
+        cliente_telefono = cli.telefono if cli else None
         out.append({
             "id": p.id,
             "folio": p.numero,

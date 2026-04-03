@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Repartidor — Floreria Lucy</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{--verde:#193a2c;--verde-m:#2d5a3d;--crema:#faf8f5;--blanco:#fff;--texto:#1a1a1a;--texto2:#5a5a5a;--borde:#e5e0d8;--rojo:#ef4444;--naranja:#f97316;--dorado:#d4a843;--morada:#7c3aed;--azul:#2563eb;--verde-c:#16a34a}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -388,16 +388,21 @@ function switchTab(tab) {
 }
 
 // ─── Load data ───
+let _lastDataHash = '';
 async function loadEntregas() {
   try {
     const param = filters.dia !== 'hoy' ? `?fecha=${filters.dia}` : '';
     const r = await fetch(`/repartidor/entregas-hoy${param}`, {credentials:'include'});
     if (r.status === 401) { document.getElementById('v-login').style.display = ''; document.getElementById('v-app').style.display = 'none'; return; }
     if (!r.ok) return;
-    allPedidos = await r.json();
+    const data = await r.json();
+    // Solo re-renderizar si los datos cambiaron (evita parpadeo)
+    const hash = JSON.stringify(data.map(p => p.id + '|' + p.estado + '|' + (p.repartidor_id||'')));
+    if (hash === _lastDataHash) return;
+    _lastDataHash = hash;
+    allPedidos = data;
     updateResumen();
     renderPendientes();
-    // Check if there's an active route (pedidos en camino)
     const enCamino = allPedidos.filter(p => p.estado === 'En camino');
     if (enCamino.length > 0 && !rutaStartTime) {
       rutaStartTime = Date.now();
@@ -632,7 +637,7 @@ function renderEntregados() {
       duracion = diff > 60 ? `${Math.floor(diff/60)}h ${diff%60}m` : `${diff}m`;
     }
     return `<div class="hist-card">
-      ${p.foto_entrega_url ? `<img class="hist-foto" src="${p.foto_entrega_url}" onclick="verFotoFull('${p.foto_entrega_url}')">` : '<div class="hist-foto-placeholder">📦</div>'}
+      ${p.foto_entrega_url ? `<img class="hist-foto" src="${p.foto_entrega_url.replace('/upload/', '/upload/w_120,h_120,c_fill,q_auto,f_auto/')}" loading="lazy" onclick="verFotoFull('${p.foto_entrega_url}')">` : '<div class="hist-foto-placeholder">📦</div>'}
       <div class="hist-info">
         <div class="hist-folio">${p.folio} <span class="hist-tag tag-ok">✅</span></div>
         <div class="hist-detail">${p.nombre_destinatario||'—'}</div>
@@ -676,11 +681,12 @@ function verFotoFull(url) {
 }
 
 // ─── Polling ───
-let repartidorPollingId = setInterval(() => loadEntregas(), 10000);
+let repartidorPollingId = setInterval(() => loadEntregas(), 45000);
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
+        _lastDataHash = ''; // Forzar refresh al volver
         loadEntregas();
-        if (!repartidorPollingId) repartidorPollingId = setInterval(() => loadEntregas(), 10000);
+        if (!repartidorPollingId) repartidorPollingId = setInterval(() => loadEntregas(), 45000);
     } else {
         clearInterval(repartidorPollingId);
         repartidorPollingId = null;
