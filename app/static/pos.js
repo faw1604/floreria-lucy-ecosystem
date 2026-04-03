@@ -1942,7 +1942,7 @@ function renderTransTable(rows) {
       <td>${obsIcon(p)}</td>
       <td><button onclick='verTicket(${JSON.stringify(p).replace(/'/g,"&#39;")})' style="background:none;border:none;font-size:16px;cursor:pointer" title="Ver ticket">🎫</button></td>
       <td class="pend-actions">
-        ${ec !== 'cancelado' ? `<button class="btn-edit" onclick="editarFechaPedido(${p.id},'${esc(p.folio)}','${p.fecha_entrega||''}','${p.horario_entrega||''}','${p.hora_exacta||''}')" title="Editar fecha">📅</button><button class="btn-cancel" onclick="pedirCancelarTrans(${p.id},'${esc(p.folio)}')" title="Cancelar">✂️</button>` : '<span class="badge-estado cancelado">Cancelado</span>'}
+        ${ec !== 'cancelado' ? `<button class="btn-edit" onclick="editarFechaPedido(${p.id},'${esc(p.folio)}','${p.fecha_entrega||''}','${p.horario_entrega||''}','${p.hora_exacta||''}')" title="Editar fecha">📅</button>${window._isAdmin ? `<button class="btn-edit" onclick="abrirCambiarEstado(${p.id},'${esc(p.folio)}','${esc(p.estado)}')" title="Cambiar estado">🔄</button>` : ''}<button class="btn-cancel" onclick="pedirCancelarTrans(${p.id},'${esc(p.folio)}')" title="Cancelar">✂️</button>` : '<span class="badge-estado cancelado">Cancelado</span>'}
       </td>
     </tr>`;
   }).join('');
@@ -1992,6 +1992,75 @@ async function validarClaveAdmin() {
     document.getElementById('modal-clave-admin').classList.remove('active');
     if (_claveAdminCallback) { _claveAdminCallback(); _claveAdminCallback = null; }
   } catch(e) { alert('Error de red'); }
+}
+
+// Cambiar estado desde transacciones — solo admin
+function abrirCambiarEstado(id, folio, estadoActual) {
+  pedirClaveAdmin(() => {
+    const estados = [
+      {val: 'esperando_validacion', label: 'Esperando validación'},
+      {val: 'pendiente_pago', label: 'Pendiente de pago'},
+      {val: 'comprobante_recibido', label: 'Comprobante recibido'},
+      {val: 'pagado', label: 'Pagado'},
+      {val: 'En producción', label: 'En producción'},
+      {val: 'Listo', label: 'Listo'},
+      {val: 'listo_taller', label: 'Listo taller'},
+      {val: 'En camino', label: 'En camino'},
+      {val: 'Entregado', label: 'Entregado'},
+      {val: 'Cancelado', label: 'Cancelado'},
+    ];
+    const opts = estados.map(e =>
+      `<option value="${e.val}" ${e.val === estadoActual ? 'selected' : ''}>${e.label}</option>`
+    ).join('');
+    const modal = document.getElementById('modal-egreso-body') || document.getElementById('modal-cancelar-body');
+    const container = modal?.closest('.modal') || document.getElementById('modal-cancelar-trans');
+    // Use a simple prompt-style approach
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+    div.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15)">
+        <h3 style="margin:0 0 4px;font-size:16px;color:#193a2c">Cambiar estado</h3>
+        <p style="margin:0 0 16px;font-size:13px;color:#5a5a5a">Pedido <strong>${folio}</strong></p>
+        <select id="cambiar-estado-select" style="width:100%;padding:10px;border:1px solid #e5e0d8;border-radius:8px;font-size:14px;font-family:Inter,sans-serif;margin-bottom:12px">${opts}</select>
+        <p style="font-size:11px;color:#d4a843;margin-bottom:16px">⚠ Solo cambia el estado. No envía notificaciones ni afecta inventario.</p>
+        <div style="display:flex;gap:8px">
+          <button onclick="this.closest('div[style]').remove()" style="flex:1;padding:10px;border:1px solid #e5e0d8;border-radius:8px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px">Cancelar</button>
+          <button onclick="confirmarCambiarEstado(${id},this)" style="flex:1;padding:10px;border:none;border-radius:8px;background:#193a2c;color:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600">Cambiar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(div);
+  });
+}
+
+async function confirmarCambiarEstado(id, btn) {
+  const select = document.getElementById('cambiar-estado-select');
+  const nuevoEstado = select.value;
+  btn.disabled = true;
+  btn.textContent = 'Cambiando...';
+  try {
+    const r = await fetch(`/api/admin/pedido/${id}/estado`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({estado: nuevoEstado})
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      alert(err.detail || 'Error al cambiar estado');
+      btn.disabled = false;
+      btn.textContent = 'Cambiar';
+      return;
+    }
+    const data = await r.json();
+    btn.closest('div[style*="position:fixed"]').remove();
+    showToast(`${data.folio}: ${data.estado_anterior} → ${data.estado_nuevo}`);
+    loadTransacciones();
+  } catch(e) {
+    alert('Error de conexión');
+    btn.disabled = false;
+    btn.textContent = 'Cambiar';
+  }
 }
 
 // Cancelar desde transacciones — requiere clave admin
