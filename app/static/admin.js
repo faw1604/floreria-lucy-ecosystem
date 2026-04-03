@@ -75,6 +75,7 @@ function switchSubTab(prefix, id) {
 }
 
 // ══════ PENDIENTES ══════
+let _lastAdminPendHash = '';
 async function loadPendientes() {
   try {
     const canal = document.getElementById('pend-canal-filter').value;
@@ -86,6 +87,9 @@ async function loadPendientes() {
     const data = await r.json();
     let rows = [...(data.pendientes || [])];
     if (estado) rows = rows.filter(p => p.estado === estado);
+    const hash = JSON.stringify(rows.map(p => p.id + '|' + p.estado));
+    if (hash === _lastAdminPendHash) return;
+    _lastAdminPendHash = hash;
     const tbody = document.getElementById('pend-tbody');
     if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--texto2);padding:40px">Sin pedidos pendientes</td></tr>'; return; }
     tbody.innerHTML = rows.map(p => {
@@ -129,6 +133,7 @@ async function confirmarPagoPend(id) {
 }
 
 // ══════ TRANSACCIONES ══════
+let _lastAdminTransHash = '';
 async function loadTransacciones() {
   try {
     const periodo = document.getElementById('trans-periodo').value;
@@ -136,6 +141,9 @@ async function loadTransacciones() {
     if (!r.ok) return;
     const data = await r.json();
     const rows = data.finalizados || [];
+    const hash = JSON.stringify(rows.map(p => p.id + '|' + p.estado + '|' + p.total));
+    if (hash === _lastAdminTransHash) return;
+    _lastAdminTransHash = hash;
     const resumen = data.resumen || {};
     // KPIs
     document.getElementById('trans-kpis').innerHTML = `
@@ -284,7 +292,11 @@ async function loadProductos(append) {
   prodLoading = false;
 }
 
+let _lastProdHash = '';
 function renderProdTable() {
+  const hash = JSON.stringify(prodAllData.map(p => p.id + '|' + p.activo + '|' + p.visible_catalogo + '|' + p.precio));
+  if (hash === _lastProdHash) return;
+  _lastProdHash = hash;
   const tbody = document.getElementById('prod-tbody');
   if (!prodAllData.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:40px">Sin productos</td></tr>'; return; }
   tbody.innerHTML = prodAllData.map(p => `<tr>

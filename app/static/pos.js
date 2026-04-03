@@ -1567,7 +1567,11 @@ async function loadPendientes(params) {
   }
 }
 
+let _lastPendHash = '';
 function renderPendTable(rows) {
+  const hash = JSON.stringify(rows.map(p => p.id + '|' + p.estado));
+  if (hash === _lastPendHash) return;
+  _lastPendHash = hash;
   const tbody = document.getElementById('pend-tbody');
   const empty = document.getElementById('pend-empty');
   const countEl = document.getElementById('pend-count');
@@ -1979,7 +1983,11 @@ async function loadTransacciones(params) {
   }
 }
 
+let _lastTransHash = '';
 function renderTransTable(rows) {
+  const hash = JSON.stringify(rows.map(p => p.id + '|' + p.estado + '|' + p.total));
+  if (hash === _lastTransHash) return;
+  _lastTransHash = hash;
   const tbody = document.getElementById('trans-tbody');
   const empty = document.getElementById('trans-empty');
   const countEl = document.getElementById('trans-count');
