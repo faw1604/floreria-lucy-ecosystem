@@ -1064,8 +1064,12 @@ async function finalizarVenta() {
   }
   const tieneEfectivo = selectedPays['Efectivo'] !== undefined;
   await submitPedido('pagado');
-  // Abrir cajón si el pago incluye efectivo
-  if (tieneEfectivo && typeof abrirCajon === 'function') abrirCajon();
+  // Si pago incluye efectivo, auto-imprimir ticket para que la impresora abra el cajón
+  if (tieneEfectivo) {
+    setTimeout(() => {
+      imprimirTicket();
+    }, 300);
+  }
 }
 
 async function submitPedido(estado) {
