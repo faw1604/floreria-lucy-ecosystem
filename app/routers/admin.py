@@ -1551,3 +1551,46 @@ async def generar_descripcion(
         d = r.json()
         descripcion = d["content"][0]["text"] if d.get("content") else ""
         return {"descripcion": descripcion}
+
+
+# ══════ CAMBIAR ESTADO PEDIDO (admin) ══════
+
+@router.patch("/pedido/{pedido_id}/estado")
+async def admin_cambiar_estado(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cambiar estado de un pedido desde admin. No envía WhatsApp."""
+    _auth(panel_session)
+    data = await request.json()
+    nuevo_estado = data.get("estado")
+    if not nuevo_estado:
+        raise HTTPException(status_code=400, detail="Falta el campo 'estado'")
+
+    from app.core.estados import EstadoPedido as EP
+    estados_validos = [
+        EP.ESPERANDO_VALIDACION, EP.PENDIENTE_PAGO, EP.COMPROBANTE_RECIBIDO,
+        EP.PAGADO, EP.EN_PRODUCCION, EP.LISTO, EP.LISTO_TALLER,
+        EP.EN_CAMINO, EP.ENTREGADO, EP.CANCELADO, EP.INTENTO_FALLIDO,
+    ]
+    if nuevo_estado not in estados_validos:
+        raise HTTPException(status_code=400, detail=f"Estado no válido: {nuevo_estado}")
+
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    estado_anterior = pedido.estado
+    pedido.estado = nuevo_estado
+
+    # Si se marca como entregado, registrar timestamp
+    if nuevo_estado == EP.ENTREGADO:
+        from app.core.utils import ahora
+        pedido.entregado_at = ahora()
+
+    await db.commit()
+    logger.info(f"Admin cambió estado pedido {pedido.numero}: {estado_anterior} → {nuevo_estado}")
+    return {"ok": True, "folio": pedido.numero, "estado_anterior": estado_anterior, "estado_nuevo": nuevo_estado}
