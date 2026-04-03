@@ -600,11 +600,13 @@ async def pos_pedidos_hoy(
             pendientes.append(data)
         else:
             finalizados.append(data)
-            total_vendido += p.total or 0
-            for metodo in (p.forma_pago or "").split(", "):
-                metodo = metodo.strip()
-                if metodo:
-                    desglose_pago[metodo] = desglose_pago.get(metodo, 0) + (p.total or 0)
+            # No sumar cancelados ni rechazados al total de ventas
+            if p.estado not in (EP.CANCELADO, "Cancelado", "rechazado"):
+                total_vendido += p.total or 0
+                for metodo in (p.forma_pago or "").split(", "):
+                    metodo = metodo.strip()
+                    if metodo:
+                        desglose_pago[metodo] = desglose_pago.get(metodo, 0) + (p.total or 0)
 
     # Ordenar finalizados por fecha de pago (más reciente primero)
     finalizados.sort(key=lambda x: x.get("pago_confirmado_at") or "", reverse=True)
