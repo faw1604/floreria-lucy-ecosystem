@@ -228,7 +228,7 @@ async def listar_gastos_recurrentes(
     return [
         {"id": g.id, "nombre": g.nombre, "categoria": g.categoria,
          "frecuencia": g.frecuencia, "monto_sugerido": g.monto_sugerido,
-         "proveedor": g.proveedor, "activo": g.activo}
+         "metodo_pago": g.metodo_pago, "proveedor": g.proveedor, "activo": g.activo}
         for g in result.scalars().all()
     ]
 
@@ -245,6 +245,7 @@ async def crear_gasto_recurrente(
         nombre=data["nombre"], categoria=data.get("categoria", "otro"),
         frecuencia=data.get("frecuencia", "mensual"),
         monto_sugerido=data.get("monto_sugerido", 0),
+        metodo_pago=data.get("metodo_pago") or None,
         proveedor=data.get("proveedor") or None, activo=True,
     )
     db.add(g)
@@ -265,7 +266,7 @@ async def actualizar_gasto_recurrente(
     if not g:
         raise HTTPException(status_code=404, detail="No encontrado")
     data = await request.json()
-    for k in ["nombre", "categoria", "frecuencia", "monto_sugerido", "proveedor", "activo"]:
+    for k in ["nombre", "categoria", "frecuencia", "monto_sugerido", "metodo_pago", "proveedor", "activo"]:
         if k in data:
             setattr(g, k, data[k])
     await db.commit()
