@@ -1632,8 +1632,19 @@ let filterPanelTarget = 'pend'; // 'pend' or 'trans'
 
 function toggleFilterPanel(target) {
   if (target) filterPanelTarget = target;
-  document.getElementById('filter-panel').classList.toggle('open');
+  const panel = document.getElementById('filter-panel');
+  panel.classList.toggle('open');
   document.getElementById('filter-overlay').classList.toggle('open');
+  // Pendientes: ocultar filtros que no aplican (periodo, metodo pago, tipo, cancelados)
+  const isPend = filterPanelTarget === 'pend';
+  const sections = panel.querySelectorAll('.fp-section');
+  if (sections[0]) sections[0].style.display = isPend ? 'none' : '';  // Periodo
+  if (sections[1]) sections[1].style.display = isPend ? 'none' : '';  // Metodo de pago
+  // sections[2] = Estado — siempre visible
+  // sections[3] = Canal — siempre visible
+  if (sections[4]) sections[4].style.display = isPend ? 'none' : '';  // Tipo
+  const cancelToggle = document.getElementById('fp-toggle-cancelados');
+  if (cancelToggle) cancelToggle.style.display = isPend ? 'none' : '';
 }
 
 function fpSelectPeriodo(el, val) {
