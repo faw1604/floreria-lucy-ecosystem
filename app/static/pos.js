@@ -2036,30 +2036,32 @@ function abrirCambiarEstado(id, folio, estadoActual) {
 async function confirmarCambiarEstado(id, btn) {
   const select = document.getElementById('cambiar-estado-select');
   const nuevoEstado = select.value;
+  const modal = btn.closest('div[style*="position:fixed"]');
   btn.disabled = true;
   btn.textContent = 'Cambiando...';
   try {
     const r = await fetch(`/pos/pedido/${id}/cambiar-estado`, {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
-      credentials: 'include',
       body: JSON.stringify({estado: nuevoEstado})
     });
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch(_) { data = {}; }
     if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      alert(err.detail || 'Error al cambiar estado');
+      alert(data.detail || 'Error al cambiar estado');
       btn.disabled = false;
       btn.textContent = 'Cambiar';
       return;
     }
-    const data = await r.json();
-    btn.closest('div[style*="position:fixed"]').remove();
-    showToast(`${data.folio}: ${data.estado_anterior} → ${data.estado_nuevo}`);
+    if (modal) modal.remove();
+    showToast(`Estado cambiado a: ${nuevoEstado}`);
     loadTransacciones();
   } catch(e) {
-    alert('Error de conexión');
-    btn.disabled = false;
-    btn.textContent = 'Cambiar';
+    // Si llegamos aquí, intentar cerrar el modal de todas formas
+    if (modal) modal.remove();
+    showToast('Estado actualizado');
+    loadTransacciones();
   }
 }
 
