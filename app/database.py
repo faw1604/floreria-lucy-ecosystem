@@ -158,3 +158,85 @@ async def inicializar_db():
             _log.info("Funeraria Elian Perches: dirección actualizada")
         except Exception as e:
             _log.warning(f"Update Elian Perches: {e}")
+
+    # 6. Seed productos Barra de Café (solo POS, no catálogo web)
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        _cafe_productos = [
+            ("Agua Natural", 400, 1000),
+            ("Refresco", 1500, 3500),
+            ("Iced Cappuccino", 3500, 7500),
+            ("Iced Mocha", 3500, 7500),
+            ("Lemon Americano", 2500, 5200),
+            ("Chai Latte Frio", 3500, 7500),
+            ("Té GD", 2000, 4500),
+            ("Matcha Latte GD", 4000, 8600),
+            ("Dirty Chai GD", 4000, 9000),
+            ("Chai Latte GD", 8200, 8200),
+            ("Chai Latte CH", 7000, 7000),
+            ("Chai GD", 7800, 7800),
+            ("Chocolate de la casa GD", 8000, 8000),
+            ("Chocolate de la casa CH", 7000, 7000),
+            ("Chocolate Oaxaqueño GD", 8500, 8500),
+            ("Chocolate Oaxaqueño CH", 7000, 7000),
+            ("Chocolate Macchiato GD", 8500, 8500),
+            ("Chocolate Macchiato CH", 8000, 8000),
+            ("Chocolate Blanco GD", 7800, 7800),
+            ("Chocolate Blanco CH", 6500, 6500),
+            ("Chocolate Clásico GD", 7500, 7500),
+            ("Cappuccino GD", 7500, 7500),
+            ("Caramel GD", 3500, 7500),
+            ("Mocha GD", 3500, 7500),
+            ("Latte GD", 2000, 6500),
+            ("Americano GD", 1500, 4800),
+            ("Bombón", 1000, 4500),
+            ("Extra pump", 500, 1000),
+            ("Extra shot", 700, 2500),
+            ("Iced Caramel", 3800, 7500),
+            ("Caramel CH", 3000, 6500),
+            ("Orange Americano", 2000, 5500),
+            ("Tisana GD", 3000, 6800),
+            ("Chocolate Frio", 3500, 7000),
+            ("Tisana CH", 2000, 5800),
+            ("Limonada", 2000, 4000),
+            ("Soda Italiana", 2000, 4500),
+            ("Té Helado", 2000, 4000),
+            ("Taro Frio", 3800, 7500),
+            ("Matcha Latte Frio", 4000, 8000),
+            ("Espresso Tonic", 3000, 6000),
+            ("Chai Frio", 3200, 6500),
+            ("Smoothie", 3000, 7200),
+            ("Frappe - Taro / Matcha / Choc Blanco", 3900, 8000),
+            ("Frappe - Cappuccino / Cookies / Java", 3800, 7800),
+            ("Iced Latte", 3500, 7500),
+            ("Cappuccino en las rocas", 3500, 7500),
+            ("Americano en las rocas", 2500, 4800),
+            ("Affogato", 2500, 5000),
+            ("Dirty Chai CH", 3500, 7500),
+            ("Chai CH", 3000, 6700),
+            ("Chocolate Clásico CH", 3000, 6500),
+            ("Té CH", 1500, 3500),
+            ("Matcha Latte CH", 3500, 7000),
+            ("Mocha CH", 2500, 6500),
+            ("Cappuccino CH", 3500, 6500),
+            ("Latte CH", 1000, 5500),
+            ("Americano CH", 2000, 4000),
+            ("Espresso Doble", 1500, 3500),
+            ("Cortado", 2000, 4000),
+            ("Macchiato", 1500, 3500),
+            ("Espresso Sencillo", 1000, 3000),
+            ("Café del día", 1500, 3000),
+        ]
+        for nombre, costo, precio in _cafe_productos:
+            try:
+                result = await conn.execute(text(
+                    "SELECT id FROM productos WHERE nombre = :nombre AND categoria = :cat"
+                ), {"nombre": nombre, "cat": "Barra de Café"})
+                if result.fetchone() is None:
+                    await conn.execute(text(
+                        "INSERT INTO productos (nombre, categoria, precio, costo, costo_unitario, activo, visible_catalogo, disponible_hoy) "
+                        "VALUES (:nombre, :cat, :precio, :costo, :costo_u, true, false, true)"
+                    ), {"nombre": nombre, "cat": "Barra de Café", "precio": precio, "costo": costo, "costo_u": costo / 100.0})
+                    _log.info(f"Producto café: {nombre}")
+            except Exception as e:
+                _log.warning(f"Seed café {nombre}: {e}")
