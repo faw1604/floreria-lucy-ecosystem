@@ -374,6 +374,19 @@ img{-webkit-user-drag:none;user-drag:none}
   .cart-bounce { animation: none; }
   .img-skeleton { animation: none; }
 }
+
+/* ====== COMBO PILL & BANNER ====== */
+.combo-pill{background:var(--dorado)!important;color:var(--verde)!important;border-color:var(--dorado)!important;font-weight:600!important}
+.combo-pill:hover{background:#c49a3a!important}
+.combo-pill.active{background:var(--dorado)!important;color:var(--verde)!important;border-color:var(--dorado)!important;box-shadow:0 2px 8px rgba(212,168,67,.4)}
+.combo-banner{background:linear-gradient(135deg,#193a2c 0%,#6B5F87 100%);border-radius:16px;padding:20px;margin-bottom:14px;cursor:pointer;transition:transform .2s,box-shadow .2s;overflow:hidden;position:relative}
+.combo-banner:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(25,58,44,.2)}
+.combo-banner::before{content:'';position:absolute;top:-20px;right:-20px;width:100px;height:100px;background:rgba(212,168,67,.1);border-radius:50%}
+.combo-banner-content{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+.combo-banner-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:#fff;margin-bottom:4px}
+.combo-banner-sub{font-size:13px;color:rgba(255,255,255,.7)}
+.combo-banner-cta{background:var(--dorado);color:var(--verde);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0}
+@media(max-width:480px){.combo-banner-content{flex-direction:column;text-align:center;gap:12px}}
 </style>
 </head>
 <body>
@@ -446,6 +459,7 @@ img{-webkit-user-drag:none;user-drag:none}
     <div class="cart-title">Tu carrito</div>
     <div class="cart-hint">Desliza a la izquierda o presiona X para quitar</div>
     <div class="cart-list" id="cart-list"></div>
+    <div id="cart-cross-sell"></div>
     <div class="cart-actions" id="cart-actions" style="display:none">
       <button class="cart-order-btn" onclick="showOrderForm()">
         Hacer pedido
@@ -466,6 +480,15 @@ img{-webkit-user-drag:none;user-drag:none}
       <div class="filter-tabs" id="section-tabs"></div>
       <div class="filter-pills" id="type-pills"></div>
       <div class="filter-pills" id="flower-pills"></div>
+    </div>
+    <div class="combo-banner" id="combo-banner" onclick="filterCombos()">
+      <div class="combo-banner-content">
+        <div class="combo-banner-text">
+          <div class="combo-banner-title">Flores + Chocolate artesanal</div>
+          <div class="combo-banner-sub">El regalo perfecto — combina y sorprende</div>
+        </div>
+        <div class="combo-banner-cta">Ver combos →</div>
+      </div>
     </div>
     <div class="classic-grid" id="classic-grid">
       <div class="skeleton" style="height:200px"></div>
@@ -1001,7 +1024,24 @@ function buildQueue() {
       return Math.random() - 0.5;
     });
   }
-  return items;
+  // Insert promo cards every 5 products
+  const PROMO_CARD = {
+    _isPromo: true,
+    nombre: '¿Quieres hacerlo especial?',
+    descripcion: 'Combina tu arreglo con chocolates artesanales, peluches o vino',
+    imagen_url: '',
+    categoria: 'Combos',
+    precio: 0,
+    id: -1
+  };
+  const withPromos = [];
+  items.forEach((p, i) => {
+    withPromos.push(p);
+    if ((i + 1) % 5 === 0 && i < items.length - 1) {
+      withPromos.push({...PROMO_CARD});
+    }
+  });
+  return withPromos;
 }
 
 function renderDynCard() {
@@ -1016,6 +1056,27 @@ function renderDynCard() {
   const pct = dynQueue.length > 0 ? (dynIndex / dynQueue.length) * 100 : 0;
   bar.style.width = pct + '%';
   updateCartFab();
+
+  // Promo card rendering
+  if (p._isPromo) {
+    wrapper.innerHTML = `
+    <div class="dyn-card" id="dyn-current-card" style="background:linear-gradient(135deg,#193a2c,#2d5a3d);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
+      <div style="margin-bottom:16px">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;color:#fff;font-weight:600;margin-bottom:8px">¿Quieres hacerlo especial?</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.7);line-height:1.5;margin-bottom:20px">Combina tu arreglo con chocolates artesanales, peluches o vino</div>
+      <button onclick="event.stopPropagation();showCombosFromSwipe()" style="background:var(--dorado);color:var(--verde);border:none;padding:12px 28px;border-radius:24px;font-weight:600;font-size:14px;cursor:pointer;font-family:Inter,sans-serif">Ver combos</button>
+      <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:12px">Desliza para seguir explorando →</div>
+      <div class="dyn-card-overlay" id="dyn-overlay"></div>
+    </div>`;
+    const card = document.getElementById('dyn-current-card');
+    card.addEventListener('touchstart', onTouchStart, {passive: true});
+    card.addEventListener('touchmove', onTouchMove, {passive: false});
+    card.addEventListener('touchend', onTouchEnd);
+    card.addEventListener('mousedown', onMouseDown);
+    return;
+  }
 
   const agotado = p.sin_stock;
   wrapper.innerHTML = `
@@ -1105,6 +1166,17 @@ function dynAction(action) {
   const p = dynQueue[dynIndex];
   if (!card || !p) return;
 
+  // Promo cards: any swipe just advances, no cart action
+  if (p._isPromo) {
+    card.classList.remove('swiping');
+    if (action === 'like') card.classList.add('exit-right');
+    else if (action === 'pass') card.classList.add('exit-left');
+    else card.classList.add('exit-up');
+    dynIndex++;
+    setTimeout(renderDynCard, 300);
+    return;
+  }
+
   if (action === 'like') {
     card.classList.remove('swiping');
     card.classList.add('exit-right');
@@ -1142,9 +1214,11 @@ function showCart() {
 function renderCart() {
   const list = document.getElementById('cart-list');
   const actions = document.getElementById('cart-actions');
+  const crossSellContainer = document.getElementById('cart-cross-sell');
   if (!cart.length) {
     list.innerHTML = '<div class="empty-msg"><div class="icon">🛒</div>Tu carrito esta vacio</div>';
     actions.style.display = 'none';
+    if (crossSellContainer) crossSellContainer.style.display = 'none';
     return;
   }
   actions.style.display = 'flex';
@@ -1166,6 +1240,41 @@ function renderCart() {
     </div>`;
   }).join('');
   initCartSwipe();
+  // Cross-sell section
+  if (crossSellContainer && cart.length > 0) {
+    const hasExtra = cart.some(p => {
+      const cat = (p.categoria || '').toLowerCase();
+      return cat.includes('chocolates') || cat.includes('peluche') || cat.includes('extras') || cat.includes('flores + detalle') || cat.includes('flores y chocolates');
+    });
+    if (!hasExtra) {
+      const suggestions = allProducts.filter(p => {
+        const cat = (p.categoria || '').toLowerCase();
+        return (cat.includes('chocolates') || cat.includes('peluche') || cat.includes('extras')) && !p.sin_stock && p.imagen_url;
+      }).slice(0, 4);
+      if (suggestions.length > 0) {
+        crossSellContainer.innerHTML = `
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--borde)">
+            <div style="font-size:14px;font-weight:600;color:var(--verde);margin-bottom:10px">Complementa tu pedido</div>
+            <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
+              ${suggestions.map(p => `
+                <div style="flex-shrink:0;width:120px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;overflow:hidden;cursor:pointer" onclick="addToCart(allProducts.find(x=>x.id===${p.id}));renderCart()">
+                  <img src="${p.imagen_url}" style="width:100%;height:90px;object-fit:cover" loading="lazy">
+                  <div style="padding:8px">
+                    <div style="font-size:11px;font-weight:500;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
+                    <div style="font-size:13px;font-weight:600;color:var(--verde)">$${(p.precio/100).toLocaleString()}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>`;
+        crossSellContainer.style.display = '';
+      } else {
+        crossSellContainer.style.display = 'none';
+      }
+    } else {
+      crossSellContainer.style.display = 'none';
+    }
+  }
 }
 
 function initCartSwipe() {
@@ -1378,11 +1487,23 @@ function renderCatPills() {
     return;
   }
   const currentPill = pills.find(p => p.filter === catFilter) || pills[0];
-  document.getElementById('type-pills').innerHTML = pills.map(pill => {
+  let html = '';
+  // Combo pill first (only in general section)
+  if (sectionFilter === 'general') {
+    const comboCount = allProducts.filter(p => {
+      const cat = p.categoria.toLowerCase();
+      return cat.includes('flores + detalle') || cat.includes('flores y chocolates');
+    }).length;
+    if (comboCount > 0) {
+      html += `<button class="filter-pill combo-pill ${catFilter === '_combos' ? 'active' : ''}" onclick="setCat('_combos')">★ Combos (${comboCount})</button>`;
+    }
+  }
+  html += pills.map(pill => {
     const active = catFilter === pill.filter;
     const count = allProducts.filter(p => matchesSection(p, sectionFilter) && matchesCatPill(p, pill)).length;
     return `<button class="filter-pill ${active ? 'active' : ''}" onclick="setCat(${pill.filter ? `'${pill.filter}'` : 'null'})">${pill.label} (${count})</button>`;
   }).join('');
+  document.getElementById('type-pills').innerHTML = html;
 }
 
 function renderFlowerPills() {
@@ -1401,17 +1522,43 @@ function setSection(s) { sectionFilter = s; catFilter = null; flowerFilter = nul
 function setCat(c) { catFilter = c; renderCatPills(); renderClassicGrid(); }
 function setFlower(f) { flowerFilter = f; renderFlowerPills(); renderClassicGrid(); }
 function onSearch() { searchQuery = document.getElementById('search-input').value; renderClassicGrid(); }
+function filterCombos() { sectionFilter = 'general'; catFilter = '_combos'; flowerFilter = null; renderSectionTabs(); renderCatPills(); renderFlowerPills(); renderClassicGrid(); }
+function showCombosFromSwipe() {
+  currentMode = 'classic';
+  showView('classic');
+  initClassic().then(() => { setTimeout(filterCombos, 100); });
+}
 
 function renderClassicGrid() {
-  const pills = SECTION_PILLS[sectionFilter] || [];
-  const activePill = pills.find(p => p.filter === catFilter) || null;
-  let filtered = allProducts.filter(p => {
-    if (!matchesSection(p, sectionFilter)) return false;
-    if (!matchesCatPill(p, activePill)) return false;
-    if (!matchesFlower(p, flowerFilter)) return false;
-    if (!matchesSearch(p, searchQuery)) return false;
-    return true;
-  });
+  // Show/hide combo banner based on section
+  const comboBanner = document.getElementById('combo-banner');
+  if (comboBanner) {
+    const comboCount = allProducts.filter(p => {
+      const cat = p.categoria.toLowerCase();
+      return cat.includes('flores + detalle') || cat.includes('flores y chocolates');
+    }).length;
+    comboBanner.style.display = (sectionFilter === 'general' && catFilter !== '_combos' && comboCount > 0) ? '' : 'none';
+  }
+  // Handle combo filter
+  let filtered;
+  if (catFilter === '_combos') {
+    filtered = allProducts.filter(p => {
+      const cat = p.categoria.toLowerCase();
+      if (!(cat.includes('flores + detalle') || cat.includes('flores y chocolates'))) return false;
+      if (!matchesSearch(p, searchQuery)) return false;
+      return true;
+    });
+  } else {
+    const pills = SECTION_PILLS[sectionFilter] || [];
+    const activePill = pills.find(p => p.filter === catFilter) || null;
+    filtered = allProducts.filter(p => {
+      if (!matchesSection(p, sectionFilter)) return false;
+      if (!matchesCatPill(p, activePill)) return false;
+      if (!matchesFlower(p, flowerFilter)) return false;
+      if (!matchesSearch(p, searchQuery)) return false;
+      return true;
+    });
+  }
 
   const grid = document.getElementById('classic-grid');
   if (!filtered.length) {
