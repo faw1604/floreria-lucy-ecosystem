@@ -1841,7 +1841,49 @@ async function fpConfirm() {
       body: JSON.stringify({pagos})
     });
     if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
+    const result = await r.json();
     document.getElementById('modal-fin-pend').remove();
+
+    // Buscar datos del pedido en pendAllData para construir ticket
+    const pedData = pendAllData.find(p => p.id === finPendId);
+    if (pedData) {
+      const formaPago = Object.keys(finPendPays).join(', ');
+      // Construir info compatible con buildTicketDigital
+      const info = {
+        folio: pedData.folio || result.folio,
+        fecha: new Date().toISOString(),
+        estado: result.estado,
+        items: (pedData.items || []).map(it => ({nombre: it.nombre, cantidad: it.cantidad, precio_unitario: it.precio_unitario})),
+        subtotal: pedData.subtotal || pedData.total,
+        envio: pedData.envio || 0,
+        total: pedData.total,
+        impuesto: 0, descuento: 0, comision: 0, cargo_hora: 0,
+        forma_pago: formaPago,
+        pagos: pagos,
+        cliente_nombre: pedData.cliente_nombre || null,
+        receptor_nombre: pedData.receptor_nombre || '',
+        direccion_entrega: pedData.direccion_entrega || '',
+        dedicatoria: pedData.dedicatoria || '',
+        notas_internas: pedData.notas_internas || '',
+        horario_entrega: pedData.horario_entrega || '',
+        hora_exacta: pedData.hora_exacta || '',
+        fecha_entrega: pedData.fecha_entrega || '',
+        zona_envio: pedData.zona_entrega || '',
+        tipo: pedData.tipo_especial || (pedData.direccion_entrega ? 'domicilio' : 'mostrador'),
+      };
+      // Mostrar modal con ticket
+      lastResult = result;
+      document.getElementById('creado-ticket-digital').innerHTML = buildTicketDigital(info);
+      document.getElementById('btn-wa').style.display = 'none';
+      document.getElementById('wa-note').style.display = 'none';
+      document.getElementById('modal-creado').classList.add('active');
+      // Auto-imprimir si hay efectivo
+      if (finPendPays['Efectivo'] !== undefined) {
+        document.getElementById('print-frame').innerHTML = buildTicketCompleto(info);
+        setTimeout(() => window.print(), 300);
+      }
+    }
+
     pendAllData = pendAllData.filter(p => p.id !== finPendId);
     renderPendTable(pendAllData);
     contadorPendientes--;
