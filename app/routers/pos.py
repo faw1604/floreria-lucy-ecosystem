@@ -461,6 +461,7 @@ async def pos_pedidos_hoy(
     canal: str | None = None,
     tipo: str | None = None,
     cliente_id: int | None = None,
+    filtrar_por: str = "fecha_pedido",  # fecha_pedido | fecha_entrega
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -506,10 +507,17 @@ async def pos_pedidos_hoy(
     else:  # hoy
         f_ini = f_fin = hoy
 
-    # Convert local date boundaries to UTC for DB query (fecha_pedido stored as UTC)
+    # Build query with date filter
     if skip_date_filter:
         query = select(Pedido).order_by(Pedido.fecha_pedido.desc())
+    elif filtrar_por == "fecha_entrega":
+        # Filtrar por fecha_entrega (date local, sin timezone) — para finanzas
+        query = select(Pedido).where(
+            Pedido.fecha_entrega >= f_ini,
+            Pedido.fecha_entrega <= f_fin,
+        ).order_by(Pedido.fecha_pedido.desc())
     else:
+        # Filtrar por fecha_pedido (datetime UTC) — para transacciones POS
         utc_start = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
         utc_end = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
         query = select(Pedido).where(

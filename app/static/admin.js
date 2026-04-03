@@ -1507,6 +1507,8 @@ async function loadFinanzas() {
     finData.ingresos = data;
     const res = data.resumen || {};
     const rows = data.finalizados || [];
+    // Excluir cancelados de KPIs
+    const rowsActivos = rows.filter(p => p.estado !== 'Cancelado' && p.estado !== 'cancelado');
     // Load otros ingresos
     let otrosRows = [];
     let otrosTotal = 0;
@@ -1514,18 +1516,24 @@ async function loadFinanzas() {
       const or2 = await fetch(API+'/api/admin/otros-ingresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
       if (or2.ok) { otrosRows = await or2.json(); otrosTotal = otrosRows.reduce((s,o) => s + (o.monto||0), 0); }
     } catch(e) {}
-    const totalIngresos = (res.total_vendido||0) + otrosTotal;
-    const totalTrans = (res.num_finalizados||0) + otrosRows.length;
+    const totalVentas = rowsActivos.reduce((s,p) => s + (p.total||0), 0);
+    const totalIngresos = totalVentas + otrosTotal;
+    const totalTrans = rowsActivos.length + otrosRows.length;
     const ticket = totalTrans ? Math.round(totalIngresos / totalTrans) : 0;
     finData.otrosIngresos = otrosRows;
     finData.totalIngresos = totalIngresos;
+    // Desglose de pago sin cancelados
+    const desglosePago = {};
+    rowsActivos.forEach(p => {
+      (p.forma_pago||'').split(', ').forEach(m => { m = m.trim(); if (m) desglosePago[m] = (desglosePago[m]||0) + (p.total||0); });
+    });
     // KPIs
     let kpis = `<div class="kpi-card"><div class="kpi-label">Total ingresos</div><div class="kpi-value">${fmt$(totalIngresos)}</div>${otrosTotal ? '<div class="kpi-sub">Incluye '+fmt$(otrosTotal)+' de otros ingresos</div>' : ''}</div>
       <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${totalTrans}</div></div>
       <div class="kpi-card"><div class="kpi-label">Ticket promedio</div><div class="kpi-value">${fmt$(ticket)}</div></div>`;
-    for (const [m,v] of Object.entries(res.desglose_pago||{})) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
+    for (const [m,v] of Object.entries(desglosePago)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
     const canales = {};
-    rows.forEach(p => { canales[p.canal] = (canales[p.canal]||0) + (p.total||0); });
+    rowsActivos.forEach(p => { canales[p.canal] = (canales[p.canal]||0) + (p.total||0); });
     if (otrosTotal) canales['Otros'] = otrosTotal;
     for (const [c,v] of Object.entries(canales)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
     document.getElementById('fin-kpis').innerHTML = kpis;
@@ -1535,7 +1543,7 @@ async function loadFinanzas() {
 
     // Table — merge ventas activas + otros ingresos
     const tbody = document.getElementById('fin-ing-tbody');
-    let allRows = activos.slice(0,200).map(p => `<tr><td>${fmtDate(p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`);
+    let allRows = activos.slice(0,200).map(p => `<tr><td>${fmtDate(p.pago_confirmado_at || p.fecha_pedido || p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`);
     otrosRows.forEach(o => {
       allRows.push(`<tr><td>${fmtDate(o.fecha)}</td><td><span style="background:var(--dorado);color:var(--verde);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">OTRO</span></td><td>${esc(o.concepto)}</td><td>—</td><td>${esc(o.metodo_pago||'—')}</td><td style="font-weight:600">${fmt$(o.monto)}</td></tr>`);
     });
@@ -1555,7 +1563,7 @@ async function loadFinanzas() {
           <div style="display:none">
             <table class="data-table" style="font-size:12px"><tbody>
               ${cancelados.map(p => `<tr style="background:#fef2f2">
-                <td>${fmtDate(p.fecha_entrega)}</td>
+                <td>${fmtDate(p.pago_confirmado_at || p.fecha_pedido || p.fecha_entrega)}</td>
                 <td style="color:#991b1b;font-weight:600">${esc(p.folio)}</td>
                 <td>${esc(p.cliente_nombre||'Mostrador')}</td>
                 <td>${esc(p.canal)}</td>
