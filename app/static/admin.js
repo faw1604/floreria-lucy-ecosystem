@@ -1729,14 +1729,15 @@ async function agregarProvDesdeEgreso() {
 function verEgreso(id) {
   const eg = (finData.egresos || []).find(e => e.id === id);
   if (!eg) return;
-  const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
-  div.onclick = function(ev) { if (ev.target === div) div.remove(); };
-  div.innerHTML = `
+  const overlay = document.createElement('div');
+  overlay.id = 'ver-egreso-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.onclick = function(ev) { if (ev.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
     <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15);max-height:80vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h3 style="margin:0;font-size:16px;color:#193a2c">Detalle del gasto</h3>
-        <button onclick="this.closest('div[style*=\"position:fixed\"]').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">&times;</button>
+        <button id="ver-eg-close-x" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">&times;</button>
       </div>
       <div style="display:grid;gap:12px;font-size:13px">
         <div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Fecha</span><div style="font-weight:600">${fmtDate(eg.fecha)}</div></div>
@@ -1754,12 +1755,15 @@ function verEgreso(id) {
         ${eg.es_recurrente ? '<div style="color:#d4a843;font-weight:600;font-size:12px">Este gasto es recurrente</div>' : ''}
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="this.closest('div[style*=&quot;position:fixed&quot;]').remove();editarEgreso(${eg.id})" style="flex:1;padding:10px;border:1px solid #e5e0d8;border-radius:8px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px">Editar</button>
-        <button onclick="this.closest('div[style*=&quot;position:fixed&quot;]').remove()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#193a2c;color:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600">Cerrar</button>
+        <button id="ver-eg-edit" style="flex:1;padding:10px;border:1px solid #e5e0d8;border-radius:8px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px">Editar</button>
+        <button id="ver-eg-close" style="flex:1;padding:10px;border:none;border-radius:8px;background:#193a2c;color:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600">Cerrar</button>
       </div>
     </div>
   `;
-  document.body.appendChild(div);
+  document.body.appendChild(overlay);
+  document.getElementById('ver-eg-close-x').addEventListener('click', () => overlay.remove());
+  document.getElementById('ver-eg-close').addEventListener('click', () => overlay.remove());
+  document.getElementById('ver-eg-edit').addEventListener('click', () => { overlay.remove(); editarEgreso(eg.id); });
 }
 
 async function editarEgreso(id) {
