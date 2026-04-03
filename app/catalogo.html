@@ -1305,7 +1305,7 @@ const SECTION_PILLS = {
   funeral: [
     {label: 'Todo', filter: null},
     {label: 'Coronas y Medallones', filter: 'coronas', keywords: ['corona', 'medallon', 'medallón', 'lagrima', 'lágrima', 'cruz tradicional']},
-    {label: 'Pies de caja y Arreglos', filter: 'pies', keywords: ['pie de caja', 'cubrecaja', 'cubrecajas', 'cruz floral', 'arreglo']},
+    {label: 'Pies de caja y Arreglos', filter: 'pies', keywords: ['pie de caja', 'cubrecaja', 'cubrecajas', 'cubre caja', 'cruz floral', 'arreglo']},
   ],
   regalos: [
     {label: 'Todo', filter: null},
@@ -1827,6 +1827,23 @@ function selectOrderType(tipo) {
   pedidoWeb.tipo = tipo;
   document.querySelectorAll('.order-tipo-btn').forEach(b => b.classList.remove('selected'));
   event.target.closest('.order-tipo-btn').classList.add('selected');
+
+  // Block "domicilio" if cart has funeral/conjuntos fúnebres products
+  if (tipo === 'domicilio') {
+    const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
+    const funeralItems = cart.filter(p => funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
+    if (funeralItems.length > 0) {
+      const warn = document.getElementById('order-funeral-warn');
+      warn.style.display = '';
+      warn.innerHTML = `<div class="order-funeral-warn">
+        ⚠ Los arreglos de funeral y conjuntos fúnebres no se envían a domicilio.<br>
+        Selecciona <strong>Recoger en tienda</strong> o <strong>Funeral</strong>.
+        <br>
+        <button style="background:var(--borde);color:var(--texto);margin-top:8px" onclick="pedidoWeb.tipo=null;document.querySelectorAll('.order-tipo-btn').forEach(b=>b.classList.remove('selected'));document.getElementById('order-funeral-warn').style.display='none'">Entendido</button>
+      </div>`;
+      return;
+    }
+  }
 
   // Funeral validation — hora máxima 6:30 PM
   if (tipo === 'funeral') {

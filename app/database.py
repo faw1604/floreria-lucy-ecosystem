@@ -129,19 +129,23 @@ async def inicializar_db():
         ]
         for f in _nuevas_funerarias:
             try:
-                direccion_val = f.get("direccion")
-                if direccion_val:
-                    await conn.execute(text(
-                        "INSERT INTO funerarias (nombre, zona, costo_envio, direccion) "
-                        "SELECT :nombre, :zona, :costo, :dir "
-                        "WHERE NOT EXISTS (SELECT 1 FROM funerarias WHERE nombre = :nombre)"
-                    ), {"nombre": f["nombre"], "zona": f["zona"], "costo": f["costo_envio"], "dir": direccion_val})
-                else:
-                    await conn.execute(text(
-                        "INSERT INTO funerarias (nombre, zona, costo_envio) "
-                        "SELECT :nombre, :zona, :costo "
-                        "WHERE NOT EXISTS (SELECT 1 FROM funerarias WHERE nombre = :nombre)"
-                    ), {"nombre": f["nombre"], "zona": f["zona"], "costo": f["costo_envio"]})
+                # Check if already exists
+                result = await conn.execute(text(
+                    "SELECT id FROM funerarias WHERE nombre = :nombre"
+                ), {"nombre": f["nombre"]})
+                if result.fetchone() is None:
+                    direccion_val = f.get("direccion")
+                    if direccion_val:
+                        await conn.execute(text(
+                            "INSERT INTO funerarias (nombre, zona, costo_envio, direccion) "
+                            "VALUES (:nombre, :zona, :costo, :dir)"
+                        ), {"nombre": f["nombre"], "zona": f["zona"], "costo": f["costo_envio"], "dir": direccion_val})
+                    else:
+                        await conn.execute(text(
+                            "INSERT INTO funerarias (nombre, zona, costo_envio) "
+                            "VALUES (:nombre, :zona, :costo)"
+                        ), {"nombre": f["nombre"], "zona": f["zona"], "costo": f["costo_envio"]})
+                    _log.info(f"Funeraria agregada: {f['nombre']}")
             except Exception as e:
                 _log.warning(f"Seed funeraria {f['nombre']}: {e}")
 
