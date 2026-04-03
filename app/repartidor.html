@@ -135,11 +135,11 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .foto-full-overlay img{max-width:95%;max-height:90vh;border-radius:12px;object-fit:contain}
 
 /* Date picker */
-.date-picker-bar{display:flex;gap:6px;align-items:center;padding:8px 16px;background:var(--blanco);border-bottom:1px solid var(--borde)}
+.date-picker-bar{position:fixed;top:108px;left:0;right:0;z-index:45;display:flex;gap:6px;align-items:center;padding:8px 16px;background:var(--blanco);border-bottom:1px solid var(--borde)}
 .date-btn{padding:6px 14px;border:1px solid var(--borde);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;background:var(--blanco);color:var(--texto)}
 .date-btn.active{background:var(--verde);color:var(--dorado);border-color:var(--verde)}
 .date-input{padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-family:inherit;color:var(--texto)}
-.date-banner{padding:8px 16px;background:#fef3c7;text-align:center;font-size:12px;font-weight:600;color:#92400e;display:none}
+.date-banner{position:fixed;top:144px;left:0;right:0;z-index:44;padding:6px 16px;background:#fef3c7;text-align:center;font-size:11px;font-weight:600;color:#92400e;display:none}
 
 .empty{text-align:center;padding:40px;color:var(--texto2);font-size:14px}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
@@ -187,14 +187,14 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 <div class="date-banner" id="date-banner"></div>
 
 <!-- Tabs -->
-<div class="tabs" id="app-tabs" style="top:148px">
+<div class="tabs" id="app-tabs" style="top:144px">
   <button class="tab active" data-tab="pendientes" onclick="switchTab('pendientes')">📦 Pendientes <span class="tab-badge" id="tb-pend"></span></button>
   <button class="tab" data-tab="entregados" onclick="switchTab('entregados')">✅ Entregados</button>
   <button class="tab" data-tab="fallidos" onclick="switchTab('fallidos')">❌ No entregados</button>
 </div>
 
 <!-- Content -->
-<div class="main" style="padding-top:200px">
+<div class="main" style="padding-top:190px">
 
   <!-- TAB: Pendientes -->
   <div id="tab-pendientes">
