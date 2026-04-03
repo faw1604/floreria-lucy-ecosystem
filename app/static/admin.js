@@ -1529,13 +1529,45 @@ async function loadFinanzas() {
     if (otrosTotal) canales['Otros'] = otrosTotal;
     for (const [c,v] of Object.entries(canales)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
     document.getElementById('fin-kpis').innerHTML = kpis;
-    // Table — merge ventas + otros
+    // Separar cancelados de la tabla principal
+    const cancelados = rows.filter(p => p.estado === 'Cancelado' || p.estado === 'cancelado');
+    const activos = rows.filter(p => p.estado !== 'Cancelado' && p.estado !== 'cancelado');
+
+    // Table — merge ventas activas + otros ingresos
     const tbody = document.getElementById('fin-ing-tbody');
-    let allRows = rows.slice(0,200).map(p => `<tr><td>${fmtDate(p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`);
+    let allRows = activos.slice(0,200).map(p => `<tr><td>${fmtDate(p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`);
     otrosRows.forEach(o => {
       allRows.push(`<tr><td>${fmtDate(o.fecha)}</td><td><span style="background:var(--dorado);color:var(--verde);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">OTRO</span></td><td>${esc(o.concepto)}</td><td>—</td><td>${esc(o.metodo_pago||'—')}</td><td style="font-weight:600">${fmt$(o.monto)}</td></tr>`);
     });
     tbody.innerHTML = allRows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin ingresos</td></tr>';
+
+    // Sección colapsable de cancelados
+    let canceladosHtml = '';
+    if (cancelados.length > 0) {
+      const totalCancel = cancelados.reduce((s,p) => s + (p.total||0), 0);
+      canceladosHtml = `
+        <div style="margin-top:16px;border:1px solid #fca5a5;border-radius:10px;overflow:hidden">
+          <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none';this.querySelector('span').textContent=this.nextElementSibling.style.display==='none'?'▶':'▼'"
+            style="width:100%;padding:10px 14px;background:#fef2f2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;font-size:13px;font-weight:600;color:#991b1b">
+            <div>Cancelados (${cancelados.length}) — ${fmt$(totalCancel)} no cobrados</div>
+            <span>▶</span>
+          </button>
+          <div style="display:none">
+            <table class="data-table" style="font-size:12px"><tbody>
+              ${cancelados.map(p => `<tr style="background:#fef2f2">
+                <td>${fmtDate(p.fecha_entrega)}</td>
+                <td style="color:#991b1b;font-weight:600">${esc(p.folio)}</td>
+                <td>${esc(p.cliente_nombre||'Mostrador')}</td>
+                <td>${esc(p.canal)}</td>
+                <td>${esc(p.forma_pago||'—')}</td>
+                <td style="text-decoration:line-through;color:#999">${fmt$(p.total)}</td>
+              </tr>`).join('')}
+            </tbody></table>
+          </div>
+        </div>`;
+    }
+    const cancelContainer = document.getElementById('fin-cancelados');
+    if (cancelContainer) cancelContainer.innerHTML = canceladosHtml;
   } catch(e) { console.error(e); }
 }
 
