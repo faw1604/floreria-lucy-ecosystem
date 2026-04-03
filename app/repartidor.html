@@ -318,9 +318,10 @@ function setFiltroHorario(v) {
 function applyFilters(list) {
   if (filtroHorario === 'todos') return list;
   return list.filter(p => {
+    // Funeral siempre visible sin importar filtro de horario
+    if (p.tipo_especial === 'Funeral') return true;
     const h = (p.horario_entrega||'').toLowerCase();
     if (temporadaAlta) {
-      // Turno 1: 8-15h → mañana + parte de tarde | Turno 2: 15-20h → tarde + noche
       if (filtroHorario === 'turno1') return h.includes('mañana') || h.includes('manana') || h.includes('turno 1');
       if (filtroHorario === 'turno2') return h.includes('tarde') || h.includes('noche') || h.includes('turno 2');
     } else {
