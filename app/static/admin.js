@@ -61,7 +61,7 @@ function showToast(msg) {
 
 function esc(s) { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmt$(cents) { return '$' + ((cents||0)/100).toLocaleString(); }
-function fmtDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('es-MX', {timeZone:'America/Chihuahua', day:'2-digit', month:'short', year:'numeric'}); }
+function fmtDate(d) { if (!d) return ''; const s = String(d); const dt = s.length === 10 ? new Date(s + 'T12:00:00') : new Date(s); return dt.toLocaleDateString('es-MX', {timeZone:'America/Chihuahua', day:'2-digit', month:'short', year:'numeric'}); }
 
 // Sub-tab helpers
 function cfgSubTab(id) { switchSubTab('cfg', id); }
@@ -1641,7 +1641,7 @@ async function loadEgresos() {
       <td>${esc(e.metodo_pago||'—')}</td>
       <td>${esc(e.proveedor||'—')}</td>
       <td style="font-weight:600">${fmt$(e.monto)}</td>
-      <td><button class="btn-sm" onclick="editarEgreso(${e.id})">Editar</button> <button class="btn-sm" onclick="eliminarEgreso(${e.id})" style="color:var(--rojo)">🗑</button></td>
+      <td style="white-space:nowrap"><button class="btn-sm" onclick="verEgreso(${e.id})">👁</button> <button class="btn-sm" onclick="editarEgreso(${e.id})">Editar</button> <button class="btn-sm" onclick="eliminarEgreso(${e.id})" style="color:var(--rojo)">🗑</button></td>
     </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos</td></tr>';
   } catch(e) {}
 }
@@ -1724,6 +1724,42 @@ async function agregarProvDesdeEgreso() {
     }
     showToast('Proveedor agregado');
   } catch(e) { alert('Error al crear proveedor'); }
+}
+
+function verEgreso(id) {
+  const eg = (finData.egresos || []).find(e => e.id === id);
+  if (!eg) return;
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+  div.onclick = function(ev) { if (ev.target === div) div.remove(); };
+  div.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15);max-height:80vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="margin:0;font-size:16px;color:#193a2c">Detalle del gasto</h3>
+        <button onclick="this.closest('div[style*=\"position:fixed\"]').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">&times;</button>
+      </div>
+      <div style="display:grid;gap:12px;font-size:13px">
+        <div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Fecha</span><div style="font-weight:600">${fmtDate(eg.fecha)}</div></div>
+        <div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Concepto</span><div style="font-weight:600">${esc(eg.concepto)}</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Monto</span><div style="font-weight:700;font-size:18px;color:#193a2c">${fmt$(eg.monto)}</div></div>
+          <div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Metodo de pago</span><div style="font-weight:500">${esc(eg.metodo_pago||'—')}</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Categoria</span><div>${esc(eg.categoria||'—')}</div></div>
+          <div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Proveedor</span><div>${esc(eg.proveedor||'—')}</div></div>
+        </div>
+        ${eg.referencia ? `<div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px"># Factura / Referencia</span><div>${esc(eg.referencia)}</div></div>` : ''}
+        ${eg.notas ? `<div><span style="color:#5a5a5a;font-size:11px;text-transform:uppercase;letter-spacing:.5px">Notas</span><div style="white-space:pre-wrap">${esc(eg.notas)}</div></div>` : ''}
+        ${eg.es_recurrente ? '<div style="color:#d4a843;font-weight:600;font-size:12px">Este gasto es recurrente</div>' : ''}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button onclick="this.closest('div[style*=&quot;position:fixed&quot;]').remove();editarEgreso(${eg.id})" style="flex:1;padding:10px;border:1px solid #e5e0d8;border-radius:8px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px">Editar</button>
+        <button onclick="this.closest('div[style*=&quot;position:fixed&quot;]').remove()" style="flex:1;padding:10px;border:none;border-radius:8px;background:#193a2c;color:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600">Cerrar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
 }
 
 async function editarEgreso(id) {
