@@ -1003,9 +1003,9 @@ async def corte_pdf(
     ]))
     elements.append(t4)
 
-    # Desglose por método de pago
+    # Ingresos por método de pago (cómo pagaron los clientes)
     elements.append(Spacer(1, 0.3*cm))
-    elements.append(Paragraph('Desglose por método de pago', ParagraphStyle('H3', parent=normal, fontSize=10, textColor=verde, fontName='Helvetica-Bold', spaceBefore=8)))
+    elements.append(Paragraph('Ingresos por método de pago', ParagraphStyle('H3', parent=normal, fontSize=10, textColor=verde, fontName='Helvetica-Bold', spaceBefore=8)))
     mp_ing = {}
     for r in ingresos:
         mp = r[4] or 'Sin info'
@@ -1013,23 +1013,25 @@ async def corte_pdf(
     for r in otros:
         mp = r[3] or 'Sin info'
         mp_ing[mp] = mp_ing.get(mp, 0) + r[2]
+    if mp_ing:
+        data_mp_ing = [['Método de pago', 'Total recibido']]
+        for mp in sorted(mp_ing, key=lambda x: mp_ing[x], reverse=True):
+            data_mp_ing.append([mp, fmt(mp_ing[mp])])
+        data_mp_ing.append(['TOTAL INGRESOS', fmt(total_ing + total_otros)])
+        t5 = Table(data_mp_ing, colWidths=[3*inch, 2*inch])
+        t5.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), verde), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('ALIGN', (-1,0), (-1,-1), 'RIGHT'),
+            ('BACKGROUND', (0,-1), (-1,-1), gris), ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+        ]))
+        elements.append(t5)
+
+    # Egresos por fuente de pago (de dónde sale el dinero)
     mp_egr = {}
     for r in egresos_rows:
         mp = r[4] or 'Sin info'
         mp_egr[mp] = mp_egr.get(mp, 0) + r[5]
-    all_mps = sorted(set(list(mp_ing.keys()) + list(mp_egr.keys())))
-    data_mp = [['Método', 'Entradas', 'Salidas', 'Neto']]
-    for mp in all_mps:
-        ent = mp_ing.get(mp, 0)
-        sal = mp_egr.get(mp, 0)
-        data_mp.append([mp, fmt(ent), fmt(sal), fmt(ent - sal)])
-    t5 = Table(data_mp, colWidths=[2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
-    t5.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), verde), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
-    ]))
-    elements.append(t5)
 
     # Desglose de ingresos por canal
     elements.append(Spacer(1, 0.3*cm))
@@ -1051,11 +1053,11 @@ async def corte_pdf(
         ]))
         elements.append(t_canal)
 
-    # Desglose de egresos por método de pago
+    # Egresos por fuente (de dónde salió el dinero)
     if mp_egr:
         elements.append(Spacer(1, 0.3*cm))
-        elements.append(Paragraph('Egresos por método de pago', ParagraphStyle('H3c', parent=normal, fontSize=10, textColor=colors.HexColor('#ef4444'), fontName='Helvetica-Bold', spaceBefore=8)))
-        data_egr_mp = [['Método de pago', 'Total gastado']]
+        elements.append(Paragraph('Egresos por fuente de pago', ParagraphStyle('H3c', parent=normal, fontSize=10, textColor=colors.HexColor('#ef4444'), fontName='Helvetica-Bold', spaceBefore=8)))
+        data_egr_mp = [['Fuente', 'Total gastado']]
         for mp in sorted(mp_egr, key=lambda x: mp_egr[x], reverse=True):
             data_egr_mp.append([mp, fmt(mp_egr[mp])])
         data_egr_mp.append(['TOTAL EGRESOS', fmt(total_egr)])
