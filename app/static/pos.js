@@ -1618,6 +1618,7 @@ function renderPendTable(rows) {
 }
 
 function filtrarTablaPend() {
+  _lastPendHash = '';
   const q = document.getElementById('pend-search').value.toLowerCase().trim();
   if (!q) { renderPendTable(pendAllData); return; }
   const filtered = pendAllData.filter(p => {
@@ -1682,8 +1683,8 @@ function getFilterParams() {
 function aplicarFiltrosPanel() {
   const params = getFilterParams();
   toggleFilterPanel();
-  if (filterPanelTarget === 'trans') loadTransacciones(params);
-  else loadPendientes(params);
+  if (filterPanelTarget === 'trans') { _lastTransHash = ''; loadTransacciones(params); }
+  else { _lastPendHash = ''; loadPendientes(params); }
 }
 
 // Cancelar pedido
@@ -1955,7 +1956,10 @@ async function loadResumenVentas() {
 async function loadTransacciones(params) {
   const tbody = document.getElementById('trans-tbody');
   const empty = document.getElementById('trans-empty');
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
+  // Solo mostrar "Cargando" si la tabla está vacía (primera carga)
+  if (!tbody.innerHTML || tbody.innerHTML.includes('Sin transacciones') || tbody.innerHTML.includes('Error')) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
+  }
   loadResumenVentas();
   try {
     let url = '/pos/pedidos-hoy?periodo=' + transFilterPeriodo;
@@ -2026,6 +2030,7 @@ function renderTransTable(rows) {
 }
 
 function filtrarTablaTrans() {
+  _lastTransHash = ''; // Reset para forzar render
   const q = document.getElementById('trans-search').value.toLowerCase().trim();
   if (!q) { renderTransTable(transAllData); return; }
   const filtered = transAllData.filter(p => {
