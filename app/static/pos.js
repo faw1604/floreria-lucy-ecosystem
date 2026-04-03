@@ -1062,10 +1062,9 @@ async function finalizarVenta() {
     alert(`Exceso de $${((asignado - t.total)/100).toFixed(0)} en metodos de pago`);
     return;
   }
-  const tieneEfectivo = selectedPays['Efectivo'] !== undefined;
   await submitPedido('pagado');
-  // Si pago incluye efectivo, auto-imprimir ticket para que la impresora abra el cajón
-  if (tieneEfectivo) {
+  // Auto-imprimir ticket en ventas de mostrador (la impresora abre el cajón si hay efectivo)
+  if (ordenTipo === 'mostrador' || !ordenTipo) {
     setTimeout(() => {
       imprimirTicket();
     }, 300);
@@ -3071,5 +3070,6 @@ async function abrirCajon() {
   }
 }
 
-// Conectar al cargar
-qzConnect();
+// QZ Tray: ya no se conecta automáticamente al cargar
+// La impresora abre el cajón via window.print() — no necesita QZ
+// qzConnect(); // Deshabilitado — mantener por si se necesita manualmente
