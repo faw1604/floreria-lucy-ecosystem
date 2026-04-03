@@ -1374,6 +1374,26 @@ function buildDedicatoriaCard(info) {
   </div>`;
 }
 
+function imprimirDedicatoriaDesdeTransaccion(data) {
+  if (!data.dedicatoria) { alert('Sin dedicatoria'); return; }
+  const html = buildDedicatoriaCard(data);
+  const w = window.open('', '_blank', 'width=420,height=620');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dedicatoria ${data.folio||''}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+@page{size:3.5in 5in;margin:0}
+.dedi-card{width:3.5in;height:5in;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;background:#fff}
+.dedi-corner{position:absolute;width:60px;height:60px;opacity:.4}
+.dedi-tl{top:8px;left:8px}.dedi-tr{top:8px;right:8px}.dedi-bl{bottom:8px;left:8px}.dedi-br{bottom:8px;right:8px}
+.dedi-folio{font-family:'Inter',sans-serif;font-size:8px;color:#999;position:absolute;top:12px;left:50%;transform:translateX(-50%)}
+.dedi-receptor{font-family:'Playfair Display',serif;font-size:16px;font-weight:600;margin-bottom:12px;color:#1a1a1a}
+.dedi-texto{font-family:'Playfair Display',serif;font-style:italic;font-size:13px;line-height:1.7;color:#333;max-width:90%;margin-bottom:16px}
+.dedi-fecha{font-family:'Inter',sans-serif;font-size:9px;color:#aaa;position:absolute;bottom:14px}
+</style></head><body>${html}<script>setTimeout(()=>window.print(),200)<\/script></body></html>`);
+  w.document.close();
+}
+
 function imprimirDedicatoria(fromTicket) {
   const info = fromTicket ? buildInfoFromPedido(ticketPedido) : buildInfoFromPOS();
   if (!info.dedicatoria) { alert('Este pedido no tiene dedicatoria'); return; }
@@ -1909,7 +1929,10 @@ function pagoIcon(forma) {
 }
 
 function obsIcon(p) {
-  if (p.dedicatoria || p.notas_internas) return '<span title="' + esc(p.dedicatoria || p.notas_internas) + '" style="cursor:help">💬</span>';
+  if (p.dedicatoria) {
+    return `<button onclick='imprimirDedicatoriaDesdeTransaccion(${JSON.stringify({folio:p.folio,receptor_nombre:p.receptor_nombre||"",dedicatoria:p.dedicatoria,fecha_entrega:p.fecha_entrega||""}).replace(/'/g,"&#39;")})' title="Imprimir dedicatoria" style="background:none;border:none;cursor:pointer;font-size:16px">💌</button>`;
+  }
+  if (p.notas_internas) return '<span title="' + esc(p.notas_internas) + '" style="cursor:help">💬</span>';
   return '<span style="color:var(--texto2)">-</span>';
 }
 
