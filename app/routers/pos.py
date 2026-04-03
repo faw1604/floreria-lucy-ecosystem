@@ -35,7 +35,7 @@ async def pos_productos(
 ):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
-    query = select(Producto).where(Producto.activo == True, Producto.imagen_url.isnot(None))
+    query = select(Producto).where(Producto.activo == True)
     if q:
         query = query.where(Producto.nombre.ilike(f"%{q}%"))
     if categoria:
