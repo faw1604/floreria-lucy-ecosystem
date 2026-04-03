@@ -1062,9 +1062,10 @@ async function finalizarVenta() {
     alert(`Exceso de $${((asignado - t.total)/100).toFixed(0)} en metodos de pago`);
     return;
   }
+  const tieneEfectivo = selectedPays['Efectivo'] !== undefined;
   await submitPedido('pagado');
-  // Auto-imprimir ticket en ventas de mostrador (la impresora abre el cajón si hay efectivo)
-  if (ordenTipo === 'mostrador' || !ordenTipo) {
+  // Auto-imprimir solo si hay efectivo (la impresora abre el cajón al imprimir)
+  if (tieneEfectivo && (ordenTipo === 'mostrador' || !ordenTipo)) {
     setTimeout(() => {
       imprimirTicket();
     }, 300);
