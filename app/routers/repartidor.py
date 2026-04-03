@@ -77,16 +77,29 @@ async def entregas_hoy(
     info = _parse_token(panel_session)
     mi_id = info["id"] if info else None
 
-    from datetime import timedelta
+    from datetime import timedelta, date as date_type
     fecha_hoy = datetime.now(TZ).date()
     manana = fecha_hoy + timedelta(days=1)
+    ayer = fecha_hoy - timedelta(days=1)
     estados = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
     if fecha == "manana":
-        query = select(Pedido).where(Pedido.fecha_entrega == manana, Pedido.estado.in_(estados))
+        fecha_target = manana
+    elif fecha == "ayer":
+        fecha_target = ayer
     elif fecha == "todos":
         query = select(Pedido).where(Pedido.fecha_entrega.in_([fecha_hoy, manana]), Pedido.estado.in_(estados))
+        fecha_target = None
+    elif fecha != "hoy":
+        # Fecha específica: YYYY-MM-DD
+        try:
+            fecha_target = date_type.fromisoformat(fecha)
+        except ValueError:
+            fecha_target = fecha_hoy
     else:
-        query = select(Pedido).where(Pedido.fecha_entrega == fecha_hoy, Pedido.estado.in_(estados))
+        fecha_target = fecha_hoy
+
+    if fecha != "todos":
+        query = select(Pedido).where(Pedido.fecha_entrega == fecha_target, Pedido.estado.in_(estados))
 
     # Filtrar: pedidos asignados a mí + pedidos sin asignar (solo envíos)
     from sqlalchemy import or_
