@@ -59,7 +59,7 @@ async def pos_categorias(
         raise HTTPException(status_code=401, detail="No autenticado")
     result = await db.execute(
         select(Producto.categoria, func.count(Producto.id))
-        .where(Producto.activo == True, Producto.imagen_url.isnot(None))
+        .where(Producto.activo == True)
         .group_by(Producto.categoria)
         .order_by(Producto.categoria)
     )
