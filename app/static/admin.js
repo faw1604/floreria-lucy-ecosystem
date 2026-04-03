@@ -1497,6 +1497,10 @@ function finSubTab(id) {
   if (id === 'fin-cortes') loadCortes();
 }
 
+let _finRawActivos = [];
+let _finRawOtros = [];
+let _finRawCancelados = [];
+
 async function loadFinanzas() {
   const {desde, hasta} = getFinDates();
   try {
@@ -1505,64 +1509,103 @@ async function loadFinanzas() {
     if (!r.ok) return;
     const data = await r.json();
     finData.ingresos = data;
-    const res = data.resumen || {};
     const rows = data.finalizados || [];
-    // Excluir cancelados de KPIs
-    const rowsActivos = rows.filter(p => p.estado !== 'Cancelado' && p.estado !== 'cancelado');
+    _finRawActivos = rows.filter(p => p.estado !== 'Cancelado' && p.estado !== 'cancelado');
+    _finRawCancelados = rows.filter(p => p.estado === 'Cancelado' || p.estado === 'cancelado');
     // Load otros ingresos
-    let otrosRows = [];
-    let otrosTotal = 0;
+    _finRawOtros = [];
     try {
       const or2 = await fetch(API+'/api/admin/otros-ingresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
-      if (or2.ok) { otrosRows = await or2.json(); otrosTotal = otrosRows.reduce((s,o) => s + (o.monto||0), 0); }
+      if (or2.ok) _finRawOtros = await or2.json();
     } catch(e) {}
-    const totalVentas = rowsActivos.reduce((s,p) => s + (p.total||0), 0);
-    const totalIngresos = totalVentas + otrosTotal;
-    const totalTrans = rowsActivos.length + otrosRows.length;
-    const ticket = totalTrans ? Math.round(totalIngresos / totalTrans) : 0;
-    finData.otrosIngresos = otrosRows;
-    finData.totalIngresos = totalIngresos;
-    // Desglose de pago sin cancelados
-    const desglosePago = {};
-    rowsActivos.forEach(p => {
-      (p.forma_pago||'').split(', ').forEach(m => { m = m.trim(); if (m) desglosePago[m] = (desglosePago[m]||0) + (p.total||0); });
-    });
-    // KPIs
-    let kpis = `<div class="kpi-card"><div class="kpi-label">Total ingresos</div><div class="kpi-value">${fmt$(totalIngresos)}</div>${otrosTotal ? '<div class="kpi-sub">Incluye '+fmt$(otrosTotal)+' de otros ingresos</div>' : ''}</div>
-      <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${totalTrans}</div></div>
-      <div class="kpi-card"><div class="kpi-label">Ticket promedio</div><div class="kpi-value">${fmt$(ticket)}</div></div>`;
-    for (const [m,v] of Object.entries(desglosePago)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
-    const canales = {};
-    rowsActivos.forEach(p => { canales[p.canal] = (canales[p.canal]||0) + (p.total||0); });
-    if (otrosTotal) canales['Otros'] = otrosTotal;
-    for (const [c,v] of Object.entries(canales)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
-    document.getElementById('fin-kpis').innerHTML = kpis;
-    // Separar cancelados de la tabla principal
-    const cancelados = rows.filter(p => p.estado === 'Cancelado' || p.estado === 'cancelado');
-    const activos = rows.filter(p => p.estado !== 'Cancelado' && p.estado !== 'cancelado');
+    finData.otrosIngresos = _finRawOtros;
+    // Populate payment methods filter
+    const metodos = new Set();
+    _finRawActivos.forEach(p => (p.forma_pago||'').split(', ').forEach(m => { m = m.trim(); if (m) metodos.add(m); }));
+    const pagoSel = document.getElementById('fin-filter-pago');
+    const currentVal = pagoSel.value;
+    pagoSel.innerHTML = '<option value="">Todos los pagos</option>' + [...metodos].sort().map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    pagoSel.value = currentVal;
+    // Render
+    renderFinanzasFiltered();
+  } catch(e) { console.error(e); }
+}
 
-    // Table — merge ventas activas + otros ingresos
-    const tbody = document.getElementById('fin-ing-tbody');
-    let allRows = activos.slice(0,200).map(p => `<tr><td>${fmtDate(p.pago_confirmado_at || p.fecha_pedido || p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`);
+function getFinTipo(p) {
+  if (p.tipo_especial === 'Funeral') return 'funeral';
+  if (p.direccion_entrega) return 'domicilio';
+  if (p.metodo_entrega === 'recoger' || p.tipo_especial === 'Recoger') return 'recoger';
+  return 'mostrador';
+}
+
+function applyFinFilters() { renderFinanzasFiltered(); }
+function resetFinFilters() {
+  document.getElementById('fin-filter-canal').value = '';
+  document.getElementById('fin-filter-pago').value = '';
+  document.getElementById('fin-filter-tipo').value = '';
+  renderFinanzasFiltered();
+}
+
+function renderFinanzasFiltered() {
+  const fCanal = document.getElementById('fin-filter-canal')?.value || '';
+  const fPago = document.getElementById('fin-filter-pago')?.value || '';
+  const fTipo = document.getElementById('fin-filter-tipo')?.value || '';
+
+  let filtered = _finRawActivos;
+  if (fCanal) filtered = filtered.filter(p => p.canal === fCanal);
+  if (fPago) filtered = filtered.filter(p => (p.forma_pago||'').includes(fPago));
+  if (fTipo) filtered = filtered.filter(p => getFinTipo(p) === fTipo);
+
+  const otrosRows = _finRawOtros;
+  const otrosTotal = otrosRows.reduce((s,o) => s + (o.monto||0), 0);
+  const totalVentas = filtered.reduce((s,p) => s + (p.total||0), 0);
+  const totalIngresos = totalVentas + (fCanal || fPago || fTipo ? 0 : otrosTotal);
+  const totalTrans = filtered.length + (fCanal || fPago || fTipo ? 0 : otrosRows.length);
+  const ticket = totalTrans ? Math.round(totalIngresos / totalTrans) : 0;
+  finData.totalIngresos = totalIngresos;
+
+  // Desglose de pago
+  const desglosePago = {};
+  filtered.forEach(p => {
+    (p.forma_pago||'').split(', ').forEach(m => { m = m.trim(); if (m) desglosePago[m] = (desglosePago[m]||0) + (p.total||0); });
+  });
+
+  // KPIs
+  let kpis = `<div class="kpi-card"><div class="kpi-label">Total ingresos</div><div class="kpi-value">${fmt$(totalIngresos)}</div>${!fCanal && !fPago && !fTipo && otrosTotal ? '<div class="kpi-sub">Incluye '+fmt$(otrosTotal)+' de otros ingresos</div>' : ''}${fCanal || fPago || fTipo ? '<div class="kpi-sub" style="color:var(--dorado)">Filtro activo</div>' : ''}</div>
+    <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${totalTrans}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Ticket promedio</div><div class="kpi-value">${fmt$(ticket)}</div></div>`;
+  for (const [m,v] of Object.entries(desglosePago)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
+  const canales = {};
+  filtered.forEach(p => { canales[p.canal] = (canales[p.canal]||0) + (p.total||0); });
+  if (!fCanal && !fPago && !fTipo && otrosTotal) canales['Otros'] = otrosTotal;
+  for (const [c,v] of Object.entries(canales)) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
+  document.getElementById('fin-kpis').innerHTML = kpis;
+
+  // Table
+  const tbody = document.getElementById('fin-ing-tbody');
+  let allRows = filtered.slice(0,200).map(p => `<tr><td>${fmtDate(p.pago_confirmado_at || p.fecha_pedido || p.fecha_entrega)}</td><td style="font-weight:600;color:var(--verde)">${esc(p.folio)}</td><td>${esc(p.cliente_nombre||'Mostrador')}</td><td>${esc(p.canal)}</td><td>${esc(p.forma_pago||'—')}</td><td style="font-weight:600">${fmt$(p.total)}</td></tr>`);
+  if (!fCanal && !fPago && !fTipo) {
     otrosRows.forEach(o => {
       allRows.push(`<tr><td>${fmtDate(o.fecha)}</td><td><span style="background:var(--dorado);color:var(--verde);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">OTRO</span></td><td>${esc(o.concepto)}</td><td>—</td><td>${esc(o.metodo_pago||'—')}</td><td style="font-weight:600">${fmt$(o.monto)}</td></tr>`);
     });
-    tbody.innerHTML = allRows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin ingresos</td></tr>';
+  }
+  tbody.innerHTML = allRows.join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin ingresos</td></tr>';
 
-    // Sección colapsable de cancelados
-    let canceladosHtml = '';
-    if (cancelados.length > 0) {
-      const totalCancel = cancelados.reduce((s,p) => s + (p.total||0), 0);
-      canceladosHtml = `
+  // Cancelados (solo sin filtros activos)
+  const cancelContainer = document.getElementById('fin-cancelados');
+  if (cancelContainer) {
+    if (!fCanal && !fPago && !fTipo && _finRawCancelados.length > 0) {
+      const totalCancel = _finRawCancelados.reduce((s,p) => s + (p.total||0), 0);
+      cancelContainer.innerHTML = `
         <div style="margin-top:16px;border:1px solid #fca5a5;border-radius:10px;overflow:hidden">
           <button onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none';this.querySelector('span').textContent=this.nextElementSibling.style.display==='none'?'▶':'▼'"
             style="width:100%;padding:10px 14px;background:#fef2f2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;font-size:13px;font-weight:600;color:#991b1b">
-            <div>Cancelados (${cancelados.length}) — ${fmt$(totalCancel)} no cobrados</div>
+            <div>Cancelados (${_finRawCancelados.length}) — ${fmt$(totalCancel)} no cobrados</div>
             <span>▶</span>
           </button>
           <div style="display:none">
             <table class="data-table" style="font-size:12px"><tbody>
-              ${cancelados.map(p => `<tr style="background:#fef2f2">
+              ${_finRawCancelados.map(p => `<tr style="background:#fef2f2">
                 <td>${fmtDate(p.pago_confirmado_at || p.fecha_pedido || p.fecha_entrega)}</td>
                 <td style="color:#991b1b;font-weight:600">${esc(p.folio)}</td>
                 <td>${esc(p.cliente_nombre||'Mostrador')}</td>
@@ -1573,10 +1616,10 @@ async function loadFinanzas() {
             </tbody></table>
           </div>
         </div>`;
+    } else {
+      cancelContainer.innerHTML = '';
     }
-    const cancelContainer = document.getElementById('fin-cancelados');
-    if (cancelContainer) cancelContainer.innerHTML = canceladosHtml;
-  } catch(e) { console.error(e); }
+  }
 }
 
 async function abrirModalOtroIngreso() {

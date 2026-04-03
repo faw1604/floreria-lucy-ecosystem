@@ -321,6 +321,12 @@
       <button class="sub-tab" onclick="finSubTab('fin-cortes')">Cortes de caja</button>
     </div>
     <div class="sub-content" id="fin-ingresos-content">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <select id="fin-filter-canal" onchange="applyFinFilters()" style="padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-family:inherit"><option value="">Todos los canales</option><option value="Mostrador">POS</option><option value="Web">Web</option><option value="WhatsApp">WhatsApp</option></select>
+        <select id="fin-filter-pago" onchange="applyFinFilters()" style="padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-family:inherit"><option value="">Todos los pagos</option></select>
+        <select id="fin-filter-tipo" onchange="applyFinFilters()" style="padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-family:inherit"><option value="">Todos los tipos</option><option value="mostrador">Mostrador</option><option value="domicilio">Domicilio</option><option value="recoger">Recoger</option><option value="funeral">Funeral</option></select>
+        <button onclick="resetFinFilters()" style="padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:11px;font-family:inherit;background:none;cursor:pointer;color:var(--texto2)">Limpiar</button>
+      </div>
       <div class="kpi-row" id="fin-kpis"></div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha venta</th><th>Folio</th><th>Cliente</th><th>Canal</th><th>Método pago</th><th>Total</th></tr></thead><tbody id="fin-ing-tbody"></tbody></table></div>
       <div id="fin-cancelados"></div>

@@ -1029,6 +1029,43 @@ async def corte_pdf(
     ]))
     elements.append(t5)
 
+    # Desglose de ingresos por canal
+    elements.append(Spacer(1, 0.3*cm))
+    elements.append(Paragraph('Ingresos por canal', ParagraphStyle('H3b', parent=normal, fontSize=10, textColor=verde, fontName='Helvetica-Bold', spaceBefore=8)))
+    canal_map = {}
+    for r in ingresos:
+        c = r[3] or 'Sin info'
+        canal_map[c] = canal_map.get(c, 0) + r[5]
+    if canal_map:
+        data_canal = [['Canal', 'Total', '% del total']]
+        for c in sorted(canal_map, key=lambda x: canal_map[x], reverse=True):
+            pct = (canal_map[c] / total_ing * 100) if total_ing else 0
+            data_canal.append([c, fmt(canal_map[c]), f'{pct:.1f}%'])
+        t_canal = Table(data_canal, colWidths=[2.5*inch, 1.5*inch, 1*inch])
+        t_canal.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), verde), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
+        ]))
+        elements.append(t_canal)
+
+    # Desglose de egresos por método de pago
+    if mp_egr:
+        elements.append(Spacer(1, 0.3*cm))
+        elements.append(Paragraph('Egresos por método de pago', ParagraphStyle('H3c', parent=normal, fontSize=10, textColor=colors.HexColor('#ef4444'), fontName='Helvetica-Bold', spaceBefore=8)))
+        data_egr_mp = [['Método de pago', 'Total gastado']]
+        for mp in sorted(mp_egr, key=lambda x: mp_egr[x], reverse=True):
+            data_egr_mp.append([mp, fmt(mp_egr[mp])])
+        data_egr_mp.append(['TOTAL EGRESOS', fmt(total_egr)])
+        t_egr_mp = Table(data_egr_mp, colWidths=[3*inch, 2*inch])
+        t_egr_mp.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#ef4444')), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('ALIGN', (-1,0), (-1,-1), 'RIGHT'),
+            ('BACKGROUND', (0,-1), (-1,-1), gris), ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+        ]))
+        elements.append(t_egr_mp)
+
     # Footer
     ahora = datetime.now(TZ)
     elements.append(Spacer(1, 0.5*cm))
