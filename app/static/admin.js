@@ -80,7 +80,7 @@ async function loadPendientes() {
   try {
     const canal = document.getElementById('pend-canal-filter').value;
     const estado = document.getElementById('pend-estado-filter').value;
-    let url = API + '/pos/pedidos-hoy?periodo=mes&estado=pendiente_pago';
+    let url = API + '/pos/pedidos-hoy?periodo=todos&estado=pendiente_pago';
     if (canal) url += '&canal=' + canal;
     const r = await fetch(url, {credentials:'include'});
     if (!r.ok) return;

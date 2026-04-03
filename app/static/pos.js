@@ -1542,16 +1542,13 @@ function canalLabel(canal) {
 async function loadPendientes(params) {
   const tbody = document.getElementById('pend-tbody');
   const empty = document.getElementById('pend-empty');
-  tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
+  if (!tbody.innerHTML || tbody.innerHTML.includes('Sin pedidos') || tbody.innerHTML.includes('Error')) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--texto2);padding:20px">Cargando...</td></tr>';
+  }
   try {
-    let url = '/pos/pedidos-hoy?periodo=' + pendFilterPeriodo + '&estado=pendiente_pago';
+    // Pendientes: traer TODOS sin filtro de fecha (un pendiente de ayer sigue siendo pendiente)
+    let url = '/pos/pedidos-hoy?periodo=todos&estado=pendiente_pago';
     if (params) url += '&' + params;
-    if (pendFilterPeriodo === 'rango') {
-      const fi = document.getElementById('fp-fecha-ini').value;
-      const ff = document.getElementById('fp-fecha-fin').value;
-      if (fi) url += '&fecha_inicio=' + fi;
-      if (ff) url += '&fecha_fin=' + ff;
-    }
     const r = await fetch(url);
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
@@ -2617,19 +2614,15 @@ function renderBadge() {
 
 async function updateBadgePend() {
   try {
-    const r = await fetch('/pos/pedidos-hoy?estado=pendiente_pago');
+    const r = await fetch('/pos/pedidos-hoy?periodo=todos&estado=pendiente_pago');
     const data = await r.json();
     contadorPendientes = (data.pendientes || []).length;
     renderBadge();
     // Auto-refresh if pendientes section is active
     if (document.getElementById('sec-pendientes').classList.contains('active')) {
-      if (pendFilterPeriodo === 'hoy') {
-        pendAllData = data.pendientes || [];
-        const q = document.getElementById('pend-search')?.value?.trim();
-        if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
-      } else {
-        loadPendientes();
-      }
+      pendAllData = data.pendientes || [];
+      const q = document.getElementById('pend-search')?.value?.trim();
+      if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
     }
     // Auto-refresh transacciones if active
     if (document.getElementById('sec-transacciones').classList.contains('active')) {
