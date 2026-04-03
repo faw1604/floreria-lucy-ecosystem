@@ -2039,7 +2039,7 @@ async function confirmarCambiarEstado(id, btn) {
   btn.disabled = true;
   btn.textContent = 'Cambiando...';
   try {
-    const r = await fetch(`/api/admin/pedido/${id}/estado`, {
+    const r = await fetch(`/pos/pedido/${id}/cambiar-estado`, {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       credentials: 'include',
