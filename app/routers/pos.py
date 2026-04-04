@@ -512,13 +512,21 @@ async def pos_pedidos_hoy(
     if skip_date_filter:
         query = select(Pedido).order_by(Pedido.fecha_pedido.desc())
     elif filtrar_por == "fecha_entrega":
-        # Filtrar por fecha_entrega (date local, sin timezone) — para finanzas
+        # Filtrar por fecha_entrega (date local) — para finanzas
         query = select(Pedido).where(
             Pedido.fecha_entrega >= f_ini,
             Pedido.fecha_entrega <= f_fin,
         ).order_by(Pedido.fecha_pedido.desc())
+    elif filtrar_por == "pago_confirmado_at":
+        # Filtrar por fecha de pago (día que entró el dinero) — para transacciones/cortes
+        utc_start = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+        utc_end = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
+        query = select(Pedido).where(
+            Pedido.pago_confirmado_at >= utc_start,
+            Pedido.pago_confirmado_at <= utc_end,
+        ).order_by(Pedido.pago_confirmado_at.desc())
     else:
-        # Filtrar por fecha_pedido (datetime UTC) — para transacciones POS
+        # Filtrar por fecha_pedido (datetime UTC) — default
         utc_start = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
         utc_end = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
         query = select(Pedido).where(
@@ -974,8 +982,8 @@ async def pos_resumen_ventas(
         r = await db.execute(
             select(func.count(Pedido.id), func.coalesce(func.sum(Pedido.total), 0))
             .where(
-                Pedido.fecha_pedido >= utc_s,
-                Pedido.fecha_pedido <= utc_e,
+                Pedido.pago_confirmado_at >= utc_s,
+                Pedido.pago_confirmado_at <= utc_e,
                 Pedido.estado.in_(estados_venta),
             )
         )
@@ -1042,11 +1050,12 @@ async def pos_corte_caja(
     if skip_date_filter:
         query = select(Pedido).where(Pedido.estado.in_(estados_venta))
     else:
+        # Corte de caja: filtrar por fecha de pago (día que entró el dinero)
         utc_s = datetime.combine(f_ini, time_type.min).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
         utc_e = datetime.combine(f_fin, time_type.max).replace(tzinfo=TZ).astimezone().replace(tzinfo=None)
         query = select(Pedido).where(
-            Pedido.fecha_pedido >= utc_s,
-            Pedido.fecha_pedido <= utc_e,
+            Pedido.pago_confirmado_at >= utc_s,
+            Pedido.pago_confirmado_at <= utc_e,
             Pedido.estado.in_(estados_venta),
         )
 

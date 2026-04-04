@@ -1955,7 +1955,7 @@ async function loadTransacciones(params) {
   }
   loadResumenVentas();
   try {
-    let url = '/pos/pedidos-hoy?periodo=' + transFilterPeriodo;
+    let url = '/pos/pedidos-hoy?filtrar_por=pago_confirmado_at&periodo=' + transFilterPeriodo;
     // Default: only finalized states
     if (!params || !params.includes('estado=')) {
       url += '&estado=pagado,Listo,listo_taller,En producción,en_camino,entregado';
@@ -2003,7 +2003,7 @@ function renderTransTable(rows) {
   empty.style.display = 'none';
   tbody.innerHTML = rows.map(p => {
     const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
-    const fecha = formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
+    const fecha = formatearFecha(p.pago_confirmado_at) || formatearFecha(p.fecha_pedido) || formatearFecha(p.fecha_entrega) || '';
     const ec = estadoClass(p.estado);
     return `<tr>
       <td style="font-weight:600;color:var(--verde);white-space:nowrap">📄 ${p.folio}</td>

@@ -551,12 +551,12 @@ async def flujo_caja(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    # Ingresos por día
+    # Ingresos por día (fecha que entró el dinero, no fecha entrega)
     ingresos = await db.execute(text("""
-        SELECT fecha_entrega::date as fecha, COALESCE(SUM(total),0) as total
-        FROM pedidos WHERE fecha_entrega BETWEEN :d AND :h
+        SELECT pago_confirmado_at::date as fecha, COALESCE(SUM(total),0) as total
+        FROM pedidos WHERE pago_confirmado_at::date BETWEEN :d AND :h
           AND estado NOT IN ('Cancelado','rechazado') AND pago_confirmado = true
-        GROUP BY fecha_entrega::date ORDER BY fecha
+        GROUP BY pago_confirmado_at::date ORDER BY fecha
     """), _dp(desde, hasta))
     ing_map = {str(r[0]): r[1] for r in ingresos.fetchall()}
     # Otros ingresos por día
