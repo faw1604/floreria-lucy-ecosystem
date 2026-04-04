@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 import os, logging, httpx
+from app.core.limiter import limiter
 from app.database import get_db
 from app.models.productos import Producto
 from app.models.pedidos import Pedido, ItemPedido
@@ -300,6 +301,7 @@ async def _enviar_whatsapp(telefono: str, mensaje: str):
 
 
 @router.post("/pedido")
+@limiter.limit("10/minute")
 async def crear_pedido_web(
     request: Request,
     db: AsyncSession = Depends(get_db),

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
 import httpx
+from app.core.limiter import limiter
 import os
 import logging
 
@@ -1129,6 +1130,7 @@ async def pos_temporada_config(
 
 
 @router.post("/verificar-clave-admin")
+@limiter.limit("5/minute")
 async def pos_verificar_clave_admin(
     request: Request,
     panel_session: str | None = Cookie(default=None),

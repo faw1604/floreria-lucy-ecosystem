@@ -1,9 +1,12 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.core.limiter import limiter
 from app.database import inicializar_db
 from app.core.config import settings
 from app.routers import pedidos, productos, clientes, flores, funerarias, pagos, panel, auth, catalogo, inventario, repartidor, pos, configuracion, admin, taller, reservas, claudia_proxy, pages
@@ -25,9 +28,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://www.florerialucy.com", "https://florerialucy.com", "https://floreria-lucy-ecosystem-production.up.railway.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

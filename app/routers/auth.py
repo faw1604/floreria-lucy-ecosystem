@@ -1,5 +1,6 @@
 import hashlib, json
 from fastapi import APIRouter, Request, HTTPException, Cookie, Depends
+from app.core.limiter import limiter
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -54,6 +55,7 @@ def obtener_rol(session_token: str | None) -> str | None:
 
 
 @router.post("/login")
+@limiter.limit("10/minute")
 async def login(request: Request, db: AsyncSession = Depends(get_db)):
     data = await request.json()
     username = data.get("username", "").strip()
