@@ -320,8 +320,10 @@ async def obtener_items_pedido(
     items = result.scalars().all()
     productos = []
     for item in items:
-        prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
-        prod = prod_result.scalar_one_or_none()
+        prod = None
+        if item.producto_id:
+            prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+            prod = prod_result.scalar_one_or_none()
         if prod:
             productos.append({
                 "id": prod.id,
@@ -331,6 +333,19 @@ async def obtener_items_pedido(
                 "cantidad": item.cantidad,
                 "precio_unitario": item.precio_unitario,
                 "es_personalizado": item.es_personalizado,
+                "nombre_personalizado": item.nombre_personalizado,
+                "observaciones": item.observaciones,
+            })
+        elif item.es_personalizado or item.nombre_personalizado:
+            # Item personalizado (sin producto_id o producto eliminado)
+            productos.append({
+                "id": None,
+                "codigo": None,
+                "nombre": item.nombre_personalizado or "Producto personalizado",
+                "imagen_url": None,
+                "cantidad": item.cantidad,
+                "precio_unitario": item.precio_unitario,
+                "es_personalizado": True,
                 "nombre_personalizado": item.nombre_personalizado,
                 "observaciones": item.observaciones,
             })
