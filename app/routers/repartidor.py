@@ -119,12 +119,38 @@ async def entregas_hoy(
         for cli in cli_result.scalars().all():
             clientes_map[cli.id] = cli
 
+    # Pre-fetch funerarias para pedidos funeral (mapear por nombre)
+    from app.models.funerarias import Funeraria
+    import re
+    fun_nombres = set()
+    for p in pedidos:
+        if p.tipo_especial == "Funeral" and p.notas_internas:
+            m = re.search(r"Funeraria:\s*([^|]+)", p.notas_internas, re.IGNORECASE)
+            if m:
+                fun_nombres.add(m.group(1).strip())
+    funerarias_map = {}
+    if fun_nombres:
+        fun_result = await db.execute(select(Funeraria).where(Funeraria.nombre.in_(fun_nombres)))
+        for f in fun_result.scalars().all():
+            funerarias_map[f.nombre] = f
+
     out = []
     for p in pedidos:
         items = await _pedido_items_nombres(p.id, db)
         cli = clientes_map.get(p.customer_id)
         cliente_nombre = cli.nombre if cli else None
         cliente_telefono = cli.telefono if cli else None
+        # Para pedidos funeral: usar dirección de la funeraria si no hay direccion_entrega
+        direccion = p.direccion_entrega
+        if not direccion and p.tipo_especial == "Funeral" and p.notas_internas:
+            m = re.search(r"Funeraria:\s*([^|]+)", p.notas_internas, re.IGNORECASE)
+            if m:
+                fun_nombre = m.group(1).strip()
+                fun = funerarias_map.get(fun_nombre)
+                if fun and fun.direccion:
+                    direccion = f"{fun.nombre} — {fun.direccion}"
+                elif fun_nombre:
+                    direccion = fun_nombre
         out.append({
             "id": p.id,
             "folio": p.numero,
@@ -132,7 +158,7 @@ async def entregas_hoy(
             "zona_envio": p.zona_entrega,
             "nombre_destinatario": p.receptor_nombre,
             "telefono_destinatario": p.receptor_telefono,
-            "direccion_entrega": p.direccion_entrega,
+            "direccion_entrega": direccion,
             "dedicatoria": p.dedicatoria,
             "notas_entrega": p.notas_internas,
             "metodo_pago": p.forma_pago,
