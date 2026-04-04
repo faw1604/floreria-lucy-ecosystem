@@ -421,12 +421,25 @@ async def _serializar_pedido_pos(p, db):
     items_r = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == p.id))
     items = []
     for it in items_r.scalars().all():
-        if it.es_personalizado and it.nombre_personalizado:
-            nombre = f"⚡ {it.nombre_personalizado}"
-        else:
+        prod = None
+        if it.producto_id:
             prod = (await db.execute(select(Producto).where(Producto.id == it.producto_id))).scalar_one_or_none()
-            nombre = prod.nombre if prod else "?"
-        items.append({"nombre": nombre, "cantidad": it.cantidad, "precio_unitario": it.precio_unitario})
+        if it.es_personalizado and it.nombre_personalizado:
+            nombre_display = f"⚡ {it.nombre_personalizado}"
+            nombre_real = it.nombre_personalizado
+        else:
+            nombre_display = prod.nombre if prod else "?"
+            nombre_real = prod.nombre if prod else "?"
+        items.append({
+            "nombre": nombre_display,
+            "cantidad": it.cantidad,
+            "precio_unitario": it.precio_unitario,
+            "producto_id": it.producto_id if prod else None,
+            "es_personalizado": it.es_personalizado,
+            "nombre_personalizado": it.nombre_personalizado,
+            "codigo": prod.codigo if prod else None,
+            "imagen_url": prod.imagen_url if prod else None,
+        })
     cliente_nombre = None
     cliente_telefono = None
     if p.customer_id:

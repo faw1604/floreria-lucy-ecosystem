@@ -1724,11 +1724,18 @@ function editarPendiente(p) {
   editingPedidoId = p.id;
   editingPedidoData = p;
 
-  // Load items into cart
+  // Load items into cart — preservar es_personalizado original
   carrito = (p.items || []).map(it => ({
-    producto_id: null, nombre: it.nombre, codigo: null, categoria: null,
-    precio: it.precio_unitario, cantidad: it.cantidad, imagen_url: null,
-    descuento: null, es_custom: true, observaciones: null
+    producto_id: it.producto_id || null,
+    nombre: it.nombre,
+    codigo: it.codigo || null,
+    categoria: null,
+    precio: it.precio_unitario,
+    cantidad: it.cantidad,
+    imagen_url: it.imagen_url || null,
+    descuento: null,
+    es_custom: !!it.es_personalizado,
+    observaciones: it.observaciones || null
   }));
 
   // Determine type
