@@ -1517,7 +1517,7 @@ async function loadFinanzas() {
   const {desde, hasta} = getFinDates();
   try {
     const periodo = document.getElementById('fin-periodo').value;
-    const r = await fetch(API + '/pos/pedidos-hoy?periodo=' + (periodo === 'rango' ? 'rango&fecha_inicio=' + desde + '&fecha_fin=' + hasta : periodo), {credentials:'include'});
+    const r = await fetch(API + '/pos/pedidos-hoy?filtrar_por=pago_confirmado_at&periodo=' + (periodo === 'rango' ? 'rango&fecha_inicio=' + desde + '&fecha_fin=' + hasta : periodo), {credentials:'include'});
     if (!r.ok) return;
     const data = await r.json();
     finData.ingresos = data;
