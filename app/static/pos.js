@@ -1325,11 +1325,12 @@ function buildInfoFromPedido(p) {
   let funeraria='', fallecido='', sala='', banda='', velacion='';
   if (p.tipo_especial === 'Funeral' && p.notas_internas) {
     const n = p.notas_internas;
-    const mf = n.match(/FUNERAL\s*(?:—|-)\s*([^.]+)/i); if (mf) funeraria = mf[1].trim();
-    const mfa = n.match(/Fallecido:\s*([^.]+)/i); if (mfa) fallecido = mfa[1].trim();
-    const ms = n.match(/Sala:\s*([^.]+)/i); if (ms) sala = ms[1].trim();
-    const mb = n.match(/Banda:\s*([^.]+)/i); if (mb) banda = mb[1].trim();
-    const mv = n.match(/Velacion:\s*([^.]+)/i); if (mv) velacion = mv[1].trim();
+    // Parsear delimitado por " | " para no capturar campos siguientes
+    const mf = n.match(/Funeraria:\s*([^|]+)/i); if (mf) funeraria = mf[1].trim();
+    const mfa = n.match(/Fallecido:\s*([^|]+)/i); if (mfa) fallecido = mfa[1].trim();
+    const ms = n.match(/Sala:\s*([^|]+)/i); if (ms) sala = ms[1].trim();
+    const mb = n.match(/Banda:\s*([^|]+)/i); if (mb) banda = mb[1].trim();
+    const mv = n.match(/Velaci[oó]n:\s*([^|]+)/i); if (mv) velacion = mv[1].trim();
   }
   let tipo = 'mostrador';
   if (p.tipo_especial === 'Funeral') tipo = 'funeral';
@@ -1881,29 +1882,13 @@ async function fpConfirm() {
     const pedData = pendAllData.find(p => p.id === finPendId);
     if (pedData) {
       const formaPago = Object.keys(finPendPays).join(', ');
-      // Construir info compatible con buildTicketDigital
-      const info = {
-        folio: pedData.folio || result.folio,
-        fecha: new Date().toISOString(),
-        estado: result.estado,
-        items: (pedData.items || []).map(it => ({nombre: it.nombre, cantidad: it.cantidad, precio_unitario: it.precio_unitario})),
-        subtotal: pedData.subtotal || pedData.total,
-        envio: pedData.envio || 0,
-        total: pedData.total,
-        impuesto: 0, descuento: 0, comision: 0, cargo_hora: 0,
-        forma_pago: formaPago,
-        pagos: pagos,
-        cliente_nombre: pedData.cliente_nombre || null,
-        receptor_nombre: pedData.receptor_nombre || '',
-        direccion_entrega: pedData.direccion_entrega || '',
-        dedicatoria: pedData.dedicatoria || '',
-        notas_internas: pedData.notas_internas || '',
-        horario_entrega: pedData.horario_entrega || '',
-        hora_exacta: pedData.hora_exacta || '',
-        fecha_entrega: pedData.fecha_entrega || '',
-        zona_envio: pedData.zona_entrega || '',
-        tipo: pedData.tipo_especial || (pedData.direccion_entrega ? 'domicilio' : 'mostrador'),
-      };
+      // Usar buildInfoFromPedido que parsea funeraria/fallecido/sala/banda de notas
+      const info = buildInfoFromPedido(pedData);
+      // Override con datos de pago
+      info.estado = result.estado;
+      info.forma_pago = formaPago;
+      info.pagos = pagos;
+      info.fecha = new Date().toISOString();
       // Mostrar modal con ticket
       lastResult = result;
       document.getElementById('creado-ticket-digital').innerHTML = buildTicketDigital(info);
