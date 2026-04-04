@@ -257,7 +257,8 @@ function prodFilterUrl() {
   const cat = document.getElementById('prod-cat-filter')?.value || '';
   const q = (document.getElementById('prod-search')?.value || '').trim();
   const catVisible = status === '1' ? 'true' : status === '0' ? 'false' : '';
-  let url = API + '/productos/?activo=todos&offset=' + prodOffset + '&limit=' + PROD_PAGE;
+  // activo=true por defecto — no mostrar productos eliminados
+  let url = API + '/productos/?activo=true&offset=' + prodOffset + '&limit=' + PROD_PAGE;
   if (catVisible) url += '&visible_catalogo=' + catVisible;
   if (cat) url += '&categoria=' + encodeURIComponent(cat);
   if (q) url += '&buscar=' + encodeURIComponent(q);
@@ -551,6 +552,7 @@ async function eliminarProducto(id, nombre) {
     const r = await fetch(API + '/productos/' + id, {method:'DELETE', credentials:'include'});
     if (!r.ok) { const e = await r.json(); alert(e.detail || 'Error'); return; }
     showToast('Producto eliminado ✓');
+    _lastProdHash = '';
     loadProductos();
   } catch(e) { alert('Error de conexión'); }
 }
