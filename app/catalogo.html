@@ -557,6 +557,10 @@ img{-webkit-user-drag:none;user-drag:none}
         Requiero factura
       </label>
       <div id="of-factura-desglose" style="display:none;text-align:center;font-size:13px;color:var(--texto2);margin-bottom:10px"></div>
+      <label id="of-funeral-confirm-wrap" style="display:none;align-items:flex-start;gap:10px;margin:14px 0;padding:12px;background:#fef3c7;border-left:4px solid #d4a843;border-radius:6px;font-size:13px;cursor:pointer;color:#92400e;line-height:1.5">
+        <input type="checkbox" id="of-funeral-confirm" style="width:18px;height:18px;accent-color:#d4a843;flex-shrink:0;margin-top:2px">
+        <span>Confirmo que entiendo que mi pedido se entregará <strong>2 a 3 horas después de validado el pago</strong> y que el horario de velación lo permite.</span>
+      </label>
       <div class="order-btn-row">
         <button class="order-btn secondary" onclick="orderGoStep(3)">Regresar</button>
         <button class="order-btn primary" id="order-confirm-btn" onclick="submitOrder()">Confirmar pedido</button>
@@ -2024,6 +2028,28 @@ function selectOrderType(tipo) {
     }
   }
   document.getElementById('order-funeral-warn').style.display = 'none';
+
+  // Disclaimer tiempo de entrega para pedidos funeral
+  if (tipo === 'funeral') {
+    const warn = document.getElementById('order-funeral-warn');
+    warn.style.display = '';
+    warn.innerHTML = `<div class="order-funeral-warn" style="background:#fef3c7;border-left:4px solid #d4a843;color:#92400e">
+      <strong>⏱ Importante — Tiempo de entrega</strong><br>
+      Los pedidos de funeral se entregan <strong>2 a 3 horas después de validado el pago</strong>.
+      Este tiempo incluye la elaboración del arreglo y el traslado.<br><br>
+      Por favor asegurate de que el horario de velación permita recibir el arreglo dentro de ese tiempo.
+      <br>
+      <button style="background:var(--verde);color:#fff;margin-top:8px" onclick="continuarFuneral()">Entendido, continuar</button>
+      <button style="background:var(--borde);color:var(--texto);margin-top:8px" onclick="pedidoWeb.tipo=null;document.querySelectorAll('.order-tipo-btn').forEach(b=>b.classList.remove('selected'));document.getElementById('order-funeral-warn').style.display='none'">Cancelar</button>
+    </div>`;
+    return;
+  }
+
+  setTimeout(() => { renderStep3Fields(); orderGoStep(3); }, 150);
+}
+
+function continuarFuneral() {
+  document.getElementById('order-funeral-warn').style.display = 'none';
   setTimeout(() => { renderStep3Fields(); orderGoStep(3); }, 150);
 }
 
@@ -2625,6 +2651,13 @@ function renderOrderStep4() {
   const fc = document.getElementById('of-factura');
   if (fc) fc.checked = false;
   document.getElementById('of-factura-desglose').style.display = 'none';
+  // Mostrar checkbox de confirmación solo si es funeral
+  const funWrap = document.getElementById('of-funeral-confirm-wrap');
+  const funCheck = document.getElementById('of-funeral-confirm');
+  if (funWrap) {
+    funWrap.style.display = tipo === 'funeral' ? 'flex' : 'none';
+    if (funCheck) funCheck.checked = false;
+  }
 }
 
 async function toggleFactura() {
@@ -2675,6 +2708,16 @@ async function toggleFactura() {
 }
 
 async function submitOrder() {
+  // Validar checkbox de confirmación funeral
+  if (pedidoWeb.tipo === 'funeral') {
+    const funCheck = document.getElementById('of-funeral-confirm');
+    if (funCheck && !funCheck.checked) {
+      alert('Por favor confirma que entiendes el tiempo de entrega de 2 a 3 horas.');
+      const wrap = document.getElementById('of-funeral-confirm-wrap');
+      if (wrap) { wrap.style.animation='none'; void wrap.offsetWidth; wrap.style.animation='shake .4s'; }
+      return;
+    }
+  }
   const btn = document.getElementById('order-confirm-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-inline"></span> Procesando...';
