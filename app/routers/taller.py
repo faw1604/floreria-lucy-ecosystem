@@ -348,10 +348,8 @@ async def aceptar(
                         from app.routers.catalogo import _enviar_whatsapp
                         await _enviar_whatsapp(_tel,
                             f"Hola {_nombre} 🌸\n\n"
-                            f"Tu pedido {_folio} fue aceptado!\n\n"
-                            f"Para proceder con el pago, como prefieres pagar?\n\n"
-                            f"1. Transferencia bancaria\n"
-                            f"2. Deposito en OXXO\n\n"
+                            f"Tu pedido {_folio} fue aceptado ✅\n\n"
+                            f"En breve te enviamos los datos para el pago.\n\n"
                             f"Puedes ver el estatus de tu pedido aqui:\n{tracking_url}"
                         )
                     except Exception:

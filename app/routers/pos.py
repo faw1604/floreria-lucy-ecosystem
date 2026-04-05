@@ -462,6 +462,7 @@ async def _serializar_pedido_pos(p, db):
         "comprobante_pago_url": p.comprobante_pago_url,
         "requiere_factura": p.requiere_factura,
         "pago_confirmado_at": p.pago_confirmado_at.isoformat() if p.pago_confirmado_at else None,
+        "ticket_enviado_at": p.ticket_enviado_at.isoformat() if p.ticket_enviado_at else None,
     }
 
 
@@ -686,6 +687,155 @@ async def pos_cambiar_estado(
         pedido.entregado_at = ahora()
     await db.commit()
     return {"ok": True, "folio": pedido.numero, "estado_anterior": estado_anterior, "estado_nuevo": nuevo_estado}
+
+
+@router.post("/pedido/{pedido_id}/aprobar-enviar-ticket")
+async def pos_aprobar_enviar_ticket(
+    pedido_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Aprueba pedido en pendiente_pago y envía ticket + datos de pago por WhatsApp."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    from app.core.estados import EstadoPedido as EP
+    from app.core.utils import ahora
+    from app.models.cuentas import CuentaTransferencia
+    from app.models.configuracion import ConfiguracionNegocio
+    from app.models.clientes import Cliente
+
+    # 1. Verificar pedido
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    if pedido.estado != EP.PENDIENTE_PAGO:
+        raise HTTPException(status_code=400, detail=f"Pedido debe estar en pendiente_pago (actual: {pedido.estado})")
+
+    # 2. Verificar forma_pago
+    if not pedido.forma_pago:
+        raise HTTPException(status_code=400, detail="El pedido no tiene método de pago asignado")
+
+    # 3. Obtener teléfono del cliente
+    telefono = None
+    cli_nombre = "Cliente"
+    if pedido.customer_id:
+        cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cli = cli_r.scalar_one_or_none()
+        if cli:
+            telefono = cli.telefono
+            cli_nombre = cli.nombre.split()[0] if cli.nombre else "Cliente"
+    if not telefono:
+        raise HTTPException(status_code=400, detail="El cliente no tiene teléfono registrado")
+
+    # 4. Construir datos de pago según método
+    datos_pago_msg = ""
+    if pedido.forma_pago == "Transferencia":
+        ctas_r = await db.execute(select(CuentaTransferencia).where(CuentaTransferencia.activa == True))
+        cuentas = ctas_r.scalars().all()
+        if not cuentas:
+            raise HTTPException(status_code=400, detail="No hay cuentas de transferencia activas. Ve a Admin → Configuración.")
+        datos_pago_msg = "*💳 DATOS DE TRANSFERENCIA*\n\n"
+        for c in cuentas:
+            datos_pago_msg += f"Banco: {c.banco}\n"
+            datos_pago_msg += f"Titular: {c.titular}\n"
+            if c.clabe:
+                datos_pago_msg += f"CLABE: {c.clabe}\n"
+            if c.tarjeta:
+                datos_pago_msg += f"Tarjeta: {c.tarjeta}\n"
+            datos_pago_msg += "\n"
+    elif pedido.forma_pago == "OXXO":
+        cfg_r = await db.execute(select(ConfiguracionNegocio))
+        cfg = {c.clave: c.valor for c in cfg_r.scalars().all()}
+        if cfg.get("oxxo_activo") != "true":
+            raise HTTPException(status_code=400, detail="OXXO no está activo. Ve a Admin → Configuración.")
+        oxxo_tarjeta = cfg.get("oxxo_tarjeta", "")
+        oxxo_nombre = cfg.get("oxxo_nombre", "")
+        if not oxxo_tarjeta:
+            raise HTTPException(status_code=400, detail="No hay datos de OXXO configurados. Ve a Admin → Configuración.")
+        datos_pago_msg = "*🏪 DEPÓSITO EN OXXO*\n\n"
+        if oxxo_nombre:
+            datos_pago_msg += f"Nombre: {oxxo_nombre}\n"
+        datos_pago_msg += f"Tarjeta: {oxxo_tarjeta}\n\n"
+    else:
+        raise HTTPException(status_code=400, detail=f"Método de pago no soportado: {pedido.forma_pago}")
+
+    # 5. Obtener mensaje base de configuración
+    cfg_r = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in cfg_r.scalars().all()}
+    es_funeral = pedido.metodo_entrega in ("funeral_envio", "funeral_recoger") or pedido.tipo_especial == "Funeral"
+    mensaje_base = cfg.get("mensaje_pago_funeral" if es_funeral else "mensaje_pago_normal", "")
+
+    # 6. Construir ticket con items
+    items_r = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+    items_pedido = items_r.scalars().all()
+    items_lines = []
+    for it in items_pedido:
+        if it.es_personalizado and it.nombre_personalizado:
+            nombre_it = it.nombre_personalizado
+        else:
+            prod_r = await db.execute(select(Producto).where(Producto.id == it.producto_id))
+            prod = prod_r.scalar_one_or_none()
+            nombre_it = prod.nombre if prod else "Producto"
+        precio_it = (it.precio_unitario or 0) * it.cantidad
+        items_lines.append(f"{it.cantidad}x {nombre_it} — ${precio_it/100:,.0f}")
+
+    # Datos de entrega/recoger
+    entrega_lines = []
+    if pedido.metodo_entrega == "recoger":
+        entrega_lines.append("📍 *Recoger en tienda*")
+        entrega_lines.append("C. Sabino 610, Las Granjas, Chihuahua")
+        if pedido.fecha_entrega:
+            entrega_lines.append(f"Fecha: {pedido.fecha_entrega}")
+        if pedido.hora_exacta:
+            entrega_lines.append(f"Hora: {pedido.hora_exacta}")
+    elif es_funeral:
+        entrega_lines.append("🌹 *Pedido funeral*")
+        if pedido.direccion_entrega:
+            entrega_lines.append(f"📍 {pedido.direccion_entrega}")
+        if pedido.fecha_entrega:
+            entrega_lines.append(f"Fecha: {pedido.fecha_entrega}")
+        if pedido.horario_entrega:
+            entrega_lines.append(f"Horario: {pedido.horario_entrega}")
+    else:
+        entrega_lines.append("🚚 *Envío a domicilio*")
+        if pedido.receptor_nombre:
+            entrega_lines.append(f"Recibe: {pedido.receptor_nombre}")
+        if pedido.direccion_entrega:
+            entrega_lines.append(f"📍 {pedido.direccion_entrega}")
+        if pedido.fecha_entrega:
+            entrega_lines.append(f"Fecha: {pedido.fecha_entrega}")
+        horario_map = {"manana": "Mañana 9-2pm", "tarde": "Tarde 2-6pm", "noche": "Noche 6-9pm"}
+        horario_lbl = horario_map.get(pedido.horario_entrega, pedido.horario_entrega or "")
+        if pedido.hora_exacta:
+            entrega_lines.append(f"Hora: {pedido.hora_exacta}")
+        elif horario_lbl:
+            entrega_lines.append(f"Horario: {horario_lbl}")
+
+    ticket_msg = f"🌸 *FLORERÍA LUCY*\n"
+    ticket_msg += f"Pedido: {pedido.numero}\n\n"
+    ticket_msg += "\n".join(items_lines) + "\n\n"
+    if pedido.envio and pedido.envio > 0:
+        ticket_msg += f"Subtotal: ${(pedido.subtotal or 0)/100:,.0f}\n"
+        ticket_msg += f"Envío: ${pedido.envio/100:,.0f}\n"
+    ticket_msg += f"*Total: ${(pedido.total or 0)/100:,.0f}*\n\n"
+    if entrega_lines:
+        ticket_msg += "\n".join(entrega_lines) + "\n"
+
+    # 7. Mensaje completo: Ticket → Datos pago → Mensaje base
+    mensaje_completo = f"Hola {cli_nombre} 🌸\n\n{ticket_msg}\n{datos_pago_msg}"
+    if mensaje_base:
+        mensaje_completo += f"\n{mensaje_base}"
+
+    # 8. Enviar WhatsApp
+    from app.routers.catalogo import _enviar_whatsapp
+    await _enviar_whatsapp(telefono, mensaje_completo)
+
+    # 9. Marcar ticket_enviado_at
+    pedido.ticket_enviado_at = ahora()
+    await db.commit()
+
+    return {"ok": True, "mensaje": f"Ticket enviado a {telefono}", "folio": pedido.numero}
 
 
 @router.patch("/pedido/{pedido_id}/finalizar")

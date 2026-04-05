@@ -52,6 +52,7 @@ class Pedido(Base):
     comprobante_pago_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     pago_confirmado_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     pago_confirmado_por: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    ticket_enviado_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     nota_validacion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     webhook_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tracking_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True, index=True)

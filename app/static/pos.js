@@ -1567,7 +1567,7 @@ async function loadPendientes(params) {
 
 let _lastPendHash = '';
 function renderPendTable(rows) {
-  const hash = JSON.stringify(rows.map(p => p.id + '|' + p.estado));
+  const hash = JSON.stringify(rows.map(p => p.id + '|' + p.estado + '|' + (p.ticket_enviado_at ? '1' : '0')));
   if (hash === _lastPendHash) return;
   _lastPendHash = hash;
   const tbody = document.getElementById('pend-tbody');
@@ -1608,6 +1608,7 @@ function renderPendTable(rows) {
         <button class="btn-edit" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
         ${ec === 'comprobante_recibido' ? `<button class="btn-fin" style="background:#e67e22" onclick="confirmarPagoPos(${p.id})">Confirmar pago</button>` : ''}
         ${ec === 'comprobante_recibido' && p.comprobante_pago_url ? `<a href="${p.comprobante_pago_url}" target="_blank" class="btn-edit" style="text-decoration:none">Ver comprobante</a>` : ''}
+        ${ec === 'pendiente_pago' && p.canal !== 'Mostrador' ? `<button class="btn-fin" style="background:#d4a843;color:#193a2c" onclick="aprobarEnviarTicket(${p.id})">📨 ${p.ticket_enviado_at ? 'Reenviar' : 'Enviar'} ticket</button>` : ''}
         ${ec === 'pendiente_pago' ? `<button class="btn-fin" onclick="finalizarPendiente(${p.id},${p.total})">Finalizar</button>` : ''}
         ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelar(${p.id},'${esc(p.folio)}')">Cancelar</button>` : ''}
       </td>
@@ -2649,6 +2650,23 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 window.addEventListener('focus', () => { updateBadgePend(); });
+
+async function aprobarEnviarTicket(id) {
+  if (!confirm('¿Enviar ticket y datos de pago al cliente por WhatsApp?')) return;
+  try {
+    const r = await fetch(`/pos/pedido/${id}/aprobar-enviar-ticket`, {method:'POST', credentials:'include'});
+    const data = await r.json();
+    if (!r.ok) {
+      alert(data.detail || 'Error al enviar ticket');
+      return;
+    }
+    showToast(data.mensaje || 'Ticket enviado ✓');
+    _lastPendHash = '';
+    loadPendientes();
+  } catch(e) {
+    alert('Error de conexión');
+  }
+}
 
 async function confirmarPagoPos(id) {
   if (!confirm('Confirmar que el pago fue verificado?')) return;
