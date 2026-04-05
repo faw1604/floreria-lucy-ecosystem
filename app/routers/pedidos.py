@@ -720,6 +720,68 @@ async def subir_comprobante(
     return {"ok": True, "url": url}
 
 
+@router.post("/{pedido_id}/marcar-comprobante-recibido")
+async def marcar_comprobante_recibido(
+    pedido_id: int,
+    db: AsyncSession = Depends(get_db),
+    x_claudia_key: str | None = Header(default=None),
+):
+    """Claudia marca que el cliente mandó comprobante (sin subir imagen).
+    Notifica a Fer por WhatsApp para que revise y confirme el pago."""
+    from app.core.utils import ahora
+    from app.core.estados import EstadoPedido as EP
+
+    expected_key = os.getenv("CLAUDIA_API_KEY", "")
+    if not expected_key or x_claudia_key != expected_key:
+        raise HTTPException(status_code=401, detail="API key inválida")
+
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Permitir desde pendiente_pago o comprobante_recibido (idempotente)
+    if pedido.estado not in (EP.PENDIENTE_PAGO, "pendiente_pago", EP.COMPROBANTE_RECIBIDO):
+        raise HTTPException(
+            status_code=400,
+            detail=f"El pedido no está en estado pendiente_pago (actual: {pedido.estado})"
+        )
+
+    # Cambiar estado
+    pedido.estado = EP.COMPROBANTE_RECIBIDO
+    pedido.comprobante_pago_at = ahora()
+
+    # Obtener nombre del cliente
+    cli_nombre = "Cliente"
+    if pedido.customer_id:
+        cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cli = cli_r.scalar_one_or_none()
+        if cli and cli.nombre:
+            cli_nombre = cli.nombre
+
+    await db.commit()
+
+    # Notificar a Fer en background
+    import asyncio
+    telefono_negocio = os.getenv("WHATSAPP_NEGOCIO", "5216143349392")
+    total_fmt = f"${(pedido.total or 0)/100:,.0f}"
+    msg = (
+        f"💳 Comprobante recibido — {pedido.numero} | "
+        f"{cli_nombre} | {total_fmt} | {pedido.forma_pago or 'Sin método'} "
+        f"— Revisa en POS → Pendientes."
+    )
+
+    async def _notify():
+        try:
+            from app.routers.catalogo import _enviar_whatsapp
+            await _enviar_whatsapp(telefono_negocio, msg)
+        except Exception:
+            pass
+    asyncio.create_task(_notify())
+
+    return {"ok": True, "folio": pedido.numero}
+
+
 ESTADO_LABELS = {
     EP.ESPERANDO_VALIDACION: "Esperando validación del florista",
     "pendiente_pago": "Validado por el florista",
