@@ -305,6 +305,9 @@ img{-webkit-user-drag:none;user-drag:none}
 .order-btn.primary{background:var(--verde);color:var(--blanco)}
 .order-btn.primary:hover{background:var(--verde-m)}
 .order-btn.primary:disabled{opacity:.5;cursor:not-allowed}
+.pago-option:hover{border-color:var(--verde-c)!important}
+.pago-option.selected{border-color:var(--verde)!important;background:#e8f5ec!important}
+.pago-option.selected svg{color:var(--verde)!important}
 .order-btn.secondary{background:none;color:var(--texto2);border:1px solid var(--borde)}
 .order-funeral-warn{background:#fff3cd;color:#856404;padding:12px;border-radius:10px;font-size:13px;margin-bottom:14px}
 .order-funeral-warn button{margin-top:8px;padding:8px 16px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:500}
@@ -561,6 +564,21 @@ img{-webkit-user-drag:none;user-drag:none}
         <input type="checkbox" id="of-funeral-confirm" style="width:18px;height:18px;accent-color:#d4a843;flex-shrink:0;margin-top:2px">
         <span>Confirmo que entiendo que mi pedido se entregará <strong>2 a 3 horas después de validado el pago</strong> y que el horario de velación lo permite.</span>
       </label>
+
+      <!-- Selector de método de pago -->
+      <div style="margin:18px 0 8px;font-size:14px;font-weight:600;color:var(--verde);text-align:center">¿Cómo prefieres pagar?</div>
+      <div id="of-pago-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        <div class="pago-option" data-value="Transferencia" onclick="selectPago('Transferencia')" style="padding:14px 12px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:var(--blanco)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--verde);margin-bottom:6px"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>
+          <div style="font-size:13px;font-weight:600;color:var(--texto)">SPEI / Transferencia</div>
+        </div>
+        <div class="pago-option" data-value="OXXO" onclick="selectPago('OXXO')" style="padding:14px 12px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:var(--blanco)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--verde);margin-bottom:6px"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21V12h6v9"/><path d="M3 21h18"/></svg>
+          <div style="font-size:13px;font-weight:600;color:var(--texto)">Depósito en OXXO</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--texto2);text-align:center;margin-bottom:12px;line-height:1.4">Te enviaremos los datos de pago por WhatsApp tras confirmar</div>
+
       <div class="order-btn-row">
         <button class="order-btn secondary" onclick="orderGoStep(3)">Regresar</button>
         <button class="order-btn primary" id="order-confirm-btn" onclick="submitOrder()">Confirmar pedido</button>
@@ -2658,6 +2676,16 @@ function renderOrderStep4() {
     funWrap.style.display = tipo === 'funeral' ? 'flex' : 'none';
     if (funCheck) funCheck.checked = false;
   }
+  // Reset selector de método de pago
+  pedidoWeb.forma_pago = null;
+  document.querySelectorAll('.pago-option').forEach(el => el.classList.remove('selected'));
+}
+
+function selectPago(valor) {
+  pedidoWeb.forma_pago = valor;
+  document.querySelectorAll('.pago-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.value === valor);
+  });
 }
 
 async function toggleFactura() {
@@ -2718,6 +2746,13 @@ async function submitOrder() {
       return;
     }
   }
+  // Validar método de pago seleccionado
+  if (!pedidoWeb.forma_pago) {
+    alert('Por favor selecciona un método de pago.');
+    const opts = document.getElementById('of-pago-options');
+    if (opts) { opts.style.animation='none'; void opts.offsetWidth; opts.style.animation='shake .4s'; opts.scrollIntoView({behavior:'smooth',block:'center'}); }
+    return;
+  }
   const btn = document.getElementById('order-confirm-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-inline"></span> Procesando...';
@@ -2750,6 +2785,7 @@ async function submitOrder() {
       bandas_extra_costo: pedidoWeb.bandas_extra_costo || 0,
       horario_velacion: pedidoWeb.horario_velacion || null,
       codigo_descuento: appliedDiscount ? appliedDiscount.codigo : null,
+      forma_pago: pedidoWeb.forma_pago,
       requiere_factura: document.getElementById('of-factura')?.checked || false,
       datos_fiscales: document.getElementById('of-factura')?.checked ? {
         rfc: document.getElementById('of-rfc')?.value?.trim()?.toUpperCase() || null,
