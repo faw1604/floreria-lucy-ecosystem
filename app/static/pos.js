@@ -2655,16 +2655,20 @@ async function aprobarEnviarTicket(id) {
   if (!confirm('¿Enviar ticket y datos de pago al cliente por WhatsApp?')) return;
   try {
     const r = await fetch(`/pos/pedido/${id}/aprobar-enviar-ticket`, {method:'POST', credentials:'include'});
-    const data = await r.json();
+    const text = await r.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(_) { /* respuesta no JSON */ }
     if (!r.ok) {
-      alert(data.detail || 'Error al enviar ticket');
+      alert(data.detail || text || 'Error al enviar ticket');
       return;
     }
+    // Status 200 OK — siempre exitoso
     showToast(data.mensaje || 'Ticket enviado ✓');
     _lastPendHash = '';
     loadPendientes();
   } catch(e) {
-    alert('Error de conexión');
+    // Solo errores reales de red (fetch failed, sin conexión)
+    alert('Error de red: ' + (e.message || 'sin conexión'));
   }
 }
 
