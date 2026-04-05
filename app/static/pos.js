@@ -2138,12 +2138,12 @@ async function confirmarCambiarEstado(id, btn) {
       return;
     }
     if (modal) modal.remove();
-    showToast(`Estado cambiado a: ${nuevoEstado}`);
+    alert(`Estado cambiado a: ${nuevoEstado}`);
     loadTransacciones();
   } catch(e) {
     // Si llegamos aquí, intentar cerrar el modal de todas formas
     if (modal) modal.remove();
-    showToast('Estado actualizado');
+    alert('Estado actualizado');
     loadTransacciones();
   }
 }
@@ -2663,7 +2663,7 @@ async function aprobarEnviarTicket(id) {
       return;
     }
     // Status 200 OK — siempre exitoso
-    showToast(data.mensaje || 'Ticket enviado ✓');
+    alert(data.mensaje || 'Ticket enviado ✓');
     _lastPendHash = '';
     loadPendientes();
   } catch(e) {
