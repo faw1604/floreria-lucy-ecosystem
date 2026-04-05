@@ -780,21 +780,32 @@ async def pos_aprobar_enviar_ticket(
         precio_it = (it.precio_unitario or 0) * it.cantidad
         items_lines.append(f"{it.cantidad}x {nombre_it} — ${precio_it/100:,.0f}")
 
+    # Formatear fecha: "Lun 6 de abril"
+    def _fmt_fecha(fecha):
+        if not fecha:
+            return ""
+        dias = {0:"Lun",1:"Mar",2:"Mié",3:"Jue",4:"Vie",5:"Sáb",6:"Dom"}
+        meses = {1:"enero",2:"febrero",3:"marzo",4:"abril",5:"mayo",6:"junio",
+                 7:"julio",8:"agosto",9:"septiembre",10:"octubre",11:"noviembre",12:"diciembre"}
+        return f"{dias[fecha.weekday()]} {fecha.day} de {meses[fecha.month]}"
+
+    fecha_fmt = _fmt_fecha(pedido.fecha_entrega)
+
     # Datos de entrega/recoger
     entrega_lines = []
     if pedido.metodo_entrega == "recoger":
         entrega_lines.append("📍 *Recoger en tienda*")
         entrega_lines.append("C. Sabino 610, Las Granjas, Chihuahua")
-        if pedido.fecha_entrega:
-            entrega_lines.append(f"Fecha: {pedido.fecha_entrega}")
+        if fecha_fmt:
+            entrega_lines.append(f"Fecha: {fecha_fmt}")
         if pedido.hora_exacta:
             entrega_lines.append(f"Hora: {pedido.hora_exacta}")
     elif es_funeral:
         entrega_lines.append("🌹 *Pedido funeral*")
         if pedido.direccion_entrega:
             entrega_lines.append(f"📍 {pedido.direccion_entrega}")
-        if pedido.fecha_entrega:
-            entrega_lines.append(f"Fecha: {pedido.fecha_entrega}")
+        if fecha_fmt:
+            entrega_lines.append(f"Fecha: {fecha_fmt}")
         if pedido.horario_entrega:
             entrega_lines.append(f"Horario: {pedido.horario_entrega}")
     else:
@@ -803,8 +814,8 @@ async def pos_aprobar_enviar_ticket(
             entrega_lines.append(f"Recibe: {pedido.receptor_nombre}")
         if pedido.direccion_entrega:
             entrega_lines.append(f"📍 {pedido.direccion_entrega}")
-        if pedido.fecha_entrega:
-            entrega_lines.append(f"Fecha: {pedido.fecha_entrega}")
+        if fecha_fmt:
+            entrega_lines.append(f"Fecha: {fecha_fmt}")
         horario_map = {"manana": "Mañana 9-2pm", "tarde": "Tarde 2-6pm", "noche": "Noche 6-9pm"}
         horario_lbl = horario_map.get(pedido.horario_entrega, pedido.horario_entrega or "")
         if pedido.hora_exacta:
@@ -827,13 +838,21 @@ async def pos_aprobar_enviar_ticket(
     if mensaje_base:
         mensaje_completo += f"\n{mensaje_base}"
 
-    # 8. Enviar WhatsApp
-    from app.routers.catalogo import _enviar_whatsapp
-    await _enviar_whatsapp(telefono, mensaje_completo)
-
-    # 9. Marcar ticket_enviado_at
+    # 8. Marcar ticket_enviado_at antes de mandar (feedback inmediato al usuario)
     pedido.ticket_enviado_at = ahora()
     await db.commit()
+
+    # 9. Enviar WhatsApp en background — no bloquea la respuesta
+    import asyncio
+    from app.routers.catalogo import _enviar_whatsapp
+    _tel = telefono
+    _msg = mensaje_completo
+    async def _send():
+        try:
+            await _enviar_whatsapp(_tel, _msg)
+        except Exception:
+            pass
+    asyncio.create_task(_send())
 
     return {"ok": True, "mensaje": f"Ticket enviado a {telefono}", "folio": pedido.numero}
 
