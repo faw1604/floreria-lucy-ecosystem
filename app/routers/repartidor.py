@@ -101,12 +101,15 @@ async def entregas_hoy(
     if fecha != "todos":
         query = select(Pedido).where(Pedido.fecha_entrega == fecha_target, Pedido.estado.in_(estados))
 
-    # Filtrar: pedidos asignados a mí + pedidos sin asignar (solo envíos)
+    # Filtrar solo envíos
     from sqlalchemy import or_
-    query = query.where(
-        Pedido.metodo_entrega.in_(["envio", "funeral_envio"]),
-        or_(Pedido.repartidor_id == mi_id, Pedido.repartidor_id.is_(None))
-    )
+    query = query.where(Pedido.metodo_entrega.in_(["envio", "funeral_envio"]))
+    # Admin ve todos, repartidor solo los suyos + sin asignar
+    mi_rol = info.get("r") if info else None
+    if mi_rol != "admin":
+        query = query.where(
+            or_(Pedido.repartidor_id == mi_id, Pedido.repartidor_id.is_(None))
+        )
 
     result = await db.execute(query)
     pedidos = sorted(result.scalars().all(), key=_sort_key)
