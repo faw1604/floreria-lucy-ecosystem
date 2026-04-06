@@ -3,6 +3,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime, date
 from typing import Optional
 from app.database import Base
+from app.core.utils import ahora
 
 class Pedido(Base):
     __tablename__ = "pedidos"
@@ -14,7 +15,7 @@ class Pedido(Base):
     estado: Mapped[str] = mapped_column(String(30), default="Nuevo")
     # Nuevo / esperando_validacion / Pendiente pago / comprobante_recibido / pagado
     # En producción / Listo / En camino / Entregado / Cancelado / rechazado
-    fecha_pedido: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    fecha_pedido: Mapped[datetime] = mapped_column(DateTime, default=ahora)
     fecha_entrega: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     horario_entrega: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)  # mañana/tarde/noche
     hora_exacta: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
@@ -83,5 +84,5 @@ class NotificacionLog(Base):
     customer_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
     tipo: Mapped[str] = mapped_column(String(30))  # Confirmación / Listo / En camino / Entregado
     mensaje: Mapped[str] = mapped_column(Text)
-    enviado_en: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    enviado_en: Mapped[datetime] = mapped_column(DateTime, default=ahora)
     entregado: Mapped[bool] = mapped_column(Boolean, default=False)

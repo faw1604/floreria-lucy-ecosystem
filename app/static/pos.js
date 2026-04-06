@@ -2563,23 +2563,18 @@ const _dias = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
 const _meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function formatearFecha(str) {
   if (!str) return '';
-  // Accept "2026-03-27 22:30" or "2026-03-27" or ISO
-  // For date-only strings, append T12:00:00 to avoid UTC midnight → local previous day
-  let s = str.replace(' ', 'T');
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) s = str + 'T12:00:00';
-  const d = new Date(s);
-  if (isNaN(d)) return str;
-  const dia = _dias[d.getDay()];
-  const dd = d.getDate();
-  const mes = _meses[d.getMonth()];
-  const yyyy = d.getFullYear();
-  // If time portion exists
-  const hasTime = str.includes(':');
-  if (!hasTime) return `${dia} ${dd} ${mes} ${yyyy}`;
-  let h = d.getHours(), m = d.getMinutes();
-  const ampm = h >= 12 ? 'pm' : 'am';
-  if (h === 0) h = 12; else if (h > 12) h -= 12;
-  return `${dia} ${dd} ${mes} ${yyyy}, ${h}:${String(m).padStart(2,'0')} ${ampm}`;
+  const s = String(str);
+  // Date-only: use toLocaleDateString with timezone
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(s + 'T12:00:00');
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone:'America/Chihuahua'});
+  }
+  // DateTime: parse and display with timezone
+  const d = new Date(s.replace(' ', 'T'));
+  if (isNaN(d)) return s;
+  return d.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone:'America/Chihuahua'}) + ', ' +
+    d.toLocaleTimeString('es-MX', {hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chihuahua'});
 }
 
 function buildHoraOptions() {

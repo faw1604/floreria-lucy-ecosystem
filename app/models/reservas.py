@@ -3,6 +3,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from typing import Optional
 from app.database import Base
+from app.core.utils import ahora
 
 
 class Reserva(Base):
@@ -17,7 +18,7 @@ class Reserva(Base):
     estado: Mapped[str] = mapped_column(String(20), default="disponible")
     # disponible / vendida / descartada
     pedido_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ahora)
     vendida_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     descartada_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     descarte_razon: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
