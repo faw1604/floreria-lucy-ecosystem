@@ -282,7 +282,7 @@ async def _pos_crear_pedido_inner(request, db):
         if data.get("funeraria_id"):
             fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
             if fun:
-                funeral_parts.append(f"FUNERAL — {fun.nombre}")
+                funeral_parts.append(f"Funeraria: {fun.nombre}")
                 zona = fun.zona
                 envio = fun.costo_envio
         if data.get("nombre_fallecido"):
@@ -294,7 +294,7 @@ async def _pos_crear_pedido_inner(request, db):
         if data.get("horario_velacion"):
             funeral_parts.append(f"Velacion: {data['horario_velacion']}")
         if funeral_parts:
-            notas = ". ".join(funeral_parts) + (f". {notas}" if notas else "")
+            notas = " | ".join(funeral_parts) + (f" | {notas}" if notas else "")
         # Recalc total with funeral shipping
         total = subtotal + impuesto + envio - descuento + comision + cargo_hora
 
@@ -338,6 +338,16 @@ async def _pos_crear_pedido_inner(request, db):
         _estado = EP.PENDIENTE_PAGO
         _estado_fl = EF.PENDIENTE_PAGO
 
+    # Para funeral: receptor es el fallecido, dirección es la funeraria
+    _receptor = data.get("nombre_destinatario")
+    _dir_entrega = data.get("direccion_entrega")
+    if es_funeral:
+        _receptor = data.get("nombre_fallecido") or _receptor
+        if not _dir_entrega and data.get("funeraria_id"):
+            fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
+            if fun:
+                _dir_entrega = f"{fun.nombre}" + (f" — {fun.direccion}" if fun.direccion else "")
+
     pedido = Pedido(
         numero=folio,
         customer_id=cliente_id,
@@ -350,8 +360,8 @@ async def _pos_crear_pedido_inner(request, db):
         horario_entrega=horario,
         hora_exacta=data.get("hora_especifica"),
         zona_entrega=zona,
-        direccion_entrega=data.get("direccion_entrega"),
-        receptor_nombre=data.get("nombre_destinatario"),
+        direccion_entrega=_dir_entrega,
+        receptor_nombre=_receptor,
         receptor_telefono=data.get("telefono_destinatario"),
         dedicatoria=data.get("dedicatoria"),
         notas_internas=notas or None,
