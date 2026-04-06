@@ -472,10 +472,22 @@ function buildW3Form() {
     html += `<div class="fbox"><h4>Datos del funeral</h4>
       <div class="frow" id="fr-funeraria"><label>Funeraria *</label>
         <div id="w3-fun-box">
-          ${funerariaSel ? `<div class="client-sel"><div class="cname">${funerariaSel.nombre}</div><div class="cphone">${funerariaSel.zona} — $${funerariaSel.costo_envio/100}</div><button class="cbtn" onclick="abrirBuscarFuneraria()">Cambiar</button></div>` : `<div class="client-box" onclick="abrirBuscarFuneraria()">Seleccionar funeraria</div>`}
+          ${funerariaSel ? `<div class="client-sel"><div class="cname">${funerariaSel.es_domicilio ? '🏠 ' : ''}${funerariaSel.nombre}</div><div class="cphone">${funerariaSel.es_domicilio ? 'Selecciona zona abajo' : funerariaSel.zona + ' — $' + funerariaSel.costo_envio/100}</div><button class="cbtn" onclick="abrirBuscarFuneraria()">Cambiar</button></div>` : `<div class="client-box" onclick="abrirBuscarFuneraria()">Seleccionar funeraria</div>`}
         </div>
         <div class="errmsg">Selecciona una funeraria</div>
       </div>
+      ${funerariaSel && funerariaSel.es_domicilio ? `
+      <div class="frow" id="fr-fun-dir"><label>Dirección de entrega *</label><input type="text" id="f-fun-dir" placeholder="Calle, número, colonia"><div class="errmsg">Campo obligatorio</div></div>
+      <div class="frow"><label>Referencias</label><input type="text" id="f-fun-ref" placeholder="Entre calles, color de casa..."></div>
+      <div class="frow" id="fr-fun-zona"><label>Zona de envío *</label>
+        <select id="f-fun-zona" onchange="onFunZonaChange()" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+          <option value="">Selecciona zona</option>
+          <option value="Morada">Morada — $99</option>
+          <option value="Azul">Azul — $159</option>
+          <option value="Verde">Verde — $199</option>
+        </select>
+        <div class="errmsg">Selecciona zona</div>
+      </div>` : ''}
       <div class="frow" id="fr-fallecido"><label>Nombre del fallecido *</label><input type="text" id="f-fallecido"><div class="errmsg">Campo obligatorio</div></div>
       <div class="frow"><label>Sala</label><input type="text" id="f-sala"></div>
       <div class="frow"><label>Texto banda</label><input type="text" id="f-banda"></div>
@@ -693,17 +705,38 @@ function buscarFunerarias() {
 
 function renderFunerarias(q) {
   const filtered = q ? allFunerarias.filter(f => f.nombre.toLowerCase().includes(q)) : allFunerarias;
-  document.getElementById('modal-fun-results').innerHTML = filtered.map(f =>
+  // Opción domicilio particular siempre arriba
+  let html = `<div class="modal-item" style="border-bottom:2px solid var(--dorado);background:#faf8f5" onclick="selFunerariaDomicilio()">
+    <strong>🏠 Funeral en domicilio particular</strong><br><span style="font-size:11px;color:var(--texto2)">Ingresa dirección — costo según zona</span>
+  </div>`;
+  html += filtered.map(f =>
     `<div class="modal-item" onclick="selFuneraria(${f.id},'${esc(f.nombre)}','${f.zona}',${f.costo_envio})">
       <strong>${f.nombre}</strong> — ${f.zona} $${f.costo_envio/100}
     </div>`
-  ).join('') || '<div style="padding:10px;color:var(--texto2);font-size:12px">Sin resultados</div>';
+  ).join('') || '';
+  document.getElementById('modal-fun-results').innerHTML = html;
 }
 
 function selFuneraria(id, nombre, zona, costo) {
-  funerariaSel = {id, nombre, zona, costo_envio: costo};
+  funerariaSel = {id, nombre, zona, costo_envio: costo, es_domicilio: false};
   document.getElementById('modal-funeraria').classList.remove('active');
   buildW3Form();
+}
+
+function selFunerariaDomicilio() {
+  funerariaSel = {id: null, nombre: 'Domicilio particular', zona: null, costo_envio: 0, es_domicilio: true};
+  document.getElementById('modal-funeraria').classList.remove('active');
+  buildW3Form();
+}
+
+function onFunZonaChange() {
+  const zona = document.getElementById('f-fun-zona')?.value;
+  const costos = {Morada: 9900, Azul: 15900, Verde: 19900};
+  if (funerariaSel && funerariaSel.es_domicilio) {
+    funerariaSel.zona = zona;
+    funerariaSel.costo_envio = costos[zona] || 0;
+    updateSummary();
+  }
 }
 
 // ─── Payments ───
@@ -953,6 +986,11 @@ function validate() {
   }
   if (ordenTipo === 'funeral') {
     if (!funerariaSel) errors.push(setError('fr-funeraria') && 'fr-funeraria');
+    if (funerariaSel && funerariaSel.es_domicilio) {
+      if (!val('f-fun-dir', 'fr-fun-dir')) errors.push('fr-fun-dir');
+      const zona = document.getElementById('f-fun-zona')?.value;
+      if (!zona) errors.push(setError('fr-fun-zona') && 'fr-fun-zona');
+    }
     if (!val('f-fallecido', 'fr-fallecido')) errors.push('fr-fallecido');
   }
   if (ordenTipo === 'recoger') {
@@ -1032,6 +1070,12 @@ function buildPayload(estado) {
     body.dedicatoria = document.getElementById('f-dedicatoria-fun')?.value || '';
     body.fecha_entrega = document.getElementById('f-fecha-fun')?.value || todayStr();
     body.horario_velacion = velHorario === 'hora' ? (document.getElementById('f-vel-hora')?.value || '') : (velHorario || '');
+    // Domicilio particular
+    if (funerariaSel && funerariaSel.es_domicilio) {
+      body.direccion_entrega = document.getElementById('f-fun-dir')?.value || '';
+      body.notas_entrega = document.getElementById('f-fun-ref')?.value || '';
+      body.zona_envio = document.getElementById('f-fun-zona')?.value || null;
+    }
   }
 
   if (ordenTipo === 'recoger') {
