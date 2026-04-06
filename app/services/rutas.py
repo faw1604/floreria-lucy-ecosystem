@@ -12,7 +12,7 @@ logger = logging.getLogger("floreria")
 _GEOJSON_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "scripts",
-    "rutas_chihuahua.geojson",
+    "rutas.geojson",
 )
 
 # Cargar zonas en memoria al importar
@@ -21,7 +21,7 @@ _ZONAS: list[tuple[str, object]] = []
 with open(_GEOJSON_PATH, "r", encoding="utf-8") as _f:
     _data = json.load(_f)
     for _feat in _data["features"]:
-        _name = _feat["properties"]["name"]
+        _name = _feat["properties"].get("nombre") or _feat["properties"].get("name", "?")
         _poly = shape(_feat["geometry"])
         _ZONAS.append((_name, _poly))
 
