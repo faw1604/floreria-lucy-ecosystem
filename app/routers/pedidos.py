@@ -182,6 +182,7 @@ async def estado_pedido_cliente(
         raise HTTPException(status_code=404, detail="Sin pedidos")
 
     return {
+        "id": pedido.id,
         "folio": pedido.numero,
         "estado": pedido.estado,
         "estado_florista": pedido.estado_florista,

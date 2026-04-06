@@ -2657,19 +2657,59 @@ async function aprobarEnviarTicket(id) {
     const r = await fetch(`/pos/pedido/${id}/aprobar-enviar-ticket`, {method:'POST', credentials:'include'});
     const text = await r.text();
     let data = {};
-    try { data = JSON.parse(text); } catch(_) { /* respuesta no JSON */ }
+    try { data = JSON.parse(text); } catch(_) {}
     if (!r.ok) {
+      // Si falta método de pago → mostrar selector
+      if (data.detail && data.detail.includes('método de pago')) {
+        mostrarSelectorFormaPago(id);
+        return;
+      }
       alert(data.detail || text || 'Error al enviar ticket');
       return;
     }
-    // Status 200 OK — siempre exitoso
     alert(data.mensaje || 'Ticket enviado ✓');
     _lastPendHash = '';
     loadPendientes();
   } catch(e) {
-    // Solo errores reales de red (fetch failed, sin conexión)
     alert('Error de red: ' + (e.message || 'sin conexión'));
   }
+}
+
+function mostrarSelectorFormaPago(pedidoId) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15)">
+      <h3 style="margin:0 0 4px;font-size:16px;color:#193a2c">Método de pago</h3>
+      <p style="margin:0 0 16px;font-size:13px;color:#5a5a5a">Este pedido no tiene método de pago. Selecciona uno para continuar.</p>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button id="fp-sel-trans" style="flex:1;padding:14px;border:2px solid #e5e0d8;border-radius:12px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-align:center" onclick="this.style.borderColor='#193a2c';this.style.background='#e8f5ec';document.getElementById('fp-sel-oxxo').style.borderColor='#e5e0d8';document.getElementById('fp-sel-oxxo').style.background='#fff';document.getElementById('fp-sel-value').value='Transferencia'">Transferencia</button>
+        <button id="fp-sel-oxxo" style="flex:1;padding:14px;border:2px solid #e5e0d8;border-radius:12px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-align:center" onclick="this.style.borderColor='#193a2c';this.style.background='#e8f5ec';document.getElementById('fp-sel-trans').style.borderColor='#e5e0d8';document.getElementById('fp-sel-trans').style.background='#fff';document.getElementById('fp-sel-value').value='OXXO'">OXXO</button>
+      </div>
+      <input type="hidden" id="fp-sel-value" value="">
+      <div style="display:flex;gap:8px">
+        <button id="fp-sel-cancel" style="flex:1;padding:10px;border:1px solid #e5e0d8;border-radius:8px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px">Cancelar</button>
+        <button id="fp-sel-confirm" style="flex:1;padding:10px;border:none;border-radius:8px;background:#193a2c;color:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600">Asignar y enviar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('fp-sel-cancel').addEventListener('click', () => overlay.remove());
+  document.getElementById('fp-sel-confirm').addEventListener('click', async () => {
+    const fp = document.getElementById('fp-sel-value').value;
+    if (!fp) { alert('Selecciona un método de pago'); return; }
+    try {
+      // 1. Actualizar forma_pago
+      const r1 = await fetch(`/pos/pedido/${pedidoId}/actualizar-forma-pago`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({forma_pago: fp})
+      });
+      if (!r1.ok) { alert('Error al asignar método de pago'); return; }
+      // 2. Reintentar enviar ticket
+      overlay.remove();
+      aprobarEnviarTicket(pedidoId);
+    } catch(e) { alert('Error de red'); }
+  });
 }
 
 async function confirmarPagoPos(id) {

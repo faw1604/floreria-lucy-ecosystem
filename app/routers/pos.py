@@ -689,6 +689,29 @@ async def pos_cambiar_estado(
     return {"ok": True, "folio": pedido.numero, "estado_anterior": estado_anterior, "estado_nuevo": nuevo_estado}
 
 
+@router.patch("/pedido/{pedido_id}/actualizar-forma-pago")
+async def pos_actualizar_forma_pago(
+    pedido_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Actualiza forma_pago de un pedido (solo Transferencia u OXXO)."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    data = await request.json()
+    forma_pago = data.get("forma_pago")
+    if forma_pago not in ("Transferencia", "OXXO"):
+        raise HTTPException(status_code=400, detail="Método de pago inválido")
+    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    pedido.forma_pago = forma_pago
+    await db.commit()
+    return {"ok": True, "folio": pedido.numero, "forma_pago": forma_pago}
+
+
 @router.post("/pedido/{pedido_id}/aprobar-enviar-ticket")
 async def pos_aprobar_enviar_ticket(
     pedido_id: int,
