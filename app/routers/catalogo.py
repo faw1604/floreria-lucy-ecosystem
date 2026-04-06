@@ -275,12 +275,20 @@ async def _enviar_whatsapp(telefono: str, mensaje: str):
     # Normalizar a solo dígitos
     digitos = "".join(c for c in telefono if c.isdigit())
     if len(digitos) == 10:
+        # 10 dígitos sin código de país → asumir México
         digitos = "521" + digitos
-    elif not digitos.startswith("521"):
-        if digitos.startswith("52"):
-            digitos = "521" + digitos[2:]
-        else:
-            digitos = "521" + digitos
+    elif digitos.startswith("52") and not digitos.startswith("521"):
+        # México con 52 pero sin 1 → agregar 1
+        digitos = "521" + digitos[2:]
+    elif digitos.startswith("1") and len(digitos) == 11:
+        # USA/Canadá: 1 + 10 dígitos → dejar como está
+        pass
+    elif len(digitos) > 10 and not digitos.startswith("52") and not digitos.startswith("1"):
+        # Otro país con código → dejar como está
+        pass
+    elif len(digitos) <= 10 and not digitos.startswith("521"):
+        # Fallback: asumir México
+        digitos = "521" + digitos
     logger.info(f"[WHAPI] Enviando via Claudia a {digitos}")
     try:
         headers = {"Content-Type": "application/json"}
