@@ -452,11 +452,39 @@ function setProdSub(sub) {
 }
 
 // ─── Badges (every 15s) ───
+// --- Sonido de notificación para pedidos nuevos ---
+let _lastNuevosCount = -1;
+const _notifSound = (function() {
+  // Generar tono "ding" con Web Audio API
+  let ctx = null;
+  return function() {
+    try {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1); // C#6
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.5);
+    } catch(e) {}
+  };
+})();
+
 async function loadBadges() {
   try {
     const r = await fetch(`${TALLER_API}/badges`, {credentials:'include'});
     if (!r.ok) return;
     const d = await r.json();
+    // Sonar si hay pedidos nuevos que antes no estaban
+    if (_lastNuevosCount >= 0 && d.nuevos > _lastNuevosCount) {
+      _notifSound();
+    }
+    _lastNuevosCount = d.nuevos;
     setBadge('badge-nuevos', d.nuevos);
     setBadge('badge-produccion', d.produccion);
     setBadge('badge-recoger', d.por_recoger);
