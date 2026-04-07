@@ -680,6 +680,7 @@ function renderCardNuevos(p) {
       ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
       ${p.nota_florista ? `<div class="kds-notas" style="border-left-color:var(--azul)">Nota florista: ${p.nota_florista}</div>` : ''}
     </div>
+    <div style="padding:0 12px 8px"><button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')" style="width:100%">📷 Ver foto del producto</button></div>
     ${actionsHtml}
   </div>`;
 }
@@ -716,8 +717,8 @@ function renderCardProduccion(p) {
       ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
       ${!esPendientePago && timerProd ? `<div class="kds-detail" style="margin-top:4px">🔧 En produccion ${timerProd}</div>` : ''}
     </div>
+    <div style="padding:0 12px 4px"><button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')" style="width:100%">📷 Ver foto</button></div>
     ${esPendientePago ? '' : `<div class="kds-actions">
-      <button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')">📷 Ver foto</button>
       <button class="act-btn btn-secondary" onclick="listoCurrentId=${p.id};listoImprimirEtiqueta2x1()">🏷 Etiqueta</button>
       <button class="act-btn btn-listo" onclick="accionListo(${p.id})">✅ LISTO</button>
     </div>`}
