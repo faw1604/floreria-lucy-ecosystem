@@ -895,10 +895,10 @@ async def corte_pdf(
 
     # Fetch ingresos
     ri = await db.execute(text(f"""
-        SELECT p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador') as cli, p.canal, p.forma_pago, p.total
+        SELECT p.numero, p.pago_confirmado_at::date, COALESCE(c.nombre,'Mostrador') as cli, p.canal, p.forma_pago, p.total
         FROM pedidos p LEFT JOIN clientes c ON c.id=p.customer_id
-        WHERE p.fecha_entrega BETWEEN :d AND :h AND {_VENTAS_WHERE}
-        ORDER BY p.fecha_entrega, p.id
+        WHERE p.pago_confirmado_at::date BETWEEN :d AND :h AND {_VENTAS_WHERE}
+        ORDER BY p.pago_confirmado_at, p.id
     """), _dp(desde, hasta))
     ingresos = ri.fetchall()
     total_ing = sum(r[5] for r in ingresos)
