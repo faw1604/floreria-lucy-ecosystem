@@ -453,16 +453,31 @@ function buildW3Form() {
       </div>
     </div>`;
 
-    // Zona de envio
-    html += `<div class="fbox"><h4>Zona de envio</h4>
+    // Zona de envio y ruta
+    html += `<div class="fbox"><h4>Zona de envio y ruta</h4>
       <div id="zona-auto" style="margin-bottom:8px"></div>
-      <div class="frow"><label>Zona</label>
-        <select id="f-zona" onchange="onZonaChange()">
-          <option value="">Seleccionar...</option>
-          <option value="Morada">Morada — $99</option>
-          <option value="Azul">Azul — $159</option>
-          <option value="Verde">Verde — $199</option>
-        </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="frow"><label>Tarifa</label>
+          <select id="f-zona" onchange="onZonaChange()">
+            <option value="">Seleccionar...</option>
+            <option value="Morada">Morada — $99</option>
+            <option value="Azul">Azul — $159</option>
+            <option value="Verde">Verde — $199</option>
+          </select>
+        </div>
+        <div class="frow"><label>Ruta</label>
+          <select id="f-ruta" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
+            <option value="">Seleccionar...</option>
+            <option value="Zona Central">Zona Central</option>
+            <option value="NORTE">Norte</option>
+            <option value="NORESTE">Noreste</option>
+            <option value="NOROESTE">Noroeste</option>
+            <option value="PONIENTE">Poniente</option>
+            <option value="SUR">Sur</option>
+            <option value="ORIENTE">Oriente</option>
+            <option value="SURESTE">Sureste</option>
+          </select>
+        </div>
       </div>
     </div>`;
   }
@@ -591,6 +606,8 @@ async function onDirVerificada() {
         `<span class="zona-badge" style="background:#e8eaed;color:var(--texto)">${data.ruta || '?'}</span>`;
       const zonaEl = document.getElementById('f-zona');
       if (zonaEl && data.zona_envio) zonaEl.value = data.zona_envio;
+      const rutaEl = document.getElementById('f-ruta');
+      if (rutaEl && data.ruta) rutaEl.value = data.ruta;
     }
   } catch(e) {
     document.getElementById('geo-badge').innerHTML = '<span style="font-size:11px;color:var(--rojo)">Error de red</span>';
@@ -1057,7 +1074,7 @@ function buildPayload(estado) {
     body.horario_entrega = selHorario;
     body.hora_especifica = selHorario === 'hora_especifica' ? horaEspecifica : null;
     body.zona_envio = document.getElementById('f-zona')?.value || null;
-    body.ruta = geoData?.ruta || null;
+    body.ruta = document.getElementById('f-ruta')?.value || geoData?.ruta || null;
     body.lat = geoData?.lat || null;
     body.lng = geoData?.lng || null;
   }
