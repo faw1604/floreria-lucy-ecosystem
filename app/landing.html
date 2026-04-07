@@ -238,7 +238,7 @@ tailwind.config = {
         </span>
       </a>
       <div class="hidden md:flex items-center gap-8">
-        <a href="/catalogo/?modo=dynamic" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-1">Catalogo</a>
+        <a href="/catalogo/?modo=classic" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-1">Catalogo</a>
         <a href="/historia" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-2">Historia</a>
         <a href="/contacto" class="text-sm font-medium text-white/80 hover:text-white transition-colors" id="nav-link-3">Contacto</a>
         <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
@@ -256,7 +256,7 @@ tailwind.config = {
   </div>
   <div class="md:hidden overflow-hidden max-h-0 transition-all duration-300 bg-verde/95 backdrop-blur-md" id="mobile-menu">
     <div class="px-6 py-4 flex flex-col gap-3">
-      <a href="/catalogo/?modo=dynamic" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Catalogo</a>
+      <a href="/catalogo/?modo=classic" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Catalogo</a>
       <a href="/historia" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Historia</a>
       <a href="/contacto" onclick="closeMobileNav()" class="text-white/90 font-medium py-2 border-b border-white/10">Contacto</a>
       <a href="https://wa.me/5216143349392" target="_blank" rel="noopener"
@@ -271,7 +271,7 @@ tailwind.config = {
 <section class="relative min-h-screen flex items-center overflow-hidden" id="hero-section">
   <!-- Parallax Background -->
   <div class="absolute inset-0" id="hero-bg" style="will-change:transform">
-    <img src="https://res.cloudinary.com/ddku2wmpk/image/upload/q_auto,f_auto,w_1600/v1774476982/floreria-lucy/hero.jpg"
+    <img id="hero-img" src="https://res.cloudinary.com/ddku2wmpk/image/upload/q_auto,f_auto,w_1600/v1774476982/floreria-lucy/hero.jpg"
          alt="Floreria Lucy arreglos florales"
          class="w-full h-[120%] object-cover"
          loading="eager" fetchpriority="high">
@@ -283,12 +283,12 @@ tailwind.config = {
       <!-- Text -->
       <div class="text-center lg:text-left">
         <p class="fade-up text-dorado font-semibold text-sm tracking-widest uppercase mb-4">Desde 1988 en Chihuahua</p>
-        <h1 class="fade-up fade-up-d1 font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight mb-6">
+        <h1 id="hero-titulo" class="fade-up fade-up-d1 font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-tight mb-6">
           La expresion<br>del <span class="text-dorado italic">amor</span>
         </h1>
         <!-- Typewriter subtitle -->
         <p class="fade-up fade-up-d2 text-lg sm:text-xl text-white/80 max-w-lg mx-auto lg:mx-0 mb-10 leading-relaxed">
-          <span class="typewriter">Descubre el arreglo perfecto deslizando como nunca antes.</span>
+          <span id="hero-subtitulo" class="typewriter">Descubre el arreglo perfecto deslizando como nunca antes.</span>
         </p>
         <div class="fade-up fade-up-d3 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start px-2 sm:px-0">
           <a href="/catalogo/?modo=dynamic"
@@ -806,7 +806,28 @@ async function loadCombos() {
 }
 
 // --- Init ---
+// --- Cargar config del hero desde admin ---
+async function loadHeroConfig() {
+  try {
+    const r = await fetch('/catalogo/config');
+    if (!r.ok) return;
+    const cfg = await r.json();
+    if (cfg.hero_titulo) {
+      document.getElementById('hero-titulo').innerHTML = cfg.hero_titulo;
+    }
+    if (cfg.hero_subtitulo) {
+      const el = document.getElementById('hero-subtitulo');
+      if (el) el.textContent = cfg.hero_subtitulo;
+    }
+    if (cfg.hero_imagen) {
+      const img = document.getElementById('hero-img');
+      if (img) img.src = cfg.hero_imagen;
+    }
+  } catch(e) {}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  loadHeroConfig();
   loadCategories();
   loadCombos();
 });

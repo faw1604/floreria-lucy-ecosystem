@@ -2912,9 +2912,8 @@ function startFechaEspecial() {
 (function() {
   const params = new URLSearchParams(window.location.search);
   const modo = params.get('modo');
-  if (modo === 'dynamic' || modo === 'classic') {
-    startMode(modo);
-  }
+  // Si viene con ?modo= → usar ese modo. Si no → classic por defecto (quitar landing vieja)
+  startMode(modo === 'dynamic' ? 'dynamic' : 'classic');
   // Pick up products added from producto.html page
   const pending = JSON.parse(localStorage.getItem('fl_add_to_cart') || '[]');
   if (pending.length > 0) {
