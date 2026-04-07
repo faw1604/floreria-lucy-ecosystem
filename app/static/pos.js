@@ -2598,24 +2598,23 @@ function fmtPrecioTk(centavos) {
 
 function fechaTicket(str) {
   if (!str) return '';
-  const d = new Date((str||'').replace(' ','T'));
-  if (isNaN(d)) return sanitizarTexto(str);
-  const dias = ['DOM','LUN','MAR','MIE','JUE','VIE','SAB'];
-  const meses = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-  const dia = dias[d.getDay()];
-  const dd = d.getDate();
-  const mes = meses[d.getMonth()];
-  const yyyy = d.getFullYear();
-  const hasTime = (str||'').includes(':');
-  if (!hasTime) return `${dia} ${dd} ${mes} ${yyyy}`;
-  let h = d.getHours(), m = d.getMinutes();
-  const ap = h >= 12 ? 'PM' : 'AM';
-  if (h === 0) h = 12; else if (h > 12) h -= 12;
-  return `${dia} ${dd} ${mes} ${yyyy}  ${h}:${String(m).padStart(2,'0')} ${ap}`;
+  const s = String(str);
+  const hasTime = s.includes(':');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    // Date-only
+    const d = new Date(s + 'T12:00:00');
+    if (isNaN(d)) return sanitizarTexto(s);
+    return d.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone:'America/Chihuahua'}).toUpperCase();
+  }
+  const d = new Date(s.replace(' ', 'T'));
+  if (isNaN(d)) return sanitizarTexto(s);
+  const fecha = d.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone:'America/Chihuahua'}).toUpperCase();
+  const hora = d.toLocaleTimeString('es-MX', {hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chihuahua'}).toLowerCase();
+  return `${fecha}, ${hora}`;
 }
 
 function fechaLargaHoy() {
-  const d = new Date();
+  const d = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Chihuahua'}));
   const meses = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
   return `CHIHUAHUA, CHIH., A ${d.getDate()} DE ${meses[d.getMonth()]} DE ${d.getFullYear()}`;
 }
