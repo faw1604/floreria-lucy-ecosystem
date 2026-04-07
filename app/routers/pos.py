@@ -629,12 +629,9 @@ async def pos_pedidos_hoy(
                 continue
 
         data = await _serializar_pedido_pos(p, db)
-        # Convert UTC to Chihuahua for display
+        # fecha_pedido ya está en hora Chihuahua (guardada con ahora())
         if p.fecha_pedido:
-            from zoneinfo import ZoneInfo
-            utc_dt = p.fecha_pedido.replace(tzinfo=ZoneInfo("UTC"))
-            chih_dt = utc_dt.astimezone(TZ)
-            data["fecha_pedido"] = chih_dt.strftime("%Y-%m-%d %H:%M")
+            data["fecha_pedido"] = p.fecha_pedido.strftime("%Y-%m-%d %H:%M")
         else:
             data["fecha_pedido"] = None
         if p.estado in ("Pendiente pago", "pendiente_pago", "comprobante_recibido", "esperando_validacion"):

@@ -1644,7 +1644,7 @@ function renderPendTable(rows) {
   tbody.innerHTML = rows.map(p => {
     const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
     const fechaEntrega = formatearFecha(p.fecha_entrega) || '';
-    const horaPedido = p.fecha_pedido ? formatearFecha(p.fecha_pedido) : '';
+    const horaPedido = p.fecha_pedido ? formatearFechaLocal(p.fecha_pedido) : '';
     const ec = estadoClass(p.estado);
     // Delivery details sub-row
     const horLbl = p.hora_exacta || {manana:'Mañana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'}[p.horario_entrega] || p.horario_entrega || '';
@@ -2625,17 +2625,36 @@ const _meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov
 function formatearFecha(str) {
   if (!str) return '';
   const s = String(str);
-  // Date-only: use toLocaleDateString with timezone
+  // Date-only: safe parse with T12:00:00
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const d = new Date(s + 'T12:00:00');
     if (isNaN(d)) return s;
     return d.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone:'America/Chihuahua'});
   }
-  // DateTime: parse and display with timezone
+  // DateTime: ya viene en hora Chihuahua del backend, NO convertir timezone
+  return formatearFechaLocal(s);
+}
+
+function formatearFechaLocal(str) {
+  // Para fechas que YA son hora Chihuahua (fecha_pedido, pago_confirmado_at)
+  // NO usa timeZone param para evitar doble conversión
+  if (!str) return '';
+  const s = String(str);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const d = new Date(s + 'T12:00:00');
+    if (isNaN(d)) return s;
+    const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
+    const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    return `${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  }
   const d = new Date(s.replace(' ', 'T'));
   if (isNaN(d)) return s;
-  return d.toLocaleDateString('es-MX', {weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone:'America/Chihuahua'}) + ', ' +
-    d.toLocaleTimeString('es-MX', {hour:'numeric', minute:'2-digit', hour12:true, timeZone:'America/Chihuahua'});
+  const dias = ['dom','lun','mar','mié','jue','vie','sáb'];
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  let h = d.getHours(), m = d.getMinutes();
+  const ap = h >= 12 ? 'p.m.' : 'a.m.';
+  if (h === 0) h = 12; else if (h > 12) h -= 12;
+  return `${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}, ${h}:${String(m).padStart(2,'0')} ${ap}`;
 }
 
 function buildHoraOptions() {
