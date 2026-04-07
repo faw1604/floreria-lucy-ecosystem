@@ -256,12 +256,14 @@ function prodFilterUrl() {
   const status = document.getElementById('prod-status-filter')?.value || '';
   const cat = document.getElementById('prod-cat-filter')?.value || '';
   const q = (document.getElementById('prod-search')?.value || '').trim();
+  const stock = document.getElementById('prod-stock-filter')?.value || '';
   const catVisible = status === '1' ? 'true' : status === '0' ? 'false' : '';
   // activo=true por defecto — no mostrar productos eliminados
   let url = API + '/productos/?activo=true&offset=' + prodOffset + '&limit=' + PROD_PAGE;
   if (catVisible) url += '&visible_catalogo=' + catVisible;
   if (cat) url += '&categoria=' + encodeURIComponent(cat);
   if (q) url += '&buscar=' + encodeURIComponent(q);
+  if (stock) url += '&stock_filter=' + stock;
   return url;
 }
 
