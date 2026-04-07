@@ -1643,7 +1643,8 @@ function renderPendTable(rows) {
   empty.style.display = 'none';
   tbody.innerHTML = rows.map(p => {
     const itemsHtml = (p.items||[]).map(it => `<div>${it.cantidad}x ${esc(it.nombre)}</div>`).join('');
-    const fecha = formatearFecha(p.fecha_entrega) || '';
+    const fechaEntrega = formatearFecha(p.fecha_entrega) || '';
+    const horaPedido = p.fecha_pedido ? formatearFecha(p.fecha_pedido) : '';
     const ec = estadoClass(p.estado);
     // Delivery details sub-row
     const horLbl = p.hora_exacta || {manana:'Mañana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'}[p.horario_entrega] || p.horario_entrega || '';
@@ -1657,7 +1658,7 @@ function renderPendTable(rows) {
     const detailRow = detParts.length ? `<tr><td colspan="9" style="padding:0 12px 8px;font-size:11px;color:var(--texto2);line-height:1.8;border-top:none">${detParts.join('<br>')}</td></tr>` : '';
     return `<tr${detParts.length ? ' style="border-bottom:none"' : ''}>
       <td style="font-weight:600;color:var(--verde);white-space:nowrap">${p.folio}${p.requiere_factura ? ' <span style="background:#d4a843;color:#193a2c;font-size:9px;padding:2px 5px;border-radius:4px;font-weight:700;vertical-align:middle">FACTURA</span>' : ''}</td>
-      <td style="white-space:nowrap;font-size:11px">${fecha}</td>
+      <td style="white-space:nowrap;font-size:11px">${fechaEntrega}${horaPedido ? '<br><span style="color:var(--texto2);font-size:10px">Pedido: '+horaPedido+'</span>' : ''}</td>
       <td>${p.cliente_nombre || 'Mostrador'}</td>
       <td>${canalLabel(p.canal)}</td>
       <td><span class="items-link">${(p.items||[]).length} items<span class="items-tooltip">${itemsHtml}</span></span></td>

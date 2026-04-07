@@ -1390,7 +1390,32 @@ async def pos_cancelar_pedido(
     pedido.estado = "Cancelado"
     pedido.estado_florista = "cancelado"
     await db.commit()
-    return {"ok": True}
+
+    # Enviar WhatsApp de cancelación al cliente (solo web/WhatsApp, no mostrador)
+    if pedido.canal in ("Web", "WhatsApp") and pedido.customer_id:
+        try:
+            cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cli = cli_r.scalar_one_or_none()
+            if cli and cli.telefono:
+                import asyncio
+                from app.routers.catalogo import _enviar_whatsapp
+                _tel = cli.telefono
+                _folio = pedido.numero
+                async def _send():
+                    try:
+                        await _enviar_whatsapp(_tel,
+                            f"Tu pedido {_folio} ha sido cancelado por falta de respuesta. "
+                            f"Por favor no realices ningún pago ya que tu pedido no será registrado.\n\n"
+                            f"Si deseas hacer un nuevo pedido:\n"
+                            f"www.florerialucy.com 🌸"
+                        )
+                    except Exception:
+                        pass
+                asyncio.create_task(_send())
+        except Exception:
+            pass
+
+    return {"ok": True, "folio": pedido.numero}
 
 
 @router.post("/enviar-whatsapp-cliente")
