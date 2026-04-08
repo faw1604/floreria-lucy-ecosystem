@@ -80,7 +80,6 @@ async def autocomplete(texto: str) -> list[dict]:
     params = {
         "input": texto,
         "key": GOOGLE_KEY,
-        "types": "address",
         "language": "es",
         "components": "country:mx",
         "location": f"{(LAT_MIN+LAT_MAX)/2},{(LNG_MIN+LNG_MAX)/2}",
