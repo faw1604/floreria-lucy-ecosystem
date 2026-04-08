@@ -189,6 +189,22 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 .lote-title{font-size:18px;font-weight:800;color:var(--verde);margin-bottom:8px}
 .lote-stats{font-size:14px;color:var(--texto2);margin-bottom:12px;display:flex;gap:16px;flex-wrap:wrap}
 .lote-stat{font-weight:600}
+
+/* Temporada */
+.temp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.temp-card{background:var(--blanco);border-radius:14px;box-shadow:var(--sombra);overflow:hidden;display:flex;flex-direction:column}
+.temp-img{width:100%;height:160px;object-fit:cover;background:var(--crema)}
+.temp-body{padding:14px 16px;flex:1}
+.temp-nombre{font-size:15px;font-weight:700;color:var(--texto);margin-bottom:4px}
+.temp-codigo{font-size:12px;color:var(--texto2);margin-bottom:8px}
+.temp-stock{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.temp-stock-num{font-size:24px;font-weight:800;color:var(--verde)}
+.temp-stock-label{font-size:12px;color:var(--texto2)}
+.temp-stock-zero{color:var(--rojo)}
+.temp-actions{padding:10px 16px 14px;border-top:1px solid var(--borde)}
+.btn-temp-listo{width:100%;padding:10px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;background:var(--verde-c);color:#fff;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-temp-listo:hover{background:#15803d}
+.btn-temp-listo:active{transform:scale(.97)}
 </style>
 </head>
 <body>
@@ -211,6 +227,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <button class="tab" data-tab="realizados">Realizados</button>
   <button class="tab" data-tab="reservas">Reservas <span class="tab-badge" id="badge-reservas"></span></button>
   <button class="tab" data-tab="inventario">Inventario</button>
+  <button class="tab" data-tab="temporada" id="tab-temporada" style="display:none">🌸 Temporada <span class="tab-badge" id="badge-temporada"></span></button>
 </div>
 
 <div class="main">
@@ -274,6 +291,14 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
     <div id="inv-floral"></div>
     <div id="inv-no-floral" style="display:none"></div>
     <div class="inv-note">Los insumos marcados con <strong>⚡</strong> se descuentan automaticamente al elaborar pedidos</div>
+  </div>
+
+  <!-- TEMPORADA -->
+  <div class="tab-content" id="content-temporada">
+    <div class="toolbar">
+      <div class="toolbar-title" id="temporada-title">🌸 Productos de Temporada</div>
+    </div>
+    <div id="temporada-body"><div class="empty">Cargando...</div></div>
   </div>
 </div>
 
@@ -395,6 +420,18 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   </div>
 </div>
 
+<!-- Modal: Agregar Stock Temporada -->
+<div class="modal-overlay" id="modal-temp-stock" onclick="if(event.target===this)closeModal('modal-temp-stock')">
+  <div class="modal-box" style="max-width:400px;text-align:center">
+    <button class="modal-close" onclick="closeModal('modal-temp-stock')">&times;</button>
+    <div class="modal-title" style="text-align:center">✅ Marcar listo</div>
+    <p style="font-size:14px;color:var(--texto2);margin-bottom:4px" id="temp-stock-nombre"></p>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:16px">¿Cuantos arreglos realizaste?</p>
+    <input type="number" class="modal-input" id="temp-stock-cantidad" min="1" value="1" style="text-align:center;font-size:20px;font-weight:700;max-width:120px;margin:0 auto 16px;display:block">
+    <button class="modal-submit" id="temp-stock-submit" style="width:100%">Confirmar</button>
+  </div>
+</div>
+
 <div id="print-frame"></div>
 <div id="print-etiquetas"></div>
 
@@ -440,6 +477,7 @@ function refreshTab(tab) {
   else if (tab === 'realizados') loadRealizados();
   else if (tab === 'reservas') { loadReservas(); loadReservasResumen(); }
   else if (tab === 'inventario') loadInventario();
+  else if (tab === 'temporada') loadTemporada();
 }
 
 // ─── Sub-tabs Produccion ───
@@ -1588,6 +1626,88 @@ function abrirDescartar(id) {
   document.getElementById('modal-descartar').classList.add('active');
 }
 
+// ─── TEMPORADA ───
+let temporadaActiva = false;
+let tempStockProductoId = null;
+
+async function checkTemporada() {
+  try {
+    const r = await fetch(`${TALLER_API}/productos-temporada`, {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.temporada_activa) {
+      temporadaActiva = true;
+      document.getElementById('tab-temporada').style.display = '';
+      document.getElementById('temporada-title').textContent = '🌸 ' + (data.categoria || 'Temporada');
+      renderTemporada(data);
+    }
+  } catch(e) {}
+}
+
+async function loadTemporada() {
+  if (!temporadaActiva) return;
+  try {
+    const r = await fetch(`${TALLER_API}/productos-temporada`, {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    renderTemporada(data);
+  } catch(e) {}
+}
+
+function renderTemporada(data) {
+  const productos = data.productos || [];
+  const el = document.getElementById('temporada-body');
+  // Badge: count with stock_activo and stock=0
+  const sinStock = productos.filter(p => p.stock_activo && p.stock <= 0).length;
+  setBadge('badge-temporada', sinStock);
+
+  if (!productos.length) {
+    el.innerHTML = '<div class="empty">No hay productos de temporada configurados</div>';
+    return;
+  }
+
+  let html = '<div class="temp-grid">';
+  productos.forEach(p => {
+    const stockClass = p.stock <= 0 ? 'temp-stock-zero' : '';
+    html += `<div class="temp-card">
+      ${p.imagen_url ? `<img class="temp-img" src="${p.imagen_url}" alt="${esc(p.nombre)}" onerror="this.style.display='none'">` : '<div class="temp-img" style="display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--texto2)">🌸</div>'}
+      <div class="temp-body">
+        <div class="temp-nombre">${esc(p.nombre)}</div>
+        ${p.codigo ? `<div class="temp-codigo">${esc(p.codigo)}</div>` : ''}
+        <div class="temp-stock">
+          <span class="temp-stock-num ${stockClass}">${p.stock}</span>
+          <span class="temp-stock-label">${p.stock_activo ? 'en stock' : 'stock no activo'}</span>
+        </div>
+      </div>
+      <div class="temp-actions">
+        <button class="btn-temp-listo" onclick="abrirTempStock(${p.id},'${esc(p.nombre)}',${p.stock})">✅ Marcar listo</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function abrirTempStock(id, nombre, stockActual) {
+  tempStockProductoId = id;
+  document.getElementById('temp-stock-nombre').textContent = nombre;
+  document.getElementById('temp-stock-cantidad').value = 1;
+  document.getElementById('temp-stock-submit').onclick = async () => {
+    const cantidad = parseInt(document.getElementById('temp-stock-cantidad').value);
+    if (!cantidad || cantidad <= 0) { alert('Ingresa una cantidad valida'); return; }
+    try {
+      const r = await fetch(`${TALLER_API}/productos-temporada/${tempStockProductoId}/agregar-stock`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+        body: JSON.stringify({cantidad})
+      });
+      if (!r.ok) { const e = await r.json(); alert(e.detail || 'Error'); return; }
+      closeModal('modal-temp-stock');
+      loadTemporada();
+    } catch(e) { alert('Error de conexion'); }
+  };
+  document.getElementById('modal-temp-stock').classList.add('active');
+}
+
 // ─── FECHA FUERTE ───
 let modoFechaFuerte = false;
 
@@ -1628,6 +1748,7 @@ if (getUserRol() === 'admin') {
 updateClock();
 setInterval(updateClock, 1000);
 checkFechaFuerte();
+checkTemporada();
 loadNuevos();
 loadBadges();
 let tallerPollingId = setInterval(() => {

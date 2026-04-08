@@ -70,6 +70,7 @@
       <select id="prod-status-filter" onchange="loadProductos()"><option value="1" selected>En catalogo</option><option value="">Todos</option><option value="0">No en catalogo</option></select>
       <select id="prod-stock-filter" onchange="loadProductos()"><option value="">Stock: Todos</option><option value="con">Con stock</option><option value="sin">Sin stock / Agotado</option></select>
       <button class="btn-sm" onclick="abrirModalCategorias()">Gestionar categorías</button>
+      <button class="btn-sm" onclick="abrirHistorialStock()">📊 Historial de stock</button>
       <button class="btn-sm" onclick="exportarProductos()">📥 Exportar Excel</button>
       <button class="btn-sm" onclick="document.getElementById('import-file').click()">📤 Importar Excel</button>
       <input type="file" id="import-file" accept=".xlsx" style="display:none" onchange="importarProductos(this)">
@@ -443,6 +444,13 @@
   <div class="modal"><button class="modal-close" onclick="cerrarModal('modal-categorias')">&times;</button>
     <h3>Gestionar categorías</h3>
     <div id="modal-cat-body"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-stock-historial" onclick="if(event.target===this)cerrarModal('modal-stock-historial')">
+  <div class="modal modal-lg"><button class="modal-close" onclick="cerrarModal('modal-stock-historial')">&times;</button>
+    <h3>Historial de stock</h3>
+    <div id="modal-stock-body"></div>
   </div>
 </div>
 

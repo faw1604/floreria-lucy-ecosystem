@@ -1636,3 +1636,40 @@ async def admin_cambiar_estado(
     await db.commit()
     logger.info(f"Admin cambió estado pedido {pedido.numero}: {estado_anterior} → {nuevo_estado}")
     return {"ok": True, "folio": pedido.numero, "estado_anterior": estado_anterior, "estado_nuevo": nuevo_estado}
+
+
+# ══════ HISTORIAL DE STOCK ══════
+
+@router.get("/stock-historial")
+async def stock_historial(
+    categoria: str | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    filtro_cat = "AND p.categoria = :cat" if categoria else ""
+    params = {"cat": categoria} if categoria else {}
+    result = await db.execute(text(f"""
+        SELECT p.id, p.nombre, p.categoria, p.imagen_url, p.stock,
+               COALESCE(SUM(ip.cantidad), 0) as vendidos
+        FROM productos p
+        LEFT JOIN items_pedido ip ON ip.producto_id = p.id
+        LEFT JOIN pedidos ped ON ped.id = ip.pedido_id
+          AND {_VENTAS_WHERE}
+        WHERE p.stock_activo = true {filtro_cat}
+        GROUP BY p.id, p.nombre, p.categoria, p.imagen_url, p.stock
+        ORDER BY p.categoria, p.nombre
+    """), params)
+    rows = result.fetchall()
+    return [
+        {
+            "id": r[0],
+            "nombre": r[1],
+            "categoria": r[2],
+            "imagen_url": r[3],
+            "stock_actual": r[4],
+            "vendidos": int(r[5]),
+            "stock_inicial_estimado": r[4] + int(r[5]),
+        }
+        for r in rows
+    ]

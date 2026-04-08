@@ -27,6 +27,31 @@ async def _generar_folio(db: AsyncSession) -> str:
     return await generar_folio(db)
 
 
+async def _todos_productos_terminados(items: list, db: AsyncSession) -> bool:
+    """Verifica si TODOS los items son de categorías que no requieren elaboración.
+    Categorías terminadas: temporada_categoria (config) y 'Dulces Y Regalos'.
+    Productos personalizados siempre requieren elaboración."""
+    if not items:
+        return False
+    # Obtener categoría de temporada desde config
+    cfg_result = await db.execute(select(ConfiguracionNegocio))
+    cfg_map = {c.clave: c.valor for c in cfg_result.scalars().all()}
+    temporada_cat = cfg_map.get("temporada_categoria", "")
+    categorias_terminadas = {"Dulces Y Regalos"}
+    if temporada_cat:
+        categorias_terminadas.add(temporada_cat)
+    for item in items:
+        if item.get("es_personalizado") or item.get("es_custom"):
+            return False
+        prod_id = item.get("producto_id")
+        if not prod_id:
+            return False
+        prod = (await db.execute(select(Producto).where(Producto.id == prod_id))).scalar_one_or_none()
+        if not prod or prod.categoria not in categorias_terminadas:
+            return False
+    return True
+
+
 @router.get("/productos")
 async def pos_productos(
     q: str = "",
@@ -334,9 +359,13 @@ async def _pos_crear_pedido_inner(request, db):
     solo_reservas = len(reserva_ids) > 0 and len(reserva_ids) >= len(items)
 
     # Pagado + solo reservas en mostrador → Listo (se lo lleva ya hecho)
+    # Pagado + todos productos terminados en mostrador → Listo (temporada/regalos)
     # Pagado + cualquier otra cosa → En producción (florista debe elaborar)
     if estado_pedido == "pagado":
         if es_mostrador and solo_reservas:
+            _estado = EP.LISTO
+            _estado_fl = EF.APROBADO
+        elif es_mostrador and await _todos_productos_terminados(items, db):
             _estado = EP.LISTO
             _estado_fl = EF.APROBADO
         else:
@@ -1108,11 +1137,13 @@ async def pos_completar_pedido(
     else:
         _metodo = ME.ENVIO
 
-    # Solo reservas en mostrador → Listo | Cualquier otro → En producción
+    # Solo reservas en mostrador → Listo | Productos terminados en mostrador → Listo | Otro → En producción
     reserva_ids = data.get("reserva_ids", [])
     solo_reservas = len(reserva_ids) > 0 and len(reserva_ids) >= len(items)
     if estado_pedido == "pagado":
         if es_mostrador and solo_reservas:
+            pedido.estado = EP.LISTO
+        elif es_mostrador and await _todos_productos_terminados(items, db):
             pedido.estado = EP.LISTO
         else:
             pedido.estado = EP.EN_PRODUCCION

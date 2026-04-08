@@ -820,6 +820,75 @@ async def entregas_resumen_dia(
 
 
 # ---------------------------------------------------------------------------
+# Temporada — productos con stock para el taller
+# ---------------------------------------------------------------------------
+
+@router.get("/productos-temporada")
+async def productos_temporada(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    # Check temporada_modo == alta
+    r_cfg = await db.execute(
+        select(ConfiguracionNegocio).where(
+            ConfiguracionNegocio.clave.in_(["temporada_modo", "temporada_categoria"])
+        )
+    )
+    cfg = {c.clave: c.valor for c in r_cfg.scalars().all()}
+    if cfg.get("temporada_modo") != "alta" or not cfg.get("temporada_categoria"):
+        return {"temporada_activa": False, "productos": []}
+
+    categoria = cfg["temporada_categoria"]
+    result = await db.execute(
+        select(Producto).where(
+            Producto.categoria == categoria,
+            Producto.activo == True,
+        ).order_by(Producto.nombre)
+    )
+    productos = result.scalars().all()
+    return {
+        "temporada_activa": True,
+        "categoria": categoria,
+        "productos": [
+            {
+                "id": p.id,
+                "nombre": p.nombre,
+                "codigo": p.codigo,
+                "imagen_url": p.imagen_url,
+                "stock": p.stock,
+                "stock_activo": p.stock_activo,
+                "precio": p.precio,
+            }
+            for p in productos
+        ],
+    }
+
+
+@router.post("/productos-temporada/{producto_id}/agregar-stock")
+async def agregar_stock_temporada(
+    producto_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    cantidad = data.get("cantidad", 0)
+    if not isinstance(cantidad, int) or cantidad <= 0:
+        raise HTTPException(status_code=400, detail="Cantidad debe ser un entero positivo")
+
+    result = await db.execute(select(Producto).where(Producto.id == producto_id))
+    producto = result.scalar_one_or_none()
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    producto.stock += cantidad
+    await db.commit()
+    return {"ok": True, "id": producto.id, "nombre": producto.nombre, "stock": producto.stock}
+
+
+# ---------------------------------------------------------------------------
 # Fecha fuerte config
 # ---------------------------------------------------------------------------
 

@@ -751,6 +751,54 @@ async function exportarProductos() {
   } catch(e) { alert('Error al exportar'); }
 }
 
+async function abrirHistorialStock(catFiltro) {
+  const url = catFiltro
+    ? API + '/api/admin/stock-historial?categoria=' + encodeURIComponent(catFiltro)
+    : API + '/api/admin/stock-historial';
+  try {
+    const r = await fetch(url, {credentials:'include'});
+    if (!r.ok) { alert('Error al cargar historial'); return; }
+    const data = await r.json();
+    // Extract unique categories for filter
+    const cats = [...new Set(data.map(d => d.categoria).filter(Boolean))].sort();
+    let html = '<div style="margin-bottom:12px"><select id="stock-hist-cat" onchange="abrirHistorialStock(this.value||undefined)" style="padding:6px 10px;border:1px solid #ccc;border-radius:8px">';
+    html += '<option value="">Todas las categorías</option>';
+    cats.forEach(c => {
+      html += `<option value="${c}" ${c===catFiltro?'selected':''}>${c}</option>`;
+    });
+    html += '</select></div>';
+    if (data.length === 0) {
+      html += '<p style="color:#888">No hay productos con stock activo.</p>';
+    } else {
+      let totalActual = 0, totalVendidos = 0, totalInicial = 0;
+      html += '<div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr>';
+      html += '<th>Producto</th><th>Categoría</th><th style="text-align:right">Stock actual</th><th style="text-align:right">Vendidos</th><th style="text-align:right">Stock inicial est.</th>';
+      html += '</tr></thead><tbody>';
+      data.forEach(p => {
+        totalActual += p.stock_actual;
+        totalVendidos += p.vendidos;
+        totalInicial += p.stock_inicial_estimado;
+        const img = p.imagen_url ? `<img src="${p.imagen_url}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:6px">` : '';
+        html += `<tr>`;
+        html += `<td>${img}${p.nombre}</td>`;
+        html += `<td>${p.categoria || '—'}</td>`;
+        html += `<td style="text-align:right;font-weight:600">${p.stock_actual}</td>`;
+        html += `<td style="text-align:right;color:#2d5a3d;font-weight:600">${p.vendidos}</td>`;
+        html += `<td style="text-align:right;color:#888">${p.stock_inicial_estimado}</td>`;
+        html += `</tr>`;
+      });
+      html += `<tr style="border-top:2px solid #193a2c;font-weight:700">`;
+      html += `<td>Total (${data.length} productos)</td><td></td>`;
+      html += `<td style="text-align:right">${totalActual}</td>`;
+      html += `<td style="text-align:right;color:#2d5a3d">${totalVendidos}</td>`;
+      html += `<td style="text-align:right;color:#888">${totalInicial}</td>`;
+      html += `</tr></tbody></table></div>`;
+    }
+    document.getElementById('modal-stock-body').innerHTML = html;
+    document.getElementById('modal-stock-historial').classList.add('active');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 async function importarProductos(input) {
   const file = input.files[0];
   if (!file) return;
