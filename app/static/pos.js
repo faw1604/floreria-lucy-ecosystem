@@ -608,7 +608,7 @@ function buildW3Form() {
           <option value="SURESTE 1" data-tarifa="18900">SURESTE 1 — $189</option>
           <option value="NORTE" data-tarifa="19900">NORTE — $199</option>
           <option value="ORIENTE 2" data-tarifa="19900">ORIENTE 2 — $199</option>
-          <option value="SURESTE 3" data-tarifa="19900">SURESTE 3 — $199</option>
+          <option value="SURESTE 2" data-tarifa="19900">SURESTE 2 — $199</option>
         </select>
       </div>
     </div>`;
@@ -644,7 +644,7 @@ function buildW3Form() {
           <option value="SURESTE 1" data-tarifa="18900">SURESTE 1 — $189</option>
           <option value="NORTE" data-tarifa="19900">NORTE — $199</option>
           <option value="ORIENTE 2" data-tarifa="19900">ORIENTE 2 — $199</option>
-          <option value="SURESTE 3" data-tarifa="19900">SURESTE 3 — $199</option>
+          <option value="SURESTE 2" data-tarifa="19900">SURESTE 2 — $199</option>
         </select>
         <div class="errmsg">Selecciona zona</div>
       </div>` : ''}
