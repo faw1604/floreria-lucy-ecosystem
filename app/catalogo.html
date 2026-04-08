@@ -2358,6 +2358,35 @@ async function onFechaChange() {
     waDiv.style.display = 'none';
   }
 
+  // --- FECHA FUERTE: validar categorías del carrito ---
+  if (esFechaFuerte(fecha) && pedidoWeb.tipo !== 'funeral') {
+    const catPermitidas = [
+      (catConfig.temporada_categoria || '').toLowerCase(),
+      'dulces y regalos',
+    ];
+    if (catConfig.temporada_acepta_funerales) {
+      catPermitidas.push('funeral', 'conjuntos funebres', 'conjuntos fúnebres');
+    }
+    const noPermitidos = cart.filter(p => {
+      const cat = (p.categoria || '').toLowerCase();
+      return !catPermitidas.some(cp => cat.includes(cp));
+    });
+    if (noPermitidos.length > 0) {
+      alert('Para las fechas del ' + (catConfig.temporada_fecha_fuerte || '') + ' solo están disponibles productos de la sección "' + (catConfig.temporada_categoria || 'Temporada') + '" y Regalos.\n\nProductos no permitidos: ' + noPermitidos.map(p => p.nombre).join(', ') + '\n\nPor favor retira esos productos del carrito o selecciona otra fecha.');
+      document.getElementById('of-fecha').value = '';
+      return;
+    }
+
+    // Disclaimer: fecha fuerte pero no hay productos de temporada cargados
+    const tempCatLower = (catConfig.temporada_categoria || '').toLowerCase();
+    const hayProductosTemporada = allProducts.some(p => (p.categoria || '').toLowerCase().includes(tempCatLower));
+    if (!hayProductosTemporada) {
+      alert('Por el momento no estamos levantando pedidos para la fecha seleccionada. Por favor comunícate con nosotros o espera hasta que la categoría de temporada esté disponible.');
+      document.getElementById('of-fecha').value = '';
+      return;
+    }
+  }
+
   // --- FECHA FUERTE: turnos de temporada ---
   const horarioGrid = document.getElementById('of-horario-grid');
   const disclaimerEl = document.getElementById('of-fecha-fuerte-disclaimer');

@@ -486,6 +486,23 @@ async def _crear_pedido_web_inner(request, db):
         except Exception:
             pass
 
+    # --- Restricción de categorías en fecha fuerte ---
+    if es_fecha_fuerte and tipo != "funeral":
+        cats_permitidas = [
+            (cfg.get("temporada_categoria") or "").lower(),
+            "dulces y regalos",
+        ]
+        if cfg.get("temporada_acepta_funerales", "true") == "true":
+            cats_permitidas.extend(FUNERAL_CATS)
+        for item_data in items_validos:
+            prod = item_data["producto"]
+            cat = (prod.categoria or "").lower()
+            if not any(cp in cat for cp in cats_permitidas):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"'{prod.nombre}' no está disponible para la fecha seleccionada. Solo productos de temporada y regalos."
+                )
+
     if es_fecha_fuerte:
         estado_inicial = EP.PENDIENTE_PAGO
         estado_florista_inicial = EF.APROBADO
