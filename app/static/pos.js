@@ -386,10 +386,8 @@ function calcTotals() {
     if (geoData && geoData.tarifa_envio) envio = geoData.tarifa_envio;
     else {
       const zonaEl = document.getElementById('f-zona');
-      if (zonaEl) {
-        const z = zonaEl.value;
-        const tarifas = {Morada: 9900, Azul: 15900, Verde: 19900};
-        envio = tarifas[z] || 0;
+      if (zonaEl && zonaEl.selectedOptions[0]) {
+        envio = parseInt(zonaEl.selectedOptions[0].dataset.tarifa || '0');
       }
     }
   }
@@ -592,28 +590,26 @@ function buildW3Form() {
     // Zona de envio y ruta
     html += `<div class="fbox"><h4>Zona de envio y ruta</h4>
       <div id="zona-auto" style="margin-bottom:8px"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="frow"><label>Tarifa</label>
-          <select id="f-zona" onchange="onZonaChange()">
-            <option value="">Seleccionar...</option>
-            <option value="Morada">Morada — $99</option>
-            <option value="Azul">Azul — $159</option>
-            <option value="Verde">Verde — $199</option>
-          </select>
-        </div>
-        <div class="frow"><label>Ruta</label>
-          <select id="f-ruta" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
-            <option value="">Seleccionar...</option>
-            <option value="Zona Central">Zona Central</option>
-            <option value="NORTE">Norte</option>
-            <option value="NORESTE">Noreste</option>
-            <option value="NOROESTE">Noroeste</option>
-            <option value="PONIENTE">Poniente</option>
-            <option value="SUR">Sur</option>
-            <option value="ORIENTE">Oriente</option>
-            <option value="SURESTE">Sureste</option>
-          </select>
-        </div>
+      <div class="frow"><label>Zona y tarifa</label>
+        <select id="f-zona" onchange="onZonaChange()">
+          <option value="">Seleccionar...</option>
+          <option value="Zona Central" data-tarifa="7900">Zona Central — $79</option>
+          <option value="NORESTE 1" data-tarifa="9900">NORESTE 1 — $99</option>
+          <option value="NOROESTE 1" data-tarifa="9900">NOROESTE 1 — $99</option>
+          <option value="PONIENTE 1" data-tarifa="9900">PONIENTE 1 — $99</option>
+          <option value="SUR 1" data-tarifa="9900">SUR 1 — $99</option>
+          <option value="NORESTE 2" data-tarifa="13900">NORESTE 2 — $139</option>
+          <option value="NOROESTE 2" data-tarifa="13900">NOROESTE 2 — $139</option>
+          <option value="PONIENTE 2" data-tarifa="13900">PONIENTE 2 — $139</option>
+          <option value="SUR 2" data-tarifa="13900">SUR 2 — $139</option>
+          <option value="ORIENTE 1" data-tarifa="14900">ORIENTE 1 — $149</option>
+          <option value="PONIENTE 3" data-tarifa="15900">PONIENTE 3 — $159</option>
+          <option value="SUR 3" data-tarifa="15900">SUR 3 — $159</option>
+          <option value="SURESTE 1" data-tarifa="18900">SURESTE 1 — $189</option>
+          <option value="NORTE" data-tarifa="19900">NORTE — $199</option>
+          <option value="ORIENTE 2" data-tarifa="19900">ORIENTE 2 — $199</option>
+          <option value="SURESTE 3" data-tarifa="19900">SURESTE 3 — $199</option>
+        </select>
       </div>
     </div>`;
   }
@@ -633,9 +629,22 @@ function buildW3Form() {
       <div class="frow" id="fr-fun-zona"><label>Zona de envío *</label>
         <select id="f-fun-zona" onchange="onFunZonaChange()" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
           <option value="">Selecciona zona</option>
-          <option value="Morada">Morada — $99</option>
-          <option value="Azul">Azul — $159</option>
-          <option value="Verde">Verde — $199</option>
+          <option value="Zona Central" data-tarifa="7900">Zona Central — $79</option>
+          <option value="NORESTE 1" data-tarifa="9900">NORESTE 1 — $99</option>
+          <option value="NOROESTE 1" data-tarifa="9900">NOROESTE 1 — $99</option>
+          <option value="PONIENTE 1" data-tarifa="9900">PONIENTE 1 — $99</option>
+          <option value="SUR 1" data-tarifa="9900">SUR 1 — $99</option>
+          <option value="NORESTE 2" data-tarifa="13900">NORESTE 2 — $139</option>
+          <option value="NOROESTE 2" data-tarifa="13900">NOROESTE 2 — $139</option>
+          <option value="PONIENTE 2" data-tarifa="13900">PONIENTE 2 — $139</option>
+          <option value="SUR 2" data-tarifa="13900">SUR 2 — $139</option>
+          <option value="ORIENTE 1" data-tarifa="14900">ORIENTE 1 — $149</option>
+          <option value="PONIENTE 3" data-tarifa="15900">PONIENTE 3 — $159</option>
+          <option value="SUR 3" data-tarifa="15900">SUR 3 — $159</option>
+          <option value="SURESTE 1" data-tarifa="18900">SURESTE 1 — $189</option>
+          <option value="NORTE" data-tarifa="19900">NORTE — $199</option>
+          <option value="ORIENTE 2" data-tarifa="19900">ORIENTE 2 — $199</option>
+          <option value="SURESTE 3" data-tarifa="19900">SURESTE 3 — $199</option>
         </select>
         <div class="errmsg">Selecciona zona</div>
       </div>` : ''}
@@ -890,11 +899,12 @@ function selFunerariaDomicilio() {
 }
 
 function onFunZonaChange() {
-  const zona = document.getElementById('f-fun-zona')?.value;
-  const costos = {Morada: 9900, Azul: 15900, Verde: 19900};
+  const sel = document.getElementById('f-fun-zona');
+  const zona = sel?.value;
+  const tarifa = parseInt(sel?.selectedOptions[0]?.dataset?.tarifa || '0');
   if (funerariaSel && funerariaSel.es_domicilio) {
     funerariaSel.zona = zona;
-    funerariaSel.costo_envio = costos[zona] || 0;
+    funerariaSel.costo_envio = tarifa;
     updateSummary();
   }
 }

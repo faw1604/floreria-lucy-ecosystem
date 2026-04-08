@@ -270,17 +270,12 @@ async def _pos_crear_pedido_inner(request, db):
     envio = 0
     zona = data.get("zona_envio")
     if tipo == "domicilio" and zona:
-        cfg_result = await db.execute(select(ConfiguracionNegocio))
-        cfg_map = {c.clave: c.valor for c in cfg_result.scalars().all()}
-        if cfg_map.get("temporada_modo") == "alta":
-            envio = int(cfg_map.get("temporada_envio_unico", "9900"))
-        else:
-            tarifas = {
-                "Morada": int(cfg_map.get("zona_tarifa_morada", "9900")),
-                "Azul": int(cfg_map.get("zona_tarifa_azul", "15900")),
-                "Verde": int(cfg_map.get("zona_tarifa_verde", "19900")),
-            }
-            envio = tarifas.get(zona, 0)
+        # Tarifa según mapa unificado de zonas
+        from app.services.zonas_envio import _ZONAS as _zonas_geo
+        for z_nombre, z_tarifa, _ in _zonas_geo:
+            if z_nombre == zona:
+                envio = z_tarifa * 100
+                break
 
     # Discounts from frontend
     descuento = data.get("descuento_total", 0)
@@ -1101,17 +1096,12 @@ async def pos_completar_pedido(
     envio = 0
     zona = data.get("zona_envio")
     if tipo == "domicilio" and zona:
-        cfg_result = await db.execute(select(ConfiguracionNegocio))
-        cfg_map = {c.clave: c.valor for c in cfg_result.scalars().all()}
-        if cfg_map.get("temporada_modo") == "alta":
-            envio = int(cfg_map.get("temporada_envio_unico", "9900"))
-        else:
-            tarifas = {
-                "Morada": int(cfg_map.get("zona_tarifa_morada", "9900")),
-                "Azul": int(cfg_map.get("zona_tarifa_azul", "15900")),
-                "Verde": int(cfg_map.get("zona_tarifa_verde", "19900")),
-            }
-            envio = tarifas.get(zona, 0)
+        # Tarifa según mapa unificado de zonas
+        from app.services.zonas_envio import _ZONAS as _zonas_geo
+        for z_nombre, z_tarifa, _ in _zonas_geo:
+            if z_nombre == zona:
+                envio = z_tarifa * 100
+                break
     if tipo == "funeral" and data.get("funeraria_id"):
         fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
         if fun:
