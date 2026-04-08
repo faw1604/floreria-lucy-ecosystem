@@ -196,11 +196,11 @@ async def pos_geocodificar(
 
     lat = float(data[0]["lat"])
     lng = float(data[0]["lon"])
-    ruta = obtener_ruta(lat, lng)
     from app.services.zonas_envio import obtener_zona_envio
     zona = obtener_zona_envio(lat, lng)
     return {
-        "lat": lat, "lng": lng, "ruta": ruta,
+        "lat": lat, "lng": lng,
+        "ruta": zona["zona"] if zona else None,
         "zona_envio": zona["zona"] if zona else None,
         "tarifa_envio": zona["tarifa"] * 100 if zona else None,
         "fuera_de_cobertura": zona is None,
