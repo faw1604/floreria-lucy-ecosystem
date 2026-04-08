@@ -211,6 +211,29 @@ function onPOSFechaChange() {
     }
     if (disclaimerEl) disclaimerEl.style.display = 'none';
   }
+
+  // --- Disable past horarios if fecha is today ---
+  const nowPOS = getChihuahuaNowPOS();
+  const hoyPOS = nowPOS.getFullYear() + '-' + String(nowPOS.getMonth()+1).padStart(2,'0') + '-' + String(nowPOS.getDate()).padStart(2,'0');
+  const isTodayPOS = fecha === hoyPOS;
+  if (isTodayPOS) {
+    const hr = nowPOS.getHours() + nowPOS.getMinutes() / 60;
+    const cutoffs = {manana: 11, tarde: 16, noche: 18 + 50/60, turno1: 12, turno2: 17.5};
+    horBtns.querySelectorAll('.hor-btn').forEach(btn => {
+      const m = btn.getAttribute('onclick') && btn.getAttribute('onclick').match(/'([^']+)'\)/);
+      if (!m) return;
+      const val = m[1];
+      const cutoff = cutoffs[val];
+      if (cutoff !== undefined && hr >= cutoff) {
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.style.pointerEvents = 'none';
+        btn.classList.remove('active');
+        if (selHorario === val) selHorario = null;
+      }
+    });
+  }
+
   updateSummary();
 }
 
@@ -690,6 +713,8 @@ function buildW3Form() {
   selectedPays = {};
   // Pre-fill fields if editing a pending order
   if (editingPedidoData) prefillFromEditing();
+  // Apply horario cutoffs for today
+  onPOSFechaChange();
   updateSummary();
 }
 

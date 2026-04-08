@@ -2528,8 +2528,8 @@ async function onFechaChange() {
   // Domicilio: disable past horarios if today
   if (horarioGrid) {
     const btns = horarioGrid.querySelectorAll('.order-horario-btn');
-    // Cutoff hours: manana=11, tarde=16, noche=18:50
-    const cutoffs = {manana: 11, tarde: 16, noche: 18 + 50/60};
+    // Cutoff hours: manana=11, tarde=16, noche=18:50, turno1=12, turno2=17:30
+    const cutoffs = {manana: 11, tarde: 16, noche: 18 + 50/60, turno1: 12, turno2: 17.5};
     let allDisabled = true;
     btns.forEach(btn => {
       const h = btn.dataset.h;
