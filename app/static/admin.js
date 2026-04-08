@@ -786,14 +786,16 @@ async function loadClaudia() {
 
     // Temporada mode
     const modo = cfg.temporada_modo || 'regular';
-    actualizarModoUI(modo);
+    const isAlta = modo === 'alta';
+    document.getElementById('temp-toggle-master').checked = isAlta;
+    actualizarModoUI(isAlta);
 
     // Show/hide temporada catalog button
     const btnTemp = document.getElementById('btn-catalogo-temporada');
-    if (btnTemp) btnTemp.style.display = modo === 'alta' ? '' : 'none';
+    if (btnTemp) btnTemp.style.display = isAlta ? '' : 'none';
 
     // Alta config fields
-    document.getElementById('temp-envio').value = Math.round(parseInt(cfg.temporada_envio_unico || '9900') / 100);
+    document.getElementById('temp-nombre').value = cfg.temporada_nombre || '';
     document.getElementById('temp-fecha').value = cfg.temporada_fecha_fuerte || '';
     document.getElementById('temp-dias').value = cfg.temporada_dias_restriccion || '2';
     document.getElementById('temp-funerales').checked = (cfg.temporada_acepta_funerales || 'true') === 'true';
@@ -828,23 +830,21 @@ async function cargarCategoriasTemporada(selectedCat) {
   } catch(e) { console.error(e); }
 }
 
-function seleccionarModo(modo) {
-  actualizarModoUI(modo);
-  toggleConfig('temporada_modo', modo);
+async function toggleTemporadaMaster(checked) {
+  actualizarModoUI(checked);
+  await Promise.all([
+    toggleConfig('temporada_modo', checked ? 'alta' : 'regular'),
+    toggleConfig('claudia_temporada_alta', String(checked)),
+  ]);
+  // Show/hide temporada catalog button
+  const btnTemp = document.getElementById('btn-catalogo-temporada');
+  if (btnTemp) btnTemp.style.display = checked ? '' : 'none';
 }
 
-function actualizarModoUI(modo) {
-  const isAlta = modo === 'alta';
-  const regCard = document.getElementById('mode-regular');
-  const altaCard = document.getElementById('mode-alta');
+function actualizarModoUI(isAlta) {
   const badge = document.getElementById('temporada-badge');
   const altaConfig = document.getElementById('temporada-alta-config');
   const zonasNote = document.getElementById('zonas-temporada-note');
-
-  regCard.style.borderColor = isAlta ? 'var(--borde)' : 'var(--verde)';
-  regCard.style.background = isAlta ? '' : 'rgba(45,90,61,0.06)';
-  altaCard.style.borderColor = isAlta ? 'var(--dorado)' : 'var(--borde)';
-  altaCard.style.background = isAlta ? 'rgba(212,168,67,0.08)' : '';
 
   badge.textContent = isAlta ? 'TEMPORADA ALTA' : 'TEMPORADA REGULAR';
   badge.style.background = isAlta ? 'rgba(212,168,67,0.15)' : 'rgba(45,90,61,0.1)';
@@ -855,15 +855,15 @@ function actualizarModoUI(modo) {
 }
 
 async function guardarTemporada() {
+  const nombre = document.getElementById('temp-nombre').value;
   const categoria = document.getElementById('temp-categoria').value;
-  const envio = parseInt(document.getElementById('temp-envio').value || '99') * 100;
   const fecha = document.getElementById('temp-fecha').value;
   const dias = document.getElementById('temp-dias').value;
   const funerales = document.getElementById('temp-funerales').checked;
 
   const saves = [
+    toggleConfig('temporada_nombre', nombre),
     toggleConfig('temporada_categoria', categoria),
-    toggleConfig('temporada_envio_unico', String(envio)),
     toggleConfig('temporada_fecha_fuerte', fecha),
     toggleConfig('temporada_dias_restriccion', dias),
     toggleConfig('temporada_acepta_funerales', String(funerales)),
@@ -1330,14 +1330,6 @@ async function loadWebHorarios() {
     }).join('');
   } catch(e) {}
 
-  // Load categories for fecha especial
-  let catOpts = '';
-  try {
-    const r = await fetch(API + '/api/admin/categorias', {credentials:'include'});
-    const cats = await r.json();
-    const selCats = JSON.parse(webCfg.catalogo_fecha_especial_categorias || '[]');
-    catOpts = cats.map(c => `<label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:4px 0"><input type="checkbox" class="fe-cat" value="${c.id}" ${selCats.includes(c.id) ? 'checked' : ''}> ${esc(c.nombre)}</label>`).join('');
-  } catch(e) {}
 
   el.innerHTML = `<div style="max-width:700px">
     <div class="toggle-row"><label>Catálogo web activo</label><input type="checkbox" ${webCfg.catalogo_activo==='true'?'checked':''} onchange="saveConfigField('catalogo_activo',String(this.checked))"></div>
@@ -1346,40 +1338,12 @@ async function loadWebHorarios() {
     ${horariosHtml}
 
     <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--borde)">
-      <div class="toggle-row"><label>Temporada alta (envíos $99)</label><input type="checkbox" id="wh-temporada" ${webCfg.claudia_temporada_alta==='true'?'checked':''} onchange="saveConfigField('claudia_temporada_alta', String(this.checked))"></div>
       <div class="toggle-row"><label>Cerrar catálogo temporalmente</label><input type="checkbox" id="wh-cerrado" ${webCfg.catalogo_cerrado==='true'?'checked':''} onchange="saveConfigField('catalogo_cerrado', String(this.checked))"></div>
-    </div>
-
-    <div style="margin-top:24px;padding-top:16px;border-top:2px solid var(--borde)">
-      <h4 style="font-size:14px;color:var(--verde);margin-bottom:12px">Modo fecha especial</h4>
-      <div class="toggle-row"><label>Activar modo fecha especial</label><input type="checkbox" id="wh-fe-activa" ${webCfg.catalogo_fecha_especial_activa==='true'?'checked':''} onchange="toggleFechaEspecial(this.checked)"></div>
-      <div id="wh-fe-fields" style="${webCfg.catalogo_fecha_especial_activa==='true'?'':'display:none'};margin-top:12px">
-        <div class="config-field"><label>Nombre del evento</label><input id="wh-fe-nombre" value="${esc(webCfg.catalogo_fecha_especial_nombre||'')}" placeholder="Ej: Día de las Madres"></div>
-        <div class="config-field"><label>Texto del botón en hero</label><input id="wh-fe-boton" value="${esc(webCfg.catalogo_fecha_especial_boton_texto||'')}" placeholder="Ej: Ver arreglos para mamá"></div>
-        <div class="config-field"><label>Categorías a mostrar</label><div style="max-height:150px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;padding:8px">${catOpts || '<span style="color:var(--texto2);font-size:12px">Sin categorías</span>'}</div></div>
-        <button class="btn-primary" onclick="guardarFechaEspecial()" style="margin-top:12px">Guardar fecha especial</button>
-      </div>
     </div>
   </div>`;
 }
 
-function toggleFechaEspecial(checked) {
-  document.getElementById('wh-fe-fields').style.display = checked ? '' : 'none';
-  saveConfigField('catalogo_fecha_especial_activa', String(checked));
-}
-
-async function guardarFechaEspecial() {
-  const catIds = [...document.querySelectorAll('.fe-cat:checked')].map(c => parseInt(c.value));
-  const keys = {
-    catalogo_fecha_especial_nombre: document.getElementById('wh-fe-nombre').value,
-    catalogo_fecha_especial_boton_texto: document.getElementById('wh-fe-boton').value,
-    catalogo_fecha_especial_categorias: JSON.stringify(catIds),
-  };
-  for (const [k,v] of Object.entries(keys)) {
-    await fetch(API + '/configuracion/' + k, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({valor: v})});
-  }
-  showToast('Fecha especial guardada ✓');
-}
+// toggleFechaEspecial and guardarFechaEspecial removed — unified in Temporada section
 
 async function agregarHorarioWeb(dia) {
   const hora = prompt('Hora (HH:MM, ej: 13:00):');
@@ -2608,7 +2572,6 @@ async function loadConfig() {
     renderCfgSection('cfg-whatsapp', [
       {k:'whatsapp_numero',l:'Número WhatsApp'},
       {k:'claudia_activa',l:'Claudia activa',type:'toggle'},
-      {k:'claudia_temporada_alta',l:'Temporada alta',type:'toggle'},
       {k:'claudia_mensaje_bienvenida',l:'Mensaje bienvenida',type:'textarea'},
     ], cfg);
     // Catálogo config moved to Página Web sub-tabs

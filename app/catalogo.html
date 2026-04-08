@@ -995,6 +995,8 @@ function buildQueue() {
   let items = dynFilterCategory
     ? allProducts.filter(p => p.categoria === dynFilterCategory)
     : [...allProducts];
+  // Excluir productos sin stock del modo dinámico
+  items = items.filter(p => !p.sin_stock);
   // Occasion-based filtering
   const funeralCatsLower = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
   if (dynOccasionFuneral) {

@@ -124,47 +124,41 @@
       </div>
     </div>
 
-    <!-- Modo de Operación -->
+    <!-- Temporada -->
     <div class="config-card" style="margin-bottom:20px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <h3 style="margin:0;font-size:16px">Modo de Operación</h3>
+        <h3 style="margin:0;font-size:16px">Modo Temporada</h3>
         <span id="temporada-badge" style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;text-transform:uppercase"></span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-        <div class="mode-card" id="mode-regular" onclick="seleccionarModo('regular')" style="border:2px solid var(--borde);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s">
-          <div style="font-size:18px;margin-bottom:4px">🌿 Temporada Regular</div>
-          <div style="font-size:12px;color:var(--texto2)">Catálogo completo · 3 zonas · 3 franjas horarias</div>
+      <div class="toggle-row" style="margin-bottom:16px">
+        <div>
+          <label style="font-weight:600">Temporada Alta Activa</label>
+          <div style="font-size:11px;color:var(--texto2)">Activa categoría especial, horarios de fecha fuerte y restricciones</div>
         </div>
-        <div class="mode-card" id="mode-alta" onclick="seleccionarModo('alta')" style="border:2px solid var(--borde);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s">
-          <div style="font-size:18px;margin-bottom:4px">✨ Temporada Alta</div>
-          <div style="font-size:12px;color:var(--texto2)">Categoría especial · Horarios y tarifa única</div>
-        </div>
+        <input type="checkbox" id="temp-toggle-master" onchange="toggleTemporadaMaster(this.checked)">
       </div>
 
       <!-- Alta Season Config (hidden when regular) -->
       <div id="temporada-alta-config" style="display:none">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
           <div class="config-field">
-            <label>Categoría de temporada</label>
+            <label>Nombre de temporada</label>
+            <input type="text" id="temp-nombre" placeholder="Ej: Día de las Madres" onchange="guardarTemporada()">
+          </div>
+          <div class="config-field">
+            <label>Categoría de productos</label>
             <select id="temp-categoria" onchange="guardarTemporada()">
               <option value="">— Seleccionar categoría —</option>
             </select>
           </div>
-          <div class="config-field">
-            <label>Precio envío único (todas las zonas)</label>
-            <div style="position:relative">
-              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--texto2);font-weight:600">$</span>
-              <input type="number" id="temp-envio" value="99" min="0" style="padding-left:24px" onchange="guardarTemporada()">
-            </div>
-          </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
           <div class="config-field">
-            <label>Fecha exacta del día fuerte</label>
+            <label>Fecha fuerte</label>
             <input type="date" id="temp-fecha" onchange="guardarTemporada()">
           </div>
           <div class="config-field">
-            <label>Días antes con restricción total</label>
+            <label>Días de restricción antes</label>
             <select id="temp-dias" onchange="guardarTemporada()">
               <option value="1">1 día antes</option>
               <option value="2" selected>2 días antes</option>
@@ -177,13 +171,16 @@
         </div>
         <div class="toggle-row" style="margin-bottom:12px">
           <div>
-            <label>Aceptar pedidos funerales</label>
+            <label>Acepta funerales en temporada</label>
             <div style="font-size:11px;color:var(--texto2)">Si se desactiva, no se aceptan funerales durante la temporada</div>
           </div>
           <input type="checkbox" id="temp-funerales" checked onchange="guardarTemporada()">
         </div>
-        <div class="banner-warning" style="font-size:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;border-left:3px solid var(--dorado)">
-          <strong>⚠️</strong> En el día fuerte exacto (y los días con restricción antes de él) el catálogo solo ofrece la categoría de temporada. Los pedidos funerales siempre se procesan normalmente, sin importar la temporada.
+        <div style="font-size:12px;padding:10px 14px;background:rgba(45,90,61,0.06);border-radius:8px;border-left:3px solid var(--verde);color:var(--texto2)">
+          <strong>Horarios fecha fuerte:</strong> Turno 1 (8:00-15:00) / Turno 2 (15:00-21:00)
+        </div>
+        <div class="banner-warning" style="font-size:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;border-left:3px solid var(--dorado);margin-top:8px">
+          <strong>Nota:</strong> En el día fuerte (y días de restricción) el catálogo solo ofrece la categoría de temporada. La tarifa de envío se cobra según el polígono del mapa siempre.
         </div>
       </div>
     </div>

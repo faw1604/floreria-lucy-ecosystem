@@ -266,6 +266,7 @@ let currentTab = 'pendientes';
 let rutaStartTime = null;
 let temporadaAlta = false;
 let filtroHorario = 'todos';
+let filtroZona = 'todas';
 let filtroFecha = 'hoy';
 
 function setFechaRepartidor(val) {
@@ -296,7 +297,7 @@ function setFechaRepartidor(val) {
   loadEntregas();
 }
 
-// ─── Filters (solo horario) ───
+// ─── Filters (horario + zona) ───
 function renderFilters() {
   const mk = (v, l) => `<span class="fbtn ${filtroHorario===v?'active':''}" onclick="setFiltroHorario('${v}')">${l}</span>`;
   let horarios = '';
@@ -305,8 +306,11 @@ function renderFilters() {
   } else {
     horarios = mk('todos','Todos') + mk('manana','Manana (9-2)') + mk('tarde','Tarde (2-6)') + mk('noche','Noche (6-9)');
   }
+  const mz = (v, l) => `<span class="fbtn ${filtroZona===v?'active':''}" onclick="setFiltroZona('${v}')">${l}</span>`;
+  const zonas = mz('todas','Todas') + mz('Zona Central','Central') + mz('Norte','Norte') + mz('Noreste','Noreste') + mz('Noroeste','Noroeste') + mz('Poniente','Poniente') + mz('Sur','Sur') + mz('Oriente','Oriente') + mz('Sureste','Sureste');
   document.getElementById('filters-box').innerHTML = `<div class="filters">
     <div class="filter-group"><div class="filter-label">Horario</div><div class="filter-row">${horarios}</div></div>
+    <div class="filter-group"><div class="filter-label">Zona</div><div class="filter-row">${zonas}</div></div>
   </div>`;
 }
 
@@ -315,22 +319,38 @@ function setFiltroHorario(v) {
   renderPendientes();
 }
 
+function setFiltroZona(v) {
+  filtroZona = v;
+  renderPendientes();
+}
+
 function applyFilters(list) {
-  if (filtroHorario === 'todos') return list;
-  return list.filter(p => {
-    // Funeral siempre visible sin importar filtro de horario
-    if (p.tipo_especial === 'Funeral') return true;
-    const h = (p.horario_entrega||'').toLowerCase();
-    if (temporadaAlta) {
-      if (filtroHorario === 'turno1') return h.includes('mañana') || h.includes('manana') || h.includes('turno 1');
-      if (filtroHorario === 'turno2') return h.includes('tarde') || h.includes('noche') || h.includes('turno 2');
-    } else {
-      if (filtroHorario === 'manana') return h.includes('mañana') || h.includes('manana');
-      if (filtroHorario === 'tarde') return h.includes('tarde');
-      if (filtroHorario === 'noche') return h.includes('noche');
-    }
-    return true;
-  });
+  // Filtro de horario
+  if (filtroHorario !== 'todos') {
+    list = list.filter(p => {
+      // Funeral siempre visible sin importar filtro de horario
+      if (p.tipo_especial === 'Funeral') return true;
+      const h = (p.horario_entrega||'').toLowerCase();
+      if (temporadaAlta) {
+        if (filtroHorario === 'turno1') return h.includes('mañana') || h.includes('manana') || h.includes('turno 1');
+        if (filtroHorario === 'turno2') return h.includes('tarde') || h.includes('noche') || h.includes('turno 2');
+      } else {
+        if (filtroHorario === 'manana') return h.includes('mañana') || h.includes('manana');
+        if (filtroHorario === 'tarde') return h.includes('tarde');
+        if (filtroHorario === 'noche') return h.includes('noche');
+      }
+      return true;
+    });
+  }
+  // Filtro de zona de reparto
+  if (filtroZona !== 'todas') {
+    list = list.filter(p => {
+      // Funeral siempre visible sin importar filtro de zona
+      if (p.tipo_especial === 'Funeral') return true;
+      return (p.ruta || '').toUpperCase() === filtroZona.toUpperCase();
+    });
+  }
+  return list;
 }
 
 async function loadTemporada() {
