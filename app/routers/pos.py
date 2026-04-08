@@ -152,67 +152,44 @@ async def pos_crear_cliente(
     return {"id": cliente.id, "nombre": cliente.nombre, "telefono": cliente.telefono}
 
 
-@router.post("/geocodificar")
-async def pos_geocodificar(
+@router.get("/direccion/autocomplete")
+async def pos_autocomplete(
+    q: str = "",
+    panel_session: str | None = Cookie(default=None),
+):
+    """Sugerencias de direcciones via Google Places Autocomplete."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    if len(q) < 3:
+        return {"suggestions": []}
+    from app.services.geocoding import autocomplete
+    return {"suggestions": await autocomplete(q)}
+
+
+@router.post("/direccion/seleccionar")
+async def pos_seleccionar_direccion(
     request: Request,
     panel_session: str | None = Cookie(default=None),
 ):
+    """Obtiene coordenadas de un place_id seleccionado y asigna zona."""
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
     data = await request.json()
-    direccion = data.get("direccion", "")
-    if not direccion:
-        return {"error": "Dirección vacía"}
-
-    from app.services.rutas import obtener_ruta
-    ua = "FloreriaLucy/1.0 florerialucychihuahua@gmail.com"
-    calle = direccion.split(",")[0].strip()
-    # Expand common abbreviations for Nominatim
-    import re
-    calle_exp = re.sub(r"(?i)^C\.\s*", "Calle ", calle)
-    calle_exp = re.sub(r"(?i)^Av\.\s*", "Avenida ", calle_exp)
-    calle_exp = re.sub(r"(?i)^Blvd\.\s*", "Boulevard ", calle_exp)
-
-    async def geocode(params):
-        async with httpx.AsyncClient() as client:
-            r = await client.get(
-                "https://nominatim.openstreetmap.org/search",
-                params=params, headers={"User-Agent": ua}, timeout=10,
-            )
-            return r.json()
-
-    vb = "-106.25,28.83,-105.92,28.55"
-    in_chih = lambda d: d and 28.55 <= float(d[0]["lat"]) <= 28.83 and -106.25 <= float(d[0]["lon"]) <= -105.92
-    try:
-        # 1) Structured: street + city
-        data = await geocode({
-            "street": calle_exp, "city": "Chihuahua", "state": "Chihuahua", "country": "Mexico",
-            "countrycodes": "mx", "bounded": "1", "viewbox": vb,
-            "format": "json", "limit": "1",
-        })
-        # 2) If no result or outside Chihuahua, try free-form with street only
-        if not in_chih(data):
-            data = await geocode({
-                "q": f"{calle_exp}, Chihuahua, Mexico",
-                "countrycodes": "mx", "bounded": "1", "viewbox": vb,
-                "format": "json", "limit": "1",
-            })
-        # 3) Last try with full address
-        if not in_chih(data):
-            data = await geocode({
-                "q": f"{direccion}, Chihuahua, Mexico",
-                "countrycodes": "mx", "bounded": "1", "viewbox": vb,
-                "format": "json", "limit": "1",
-            })
-    except Exception:
-        return {"error": "Error al conectar con el geocodificador"}
-
-    if not data:
-        return {"error": "No se pudo geocodificar la dirección"}
-
-    lat = float(data[0]["lat"])
-    lng = float(data[0]["lon"])
+    place_id = data.get("place_id", "")
+    from app.services.geocoding import place_details
     from app.services.zonas_envio import obtener_zona_envio
+
+    if place_id:
+        result = await place_details(place_id)
+    else:
+        # Fallback: geocodificar texto libre
+        from app.services.geocoding import geocodificar
+        result = await geocodificar(data.get("direccion", ""))
+
+    if not result:
+        return {"error": "No se pudo obtener la ubicación"}
+
+    lat, lng = result["lat"], result["lng"]
     zona = obtener_zona_envio(lat, lng)
     return {
         "lat": lat, "lng": lng,
@@ -220,7 +197,39 @@ async def pos_geocodificar(
         "zona_envio": zona["zona"] if zona else None,
         "tarifa_envio": zona["tarifa"] * 100 if zona else None,
         "fuera_de_cobertura": zona is None,
-        "display_name": data[0].get("display_name", ""),
+        "display_name": result["display_name"],
+    }
+
+
+@router.post("/geocodificar")
+async def pos_geocodificar(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+):
+    """Fallback: geocodificar texto libre (sin autocomplete)."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    data = await request.json()
+    direccion = data.get("direccion", "")
+    if not direccion:
+        return {"error": "Dirección vacía"}
+
+    from app.services.geocoding import geocodificar
+    from app.services.zonas_envio import obtener_zona_envio
+
+    result = await geocodificar(direccion)
+    if not result:
+        return {"error": "No se pudo geocodificar la dirección"}
+
+    lat, lng = result["lat"], result["lng"]
+    zona = obtener_zona_envio(lat, lng)
+    return {
+        "lat": lat, "lng": lng,
+        "ruta": zona["zona"] if zona else None,
+        "zona_envio": zona["zona"] if zona else None,
+        "tarifa_envio": zona["tarifa"] * 100 if zona else None,
+        "fuera_de_cobertura": zona is None,
+        "display_name": result["display_name"],
     }
 
 

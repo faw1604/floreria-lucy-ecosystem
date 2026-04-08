@@ -455,67 +455,16 @@ async def obtener_ruta_pedido(
     if not pedido.direccion_entrega:
         return {"ruta": None, "error": "El pedido no tiene dirección de entrega"}
 
-    import httpx
-    import logging
+    from app.services.geocoding import geocodificar
     from app.services.rutas import obtener_ruta
 
-    logger = logging.getLogger("floreria")
-    ua = "FloreriaLucy/1.0 florerialucychihuahua@gmail.com"
     direccion = pedido.direccion_entrega
-    logger.info(f"[RUTA] Direccion original: '{direccion}'")
+    result = await geocodificar(direccion)
+    if not result:
+        return {"ruta": None, "error": "No se pudo geocodificar la dirección"}
 
-    # Extraer calle (antes de la primera coma = sin colonia)
-    calle = direccion.split(",")[0].strip()
-    logger.info(f"[RUTA] Street extraida: '{calle}'")
-
-    async def geocode(street: str) -> list:
-        url = "https://nominatim.openstreetmap.org/search"
-        params = {
-            "street": street,
-            "city": "Chihuahua",
-            "state": "Chihuahua",
-            "country": "Mexico",
-            "countrycodes": "mx",
-            "bounded": "1",
-            "viewbox": "-106.25,28.83,-105.92,28.55",
-            "format": "json",
-            "limit": "1",
-        }
-        logger.info(f"[RUTA] GET {url} street='{street}' city=Chihuahua")
-        async with httpx.AsyncClient() as client:
-            r = await client.get(url, params=params, headers={"User-Agent": ua}, timeout=10)
-            data = r.json()
-            logger.info(f"[RUTA] Nominatim response ({r.status_code}): {data}")
-            return data
-
-    try:
-        data = await geocode(calle)
-
-        # Retry with full address as free-form if structured fails
-        if not data:
-            logger.info(f"[RUTA] Reintentando con direccion completa como q=")
-            url = "https://nominatim.openstreetmap.org/search"
-            async with httpx.AsyncClient() as client:
-                r = await client.get(url, params={
-                    "q": f"{direccion}, Chihuahua, Mexico",
-                    "countrycodes": "mx",
-                    "bounded": "1",
-                    "viewbox": "-106.25,28.83,-105.92,28.55",
-                    "format": "json",
-                    "limit": "1",
-                }, headers={"User-Agent": ua}, timeout=10)
-                data = r.json()
-                logger.info(f"[RUTA] Nominatim fallback response ({r.status_code}): {data}")
-    except Exception as e:
-        logger.error(f"[RUTA] Error geocoding: {e}")
-        return {"ruta": None, "error": f"Error al conectar con el geocodificador: {str(e)}"}
-
-    if not data:
-        return {"ruta": None, "error": "No se pudo geocodificar la dirección", "street": calle}
-
-    lat = float(data[0]["lat"])
-    lng = float(data[0]["lon"])
-    display = data[0].get("display_name", "")
+    lat, lng = result["lat"], result["lng"]
+    display = result["display_name"]
     ruta = obtener_ruta(lat, lng)
 
     if ruta and pedido.ruta != ruta:

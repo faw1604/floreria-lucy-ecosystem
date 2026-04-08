@@ -561,15 +561,13 @@ function buildW3Form() {
       <div class="frow" id="fr-rec-nombre"><label>Nombre de quien recibe *</label><input type="text" id="f-rec-nombre"><div class="errmsg">Campo obligatorio</div></div>
       <div class="frow" id="fr-rec-tel"><label>Telefono de quien recibe *</label><input type="tel" id="f-rec-tel"><div class="errmsg">Campo obligatorio</div></div>
       <div class="frow" id="fr-dir"><label>Direccion *</label>
-        <div style="display:flex;gap:6px"><input type="text" id="f-dir" style="flex:1"><button onclick="verificarMaps()" style="padding:6px 10px;background:#fff;border:1px solid var(--borde);border-radius:6px;font-size:12px;white-space:nowrap">📍 Verificar</button></div>
+        <div style="position:relative">
+          <input type="text" id="f-dir" autocomplete="off" placeholder="Escribe la calle y numero..." oninput="onDirInput()" style="width:100%">
+          <div id="dir-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--borde);border-top:none;border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:220px;overflow-y:auto"></div>
+        </div>
         <div class="errmsg">Campo obligatorio</div>
       </div>
-      <div style="margin:6px 0">
-        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer">
-          <input type="checkbox" id="f-dir-check" onchange="onDirVerificada()"> ✓ Direccion verificada
-        </label>
-        <div id="geo-badge" style="margin-top:4px"></div>
-      </div>
+      <div id="geo-badge" style="margin:6px 0"></div>
       <div class="frow"><label>Notas para el repartidor</label><textarea id="f-notas" rows="2" placeholder="Porton negro, tocar timbre..."></textarea></div>
       <div class="frow"><label>Dedicatoria</label><textarea id="f-dedicatoria" rows="2" placeholder="Opcional"></textarea></div>
     </div>`;
@@ -748,43 +746,55 @@ function selHorVelacion(el, val) {
   document.getElementById('vel-hora-wrap').style.display = val === 'hora' ? '' : 'none';
 }
 
-// ─── Maps verification ───
-function verificarMaps() {
-  const dir = document.getElementById('f-dir').value;
-  if (dir) window.open(`https://www.google.com/maps/search/${encodeURIComponent(dir + ', Chihuahua, Mexico')}`, '_blank');
+// ─── Address autocomplete ───
+let _dirDebounce = null;
+function onDirInput() {
+  clearTimeout(_dirDebounce);
+  // Reset geo when user edits
+  geoData = null; dirVerificada = false;
+  document.getElementById('geo-badge').innerHTML = '';
+  const q = (document.getElementById('f-dir').value || '').trim();
+  if (q.length < 3) { document.getElementById('dir-suggestions').style.display = 'none'; return; }
+  _dirDebounce = setTimeout(() => fetchDirSuggestions(q), 300);
 }
 
-async function onDirVerificada() {
-  const checked = document.getElementById('f-dir-check').checked;
-  dirVerificada = checked;
-  if (!checked) { geoData = null; document.getElementById('geo-badge').innerHTML = ''; updateSummary(); return; }
-  const dir = document.getElementById('f-dir').value;
-  if (!dir) return;
-  document.getElementById('geo-badge').innerHTML = '<span style="font-size:11px;color:var(--texto2)">Geocodificando...</span>';
+async function fetchDirSuggestions(q) {
+  const box = document.getElementById('dir-suggestions');
   try {
-    const r = await fetch('/pos/geocodificar', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({direccion: dir})
+    const r = await fetch(`/pos/direccion/autocomplete?q=${encodeURIComponent(q)}`, {credentials:'include'});
+    const data = await r.json();
+    if (!data.suggestions || !data.suggestions.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.suggestions.map(s =>
+      `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0;transition:background .1s" onmousedown="selectDirSuggestion('${s.place_id}','${s.description.replace(/'/g, "\\'")}')" onmouseenter="this.style.background='#f5f5f5'" onmouseleave="this.style.background=''">${s.description}</div>`
+    ).join('');
+    box.style.display = '';
+  } catch(e) { box.style.display = 'none'; }
+}
+
+async function selectDirSuggestion(placeId, description) {
+  document.getElementById('f-dir').value = description;
+  document.getElementById('dir-suggestions').style.display = 'none';
+  document.getElementById('geo-badge').innerHTML = '<span style="font-size:11px;color:var(--texto2)">Buscando zona...</span>';
+  try {
+    const r = await fetch('/pos/direccion/seleccionar', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({place_id: placeId, direccion: description})
     });
     const data = await r.json();
     if (data.error) {
       document.getElementById('geo-badge').innerHTML = `<span style="font-size:11px;color:var(--rojo)">${data.error}</span>`;
       geoData = null;
+    } else if (data.fuera_de_cobertura) {
+      document.getElementById('geo-badge').innerHTML =
+        '<span style="font-size:11px;color:var(--rojo);font-weight:600">\u26a0 Fuera de cobertura</span>';
+      geoData = null;
     } else {
-      if (data.fuera_de_cobertura) {
-        document.getElementById('geo-badge').innerHTML =
-          '<span style="font-size:11px;color:var(--rojo);font-weight:600">⚠ Área de entrega no disponible — fuera de cobertura</span>';
-        geoData = null;
-      } else {
-        geoData = data;
-        document.getElementById('geo-badge').innerHTML =
-          `<span class="zona-badge ${(data.zona_envio||'').toLowerCase()}" style="margin-right:6px">${data.zona_envio || '?'} — $${(data.tarifa_envio||0)/100}</span>` +
-          `<span class="zona-badge" style="background:#e8eaed;color:var(--texto)">${data.ruta || '?'}</span>`;
-        const zonaEl = document.getElementById('f-zona');
-        if (zonaEl && data.zona_envio) zonaEl.value = data.zona_envio;
-        const rutaEl = document.getElementById('f-ruta');
-        if (rutaEl && data.ruta) rutaEl.value = data.ruta;
-      }
+      geoData = data;
+      dirVerificada = true;
+      document.getElementById('geo-badge').innerHTML =
+        `<span style="display:inline-block;background:#e8f5ec;color:#166534;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600">\u2713 ${data.zona_envio} — $${(data.tarifa_envio||0)/100}</span>`;
+      const zonaEl = document.getElementById('f-zona');
+      if (zonaEl && data.zona_envio) zonaEl.value = data.zona_envio;
     }
   } catch(e) {
     document.getElementById('geo-badge').innerHTML = '<span style="font-size:11px;color:var(--rojo)">Error de red</span>';
@@ -792,6 +802,12 @@ async function onDirVerificada() {
   }
   updateSummary();
 }
+
+// Close suggestions on click outside
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('dir-suggestions');
+  if (box && !box.contains(e.target) && e.target.id !== 'f-dir') box.style.display = 'none';
+});
 
 function onZonaChange() { updateSummary(); }
 

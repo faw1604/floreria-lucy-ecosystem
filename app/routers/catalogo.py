@@ -226,6 +226,45 @@ async def horarios_disponibles(
     return [{"hora": h.hora, "disponible": True} for h in horarios]
 
 
+@router.get("/direccion/autocomplete")
+@limiter.limit("30/minute")
+async def catalogo_autocomplete(request: Request, q: str = ""):
+    """Sugerencias de direcciones (público, rate limited)."""
+    if len(q) < 3:
+        return {"suggestions": []}
+    from app.services.geocoding import autocomplete
+    return {"suggestions": await autocomplete(q)}
+
+
+@router.post("/direccion/seleccionar")
+@limiter.limit("10/minute")
+async def catalogo_seleccionar(request: Request):
+    """Obtiene coordenadas de un place_id y asigna zona."""
+    data = await request.json()
+    place_id = data.get("place_id", "")
+    from app.services.geocoding import place_details
+    from app.services.zonas_envio import obtener_zona_envio
+
+    if place_id:
+        result = await place_details(place_id)
+    else:
+        from app.services.geocoding import geocodificar
+        result = await geocodificar(data.get("direccion", ""))
+
+    if not result:
+        return {"error": "No se pudo obtener la ubicación"}
+
+    lat, lng = result["lat"], result["lng"]
+    zona = obtener_zona_envio(lat, lng)
+    return {
+        "lat": lat, "lng": lng,
+        "zona_envio": zona["zona"] if zona else None,
+        "tarifa_envio": zona["tarifa"] * 100 if zona else None,
+        "fuera_de_cobertura": zona is None,
+        "display_name": result["display_name"],
+    }
+
+
 @router.get("/validar-descuento")
 async def validar_descuento(
     codigo: str,

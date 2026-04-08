@@ -2243,11 +2243,12 @@ function renderStep3Fields() {
         <input type="tel" id="of-tel-dest" value="${pedidoWeb.telefono_destinatario||''}" placeholder="10 dígitos" maxlength="15">
       </div>
     </div>
-    <div class="order-field"><label>Dirección de entrega <span class="required">*</span></label><input type="text" id="of-direccion" value="${pedidoWeb.direccion_entrega||''}" placeholder="Calle, número, colonia">
-      <div class="order-verify-row">
-        <a href="javascript:void(0)" id="of-maps-link" onclick="verifyMaps();return false;">📍 Verificar en Maps</a>
-        <label><input type="checkbox" id="of-dir-verified" ${pedidoWeb.dir_verified?'checked':''}> Dirección verificada</label>
+    <div class="order-field"><label>Dirección de entrega <span class="required">*</span></label>
+      <div style="position:relative">
+        <input type="text" id="of-direccion" value="${pedidoWeb.direccion_entrega||''}" placeholder="Escribe la calle y número..." autocomplete="off" oninput="onCatDirInput()">
+        <div id="cat-dir-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--borde);border-top:none;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:220px;overflow-y:auto"></div>
       </div>
+      <div id="cat-geo-badge" style="margin-top:6px"></div>
     </div>
     <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje para la tarjeta...">${pedidoWeb.dedicatoria||''}</textarea></div>
     <div class="order-field"><label>Notas para el repartidor</label><input type="text" id="of-notas" value="${pedidoWeb.notas_entrega||''}" placeholder="Ej: Portón negro, tocar timbre"></div>
@@ -2590,10 +2591,62 @@ async function onFechaChange() {
   }
 }
 
-function verifyMaps() {
-  const dir = document.getElementById('of-direccion').value.trim();
-  if (dir) window.open(`https://www.google.com/maps/search/${encodeURIComponent(dir + ', Chihuahua, México')}`, '_blank');
+// ─── Address autocomplete (catálogo) ───
+let _catDirDebounce = null;
+function onCatDirInput() {
+  clearTimeout(_catDirDebounce);
+  pedidoWeb.dir_verified = false;
+  pedidoWeb.geo_data = null;
+  document.getElementById('cat-geo-badge').innerHTML = '';
+  const q = (document.getElementById('of-direccion').value || '').trim();
+  if (q.length < 3) { document.getElementById('cat-dir-suggestions').style.display = 'none'; return; }
+  _catDirDebounce = setTimeout(() => fetchCatDirSuggestions(q), 300);
 }
+
+async function fetchCatDirSuggestions(q) {
+  const box = document.getElementById('cat-dir-suggestions');
+  try {
+    const r = await fetch(`${API}/catalogo/direccion/autocomplete?q=${encodeURIComponent(q)}`);
+    const data = await r.json();
+    if (!data.suggestions || !data.suggestions.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.suggestions.map(s =>
+      `<div style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0;transition:background .15s" onmousedown="selectCatDirSuggestion('${s.place_id}','${s.description.replace(/'/g, "\\'")}')" onmouseenter="this.style.background='var(--crema)'" onmouseleave="this.style.background=''">${s.description}</div>`
+    ).join('');
+    box.style.display = '';
+  } catch(e) { box.style.display = 'none'; }
+}
+
+async function selectCatDirSuggestion(placeId, description) {
+  document.getElementById('of-direccion').value = description;
+  pedidoWeb.direccion_entrega = description;
+  document.getElementById('cat-dir-suggestions').style.display = 'none';
+  document.getElementById('cat-geo-badge').innerHTML = '<span style="font-size:12px;color:var(--texto2)">Buscando zona...</span>';
+  try {
+    const r = await fetch(`${API}/catalogo/direccion/seleccionar`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({place_id: placeId, direccion: description})
+    });
+    const data = await r.json();
+    if (data.error || data.fuera_de_cobertura) {
+      document.getElementById('cat-geo-badge').innerHTML =
+        '<span style="font-size:12px;color:#dc2626;font-weight:600">\u26a0 Fuera de cobertura — comunícate con nosotros</span>';
+      pedidoWeb.dir_verified = false;
+      pedidoWeb.geo_data = null;
+    } else {
+      pedidoWeb.dir_verified = true;
+      pedidoWeb.geo_data = data;
+      document.getElementById('cat-geo-badge').innerHTML =
+        `<span style="display:inline-block;background:#e8f5ec;color:#166534;padding:4px 12px;border-radius:8px;font-size:13px;font-weight:600">\u2713 ${data.zona_envio} — $${(data.tarifa_envio||0)/100}</span>`;
+    }
+  } catch(e) {
+    document.getElementById('cat-geo-badge').innerHTML = '<span style="font-size:12px;color:#dc2626">Error de conexión</span>';
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('cat-dir-suggestions');
+  if (box && !box.contains(e.target) && e.target.id !== 'of-direccion') box.style.display = 'none';
+});
 
 let extraBandaCount = 0;
 
