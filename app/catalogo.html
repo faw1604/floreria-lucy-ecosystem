@@ -1055,7 +1055,17 @@ function buildQueue() {
     });
   }
   // Insert promo cards every 5 products
-  const PROMO_CARD = {
+  const isTemporadaAlta = catConfig && catConfig.temporada_modo === 'alta';
+  const PROMO_CARD = isTemporadaAlta ? {
+    _isPromo: true,
+    _promoType: 'regalos',
+    nombre: '¿Buscas un regalo adicional?',
+    descripcion: 'Agrega chocolates, peluches o un detalle especial',
+    imagen_url: '',
+    categoria: 'Regalos',
+    precio: 0,
+    id: -1
+  } : {
     _isPromo: true,
     nombre: '¿Quieres hacerlo especial?',
     descripcion: 'Combina tu arreglo con chocolates artesanales, peluches o vino',
@@ -1089,14 +1099,20 @@ function renderDynCard() {
 
   // Promo card rendering
   if (p._isPromo) {
+    const isRegalosPromo = p._promoType === 'regalos';
+    const promoTitle = isRegalosPromo ? '¿Buscas un regalo adicional?' : '¿Quieres hacerlo especial?';
+    const promoDesc = isRegalosPromo ? 'Agrega chocolates, peluches o un detalle especial' : 'Combina tu arreglo con chocolates artesanales, peluches o vino';
+    const promoBtnText = isRegalosPromo ? 'Ver regalos' : 'Ver combos';
+    const promoBtnAction = isRegalosPromo ? 'showRegalosFromSwipe()' : 'showCombosFromSwipe()';
+    const promoIcon = isRegalosPromo
+      ? '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13"/><path d="M3 12h18"/><path d="M12 8c-2-3-6-3-6 0s4 0 6 0c2-3 6-3 6 0s-4 0-6 0"/></svg>'
+      : '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
     wrapper.innerHTML = `
     <div class="dyn-card" id="dyn-current-card" style="background:linear-gradient(135deg,#193a2c,#2d5a3d);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
-      <div style="margin-bottom:16px">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d4a843" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-      </div>
-      <div style="font-family:'Playfair Display',serif;font-size:22px;color:#fff;font-weight:600;margin-bottom:8px">¿Quieres hacerlo especial?</div>
-      <div style="font-size:14px;color:rgba(255,255,255,.7);line-height:1.5;margin-bottom:20px">Combina tu arreglo con chocolates artesanales, peluches o vino</div>
-      <button onclick="event.stopPropagation();showCombosFromSwipe()" style="background:var(--dorado);color:var(--verde);border:none;padding:12px 28px;border-radius:24px;font-weight:600;font-size:14px;cursor:pointer;font-family:Inter,sans-serif">Ver combos</button>
+      <div style="margin-bottom:16px">${promoIcon}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;color:#fff;font-weight:600;margin-bottom:8px">${promoTitle}</div>
+      <div style="font-size:14px;color:rgba(255,255,255,.7);line-height:1.5;margin-bottom:20px">${promoDesc}</div>
+      <button onclick="event.stopPropagation();${promoBtnAction}" style="background:var(--dorado);color:var(--verde);border:none;padding:12px 28px;border-radius:24px;font-weight:600;font-size:14px;cursor:pointer;font-family:Inter,sans-serif">${promoBtnText}</button>
       <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:12px">Desliza para seguir explorando →</div>
       <div class="dyn-card-overlay" id="dyn-overlay"></div>
     </div>`;
@@ -1521,7 +1537,8 @@ async function initClassic() {
 
 function renderSectionTabs() {
   const tabs = ['general', 'funeral', 'regalos', 'temporada'];
-  const labels = {'general': 'General', 'funeral': 'Funeral', 'regalos': 'Regalos', 'temporada': 'Temporada'};
+  const tempLabel = (catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria) ? catConfig.temporada_categoria : 'Temporada';
+  const labels = {'general': 'General', 'funeral': 'Funeral', 'regalos': 'Regalos', 'temporada': tempLabel};
   document.getElementById('section-tabs').innerHTML = tabs.map(t =>
     `<button class="filter-tab ${sectionFilter === t ? 'active' : ''}" onclick="setSection('${t}')">${labels[t]}</button>`
   ).join('');
@@ -1535,6 +1552,13 @@ function renderCatPills() {
   }
   const currentPill = pills.find(p => p.filter === catFilter) || pills[0];
   let html = '';
+  // Temporada pill (only in general section when temporada alta)
+  if (sectionFilter === 'general' && catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria) {
+    const tempCount = allProducts.filter(p => p.categoria === catConfig.temporada_categoria).length;
+    if (tempCount > 0) {
+      html += `<button class="filter-pill combo-pill ${catFilter === '_temporada' ? 'active' : ''}" onclick="setCat('_temporada')">🌸 ${catConfig.temporada_categoria} (${tempCount})</button>`;
+    }
+  }
   // Combo pill first (only in general section)
   if (sectionFilter === 'general') {
     const comboCount = allProducts.filter(p => {
@@ -1575,6 +1599,11 @@ function showCombosFromSwipe() {
   showView('classic');
   initClassic().then(() => { setTimeout(filterCombos, 100); });
 }
+function showRegalosFromSwipe() {
+  currentMode = 'classic';
+  showView('classic');
+  initClassic().then(() => { setTimeout(() => { setSection('regalos'); }, 100); });
+}
 
 function renderClassicGrid() {
   // Show/hide combo banner based on section
@@ -1586,9 +1615,15 @@ function renderClassicGrid() {
     }).length;
     comboBanner.style.display = (sectionFilter === 'general' && catFilter !== '_combos' && comboCount > 0) ? '' : 'none';
   }
-  // Handle combo filter
+  // Handle special filters
   let filtered;
-  if (catFilter === '_combos') {
+  if (catFilter === '_temporada' && catConfig && catConfig.temporada_categoria) {
+    filtered = allProducts.filter(p => {
+      if (p.categoria !== catConfig.temporada_categoria) return false;
+      if (!matchesSearch(p, searchQuery)) return false;
+      return true;
+    });
+  } else if (catFilter === '_combos') {
     filtered = allProducts.filter(p => {
       const cat = p.categoria.toLowerCase();
       if (!(cat.includes('flores + detalle') || cat.includes('flores y chocolates'))) return false;
@@ -2288,6 +2323,11 @@ function esFechaFuerte(fechaStr) {
   return diffDias >= 0 && diffDias < diasRestr;
 }
 
+function esFechaFuerteExacta(fechaStr) {
+  if (!catConfig || catConfig.temporada_modo !== 'alta') return false;
+  return fechaStr === catConfig.temporada_fecha_fuerte;
+}
+
 async function onFechaChange() {
   const fecha = document.getElementById('of-fecha')?.value;
   if (!fecha) return;
@@ -2387,9 +2427,62 @@ async function onFechaChange() {
     }
   }
 
-  // --- FECHA FUERTE: turnos de temporada ---
+  // --- FECHA FUERTE EXACTA: restricción domicilio ---
   const horarioGrid = document.getElementById('of-horario-grid');
   const disclaimerEl = document.getElementById('of-fecha-fuerte-disclaimer');
+  const fechaFuerteBlockEl = document.getElementById('of-fecha-fuerte-block');
+  if (esFechaFuerteExacta(fecha) && pedidoWeb.tipo === 'domicilio' && horarioGrid) {
+    const nowChih = getChihuahuaNow();
+    const horaChih = nowChih.getHours() + nowChih.getMinutes() / 60;
+    if (fechaFuerteBlockEl) fechaFuerteBlockEl.remove();
+    if (horaChih >= 17.75) {
+      // After 17:45 — domicilio blocked completely
+      horarioGrid.innerHTML = '';
+      const _espBtn = document.getElementById('of-hora-esp-btn');
+      const _horaSelect = document.getElementById('of-hora-especifica');
+      const _hintEl = document.getElementById('of-hora-hint');
+      if (_espBtn) _espBtn.style.display = 'none';
+      if (_horaSelect) _horaSelect.style.display = 'none';
+      if (_hintEl) _hintEl.style.display = 'none';
+      if (disclaimerEl) disclaimerEl.style.display = 'none';
+      const blockDiv = document.createElement('div');
+      blockDiv.id = 'of-fecha-fuerte-block';
+      blockDiv.style.cssText = 'background:#fef2f2;color:#991b1b;padding:16px;border-radius:12px;margin:10px 0;text-align:center;font-size:14px;line-height:1.5';
+      blockDiv.innerHTML = 'Las entregas a domicilio para el ' + (catConfig.temporada_fecha_fuerte || '') + ' ya no están disponibles.<br>Puedes recoger en tienda (C. Sabino 610, Las Granjas) o comunicarte al <a href="tel:6144143787" style="color:#991b1b;font-weight:600">(614) 414 3787</a> 🌸';
+      horarioGrid.parentElement.appendChild(blockDiv);
+      pedidoWeb.horario_entrega = null;
+      return;
+    }
+    // Before 17:45 — only Turno 2 for domicilio
+    horarioGrid.innerHTML =
+      '<button type="button" class="order-horario-btn" data-h="turno1" disabled style="opacity:0.4;cursor:not-allowed" title="No disponible para domicilio">Turno 1 (8:00 a 15:00) — No disponible</button>' +
+      '<button type="button" class="order-horario-btn" data-h="turno2" onclick="selectHorario(\'turno2\')">Turno 2 (15:00 a 21:00)</button>';
+    const _espBtn2 = document.getElementById('of-hora-esp-btn');
+    const _horaSelect2 = document.getElementById('of-hora-especifica');
+    const _hintEl2 = document.getElementById('of-hora-hint');
+    if (_espBtn2) _espBtn2.style.display = 'none';
+    if (_horaSelect2) _horaSelect2.style.display = 'none';
+    if (_hintEl2) _hintEl2.style.display = 'none';
+    if (disclaimerEl) { disclaimerEl.style.display = ''; disclaimerEl.textContent = 'El Turno 1 no está disponible para entregas a domicilio en esta fecha'; }
+    else {
+      const disc = document.createElement('div');
+      disc.id = 'of-fecha-fuerte-disclaimer';
+      disc.style.cssText = 'background:#fff3cd;color:#856404;padding:10px 14px;border-radius:10px;margin-top:8px;font-size:13px;text-align:center';
+      disc.textContent = 'El Turno 1 no está disponible para entregas a domicilio en esta fecha';
+      horarioGrid.parentElement.appendChild(disc);
+    }
+    if (pedidoWeb.horario_entrega && pedidoWeb.horario_entrega !== 'turno2') {
+      pedidoWeb.horario_entrega = null;
+    }
+    horarioGrid.querySelectorAll('.order-horario-btn').forEach(b => {
+      b.classList.toggle('selected', pedidoWeb.horario_entrega === b.dataset.h);
+    });
+    return;
+  }
+
+  // --- FECHA FUERTE: turnos de temporada ---
+  // Clean up block message if switching away from exact fecha fuerte
+  if (fechaFuerteBlockEl) fechaFuerteBlockEl.remove();
   if (esFechaFuerte(fecha) && horarioGrid) {
     horarioGrid.innerHTML =
       '<button type="button" class="order-horario-btn" data-h="turno1" onclick="selectHorario(\'turno1\')">Turno 1 (8:00 a 15:00)</button>' +
@@ -2400,7 +2493,7 @@ async function onFechaChange() {
     if (_espBtn) _espBtn.style.display = 'none';
     if (_horaSelect) _horaSelect.style.display = 'none';
     if (_hintEl) _hintEl.style.display = 'none';
-    if (disclaimerEl) { disclaimerEl.style.display = ''; }
+    if (disclaimerEl) { disclaimerEl.style.display = ''; disclaimerEl.textContent = 'Por alta demanda, las entregas se realizan en horario abierto sin excepción'; }
     else {
       const disc = document.createElement('div');
       disc.id = 'of-fecha-fuerte-disclaimer';
@@ -2417,6 +2510,9 @@ async function onFechaChange() {
     return;
   }
   // --- Normal mode: restore 3 horario buttons if switching from fecha fuerte ---
+  // Clean up block message if it exists from exact fecha fuerte
+  const _blockEl2 = document.getElementById('of-fecha-fuerte-block');
+  if (_blockEl2) _blockEl2.remove();
   if (horarioGrid && !horarioGrid.querySelector('[data-h="manana"]')) {
     horarioGrid.innerHTML =
       '<button type="button" class="order-horario-btn" data-h="manana" onclick="selectHorario(\'manana\')">Mañana 9-2pm</button>' +

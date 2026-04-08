@@ -116,6 +116,15 @@ function esFechaFuertePOS(fechaStr) {
   return diffDias >= 0 && diffDias < diasRestr;
 }
 
+function esFechaFuerteExactaPOS(fechaStr) {
+  if (!posTemporadaConfig || posTemporadaConfig.modo !== 'alta') return false;
+  return fechaStr === posTemporadaConfig.fecha_fuerte;
+}
+
+function getChihuahuaNowPOS() {
+  return new Date(new Date().toLocaleString('en-US', {timeZone:'America/Chihuahua'}));
+}
+
 function onPOSFechaChange() {
   const fechaEl = document.getElementById('f-fecha');
   if (!fechaEl) return;
@@ -123,13 +132,61 @@ function onPOSFechaChange() {
   const horBtns = document.querySelector('#fr-horario .hor-btns');
   if (!horBtns) return;
   const disclaimerEl = document.getElementById('pos-fecha-fuerte-disclaimer');
+  const blockEl = document.getElementById('pos-fecha-fuerte-block');
+
+  // --- FECHA FUERTE EXACTA: restricción domicilio ---
+  if (esFechaFuerteExactaPOS(fecha) && ordenTipo === 'domicilio') {
+    const nowChih = getChihuahuaNowPOS();
+    const horaChih = nowChih.getHours() + nowChih.getMinutes() / 60;
+    if (blockEl) blockEl.remove();
+    if (horaChih >= 17.75) {
+      // After 17:45 — domicilio blocked completely
+      horBtns.innerHTML = '';
+      const espWrap = document.getElementById('hora-esp-wrap');
+      if (espWrap) espWrap.style.display = 'none';
+      if (disclaimerEl) disclaimerEl.style.display = 'none';
+      const bDiv = document.createElement('div');
+      bDiv.id = 'pos-fecha-fuerte-block';
+      bDiv.style.cssText = 'background:#fef2f2;color:#991b1b;padding:12px;border-radius:8px;margin-top:6px;font-size:12px;text-align:center;line-height:1.5';
+      bDiv.innerHTML = 'Las entregas a domicilio para el ' + (posTemporadaConfig.fecha_fuerte || '') + ' ya no están disponibles.<br>Solo disponible para recoger en tienda o comunícate al (614) 414 3787';
+      horBtns.parentElement.appendChild(bDiv);
+      selHorario = null;
+      updateSummary();
+      return;
+    }
+    // Before 17:45 — only Turno 2 for domicilio
+    horBtns.innerHTML =
+      '<div class="hor-btn" style="opacity:0.4;cursor:not-allowed;pointer-events:none">Turno 1 (8-3pm) — No disp.</div>' +
+      '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno2\')">Turno 2 (3-9pm)</div>';
+    const espWrap = document.getElementById('hora-esp-wrap');
+    if (espWrap) espWrap.style.display = 'none';
+    if (disclaimerEl) { disclaimerEl.style.display = ''; disclaimerEl.textContent = 'Turno 1 no disponible para domicilio en fecha fuerte'; }
+    else {
+      const disc = document.createElement('div');
+      disc.id = 'pos-fecha-fuerte-disclaimer';
+      disc.style.cssText = 'background:#fff3cd;color:#856404;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:11px;text-align:center';
+      disc.textContent = 'Turno 1 no disponible para domicilio en fecha fuerte';
+      horBtns.parentElement.appendChild(disc);
+    }
+    if (selHorario && selHorario !== 'turno2') { selHorario = null; }
+    horBtns.querySelectorAll('.hor-btn').forEach(b => {
+      const m = b.getAttribute('onclick') && b.getAttribute('onclick').match(/'([^']+)'\)/);
+      if (m && selHorario === m[1]) b.classList.add('active');
+    });
+    updateSummary();
+    return;
+  }
+
+  // Clean up block message if switching away
+  if (blockEl) blockEl.remove();
+
   if (esFechaFuertePOS(fecha)) {
     horBtns.innerHTML =
       '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno1\')">Turno 1 (8-3pm)</div>' +
       '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno2\')">Turno 2 (3-9pm)</div>';
     const espWrap = document.getElementById('hora-esp-wrap');
     if (espWrap) espWrap.style.display = 'none';
-    if (disclaimerEl) { disclaimerEl.style.display = ''; }
+    if (disclaimerEl) { disclaimerEl.style.display = ''; disclaimerEl.textContent = 'Por alta demanda, las entregas se realizan en horario abierto sin excepción'; }
     else {
       const disc = document.createElement('div');
       disc.id = 'pos-fecha-fuerte-disclaimer';
@@ -501,11 +558,29 @@ function buildW3Form() {
       <div class="frow" id="fr-fecha"><label>Fecha de entrega *</label><input type="date" id="f-fecha" min="${todayStr()}" value="${todayStr()}" onchange="onPOSFechaChange()"><div class="errmsg">Campo obligatorio</div></div>
       <div class="frow" id="fr-horario"><label>Horario de entrega *</label>
         <div class="hor-btns">
-          ${esFechaFuertePOS(todayStr()) ?
-            '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno1\')">Turno 1 (8-3pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'turno2\')">Turno 2 (3-9pm)</div>' :
-            '<div class="hor-btn" onclick="selHorarioBtn(this,\'manana\')">Manana (9-2pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'tarde\')">Tarde (2-6pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'noche\')">Noche (6-9pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'hora_especifica\')">Hora especifica</div>'}
+          ${(function(){
+            const _ts = todayStr();
+            if (esFechaFuerteExactaPOS(_ts) && ordenTipo === 'domicilio') {
+              const _nc = getChihuahuaNowPOS();
+              const _hc = _nc.getHours() + _nc.getMinutes() / 60;
+              if (_hc >= 17.75) return '';
+              return '<div class="hor-btn" style="opacity:0.4;cursor:not-allowed;pointer-events:none">Turno 1 (8-3pm) — No disp.</div><div class="hor-btn" onclick="selHorarioBtn(this,\'turno2\')">Turno 2 (3-9pm)</div>';
+            }
+            if (esFechaFuertePOS(_ts)) return '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno1\')">Turno 1 (8-3pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'turno2\')">Turno 2 (3-9pm)</div>';
+            return '<div class="hor-btn" onclick="selHorarioBtn(this,\'manana\')">Manana (9-2pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'tarde\')">Tarde (2-6pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'noche\')">Noche (6-9pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'hora_especifica\')">Hora especifica</div>';
+          })()}
         </div>
-        ${esFechaFuertePOS(todayStr()) ? '<div id="pos-fecha-fuerte-disclaimer" style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:11px;text-align:center">Por alta demanda, las entregas se realizan en horario abierto sin excepción</div>' : ''}
+        ${(function(){
+            const _ts = todayStr();
+            if (esFechaFuerteExactaPOS(_ts) && ordenTipo === 'domicilio') {
+              const _nc = getChihuahuaNowPOS();
+              const _hc = _nc.getHours() + _nc.getMinutes() / 60;
+              if (_hc >= 17.75) return '<div id="pos-fecha-fuerte-block" style="background:#fef2f2;color:#991b1b;padding:12px;border-radius:8px;margin-top:6px;font-size:12px;text-align:center;line-height:1.5">Las entregas a domicilio para el ' + (posTemporadaConfig.fecha_fuerte||'') + ' ya no están disponibles.<br>Solo disponible para recoger en tienda o comunícate al (614) 414 3787</div>';
+              return '<div id="pos-fecha-fuerte-disclaimer" style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:11px;text-align:center">Turno 1 no disponible para domicilio en fecha fuerte</div>';
+            }
+            if (esFechaFuertePOS(_ts)) return '<div id="pos-fecha-fuerte-disclaimer" style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:11px;text-align:center">Por alta demanda, las entregas se realizan en horario abierto sin excepción</div>';
+            return '';
+          })()}
         <div id="hora-esp-wrap" style="display:none;margin-top:6px">
           <select id="f-hora-esp" onchange="horaEspecifica=this.value" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">${buildHoraOptions()}</select>
           <div style="font-size:11px;color:var(--texto2);margin-top:2px">Minimo 2 hrs de anticipacion</div>
