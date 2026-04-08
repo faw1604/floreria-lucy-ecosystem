@@ -68,9 +68,13 @@ async def config_para_claudia(
     if not CLAUDIA_API_KEY or x_claudia_key != CLAUDIA_API_KEY:
         raise HTTPException(status_code=401, detail="API key inválida")
     cfg = await obtener_config_dict(db)
+    temporada_modo = cfg.get("temporada_modo", "regular")
     return {
         "claudia_activa": cfg.get("claudia_activa", "true") == "true",
         "abierto": cfg.get("claudia_abierto", "true") == "true",
+        "temporada_alta": temporada_modo == "alta",
+        "temporada_fecha_fuerte": cfg.get("temporada_fecha_fuerte", ""),
+        "temporada_dias_restriccion": cfg.get("temporada_dias_restriccion", "2"),
     }
 
 

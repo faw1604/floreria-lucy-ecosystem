@@ -763,10 +763,10 @@ async def entregas_envios(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    query = select(Pedido).where(Pedido.estado.in_(EP.LISTOS + [EP.EN_CAMINO]), Pedido.metodo_entrega.in_(ME.PARA_ENVIO))
-    f = _parse_fecha(fecha)
-    if f:
-        query = query.where(Pedido.fecha_entrega == f)
+    estados_envio = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
+    query = select(Pedido).where(Pedido.estado.in_(estados_envio), Pedido.metodo_entrega.in_(ME.PARA_ENVIO))
+    f = _parse_fecha(fecha) or hoy()
+    query = query.where(Pedido.fecha_entrega == f)
     result = await db.execute(query.order_by(Pedido.fecha_entrega, Pedido.horario_entrega))
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]

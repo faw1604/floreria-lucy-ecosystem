@@ -737,14 +737,20 @@ async function onDirVerificada() {
       document.getElementById('geo-badge').innerHTML = `<span style="font-size:11px;color:var(--rojo)">${data.error}</span>`;
       geoData = null;
     } else {
-      geoData = data;
-      document.getElementById('geo-badge').innerHTML =
-        `<span class="zona-badge ${(data.zona_envio||'').toLowerCase()}" style="margin-right:6px">${data.zona_envio || '?'} — $${(data.tarifa_envio||0)/100}</span>` +
-        `<span class="zona-badge" style="background:#e8eaed;color:var(--texto)">${data.ruta || '?'}</span>`;
-      const zonaEl = document.getElementById('f-zona');
-      if (zonaEl && data.zona_envio) zonaEl.value = data.zona_envio;
-      const rutaEl = document.getElementById('f-ruta');
-      if (rutaEl && data.ruta) rutaEl.value = data.ruta;
+      if (data.fuera_de_cobertura) {
+        document.getElementById('geo-badge').innerHTML =
+          '<span style="font-size:11px;color:var(--rojo);font-weight:600">⚠ Área de entrega no disponible — fuera de cobertura</span>';
+        geoData = null;
+      } else {
+        geoData = data;
+        document.getElementById('geo-badge').innerHTML =
+          `<span class="zona-badge ${(data.zona_envio||'').toLowerCase()}" style="margin-right:6px">${data.zona_envio || '?'} — $${(data.tarifa_envio||0)/100}</span>` +
+          `<span class="zona-badge" style="background:#e8eaed;color:var(--texto)">${data.ruta || '?'}</span>`;
+        const zonaEl = document.getElementById('f-zona');
+        if (zonaEl && data.zona_envio) zonaEl.value = data.zona_envio;
+        const rutaEl = document.getElementById('f-ruta');
+        if (rutaEl && data.ruta) rutaEl.value = data.ruta;
+      }
     }
   } catch(e) {
     document.getElementById('geo-badge').innerHTML = '<span style="font-size:11px;color:var(--rojo)">Error de red</span>';
@@ -2987,6 +2993,30 @@ async function loadEntregasResumen() {
   } catch(e) {}
 }
 
+function _entregaEstadoBadge(p) {
+  const est = p.estado;
+  if (est === 'Entregado') {
+    let hora = '';
+    if (p.entregado_at) {
+      const d = new Date(p.entregado_at);
+      const h = d.getHours(); const m = d.getMinutes().toString().padStart(2,'0');
+      const ampm = h >= 12 ? 'pm' : 'am';
+      const h12 = h % 12 || 12;
+      hora = ` ${h12}:${m} ${ampm}`;
+    }
+    return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#dcfce7;color:#166534;font-weight:600;font-size:12px">Entregado${hora}</span>`;
+  }
+  if (est === 'En camino') {
+    const ruta = p.ruta ? ` — Ruta ${p.ruta}` : '';
+    return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#dbeafe;color:#1e40af;font-weight:600;font-size:12px">En camino${ruta}</span>`;
+  }
+  if (est === 'intento_fallido') {
+    return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#fef2f2;color:#991b1b;font-weight:600;font-size:12px">No entregado</span>`;
+  }
+  // listo_taller, Listo — pendiente de repartidor
+  return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#fef9c3;color:#854d0e;font-weight:600;font-size:12px">Pendiente</span>`;
+}
+
 async function loadEntregasContent() {
   const el = document.getElementById('entregas-content');
   const f = getEntregasFecha();
@@ -2997,19 +3027,41 @@ async function loadEntregasContent() {
     if (!r.ok) return;
     const data = await r.json();
     if (!data.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--texto2)">Sin pedidos</div>'; return; }
-    const isReadOnly = entregasSub === 'envios';
+    const isEnvios = entregasSub === 'envios';
     let html = '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:var(--verde);color:#fff">';
-    html += '<th style="padding:10px 12px;text-align:left">Orden</th><th style="padding:10px 12px;text-align:left">Cliente</th><th style="padding:10px 12px;text-align:left">Producto(s)</th><th style="padding:10px 12px;text-align:left">Estado</th>';
-    if (!isReadOnly) html += '<th style="padding:10px 12px;text-align:left">Accion</th>';
+    html += '<th style="padding:10px 12px;text-align:left">Orden</th><th style="padding:10px 12px;text-align:left">Cliente</th>';
+    if (isEnvios) {
+      html += '<th style="padding:10px 12px;text-align:left">Direccion</th><th style="padding:10px 12px;text-align:left">Zona</th><th style="padding:10px 12px;text-align:left">Horario</th>';
+    } else {
+      html += '<th style="padding:10px 12px;text-align:left">Producto(s)</th>';
+    }
+    html += '<th style="padding:10px 12px;text-align:left">Estado</th>';
+    if (!isEnvios) html += '<th style="padding:10px 12px;text-align:left">Accion</th>';
     html += '</tr></thead><tbody>';
     data.forEach(p => {
       const items = (p.items||[]).map(i => `${i.cantidad>1?i.cantidad+'x ':''}${i.nombre}`).join(', ') || '—';
+      // Estado con color para envios
+      let estadoHtml;
+      if (isEnvios) {
+        estadoHtml = _entregaEstadoBadge(p);
+      } else {
+        estadoHtml = p.estado + (p.ruta ? ' — Ruta '+p.ruta : '');
+      }
       html += `<tr style="border-bottom:1px solid var(--borde)">
         <td style="padding:10px 12px;font-weight:700;color:var(--verde)">${p.numero}</td>
-        <td style="padding:10px 12px;font-weight:600">${p.cliente_nombre || p.receptor_nombre || '—'}</td>
-        <td style="padding:10px 12px;color:var(--texto2)">${items}</td>
-        <td style="padding:10px 12px">${p.estado}${p.ruta ? ' — Ruta '+p.ruta : ''}</td>`;
-      if (!isReadOnly) html += `<td style="padding:10px 12px"><button onclick="entregaMarcar(${p.id})" style="padding:8px 14px;background:var(--verde);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">✅ Entregado</button></td>`;
+        <td style="padding:10px 12px;font-weight:600">${p.receptor_nombre || p.cliente_nombre || '—'}</td>`;
+      if (isEnvios) {
+        const dir = p.direccion_entrega ? (p.direccion_entrega.length > 40 ? p.direccion_entrega.substring(0,40)+'...' : p.direccion_entrega) : '—';
+        const zona = p.zona_entrega || '—';
+        const horario = p.hora_exacta || p.horario_entrega || '—';
+        html += `<td style="padding:10px 12px;font-size:12px">${dir}</td>`;
+        html += `<td style="padding:10px 12px">${zona}</td>`;
+        html += `<td style="padding:10px 12px">${horario}</td>`;
+      } else {
+        html += `<td style="padding:10px 12px;color:var(--texto2)">${items}</td>`;
+      }
+      html += `<td style="padding:10px 12px">${estadoHtml}</td>`;
+      if (!isEnvios) html += `<td style="padding:10px 12px"><button onclick="entregaMarcar(${p.id})" style="padding:8px 14px;background:var(--verde);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">✅ Entregado</button></td>`;
       html += '</tr>';
     });
     html += '</tbody></table>';

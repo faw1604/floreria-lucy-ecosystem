@@ -203,6 +203,7 @@ async def pos_geocodificar(
         "lat": lat, "lng": lng, "ruta": ruta,
         "zona_envio": zona["zona"] if zona else None,
         "tarifa_envio": zona["tarifa"] * 100 if zona else None,
+        "fuera_de_cobertura": zona is None,
         "display_name": data[0].get("display_name", ""),
     }
 
