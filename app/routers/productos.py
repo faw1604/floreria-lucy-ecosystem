@@ -82,10 +82,18 @@ async def crear_producto(
         nombre=request.get("nombre", ""),
         categoria=request.get("categoria", ""),
         precio=request.get("precio", 0),
+        precio_descuento=request.get("precio_descuento"),
         costo=request.get("costo", 0),
+        costo_unitario=request.get("costo_unitario"),
         activo=request.get("activo", True),
         disponible_hoy=request.get("disponible_hoy", True),
+        visible_catalogo=request.get("visible_catalogo", True),
         descripcion=request.get("descripcion"),
+        imagen_url=request.get("imagen_url"),
+        stock_activo=request.get("stock_activo", False),
+        stock=request.get("stock", 0),
+        medida_alto=request.get("medida_alto"),
+        medida_ancho=request.get("medida_ancho"),
     )
     db.add(producto)
     await db.commit()
