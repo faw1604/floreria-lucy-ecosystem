@@ -462,10 +462,25 @@ async def _crear_pedido_web_inner(request, db):
     # Crear pedido
     numero = await _generar_numero_pedido(db)
 
-    # Calcular envío funeral según funeraria seleccionada
-    envio_funeral = 0
+    # Calcular envío
+    envio = 0
+    zona_entrega_val = None
     funeraria_nombre = None
     funeraria_zona = None
+
+    # Domicilio: zona y tarifa del autocomplete
+    if tipo == "domicilio":
+        zona_entrega_val = data.get("zona_entrega")
+        costo_envio_web = data.get("costo_envio")
+        if zona_entrega_val and costo_envio_web:
+            envio = int(costo_envio_web)
+        elif zona_entrega_val:
+            # Fallback: buscar tarifa del GeoJSON
+            from app.services.zonas_envio import _ZONAS
+            for nombre, tarifa, _ in _ZONAS:
+                if nombre == zona_entrega_val:
+                    envio = tarifa * 100
+                    break
     if tipo == "funeral":
         funeraria_id = data.get("funeraria_id")
         if funeraria_id:
@@ -473,12 +488,12 @@ async def _crear_pedido_web_inner(request, db):
             fun_r = await db.execute(select(Funeraria).where(Funeraria.id == funeraria_id))
             fun = fun_r.scalar_one_or_none()
             if fun:
-                envio_funeral = fun.costo_envio or 0
+                envio = fun.costo_envio or 0
                 funeraria_nombre = fun.nombre
                 funeraria_zona = fun.zona
         elif data.get("funeral_domicilio"):
             # Funeral en domicilio particular
-            envio_funeral = int(data.get("funeral_domicilio_costo", 0))
+            envio = int(data.get("funeral_domicilio_costo", 0))
             funeraria_nombre = "Domicilio particular"
             funeraria_zona = (data.get("funeral_domicilio_zona") or "").title()
 
@@ -557,7 +572,7 @@ async def _crear_pedido_web_inner(request, db):
         fecha_entrega=fecha_entrega,
         horario_entrega=horario,
         hora_exacta=hora_exacta,
-        zona_entrega=funeraria_zona if tipo == "funeral" else None,  # Funeral: zona de la funeraria
+        zona_entrega=funeraria_zona if tipo == "funeral" else zona_entrega_val,
         direccion_entrega=data.get("funeral_direccion") if (tipo == "funeral" and data.get("funeral_domicilio")) else data.get("direccion_entrega"),
         receptor_nombre=data.get("nombre_destinatario") if tipo == "domicilio" else nombre_cliente,
         receptor_telefono=_formatear_telefono(data.get("telefono_destinatario") or "") if tipo == "domicilio" else telefono,
@@ -566,8 +581,8 @@ async def _crear_pedido_web_inner(request, db):
         forma_pago=data.get("forma_pago"),
         pago_confirmado=False,
         subtotal=subtotal,
-        envio=envio_funeral,
-        total=subtotal + envio_funeral,
+        envio=envio,
+        total=subtotal + envio,
         tipo_especial="Funeral" if tipo == "funeral" else ("Recoger" if tipo == "recoger" else None),
         metodo_entrega="funeral_envio" if tipo == "funeral" else ("recoger" if tipo == "recoger" else "envio"),
         requiere_factura=data.get("requiere_factura", False),

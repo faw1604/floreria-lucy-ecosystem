@@ -2909,15 +2909,29 @@ function renderOrderStep4() {
     sub += precio;
     html += `<div style="font-size:13px;color:var(--texto2);margin-bottom:4px">• ${p.nombre} — $${(precio/100).toLocaleString()}</div>`;
   });
+  // Envío domicilio
+  let envio = 0;
+  if (tipo === 'domicilio' && pedidoWeb.geo_data && pedidoWeb.geo_data.tarifa_envio) {
+    envio = pedidoWeb.geo_data.tarifa_envio;
+  }
+  // Envío funeral domicilio
+  if (tipo === 'funeral' && pedidoWeb.funeral_domicilio && pedidoWeb.funeral_domicilio_costo) {
+    envio = pedidoWeb.funeral_domicilio_costo;
+  }
+  let totalFinal = sub + envio;
   if (appliedDiscount) {
     let descAmt = 0;
     if (appliedDiscount.tipo === 'porcentaje') descAmt = Math.round(sub * appliedDiscount.valor / 100);
     else descAmt = appliedDiscount.valor;
+    totalFinal = sub - descAmt + envio;
     html += `<div style="text-align:right;font-size:13px;color:var(--dorado);font-weight:600;margin-top:6px">Descuento (${appliedDiscount.codigo}): -$${(descAmt/100).toLocaleString()}</div>`;
-    html += `<div style="text-align:right;font-size:16px;font-weight:600;color:var(--verde);margin:4px 0;padding-top:8px;border-top:1px solid var(--borde)">Total estimado: $${((sub-descAmt)/100).toLocaleString()}</div>`;
-  } else {
-    html += `<div style="text-align:right;font-size:16px;font-weight:600;color:var(--verde);margin:10px 0;padding-top:8px;border-top:1px solid var(--borde)">Total estimado: $${(sub/100).toLocaleString()}</div>`;
   }
+  html += `<div style="text-align:right;font-size:13px;color:var(--texto2);margin-top:6px">Subtotal: $${(sub/100).toLocaleString()}</div>`;
+  if (envio > 0) {
+    const zonaLabel = pedidoWeb.geo_data ? pedidoWeb.geo_data.zona_envio : (pedidoWeb.funeraria_nombre || '');
+    html += `<div style="text-align:right;font-size:13px;color:var(--texto2)">Envío${zonaLabel ? ' ('+zonaLabel+')' : ''}: $${(envio/100).toLocaleString()}</div>`;
+  }
+  html += `<div style="text-align:right;font-size:16px;font-weight:600;color:var(--verde);margin:4px 0;padding-top:8px;border-top:1px solid var(--borde)">Total estimado: $${(totalFinal/100).toLocaleString()}</div>`;
   html += `<div style="font-size:14px;font-weight:600;margin:12px 0 6px">Tipo: ${tipoLabels[tipo]}</div>`;
   html += `<div style="font-size:13px;color:var(--texto2)">Cliente: ${pedidoWeb.cliente_nombre}<br>Tel: ${pedidoWeb.cliente_telefono}</div>`;
   if (tipo === 'domicilio') {
@@ -2977,11 +2991,16 @@ async function toggleFactura() {
     }
     const iva = Math.round(subFlores * 0.16);
     const ieps = Math.round(subChoco * 0.08);
-    const total = sub + iva;
+    // Envío (sin IVA)
+    let envioFact = 0;
+    if (pedidoWeb.tipo === 'domicilio' && pedidoWeb.geo_data && pedidoWeb.geo_data.tarifa_envio) envioFact = pedidoWeb.geo_data.tarifa_envio;
+    if (pedidoWeb.tipo === 'funeral' && pedidoWeb.funeral_domicilio && pedidoWeb.funeral_domicilio_costo) envioFact = pedidoWeb.funeral_domicilio_costo;
+    const total = sub + iva + envioFact;
     desglose.style.display = '';
     let desgl = '';
     if (subFlores) desgl += `<div>Subtotal flores/otros: $${(subFlores/100).toLocaleString()}</div><div style="color:var(--dorado)">IVA 16%: $${(iva/100).toLocaleString()}</div>`;
     if (subChoco) desgl += `<div>Subtotal chocolates: $${(subChoco/100).toLocaleString()}</div><div style="color:var(--texto2)">IEPS 8%: $${(ieps/100).toLocaleString()} (desglosado)</div>`;
+    if (envioFact > 0) desgl += `<div>Envío: $${(envioFact/100).toLocaleString()}</div>`;
     desgl += `<div style="font-weight:600;color:var(--verde);font-size:15px;margin-top:4px">Total con factura: $${(total/100).toLocaleString()}</div>`;
     desglose.innerHTML = desgl + `
     <div style="border:1px solid var(--dorado);border-radius:10px;padding:12px;margin-top:10px;text-align:left">
@@ -3037,6 +3056,8 @@ async function submitOrder() {
       nombre_destinatario: pedidoWeb.nombre_destinatario || null,
       telefono_destinatario: pedidoWeb.telefono_destinatario ? (pedidoWeb.pais_destinatario||'+52').replace('+','') + pedidoWeb.telefono_destinatario : null,
       direccion_entrega: pedidoWeb.direccion_entrega || null,
+      zona_entrega: pedidoWeb.geo_data ? pedidoWeb.geo_data.zona_envio : null,
+      costo_envio: pedidoWeb.geo_data ? pedidoWeb.geo_data.tarifa_envio : null,
       dedicatoria: pedidoWeb.dedicatoria || null,
       notas_entrega: pedidoWeb.notas_entrega || null,
       fecha_entrega: pedidoWeb.fecha_entrega,
