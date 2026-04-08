@@ -167,6 +167,11 @@ async def pos_geocodificar(
     from app.services.rutas import obtener_ruta
     ua = "FloreriaLucy/1.0 florerialucychihuahua@gmail.com"
     calle = direccion.split(",")[0].strip()
+    # Expand common abbreviations for Nominatim
+    import re
+    calle_exp = re.sub(r"(?i)^C\.\s*", "Calle ", calle)
+    calle_exp = re.sub(r"(?i)^Av\.\s*", "Avenida ", calle_exp)
+    calle_exp = re.sub(r"(?i)^Blvd\.\s*", "Boulevard ", calle_exp)
 
     async def geocode(params):
         async with httpx.AsyncClient() as client:
@@ -176,16 +181,27 @@ async def pos_geocodificar(
             )
             return r.json()
 
+    vb = "-106.25,28.83,-105.92,28.55"
+    in_chih = lambda d: d and 28.55 <= float(d[0]["lat"]) <= 28.83 and -106.25 <= float(d[0]["lon"]) <= -105.92
     try:
+        # 1) Structured: street + city
         data = await geocode({
-            "street": calle, "city": "Chihuahua", "state": "Chihuahua", "country": "Mexico",
-            "countrycodes": "mx", "bounded": "1", "viewbox": "-106.25,28.83,-105.92,28.55",
+            "street": calle_exp, "city": "Chihuahua", "state": "Chihuahua", "country": "Mexico",
+            "countrycodes": "mx", "bounded": "1", "viewbox": vb,
             "format": "json", "limit": "1",
         })
-        if not data:
+        # 2) If no result or outside Chihuahua, try free-form with street only
+        if not in_chih(data):
+            data = await geocode({
+                "q": f"{calle_exp}, Chihuahua, Mexico",
+                "countrycodes": "mx", "bounded": "1", "viewbox": vb,
+                "format": "json", "limit": "1",
+            })
+        # 3) Last try with full address
+        if not in_chih(data):
             data = await geocode({
                 "q": f"{direccion}, Chihuahua, Mexico",
-                "countrycodes": "mx", "bounded": "1", "viewbox": "-106.25,28.83,-105.92,28.55",
+                "countrycodes": "mx", "bounded": "1", "viewbox": vb,
                 "format": "json", "limit": "1",
             })
     except Exception:
@@ -1393,9 +1409,6 @@ async def pos_temporada_config(
         "dias_restriccion": int(cfg.get("temporada_dias_restriccion", "2")),
         "acepta_funerales": cfg.get("temporada_acepta_funerales", "true") == "true",
         "envio_unico": int(cfg.get("temporada_envio_unico", "9900")),
-        "zona_tarifa_morada": int(cfg.get("zona_tarifa_morada", "9900")),
-        "zona_tarifa_azul": int(cfg.get("zona_tarifa_azul", "15900")),
-        "zona_tarifa_verde": int(cfg.get("zona_tarifa_verde", "19900")),
     }
 
 

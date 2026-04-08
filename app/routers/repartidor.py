@@ -24,7 +24,13 @@ cloudinary.config(
 )
 
 HORARIO_ORDER = {"mañana": 0, "manana": 0, "tarde": 1, "noche": 2}
-ZONA_ORDER = {"Morada": 0, "Azul": 1, "Verde": 2}
+ZONA_ORDER = {
+    "Zona Central": 0,
+    "NOROESTE 1": 1, "NORESTE 1": 1, "PONIENTE 1": 1, "SUR 1": 1,
+    "NORESTE 2": 2, "NOROESTE 2": 2, "PONIENTE 2": 2, "SUR 2": 2, "ORIENTE 1": 2,
+    "PONIENTE 3": 3, "SUR 3": 3, "SURESTE 1": 3,
+    "NORTE": 4, "ORIENTE 2": 4, "SURESTE 2": 4,
+}
 
 
 def _sort_key(p):

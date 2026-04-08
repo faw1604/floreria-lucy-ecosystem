@@ -144,11 +144,8 @@ async def alertas_fechas(
 
 @router.get("/envio/tarifa")
 async def tarifa_envio(zona: str | None = None):
-    tarifas = {
-        "Morada": 9900,
-        "Azul": 15900,
-        "Verde": 19900,
-    }
+    from app.services.zonas_envio import _ZONAS
+    tarifas = {nombre: tarifa * 100 for nombre, tarifa, _ in _ZONAS}
     if zona and zona in tarifas:
         return {"zona": zona, "tarifa": tarifas[zona], "tarifa_display": f"${tarifas[zona] // 100}"}
     return {"zonas": [{"zona": z, "tarifa": t, "tarifa_display": f"${t // 100}"} for z, t in tarifas.items()]}

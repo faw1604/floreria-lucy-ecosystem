@@ -44,7 +44,7 @@ async def crear_funeraria(
         nombre=request.get("nombre", ""),
         aliases=json.dumps(aliases, ensure_ascii=False),
         direccion=request.get("direccion"),
-        zona=request.get("zona", "Morada"),
+        zona=request.get("zona", "Zona Central"),
         costo_envio=request.get("costo_envio", 9900),
     )
     db.add(funeraria)

@@ -848,10 +848,7 @@ async function loadClaudia() {
     document.getElementById('temp-dias').value = cfg.temporada_dias_restriccion || '2';
     document.getElementById('temp-funerales').checked = (cfg.temporada_acepta_funerales || 'true') === 'true';
 
-    // Zone tariffs
-    document.getElementById('zona-morada').value = Math.round(parseInt(cfg.zona_tarifa_morada || '9900') / 100);
-    document.getElementById('zona-azul').value = Math.round(parseInt(cfg.zona_tarifa_azul || '15900') / 100);
-    document.getElementById('zona-verde').value = Math.round(parseInt(cfg.zona_tarifa_verde || '19900') / 100);
+
 
     // Load categories for dropdown
     await cargarCategoriasTemporada(cfg.temporada_categoria || '');
@@ -919,17 +916,7 @@ async function guardarTemporada() {
   await Promise.all(saves);
 }
 
-async function guardarZonas() {
-  const morada = parseInt(document.getElementById('zona-morada').value || '99') * 100;
-  const azul = parseInt(document.getElementById('zona-azul').value || '159') * 100;
-  const verde = parseInt(document.getElementById('zona-verde').value || '199') * 100;
 
-  await Promise.all([
-    toggleConfig('zona_tarifa_morada', String(morada)),
-    toggleConfig('zona_tarifa_azul', String(azul)),
-    toggleConfig('zona_tarifa_verde', String(verde)),
-  ]);
-}
 
 async function toggleConfig(clave, valor) {
   await fetch(API + '/configuracion/' + clave, {

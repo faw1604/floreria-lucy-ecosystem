@@ -10,5 +10,5 @@ class Funeraria(Base):
     nombre: Mapped[str] = mapped_column(String(200), index=True)
     aliases: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array de nombres alternativos
     direccion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    zona: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # Morada / Azul / Verde
+    zona: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     costo_envio: Mapped[int] = mapped_column(Integer, default=9900)  # en centavos — default $99
