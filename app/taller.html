@@ -568,7 +568,7 @@ function itemsDetalle(items) {
 
 function horarioLabel(h, hora) {
   if (hora) return hora;
-  const map = {manana:'Manana 9-2pm','mañana':'Manana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm',hora_exacta:'Hora especifica'};
+  const map = {manana:'Manana 9-2pm','mañana':'Manana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm',hora_exacta:'Hora especifica',turno1:'Turno 1 (8-3pm)',turno2:'Turno 2 (3-9pm)'};
   return map[(h||'').toLowerCase()] || h || '';
 }
 
@@ -585,7 +585,9 @@ function calcCountdown(p) {
   if (p.hora_exacta) {
     const parts = p.hora_exacta.match(/(\d+):(\d+)/);
     if (parts) { targetH = parseInt(parts[1]); targetM = parseInt(parts[2]); }
-  } else if (h.includes('manana') || h.includes('mañana')) { targetH = 14; }
+  } else if (h === 'turno1') { targetH = 15; }
+  else if (h === 'turno2') { targetH = 21; }
+  else if (h.includes('manana') || h.includes('mañana')) { targetH = 14; }
   else if (h.includes('tarde')) { targetH = 18; }
   else if (h.includes('noche')) { targetH = 21; }
 

@@ -823,7 +823,32 @@ async function loadHeroConfig() {
       const img = document.getElementById('hero-img');
       if (img) img.src = cfg.hero_imagen;
     }
+    // Pop-up temporada alta
+    if (cfg.temporada_modo === 'alta' && !sessionStorage.getItem('lucy_temp_popup_shown')) {
+      mostrarPopupTemporada(cfg);
+      sessionStorage.setItem('lucy_temp_popup_shown', '1');
+    }
   } catch(e) {}
+}
+
+function mostrarPopupTemporada(cfg) {
+  const overlay = document.createElement('div');
+  overlay.id = 'temp-popup-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeUp .3s ease-out';
+  const fechaLabel = cfg.temporada_fecha_fuerte || 'esta temporada';
+  overlay.innerHTML = `
+    <div style="background:#faf8f5;border-radius:20px;padding:40px 32px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="font-size:48px;margin-bottom:16px">🌸</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:#193a2c;margin:0 0 12px">¿Tu pedido es para el Dia de las Madres?</h2>
+      <p style="font-family:'Inter',sans-serif;font-size:14px;color:#666;margin:0 0 28px">Tenemos arreglos especiales de temporada</p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <a href="/catalogo/?modo=classic&cat=temporada" style="display:block;padding:14px 24px;background:#193a2c;color:#faf8f5;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;text-decoration:none;transition:background .15s">Si, ver catalogo de temporada</a>
+        <a href="/catalogo/?modo=classic" style="display:block;padding:14px 24px;background:transparent;color:#193a2c;border:2px solid #193a2c;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;text-decoration:none;transition:all .15s">No, ver catalogo completo</a>
+      </div>
+    </div>
+  `;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

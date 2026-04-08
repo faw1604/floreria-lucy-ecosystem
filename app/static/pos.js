@@ -38,6 +38,7 @@ let lastResult = null;
 let lastCarritoSnap = [];
 let allFunerarias = [];
 let editingPedidoId = null; // when editing a pending order
+let posTemporadaConfig = null; // temporada config for fecha fuerte logic
 let contadorPendientes = 0;
 let debounceTimer = null;
 let debounceCliTimer = null;
@@ -94,6 +95,66 @@ function setView(v) {
   document.getElementById('vt-grid').classList.toggle('active', v === 'grid');
   document.getElementById('vt-list').classList.toggle('active', v === 'lista');
   renderProds();
+}
+
+// ─── Temporada config + fecha fuerte ───
+(async function loadTemporadaConfig() {
+  try {
+    const r = await fetch('/pos/temporada-config');
+    if (r.ok) posTemporadaConfig = await r.json();
+  } catch(e) {}
+})();
+
+function esFechaFuertePOS(fechaStr) {
+  if (!posTemporadaConfig || posTemporadaConfig.modo !== 'alta') return false;
+  const fechaFuerte = posTemporadaConfig.fecha_fuerte;
+  const diasRestr = parseInt(posTemporadaConfig.dias_restriccion || '2');
+  if (!fechaFuerte) return false;
+  const ff = new Date(fechaFuerte + 'T12:00:00');
+  const sel = new Date(fechaStr + 'T12:00:00');
+  const diffDias = Math.round((ff - sel) / 86400000);
+  return diffDias >= 0 && diffDias < diasRestr;
+}
+
+function onPOSFechaChange() {
+  const fechaEl = document.getElementById('f-fecha');
+  if (!fechaEl) return;
+  const fecha = fechaEl.value;
+  const horBtns = document.querySelector('#fr-horario .hor-btns');
+  if (!horBtns) return;
+  const disclaimerEl = document.getElementById('pos-fecha-fuerte-disclaimer');
+  if (esFechaFuertePOS(fecha)) {
+    horBtns.innerHTML =
+      '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno1\')">Turno 1 (8-3pm)</div>' +
+      '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno2\')">Turno 2 (3-9pm)</div>';
+    const espWrap = document.getElementById('hora-esp-wrap');
+    if (espWrap) espWrap.style.display = 'none';
+    if (disclaimerEl) { disclaimerEl.style.display = ''; }
+    else {
+      const disc = document.createElement('div');
+      disc.id = 'pos-fecha-fuerte-disclaimer';
+      disc.style.cssText = 'background:#fff3cd;color:#856404;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:11px;text-align:center';
+      disc.textContent = 'Por alta demanda, las entregas se realizan en horario abierto sin excepción';
+      horBtns.parentElement.appendChild(disc);
+    }
+    if (selHorario && !['turno1','turno2'].includes(selHorario)) { selHorario = null; }
+    horBtns.querySelectorAll('.hor-btn').forEach(b => {
+      const val = b.getAttribute('onclick').match(/'([^']+)'\)/)[1];
+      if (selHorario === val) b.classList.add('active');
+    });
+  } else {
+    // Restore normal buttons if they were replaced
+    if (!horBtns.querySelector('[onclick*="manana"]')) {
+      horBtns.innerHTML =
+        '<div class="hor-btn" onclick="selHorarioBtn(this,\'manana\')">Manana (9-2pm)</div>' +
+        '<div class="hor-btn" onclick="selHorarioBtn(this,\'tarde\')">Tarde (2-6pm)</div>' +
+        '<div class="hor-btn" onclick="selHorarioBtn(this,\'noche\')">Noche (6-9pm)</div>' +
+        '<div class="hor-btn" onclick="selHorarioBtn(this,\'hora_especifica\')">Hora especifica</div>';
+      if (selHorario && !['manana','tarde','noche','hora_especifica'].includes(selHorario)) { selHorario = null; }
+    }
+    if (disclaimerEl) disclaimerEl.style.display = 'none';
+  }
+  updateSummary();
 }
 
 function debounceFetchProds() {
@@ -437,14 +498,14 @@ function buildW3Form() {
 
     // Date and schedule
     html += `<div class="fbox"><h4>Fecha y horario</h4>
-      <div class="frow" id="fr-fecha"><label>Fecha de entrega *</label><input type="date" id="f-fecha" min="${todayStr()}" value="${todayStr()}"><div class="errmsg">Campo obligatorio</div></div>
+      <div class="frow" id="fr-fecha"><label>Fecha de entrega *</label><input type="date" id="f-fecha" min="${todayStr()}" value="${todayStr()}" onchange="onPOSFechaChange()"><div class="errmsg">Campo obligatorio</div></div>
       <div class="frow" id="fr-horario"><label>Horario de entrega *</label>
         <div class="hor-btns">
-          <div class="hor-btn" onclick="selHorarioBtn(this,'manana')">Manana (9-2pm)</div>
-          <div class="hor-btn" onclick="selHorarioBtn(this,'tarde')">Tarde (2-6pm)</div>
-          <div class="hor-btn" onclick="selHorarioBtn(this,'noche')">Noche (6-9pm)</div>
-          <div class="hor-btn" onclick="selHorarioBtn(this,'hora_especifica')">Hora especifica</div>
+          ${esFechaFuertePOS(todayStr()) ?
+            '<div class="hor-btn" onclick="selHorarioBtn(this,\'turno1\')">Turno 1 (8-3pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'turno2\')">Turno 2 (3-9pm)</div>' :
+            '<div class="hor-btn" onclick="selHorarioBtn(this,\'manana\')">Manana (9-2pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'tarde\')">Tarde (2-6pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'noche\')">Noche (6-9pm)</div><div class="hor-btn" onclick="selHorarioBtn(this,\'hora_especifica\')">Hora especifica</div>'}
         </div>
+        ${esFechaFuertePOS(todayStr()) ? '<div id="pos-fecha-fuerte-disclaimer" style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:6px;margin-top:6px;font-size:11px;text-align:center">Por alta demanda, las entregas se realizan en horario abierto sin excepción</div>' : ''}
         <div id="hora-esp-wrap" style="display:none;margin-top:6px">
           <select id="f-hora-esp" onchange="horaEspecifica=this.value" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">${buildHoraOptions()}</select>
           <div style="font-size:11px;color:var(--texto2);margin-top:2px">Minimo 2 hrs de anticipacion</div>
@@ -558,7 +619,8 @@ function selHorarioBtn(el, val) {
   el.parentElement.querySelectorAll('.hor-btn').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
   selHorario = val;
-  document.getElementById('hora-esp-wrap').style.display = val === 'hora_especifica' ? '' : 'none';
+  const _hew = document.getElementById('hora-esp-wrap');
+  if (_hew) _hew.style.display = val === 'hora_especifica' ? '' : 'none';
   if (val === 'hora_especifica') {
     const note = document.getElementById('hora-esp-wrap');
     if (note) note.insertAdjacentHTML('beforeend', '<div style="font-size:11px;color:var(--dorado);font-weight:600;margin-top:2px" id="cargo-hora-note">+$80 cargo hora especifica</div>');
@@ -1647,7 +1709,7 @@ function renderPendTable(rows) {
     const horaPedido = p.fecha_pedido ? formatearFechaLocal(p.fecha_pedido) : '';
     const ec = estadoClass(p.estado);
     // Delivery details sub-row
-    const horLbl = p.hora_exacta || {manana:'Mañana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm'}[p.horario_entrega] || p.horario_entrega || '';
+    const horLbl = p.hora_exacta || {manana:'Mañana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm',turno1:'Turno 1 (8-3pm)',turno2:'Turno 2 (3-9pm)'}[p.horario_entrega] || p.horario_entrega || '';
     let detParts = [];
     if (horLbl) detParts.push(`🕐 ${horLbl}`);
     if (p.receptor_nombre) detParts.push(`🎁 Recibe: ${p.receptor_nombre}${p.receptor_telefono ? ' · ' + p.receptor_telefono : ''}`);
@@ -1840,16 +1902,17 @@ function prefillFromEditing() {
     if (el('f-dir') && p.direccion_entrega) el('f-dir').value = p.direccion_entrega;
     if (el('f-notas') && p.notas_internas) el('f-notas').value = p.notas_internas;
     if (el('f-dedicatoria') && p.dedicatoria) el('f-dedicatoria').value = p.dedicatoria;
-    if (el('f-fecha') && p.fecha_entrega) el('f-fecha').value = p.fecha_entrega;
+    if (el('f-fecha') && p.fecha_entrega) { el('f-fecha').value = p.fecha_entrega; onPOSFechaChange(); }
     if (el('f-zona') && p.zona_entrega) el('f-zona').value = p.zona_entrega;
     // Restore horario button
     if (selHorario) {
       const btns = document.querySelectorAll('#w3-form .hor-btn');
       btns.forEach(b => {
-        const map = {'manana':'manana','tarde':'tarde','noche':'noche','hora_especifica':'hora_especifica'};
         if (b.textContent.toLowerCase().includes('manana') && selHorario === 'manana') b.classList.add('active');
         else if (b.textContent.toLowerCase().includes('tarde') && selHorario === 'tarde') b.classList.add('active');
         else if (b.textContent.toLowerCase().includes('noche') && selHorario === 'noche') b.classList.add('active');
+        else if (b.textContent.toLowerCase().includes('turno 1') && selHorario === 'turno1') b.classList.add('active');
+        else if (b.textContent.toLowerCase().includes('turno 2') && selHorario === 'turno2') b.classList.add('active');
         else if (b.textContent.toLowerCase().includes('especifica') && selHorario === 'hora_especifica') {
           b.classList.add('active');
           const wrap = document.getElementById('hora-esp-wrap');
@@ -2955,6 +3018,8 @@ function _abrirEditarFecha(id, folio, fecha, horario, hora) {
           <option value="manana" ${horario==='manana'?'selected':''}>Mañana 9-2pm</option>
           <option value="tarde" ${horario==='tarde'?'selected':''}>Tarde 2-6pm</option>
           <option value="noche" ${horario==='noche'?'selected':''}>Noche 6-9pm</option>
+          <option value="turno1" ${horario==='turno1'?'selected':''}>Turno 1 (8-3pm)</option>
+          <option value="turno2" ${horario==='turno2'?'selected':''}>Turno 2 (3-9pm)</option>
           <option value="hora_especifica" ${horario==='hora_especifica'||hora?'selected':''}>Hora específica</option>
         </select>
       </div>

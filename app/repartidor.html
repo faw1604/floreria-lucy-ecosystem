@@ -370,6 +370,8 @@ function zonaClass(z) {
 }
 function horarioBadge(h) {
   const hl = (h||'').toLowerCase();
+  if (hl === 'turno1') return '<span class="badge badge-manana">Turno 1</span>';
+  if (hl === 'turno2') return '<span class="badge badge-tarde">Turno 2</span>';
   if (hl.includes('mañana')||hl.includes('manana')) return '<span class="badge badge-manana">Manana</span>';
   if (hl.includes('tarde')) return '<span class="badge badge-tarde">Tarde</span>';
   if (hl.includes('noche')) return '<span class="badge badge-noche">Noche</span>';

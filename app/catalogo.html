@@ -905,9 +905,15 @@ let seasonChecked = false;
 let occasionChecked = false;
 
 async function checkSeasonThenDynamic() {
-  // First check season
+  // First check season — use catConfig from /catalogo/config
   if (!seasonChecked) {
     seasonChecked = true;
+    if (typeof catConfigReady !== 'undefined') await catConfigReady;
+    if (catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria) {
+      showSeasonScreen('el Dia de las Madres', catConfig.temporada_categoria);
+      return;
+    }
+    // Fallback to horario/estado for non-alta temporada
     try {
       const r = await fetch(`${API}/panel/horario/estado`);
       const data = await r.json();
@@ -1494,6 +1500,23 @@ async function initClassic() {
   renderCatPills();
   renderFlowerPills();
   renderClassicGrid();
+  // Auto-select temporada tab from URL param ?cat=temporada
+  if (window._autoSelectTemporada) {
+    window._autoSelectTemporada = false;
+    setSection('temporada');
+  }
+  // Banner temporada alta (once per session) — wait for config if not loaded yet
+  if (typeof catConfigReady !== 'undefined') await catConfigReady;
+  if (catConfig && catConfig.temporada_modo === 'alta' && !sessionStorage.getItem('lucy_classic_banner_shown')) {
+    sessionStorage.setItem('lucy_classic_banner_shown', '1');
+    const fechaFuerte = catConfig.temporada_fecha_fuerte || '';
+    const tempCat = catConfig.temporada_categoria || 'Temporada';
+    const banner = document.createElement('div');
+    banner.id = 'temp-classic-banner';
+    banner.style.cssText = 'position:fixed;top:56px;left:0;right:0;z-index:160;background:#193a2c;color:#faf8f5;padding:12px 40px 12px 16px;font-family:Inter,sans-serif;font-size:13px;text-align:center;line-height:1.4;animation:fadeUp .3s ease-out';
+    banner.innerHTML = `Recuerda que para las fechas del <b>${fechaFuerte}</b> solo estara disponible la seccion "<b>${tempCat}</b>" <button onclick="this.parentElement.remove()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#faf8f5;font-size:20px;cursor:pointer;line-height:1">&times;</button>`;
+    document.body.appendChild(banner);
+  }
 }
 
 function renderSectionTabs() {
@@ -2254,6 +2277,17 @@ function selectHorario(h) {
 
 const WA_MSG_HTML = '<div style="background:#fff3cd;color:#856404;padding:14px;border-radius:10px;margin:10px 0;text-align:center;font-size:14px">Para pedidos de hoy contáctanos por WhatsApp 💬<br><a href="https://wa.me/5216143349392" target="_blank" style="display:inline-block;margin-top:8px;padding:8px 20px;background:#25d366;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Abrir WhatsApp</a></div>';
 
+function esFechaFuerte(fechaStr) {
+  if (!catConfig || catConfig.temporada_modo !== 'alta') return false;
+  const fechaFuerte = catConfig.temporada_fecha_fuerte;
+  const diasRestr = parseInt(catConfig.temporada_dias_restriccion || '2');
+  if (!fechaFuerte) return false;
+  const ff = new Date(fechaFuerte + 'T12:00:00');
+  const sel = new Date(fechaStr + 'T12:00:00');
+  const diffDias = Math.round((ff - sel) / 86400000);
+  return diffDias >= 0 && diffDias < diasRestr;
+}
+
 async function onFechaChange() {
   const fecha = document.getElementById('of-fecha')?.value;
   if (!fecha) return;
@@ -2324,8 +2358,49 @@ async function onFechaChange() {
     waDiv.style.display = 'none';
   }
 
-  // Domicilio: disable past horarios if today
+  // --- FECHA FUERTE: turnos de temporada ---
   const horarioGrid = document.getElementById('of-horario-grid');
+  const disclaimerEl = document.getElementById('of-fecha-fuerte-disclaimer');
+  if (esFechaFuerte(fecha) && horarioGrid) {
+    horarioGrid.innerHTML =
+      '<button type="button" class="order-horario-btn" data-h="turno1" onclick="selectHorario(\'turno1\')">Turno 1 (8:00 a 15:00)</button>' +
+      '<button type="button" class="order-horario-btn" data-h="turno2" onclick="selectHorario(\'turno2\')">Turno 2 (15:00 a 21:00)</button>';
+    const _espBtn = document.getElementById('of-hora-esp-btn');
+    const _horaSelect = document.getElementById('of-hora-especifica');
+    const _hintEl = document.getElementById('of-hora-hint');
+    if (_espBtn) _espBtn.style.display = 'none';
+    if (_horaSelect) _horaSelect.style.display = 'none';
+    if (_hintEl) _hintEl.style.display = 'none';
+    if (disclaimerEl) { disclaimerEl.style.display = ''; }
+    else {
+      const disc = document.createElement('div');
+      disc.id = 'of-fecha-fuerte-disclaimer';
+      disc.style.cssText = 'background:#fff3cd;color:#856404;padding:10px 14px;border-radius:10px;margin-top:8px;font-size:13px;text-align:center';
+      disc.textContent = 'Por alta demanda, las entregas se realizan en horario abierto sin excepción';
+      horarioGrid.parentElement.appendChild(disc);
+    }
+    if (pedidoWeb.horario_entrega && !['turno1','turno2'].includes(pedidoWeb.horario_entrega)) {
+      pedidoWeb.horario_entrega = null;
+    }
+    horarioGrid.querySelectorAll('.order-horario-btn').forEach(b => {
+      b.classList.toggle('selected', pedidoWeb.horario_entrega === b.dataset.h);
+    });
+    return;
+  }
+  // --- Normal mode: restore 3 horario buttons if switching from fecha fuerte ---
+  if (horarioGrid && !horarioGrid.querySelector('[data-h="manana"]')) {
+    horarioGrid.innerHTML =
+      '<button type="button" class="order-horario-btn" data-h="manana" onclick="selectHorario(\'manana\')">Mañana 9-2pm</button>' +
+      '<button type="button" class="order-horario-btn" data-h="tarde" onclick="selectHorario(\'tarde\')">Tarde 2-6pm</button>' +
+      '<button type="button" class="order-horario-btn" data-h="noche" onclick="selectHorario(\'noche\')">Noche 6-9pm</button>' +
+      '<button type="button" class="order-horario-btn" id="of-hora-esp-btn" data-h="hora_especifica" onclick="selectHorario(\'hora_especifica\')" style="display:none">Hora específica</button>';
+    if (pedidoWeb.horario_entrega && !['manana','tarde','noche','hora_especifica'].includes(pedidoWeb.horario_entrega)) {
+      pedidoWeb.horario_entrega = null;
+    }
+  }
+  if (disclaimerEl) disclaimerEl.style.display = 'none';
+
+  // Domicilio: disable past horarios if today
   if (horarioGrid) {
     const btns = horarioGrid.querySelectorAll('.order-horario-btn');
     // Cutoff hours: manana=11, tarde=16, noche=18:50
@@ -2339,7 +2414,6 @@ async function onFechaChange() {
       btn.disabled = shouldDisable;
       btn.style.opacity = shouldDisable ? '0.4' : '';
       btn.style.cursor = shouldDisable ? 'not-allowed' : '';
-      // Restore selected state
       btn.classList.toggle('selected', pedidoWeb.horario_entrega === h && !shouldDisable);
       if (shouldDisable && pedidoWeb.horario_entrega === h) pedidoWeb.horario_entrega = null;
       if (!shouldDisable) allDisabled = false;
@@ -2654,7 +2728,9 @@ function renderOrderStep4() {
   html += `<div style="font-size:14px;font-weight:600;margin:12px 0 6px">Tipo: ${tipoLabels[tipo]}</div>`;
   html += `<div style="font-size:13px;color:var(--texto2)">Cliente: ${pedidoWeb.cliente_nombre}<br>Tel: ${pedidoWeb.cliente_telefono}</div>`;
   if (tipo === 'domicilio') {
-    html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Recibe: ${pedidoWeb.nombre_destinatario}<br>Dirección: ${pedidoWeb.direccion_entrega}<br>Fecha: ${pedidoWeb.fecha_entrega} — ${pedidoWeb.horario_entrega === 'hora_especifica' ? pedidoWeb.hora_especifica : pedidoWeb.horario_entrega}</div>`;
+    const _horLabels = {manana:'Mañana 9-2pm',tarde:'Tarde 2-6pm',noche:'Noche 6-9pm',turno1:'Turno 1 (8:00 a 15:00)',turno2:'Turno 2 (15:00 a 21:00)'};
+    const _horDisplay = pedidoWeb.horario_entrega === 'hora_especifica' ? pedidoWeb.hora_especifica : (_horLabels[pedidoWeb.horario_entrega] || pedidoWeb.horario_entrega);
+    html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Recibe: ${pedidoWeb.nombre_destinatario}<br>Dirección: ${pedidoWeb.direccion_entrega}<br>Fecha: ${pedidoWeb.fecha_entrega} — ${_horDisplay}</div>`;
     if (pedidoWeb.dedicatoria) html += `<div style="font-size:13px;color:var(--texto2);margin-top:4px;font-style:italic">"${pedidoWeb.dedicatoria}"</div>`;
   } else if (tipo === 'recoger') {
     html += `<div style="font-size:13px;color:var(--texto2);margin-top:6px">Fecha: ${pedidoWeb.fecha_entrega} — ${pedidoWeb.hora_especifica}</div>`;
@@ -2837,7 +2913,7 @@ updateCartFab();
 
 // Load catalog config from BD
 let catConfig = null;
-(async function loadCatConfig() {
+const catConfigReady = (async function loadCatConfig() {
   try {
     const r = await fetch(`${API}/catalogo/config`);
     if (!r.ok) return;
@@ -2914,6 +2990,11 @@ function startFechaEspecial() {
 (function() {
   const params = new URLSearchParams(window.location.search);
   const modo = params.get('modo');
+  const catParam = params.get('cat');
+  // Si viene con ?cat=temporada → pre-seleccionar sección temporada después de init
+  if (catParam === 'temporada') {
+    window._autoSelectTemporada = true;
+  }
   // Si viene con ?modo= → usar ese modo. Si no → classic por defecto (quitar landing vieja)
   startMode(modo === 'dynamic' ? 'dynamic' : 'classic');
   // Pick up products added from producto.html page

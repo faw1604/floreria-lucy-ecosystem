@@ -472,11 +472,32 @@ async def _crear_pedido_web_inner(request, db):
     import secrets
     tracking_token = secrets.token_urlsafe(32)
 
+    # --- Fecha fuerte de temporada: saltar aprobación taller ---
+    es_fecha_fuerte = False
+    cfg_result2 = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in cfg_result2.scalars().all()}
+    if cfg.get("temporada_modo") == "alta" and cfg.get("temporada_fecha_fuerte"):
+        try:
+            fecha_fuerte = date_type.fromisoformat(cfg["temporada_fecha_fuerte"])
+            dias_restr = int(cfg.get("temporada_dias_restriccion", "2"))
+            diff = (fecha_fuerte - fecha_entrega).days
+            if 0 <= diff < dias_restr:
+                es_fecha_fuerte = True
+        except Exception:
+            pass
+
+    if es_fecha_fuerte:
+        estado_inicial = EP.PENDIENTE_PAGO
+        estado_florista_inicial = EF.APROBADO
+    else:
+        estado_inicial = EP.ESPERANDO_VALIDACION
+        estado_florista_inicial = None
+
     pedido = Pedido(
         numero=numero,
         customer_id=cliente.id,
         canal="Web",
-        estado="esperando_validacion",
+        estado=estado_inicial,
         fecha_entrega=fecha_entrega,
         horario_entrega=horario,
         hora_exacta=hora_exacta,
@@ -495,6 +516,7 @@ async def _crear_pedido_web_inner(request, db):
         metodo_entrega="funeral_envio" if tipo == "funeral" else ("recoger" if tipo == "recoger" else "envio"),
         requiere_factura=data.get("requiere_factura", False),
         tracking_token=tracking_token,
+        estado_florista=estado_florista_inicial,
     )
     db.add(pedido)
     await db.flush()
@@ -527,12 +549,20 @@ async def _crear_pedido_web_inner(request, db):
     # Enviar WhatsApp de confirmación (solo para pedidos web, no Claudia)
     if not data.get("skip_whatsapp"):
         tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={tracking_token}"
-        msg = (
-            f"Hola {nombre_cliente.split()[0]} 🌸 Recibimos tu pedido {numero} en Florería Lucy.\n"
-            f"En cuanto verifiquemos disponibilidad te contactamos con los datos para el pago.\n\n"
-            f"Sigue el estado de tu pedido aquí:\n{tracking_url}\n\n"
-            f"¡Gracias por tu preferencia!"
-        )
+        if es_fecha_fuerte:
+            msg = (
+                f"Hola {nombre_cliente.split()[0]} 🌸 Tu pedido {numero} ha sido confirmado en Florería Lucy.\n"
+                f"En breve te enviaremos los datos para realizar tu pago.\n\n"
+                f"Sigue el estado de tu pedido aquí:\n{tracking_url}\n\n"
+                f"¡Gracias por tu preferencia!"
+            )
+        else:
+            msg = (
+                f"Hola {nombre_cliente.split()[0]} 🌸 Recibimos tu pedido {numero} en Florería Lucy.\n"
+                f"En cuanto verifiquemos disponibilidad te contactamos con los datos para el pago.\n\n"
+                f"Sigue el estado de tu pedido aquí:\n{tracking_url}\n\n"
+                f"¡Gracias por tu preferencia!"
+            )
         try:
             await _enviar_whatsapp(telefono, msg)
         except Exception:
