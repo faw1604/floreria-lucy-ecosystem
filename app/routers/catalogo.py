@@ -385,6 +385,14 @@ async def _crear_pedido_web_inner(request, db):
         if not prod:
             raise HTTPException(status_code=400, detail=f"Producto ID {item.get('producto_id')} no encontrado")
 
+        # Validar stock
+        cantidad = item.get("cantidad", 1)
+        if prod.stock_activo and prod.stock < cantidad:
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{prod.nombre}' no tiene stock suficiente (disponible: {prod.stock})"
+            )
+
         # Validar funeral
         if tipo == "funeral":
             cat_lower = prod.categoria.lower()

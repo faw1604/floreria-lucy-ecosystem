@@ -651,6 +651,16 @@ async def confirmar_pago(
     pedido.pago_confirmado = True
     pedido.pago_confirmado_at = datetime.now(TZ)
     pedido.pago_confirmado_por = "admin"
+
+    # Descontar stock al confirmar pago
+    from app.models.productos import Producto
+    items_r = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+    for item in items_r.scalars().all():
+        if item.producto_id:
+            prod = (await db.execute(select(Producto).where(Producto.id == item.producto_id))).scalar_one_or_none()
+            if prod and prod.stock_activo and prod.stock > 0:
+                prod.stock = max(0, prod.stock - item.cantidad)
+
     await db.commit()
 
     if pedido.webhook_url:

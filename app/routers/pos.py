@@ -215,6 +215,14 @@ async def _pos_crear_pedido_inner(request, db):
             if prod and prod.categoria.lower() != "funeral":
                 raise HTTPException(status_code=400, detail=f"Producto '{prod.nombre}' no es de categoría funeral")
 
+    # Validar stock
+    for item in items:
+        pid = item.get("producto_id")
+        if pid and not item.get("es_personalizado"):
+            prod = (await db.execute(select(Producto).where(Producto.id == pid))).scalar_one_or_none()
+            if prod and prod.stock_activo and prod.stock < item.get("cantidad", 1):
+                raise HTTPException(status_code=400, detail=f"'{prod.nombre}' no tiene stock suficiente (disponible: {prod.stock})")
+
     # Calculate subtotal
     subtotal = sum(it["precio_unitario"] * it["cantidad"] for it in items)
 
@@ -388,6 +396,16 @@ async def _pos_crear_pedido_inner(request, db):
             nombre_personalizado=it.get("nombre_personalizado"),
             observaciones=it.get("observaciones"),
         ))
+
+    # Descontar stock si el pedido está pagado
+    if estado_pedido == "pagado":
+        for it in items:
+            pid = it.get("producto_id")
+            if pid:
+                prod_r = await db.execute(select(Producto).where(Producto.id == pid))
+                prod = prod_r.scalar_one_or_none()
+                if prod and prod.stock_activo and prod.stock > 0:
+                    prod.stock = max(0, prod.stock - it["cantidad"])
 
     # Save datos fiscales if factura
     _dfd = data.get("datos_fiscales")
@@ -928,6 +946,15 @@ async def _pos_finalizar_inner(pedido_id, request, db):
     pedido.pago_confirmado = True
     pedido.pago_confirmado_at = ahora()
     pedido.forma_pago = ", ".join(p.get("nombre", "") for p in pagos if p.get("nombre"))
+
+    # Descontar stock al finalizar pago
+    items_r = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+    for item in items_r.scalars().all():
+        if item.producto_id:
+            prod = (await db.execute(select(Producto).where(Producto.id == item.producto_id))).scalar_one_or_none()
+            if prod and prod.stock_activo and prod.stock > 0:
+                prod.stock = max(0, prod.stock - item.cantidad)
+
     await db.commit()
 
     # WhatsApp al cliente web: pago confirmado
