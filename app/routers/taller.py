@@ -534,9 +534,21 @@ async def etiqueta_data(
         nombre = item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto")
         for _ in range(item.cantidad):
             items.append(nombre)
+    # Nombre del cliente
+    cliente_nombre = ""
+    if pedido.customer_id:
+        from app.models.clientes import Cliente
+        cli_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cli = cli_result.scalar_one_or_none()
+        if cli:
+            cliente_nombre = cli.nombre
     return {
         "folio": pedido.numero,
         "receptor_nombre": pedido.receptor_nombre or "",
+        "cliente_nombre": cliente_nombre,
+        "metodo_entrega": pedido.metodo_entrega or "",
+        "horario_entrega": pedido.horario_entrega or "",
+        "zona_entrega": pedido.zona_entrega or "",
         "items": items,
         "total_items": len(items),
     }
@@ -684,9 +696,20 @@ async def etiquetas_manana_data(
             nombre = item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto")
             for _ in range(item.cantidad):
                 items.append(nombre)
+        cliente_nombre = ""
+        if p.customer_id:
+            from app.models.clientes import Cliente
+            cli_result = await db.execute(select(Cliente).where(Cliente.id == p.customer_id))
+            cli = cli_result.scalar_one_or_none()
+            if cli:
+                cliente_nombre = cli.nombre
         all_etiquetas.append({
             "folio": p.numero,
             "receptor_nombre": p.receptor_nombre or "",
+            "cliente_nombre": cliente_nombre,
+            "metodo_entrega": p.metodo_entrega or "",
+            "horario_entrega": p.horario_entrega or "",
+            "zona_entrega": p.zona_entrega or "",
             "items": items,
             "total_items": len(items),
         })

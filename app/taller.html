@@ -1232,6 +1232,47 @@ function listoImprimirEtiqueta() {
 
 function normTxt(s) { return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ñ/g,'n').replace(/Ñ/g,'N'); }
 
+function generarEtiquetaHtml(d, nombre, i) {
+  const me = (d.metodo_entrega || '').toLowerCase();
+  const isRecoger = me === 'recoger' || me === 'funeral_recoger';
+  const isEnvio = me === 'envio' || me === 'funeral_envio';
+  let paraLine = 'Para: ' + normTxt(d.receptor_nombre || d.cliente_nombre || '---');
+  let metodoLine = '';
+  if (isRecoger) {
+    paraLine = 'Para: ' + normTxt(d.cliente_nombre || d.receptor_nombre || '---');
+    metodoLine = `<div class="etq-metodo etq-recoger">RECOGER ${d.horario_entrega ? '- ' + normTxt(d.horario_entrega) : ''}</div>`;
+  } else if (isEnvio) {
+    const zonaHorario = [d.zona_entrega, d.horario_entrega].filter(Boolean).map(s => normTxt(s)).join(' - ');
+    metodoLine = `<div class="etq-metodo etq-envio">ENVIO ${zonaHorario ? '- ' + zonaHorario : ''}</div>`;
+  }
+  return `<div class="etq">
+    <div class="etq-row1"><span class="etq-folio">${normTxt(d.folio)}</span><span class="etq-badge">${i+1} de ${d.total_items}</span></div>
+    <div class="etq-sep"></div>
+    <div class="etq-prod">${normTxt(nombre)}</div>
+    <div class="etq-para">${paraLine}</div>
+    ${metodoLine}
+  </div>`;
+}
+
+function etiquetaPrintPage(html) {
+  return `<!DOCTYPE html><html><head><style>
+    @page{size:2in 1in landscape;margin:0}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{margin:0;padding:0;-webkit-print-color-adjust:exact}
+    .etq{width:2in;height:1in;border:2px solid #000;border-radius:3px;background:#fff;padding:2px 5px;font-family:'Inter','Segoe UI',sans-serif;color:#000;overflow:hidden;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
+    .etq:last-child{page-break-after:avoid}
+    .etq-row1{display:flex;justify-content:space-between;align-items:center}
+    .etq-folio{font-size:11px;font-weight:700}
+    .etq-badge{font-size:9px;font-weight:700;background:#000;color:#fff;padding:1px 4px;border-radius:3px}
+    .etq-sep{border-top:2px solid #000;margin:1px 0}
+    .etq-prod{font-size:10px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .etq-para{font-size:9.5px;font-weight:500;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .etq-metodo{font-size:8.5px;font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .etq-recoger{color:#000;border-top:1px solid #000;padding-top:1px}
+    .etq-envio{color:#000;border-top:1px solid #000;padding-top:1px}
+  </style></head><body>${html}</body></html>`;
+}
+
 async function listoImprimirEtiqueta2x1() {
   if (!listoCurrentId) return;
   try {
@@ -1241,30 +1282,13 @@ async function listoImprimirEtiqueta2x1() {
     const container = document.getElementById('print-etiquetas');
     let html = '';
     d.items.forEach((nombre, i) => {
-      html += `<div class="etq">
-        <div class="etq-row1"><span class="etq-folio">${normTxt(d.folio)}</span><span class="etq-badge">${i+1} de ${d.total_items}</span></div>
-        <div class="etq-sep"></div>
-        <div class="etq-prod">${normTxt(nombre)}</div>
-        <div class="etq-para">Para: ${normTxt(d.receptor_nombre || '---')}</div>
-      </div>`;
+      html += generarEtiquetaHtml(d, nombre, i);
     });
     container.innerHTML = html;
 
     // Print: open new window with just the labels
     const pw = window.open('', '_blank', 'width=250,height=200');
-    pw.document.write(`<!DOCTYPE html><html><head><style>
-      @page{size:2in 1in landscape;margin:0}
-      *{margin:0;padding:0;box-sizing:border-box}
-      body{margin:0;padding:0;-webkit-print-color-adjust:exact}
-      .etq{width:2in;height:1in;border:2px solid #000;border-radius:3px;background:#fff;padding:3px 6px;font-family:'Inter','Segoe UI',sans-serif;color:#000;overflow:hidden;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
-      .etq:last-child{page-break-after:avoid}
-      .etq-row1{display:flex;justify-content:space-between;align-items:center}
-      .etq-folio{font-size:11.5px;font-weight:700}
-      .etq-badge{font-size:10px;font-weight:700;background:#000;color:#fff;padding:1px 5px;border-radius:3px}
-      .etq-sep{border-top:2px solid #000;margin:2px 0}
-      .etq-prod{font-size:11px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .etq-para{font-size:10.5px;font-weight:500;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    </style></head><body>${html}</body></html>`);
+    pw.document.write(etiquetaPrintPage(html));
     pw.document.close();
     pw.onload = () => { pw.print(); };
     // fallback if onload already fired
@@ -1281,28 +1305,11 @@ async function imprimirEtiquetas2x1Manana() {
     let html = '';
     pedidos.forEach(d => {
       d.items.forEach((nombre, i) => {
-        html += `<div class="etq">
-          <div class="etq-row1"><span class="etq-folio">${normTxt(d.folio)}</span><span class="etq-badge">${i+1} de ${d.total_items}</span></div>
-          <div class="etq-sep"></div>
-          <div class="etq-prod">${normTxt(nombre)}</div>
-          <div class="etq-para">Para: ${normTxt(d.receptor_nombre || '---')}</div>
-        </div>`;
+        html += generarEtiquetaHtml(d, nombre, i);
       });
     });
     const pw = window.open('', '_blank', 'width=250,height=200');
-    pw.document.write(`<!DOCTYPE html><html><head><style>
-      @page{size:2in 1in landscape;margin:0}
-      *{margin:0;padding:0;box-sizing:border-box}
-      body{margin:0;padding:0;-webkit-print-color-adjust:exact}
-      .etq{width:2in;height:1in;border:2px solid #000;border-radius:3px;background:#fff;padding:3px 6px;font-family:'Inter','Segoe UI',sans-serif;color:#000;overflow:hidden;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
-      .etq:last-child{page-break-after:avoid}
-      .etq-row1{display:flex;justify-content:space-between;align-items:center}
-      .etq-folio{font-size:11.5px;font-weight:700}
-      .etq-badge{font-size:10px;font-weight:700;background:#000;color:#fff;padding:1px 5px;border-radius:3px}
-      .etq-sep{border-top:2px solid #000;margin:2px 0}
-      .etq-prod{font-size:11px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .etq-para{font-size:10.5px;font-weight:500;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    </style></head><body>${html}</body></html>`);
+    pw.document.write(etiquetaPrintPage(html));
     pw.document.close();
     pw.onload = () => { pw.print(); };
     setTimeout(() => { try { pw.print(); } catch(e){} }, 300);
