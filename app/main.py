@@ -34,11 +34,22 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://www.florerialucy.com", "https://florerialucy.com", "https://floreria-lucy-ecosystem-production.up.railway.app"],
+    allow_origins=["https://www.florerialucy.com", "https://florerialucy.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Bloquear acceso directo a Railway — solo permitir tráfico via Cloudflare
+@app.middleware("http")
+async def cloudflare_only(request: Request, call_next):
+    if settings.ENVIRONMENT == "production":
+        host = request.headers.get("host", "")
+        has_cf = request.headers.get("cf-connecting-ip")
+        # Si llegan directo a railway.app sin pasar por Cloudflare → bloquear
+        if "railway.app" in host and not has_cf:
+            return JSONResponse(status_code=403, content={"detail": "Acceso no permitido"})
+    return await call_next(request)
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(clientes.router, prefix="/clientes", tags=["clientes"])
