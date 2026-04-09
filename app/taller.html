@@ -1253,9 +1253,9 @@ async function listoImprimirEtiqueta2x1() {
     // Print: open new window with just the labels
     const pw = window.open('', '_blank', 'width=250,height=200');
     pw.document.write(`<!DOCTYPE html><html><head><style>
-      @page{size:2in 1in;margin:0}
+      @page{size:2in 1in landscape;margin:0}
       *{margin:0;padding:0;box-sizing:border-box}
-      body{margin:0;padding:0}
+      body{margin:0;padding:0;-webkit-print-color-adjust:exact}
       .etq{width:2in;height:1in;border:2px solid #000;border-radius:3px;background:#fff;padding:3px 6px;font-family:'Inter','Segoe UI',sans-serif;color:#000;overflow:hidden;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
       .etq:last-child{page-break-after:avoid}
       .etq-row1{display:flex;justify-content:space-between;align-items:center}
@@ -1291,9 +1291,9 @@ async function imprimirEtiquetas2x1Manana() {
     });
     const pw = window.open('', '_blank', 'width=250,height=200');
     pw.document.write(`<!DOCTYPE html><html><head><style>
-      @page{size:2in 1in;margin:0}
+      @page{size:2in 1in landscape;margin:0}
       *{margin:0;padding:0;box-sizing:border-box}
-      body{margin:0;padding:0}
+      body{margin:0;padding:0;-webkit-print-color-adjust:exact}
       .etq{width:2in;height:1in;border:2px solid #000;border-radius:3px;background:#fff;padding:3px 6px;font-family:'Inter','Segoe UI',sans-serif;color:#000;overflow:hidden;display:flex;flex-direction:column;justify-content:center;page-break-after:always}
       .etq:last-child{page-break-after:avoid}
       .etq-row1{display:flex;justify-content:space-between;align-items:center}
