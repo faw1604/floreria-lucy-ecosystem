@@ -40,16 +40,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Bloquear acceso directo a Railway — solo permitir tráfico via Cloudflare
+# Bloquear acceso directo a Railway + Security Headers
 @app.middleware("http")
-async def cloudflare_only(request: Request, call_next):
+async def security_middleware(request: Request, call_next):
     if settings.ENVIRONMENT == "production":
         host = request.headers.get("host", "")
-        has_cf = request.headers.get("cf-connecting-ip")
-        # Si llegan directo a railway.app sin pasar por Cloudflare → bloquear
-        if "railway.app" in host and not has_cf:
+        # Bloquear acceso directo a railway.app
+        if "railway.app" in host:
             return JSONResponse(status_code=403, content={"detail": "Acceso no permitido"})
-    return await call_next(request)
+    response = await call_next(request)
+    # 1. Clickjacking — no permitir iframe en sitios ajenos
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    # 2. CSP — controla qué recursos puede cargar el navegador
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://maps.googleapis.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "img-src 'self' https: data:; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "connect-src 'self' https://maps.googleapis.com; "
+        "object-src 'none'; "
+        "frame-ancestors 'self'"
+    )
+    # 3. No adivinar tipo de archivo — previene archivos disfrazados
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # 4. Forzar HTTPS siempre (1 año)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # 5. Controlar info que se envía al navegar a otro sitio
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # 6. Desactivar cámara, micrófono, ubicación
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(clientes.router, prefix="/clientes", tags=["clientes"])
