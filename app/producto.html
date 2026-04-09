@@ -67,6 +67,7 @@ function render(p) {
   document.getElementById('main').innerHTML = `
     ${p.imagen_url ? `<img class="prod-img" src="${p.imagen_url}" alt="${esc(p.nombre)}">` : ''}
     ${p.sin_stock ? '<div class="agotado-tag">Agotado</div>' : ''}
+    ${p.destacado ? '<div style="display:inline-block;background:var(--dorado);color:var(--verde-oscuro);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:8px">★ Destacado</div>' : ''}
     <div class="prod-name">${esc(p.nombre)}</div>
     <div class="prod-cat">${esc(p.categoria)}</div>
     <div class="prod-price">$${(precio/100).toLocaleString()}${hasDiscount ? `<span class="prod-price-old">$${(p.precio/100).toLocaleString()}</span>` : ''}</div>

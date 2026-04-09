@@ -910,7 +910,7 @@ async function checkSeasonThenDynamic() {
     seasonChecked = true;
     if (typeof catConfigReady !== 'undefined') await catConfigReady;
     if (catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria) {
-      showSeasonScreen('el Dia de las Madres', catConfig.temporada_categoria);
+      showSeasonScreen(catConfig.temporada_nombre || 'la Temporada', catConfig.temporada_categoria);
       return;
     }
     // Fallback to horario/estado for non-alta temporada
@@ -1296,7 +1296,7 @@ function renderCart() {
       const suggestions = allProducts.filter(p => {
         const cat = (p.categoria || '').toLowerCase();
         return (cat.includes('chocolates') || cat.includes('peluche') || cat.includes('extras')) && !p.sin_stock && p.imagen_url;
-      }).slice(0, 4);
+      }).sort((a, b) => (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0)).slice(0, 4);
       if (suggestions.length > 0) {
         crossSellContainer.innerHTML = `
           <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--borde)">
@@ -1496,7 +1496,10 @@ function matchesSection(p, section) {
   const isRegalos = REGALOS_CATS.some(r => cat === r);
   if (section === 'funeral') return isFuneral;
   if (section === 'regalos') return isRegalos;
-  if (section === 'temporada') return seasonCategory ? p.categoria === seasonCategory : false;
+  if (section === 'temporada') {
+    const tempCat = seasonCategory || (catConfig && catConfig.temporada_categoria) || null;
+    return tempCat ? p.categoria === tempCat : false;
+  }
   return !isFuneral && !isRegalos;
 }
 
@@ -1642,6 +1645,9 @@ function renderClassicGrid() {
     });
   }
 
+  // Destacados primero
+  filtered.sort((a, b) => (b.destacado ? 1 : 0) - (a.destacado ? 1 : 0));
+
   const grid = document.getElementById('classic-grid');
   if (!filtered.length) {
     grid.innerHTML = `<div class="empty-msg" style="grid-column:1/-1">
@@ -1660,8 +1666,9 @@ function renderClassicGrid() {
     const globalIdx = allProducts.indexOf(p);
     const agotado = p.sin_stock;
     return `
-    <div class="prod-card ${agotado ? 'agotado' : ''}" style="position:relative;animation-delay:${i * 0.04}s" onclick="window.location.href='/catalogo/producto.html?id=${p.id}'">
+    <div class="prod-card ${agotado ? 'agotado' : ''}" style="position:relative;animation-delay:${i * 0.04}s${p.destacado ? ';border:2px solid var(--dorado)' : ''}" onclick="window.location.href='/catalogo/producto.html?id=${p.id}'">
       ${agotado ? '<div class="agotado-badge">Agotado</div>' : ''}
+      ${p.destacado ? '<div style="position:absolute;top:8px;left:8px;background:var(--dorado);color:var(--verde);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;z-index:2">★ Destacado</div>' : ''}
       <img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy">
       ${p.precio_descuento && p.precio_descuento < p.precio ? '<div style="position:absolute;top:8px;right:8px;background:var(--dorado);color:var(--verde);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px">Oferta</div>' : ''}
       <div class="prod-card-body">

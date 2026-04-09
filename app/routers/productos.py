@@ -59,7 +59,7 @@ async def listar_productos(
         query = query.limit(limit)
     result = await db.execute(query)
     productos = result.scalars().all()
-    return [{"id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria, "precio": p.precio, "precio_descuento": p.precio_descuento, "disponible_hoy": p.disponible_hoy, "imagen_url": p.imagen_url, "etiquetas": p.etiquetas, "dimensiones": p.dimensiones, "activo": p.activo, "visible_catalogo": p.visible_catalogo, "stock_activo": p.stock_activo, "stock": p.stock, "medida_alto": float(p.medida_alto) if p.medida_alto else None, "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None, "costo_unitario": float(p.costo_unitario) if p.costo_unitario else None} for p in productos]
+    return [{"id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria, "precio": p.precio, "precio_descuento": p.precio_descuento, "disponible_hoy": p.disponible_hoy, "imagen_url": p.imagen_url, "etiquetas": p.etiquetas, "dimensiones": p.dimensiones, "activo": p.activo, "visible_catalogo": p.visible_catalogo, "stock_activo": p.stock_activo, "stock": p.stock, "medida_alto": float(p.medida_alto) if p.medida_alto else None, "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None, "costo_unitario": float(p.costo_unitario) if p.costo_unitario else None, "destacado": p.destacado} for p in productos]
 
 @router.get("/{producto_id}")
 async def obtener_producto(producto_id: int, db: AsyncSession = Depends(get_db)):
@@ -67,7 +67,7 @@ async def obtener_producto(producto_id: int, db: AsyncSession = Depends(get_db))
     producto = result.scalar_one_or_none()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return {"id": producto.id, "codigo": producto.codigo, "nombre": producto.nombre, "categoria": producto.categoria, "precio": producto.precio, "precio_descuento": producto.precio_descuento, "costo": producto.costo, "disponible_hoy": producto.disponible_hoy, "descripcion": producto.descripcion, "imagen_url": producto.imagen_url, "etiquetas": producto.etiquetas, "dimensiones": producto.dimensiones, "activo": producto.activo, "visible_catalogo": producto.visible_catalogo, "stock_activo": producto.stock_activo, "stock": producto.stock, "medida_alto": float(producto.medida_alto) if producto.medida_alto else None, "medida_ancho": float(producto.medida_ancho) if producto.medida_ancho else None}
+    return {"id": producto.id, "codigo": producto.codigo, "nombre": producto.nombre, "categoria": producto.categoria, "precio": producto.precio, "precio_descuento": producto.precio_descuento, "costo": producto.costo, "disponible_hoy": producto.disponible_hoy, "descripcion": producto.descripcion, "imagen_url": producto.imagen_url, "etiquetas": producto.etiquetas, "dimensiones": producto.dimensiones, "activo": producto.activo, "visible_catalogo": producto.visible_catalogo, "stock_activo": producto.stock_activo, "stock": producto.stock, "medida_alto": float(producto.medida_alto) if producto.medida_alto else None, "medida_ancho": float(producto.medida_ancho) if producto.medida_ancho else None, "destacado": producto.destacado}
 
 @router.post("/")
 async def crear_producto(
@@ -94,6 +94,7 @@ async def crear_producto(
         stock=request.get("stock", 0),
         medida_alto=request.get("medida_alto"),
         medida_ancho=request.get("medida_ancho"),
+        destacado=request.get("destacado", False),
     )
     db.add(producto)
     await db.commit()
@@ -113,7 +114,7 @@ async def actualizar_producto(
     producto = result.scalar_one_or_none()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones", "imagen_url", "visible_catalogo", "codigo", "stock_activo", "stock", "medida_alto", "medida_ancho", "costo_unitario"]:
+    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones", "imagen_url", "visible_catalogo", "codigo", "stock_activo", "stock", "medida_alto", "medida_ancho", "costo_unitario", "destacado"]:
         if campo in request:
             setattr(producto, campo, request[campo])
     await db.commit()

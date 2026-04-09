@@ -75,6 +75,7 @@ async def catalogo_config(db: AsyncSession = Depends(get_db)):
         "meta_descripcion": cfg.get("catalogo_meta_descripcion", ""),
         "cerrado": cfg.get("catalogo_cerrado", "false") == "true",
         "temporada_modo": cfg.get("temporada_modo", "regular"),
+        "temporada_nombre": cfg.get("temporada_nombre", ""),
         "temporada_categoria": cfg.get("temporada_categoria", ""),
         "temporada_fecha_fuerte": cfg.get("temporada_fecha_fuerte", ""),
         "temporada_dias_restriccion": int(cfg.get("temporada_dias_restriccion", "2")),
@@ -115,7 +116,7 @@ async def catalogo_productos(
             Producto.visible_catalogo == True,
             Producto.imagen_url.isnot(None),
         )
-        .order_by(Producto.categoria, Producto.nombre)
+        .order_by(Producto.destacado.desc(), Producto.categoria, Producto.nombre)
     )
 
     if temporada_activa and not categoria:
@@ -156,6 +157,7 @@ async def catalogo_productos(
             "medida_alto": float(p.medida_alto) if p.medida_alto else None,
             "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None,
             "sin_stock": p.stock_activo and p.stock <= 0,
+            "destacado": p.destacado,
         }
         for p in productos
     ]
@@ -186,6 +188,7 @@ async def catalogo_producto_detalle(producto_id: int, db: AsyncSession = Depends
         "medida_alto": float(p.medida_alto) if p.medida_alto else None,
         "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None,
         "sin_stock": p.stock_activo and p.stock <= 0,
+        "destacado": p.destacado,
     }
 
 

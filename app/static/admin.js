@@ -305,7 +305,7 @@ function renderProdTable() {
   tbody.innerHTML = prodAllData.map(p => `<tr>
     <td><input type="checkbox" class="prod-check" data-id="${p.id}"></td>
     <td>${p.imagen_url ? '<img src="'+esc(p.imagen_url)+'" class="thumb">' : '—'}</td>
-    <td style="font-weight:500">${esc(p.nombre)}${p.precio_descuento ? ' <span style="color:var(--dorado);font-size:10px">OFERTA</span>' : ''}</td>
+    <td style="font-weight:500">${esc(p.nombre)}${p.destacado ? ' <span style="color:var(--dorado);font-size:10px">★</span>' : ''}${p.precio_descuento ? ' <span style="color:var(--dorado);font-size:10px">OFERTA</span>' : ''}</td>
     <td style="color:var(--texto2)">${esc(p.codigo||'—')}</td>
     <td>${esc(p.categoria)}</td>
     <td style="font-weight:600">${p.precio_descuento ? '<span style="text-decoration:line-through;color:#999;font-weight:400">'+fmt$(p.precio)+'</span> '+fmt$(p.precio_descuento) : fmt$(p.precio)}</td>
@@ -440,6 +440,7 @@ async function abrirModalProducto(prod) {
     <div style="display:flex;gap:12px;margin:12px 0">
       <input type="hidden" id="pf-activo" value="true">
       <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-web" ${prod?.visible_catalogo !== false ? 'checked' : ''}> Mostrar en catalogo</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-destacado" ${prod?.destacado ? 'checked' : ''}> ⭐ Destacado <span style="font-size:10px;color:var(--texto2)">(aparece primero en catalogo)</span></label>
     </div>
     <!-- STOCK -->
     <div style="border:1px solid var(--borde);border-radius:10px;padding:14px;margin:14px 0">
@@ -613,6 +614,7 @@ async function guardarProducto(id) {
     costo_unitario: document.getElementById('pf-costo')?.value ? parseFloat(document.getElementById('pf-costo').value) : null,
     medida_alto: document.getElementById('pf-alto')?.value ? parseFloat(document.getElementById('pf-alto').value) : null,
     medida_ancho: document.getElementById('pf-ancho')?.value ? parseFloat(document.getElementById('pf-ancho').value) : null,
+    destacado: document.getElementById('pf-destacado').checked,
   };
   if (!body.nombre || !body.categoria || !body.precio) return alert('Nombre, categoría y precio son obligatorios');
   const url = id ? API + '/productos/' + id : API + '/productos/';

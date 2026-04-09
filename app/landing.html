@@ -839,7 +839,7 @@ function mostrarPopupTemporada(cfg) {
   overlay.innerHTML = `
     <div style="background:#faf8f5;border-radius:20px;padding:40px 32px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
       <div style="font-size:48px;margin-bottom:16px">🌸</div>
-      <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:#193a2c;margin:0 0 12px">¿Tu pedido es para el Dia de las Madres?</h2>
+      <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:#193a2c;margin:0 0 12px">¿Tu pedido es para ${cfg.temporada_nombre || 'esta temporada'}?</h2>
       <p style="font-family:'Inter',sans-serif;font-size:14px;color:#666;margin:0 0 28px">Tenemos arreglos especiales de temporada</p>
       <div style="display:flex;flex-direction:column;gap:12px">
         <a href="/catalogo/?modo=classic&cat=temporada" style="display:block;padding:14px 24px;background:#193a2c;color:#faf8f5;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;text-decoration:none;transition:background .15s">Si, ver catalogo de temporada</a>
