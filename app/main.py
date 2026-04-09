@@ -59,6 +59,7 @@ async def security_middleware(request: Request, call_next):
         "img-src 'self' https: data:; "
         "font-src 'self' https://fonts.gstatic.com; "
         "connect-src 'self' https://maps.googleapis.com; "
+        "child-src 'self' blob:; "
         "object-src 'none'; "
         "frame-ancestors 'self'"
     )
