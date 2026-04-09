@@ -216,6 +216,12 @@ function onPOSFechaChange() {
   const nowPOS = getChihuahuaNowPOS();
   const hoyPOS = nowPOS.getFullYear() + '-' + String(nowPOS.getMonth()+1).padStart(2,'0') + '-' + String(nowPOS.getDate()).padStart(2,'0');
   const isTodayPOS = fecha === hoyPOS;
+  // Reset all horario buttons first
+  horBtns.querySelectorAll('.hor-btn').forEach(btn => {
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.style.pointerEvents = '';
+  });
   if (isTodayPOS) {
     const hr = nowPOS.getHours() + nowPOS.getMinutes() / 60;
     const cutoffs = {manana: 11, tarde: 16, noche: 18 + 50/60, turno1: 12, turno2: 17.5};
