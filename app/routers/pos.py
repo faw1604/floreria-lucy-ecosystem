@@ -406,10 +406,13 @@ async def _pos_crear_pedido_inner(request, db):
             if fun:
                 _dir_entrega = f"{fun.nombre}" + (f" — {fun.direccion}" if fun.direccion else "")
 
+    import secrets
+    _tracking = secrets.token_urlsafe(32)
     pedido = Pedido(
         numero=folio,
         customer_id=cliente_id,
         canal="Mostrador",
+        tracking_token=_tracking,
         estado=_estado,
         estado_florista=_estado_fl,
         metodo_entrega=_metodo,
@@ -1147,8 +1150,8 @@ async def _pos_finalizar_inner(pedido_id, request, db):
 
     await db.commit()
 
-    # WhatsApp al cliente web: pago confirmado
-    if pedido.canal == "Web" and pedido.tracking_token and pedido.customer_id:
+    # WhatsApp al cliente: pago confirmado (web y POS)
+    if pedido.tracking_token and pedido.customer_id:
         try:
             cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
             cliente = cliente_result.scalar_one_or_none()
