@@ -487,13 +487,6 @@ async def _pos_crear_pedido_inner(request, db):
                 reserva.vendida_at = ahora()
         await db.commit()
 
-    # Auto-enviar ticket + datos de pago por WhatsApp si es Transferencia/OXXO
-    if estado_pedido == "pendiente_pago" and pedido.forma_pago in ("Transferencia", "OXXO"):
-        try:
-            await _enviar_ticket_pago_whatsapp(pedido, db)
-        except Exception as e:
-            logger.warning(f"[POS] No se pudo enviar ticket WhatsApp auto: {e}")
-
     return {
         "ok": True, "folio": pedido.numero, "id": pedido.id,
         "total": total, "subtotal": subtotal, "impuesto": impuesto,
