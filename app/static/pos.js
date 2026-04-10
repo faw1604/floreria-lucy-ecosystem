@@ -1873,7 +1873,7 @@ function renderPendTable(rows) {
         <button class="btn-edit" onclick='editarPendiente(${JSON.stringify(p).replace(/'/g,"&#39;")})'>Editar</button>
         ${ec === 'comprobante_recibido' ? `<button class="btn-fin" style="background:#e67e22" onclick="confirmarPagoPos(${p.id})">Confirmar pago</button>` : ''}
         ${ec === 'comprobante_recibido' && p.comprobante_pago_url ? `<a href="${p.comprobante_pago_url}" target="_blank" class="btn-edit" style="text-decoration:none">Ver comprobante</a>` : ''}
-        ${ec === 'pendiente_pago' && (p.canal !== 'Mostrador' || (p.forma_pago && (p.forma_pago.includes('Transferencia') || p.forma_pago.includes('OXXO')))) ? `<button class="btn-fin" style="background:#d4a843;color:#193a2c" onclick="aprobarEnviarTicket(${p.id})">📨 ${p.ticket_enviado_at ? 'Reenviar' : 'Enviar'} ticket</button>` : ''}
+        ${ec === 'pendiente_pago' && (p.canal !== 'Mostrador' || (p.forma_pago && (p.forma_pago.includes('Transferencia') || p.forma_pago.includes('OXXO') || p.forma_pago.includes('Link')))) ? `<button class="btn-fin" style="background:#d4a843;color:#193a2c" onclick="aprobarEnviarTicket(${p.id})">📨 ${p.ticket_enviado_at ? 'Reenviar' : 'Enviar'} ticket</button>` : ''}
         ${ec === 'pendiente_pago' ? `<button class="btn-fin" onclick="finalizarPendiente(${p.id},${p.total})">Finalizar</button>` : ''}
         ${ec !== 'cancelado' ? `<button class="btn-cancel" onclick="pedirCancelar(${p.id},'${esc(p.folio)}')">Cancelar</button>` : ''}
       </td>

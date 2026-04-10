@@ -996,8 +996,7 @@ async def pos_aprobar_enviar_ticket(
         if oxxo_nombre:
             datos_pago_msg += f"Nombre: {oxxo_nombre}\n"
         datos_pago_msg += f"Tarjeta: {oxxo_tarjeta}\n\n"
-    else:
-        raise HTTPException(status_code=400, detail=f"Método de pago no soportado: {pedido.forma_pago}")
+    # Link de pago u otro método → solo resumen, sin datos de pago
 
     # 5. Obtener mensaje base de configuración
     cfg_r = await db.execute(select(ConfiguracionNegocio))
