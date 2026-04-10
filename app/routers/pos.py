@@ -487,12 +487,160 @@ async def _pos_crear_pedido_inner(request, db):
                 reserva.vendida_at = ahora()
         await db.commit()
 
+    # Auto-enviar ticket + datos de pago por WhatsApp si es Transferencia/OXXO
+    if estado_pedido == "pendiente_pago" and pedido.forma_pago in ("Transferencia", "OXXO"):
+        try:
+            await _enviar_ticket_pago_whatsapp(pedido, db)
+        except Exception as e:
+            logger.warning(f"[POS] No se pudo enviar ticket WhatsApp auto: {e}")
+
     return {
         "ok": True, "folio": pedido.numero, "id": pedido.id,
         "total": total, "subtotal": subtotal, "impuesto": impuesto,
         "envio": envio, "descuento": descuento, "comision": comision,
         "estado": pedido.estado,
     }
+
+
+async def _enviar_ticket_pago_whatsapp(pedido, db):
+    """Envía ticket + datos de pago por WhatsApp — reutiliza lógica de aprobar-enviar-ticket."""
+    from app.models.cuentas import CuentaTransferencia
+    from app.models.configuracion import ConfiguracionNegocio
+    from app.models.clientes import Cliente
+
+    # Teléfono del cliente
+    telefono = None
+    cli_nombre = "Cliente"
+    if pedido.customer_id:
+        cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cli = cli_r.scalar_one_or_none()
+        if cli:
+            telefono = cli.telefono
+            cli_nombre = cli.nombre.split()[0] if cli.nombre else "Cliente"
+    if not telefono:
+        return
+
+    # Datos de pago
+    datos_pago_msg = ""
+    if pedido.forma_pago == "Transferencia":
+        ctas_r = await db.execute(select(CuentaTransferencia).where(CuentaTransferencia.activa == True))
+        cuentas = ctas_r.scalars().all()
+        if not cuentas:
+            return
+        datos_pago_msg = "*💳 DATOS DE TRANSFERENCIA*\n\n"
+        for c in cuentas:
+            datos_pago_msg += f"Banco: {c.banco}\n"
+            datos_pago_msg += f"Titular: {c.titular}\n"
+            if c.clabe:
+                datos_pago_msg += f"CLABE: {c.clabe}\n"
+            if c.tarjeta:
+                datos_pago_msg += f"Tarjeta: {c.tarjeta}\n"
+            datos_pago_msg += "\n"
+    elif pedido.forma_pago == "OXXO":
+        cfg_r = await db.execute(select(ConfiguracionNegocio))
+        cfg = {c.clave: c.valor for c in cfg_r.scalars().all()}
+        if cfg.get("oxxo_activo") != "true":
+            return
+        oxxo_tarjeta = cfg.get("oxxo_tarjeta", "")
+        oxxo_nombre = cfg.get("oxxo_nombre", "")
+        if not oxxo_tarjeta:
+            return
+        datos_pago_msg = "*🏪 DEPÓSITO EN OXXO*\n\n"
+        if oxxo_nombre:
+            datos_pago_msg += f"Nombre: {oxxo_nombre}\n"
+        datos_pago_msg += f"Tarjeta: {oxxo_tarjeta}\n\n"
+
+    # Items del pedido
+    items_r = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido.id))
+    items_pedido = items_r.scalars().all()
+    items_lines = []
+    for it in items_pedido:
+        if it.es_personalizado and it.nombre_personalizado:
+            nombre_it = it.nombre_personalizado
+        else:
+            prod_r = await db.execute(select(Producto).where(Producto.id == it.producto_id))
+            prod = prod_r.scalar_one_or_none()
+            nombre_it = prod.nombre if prod else "Producto"
+        precio_it = (it.precio_unitario or 0) * it.cantidad
+        items_lines.append(f"{it.cantidad}x {nombre_it} — ${precio_it/100:,.0f}")
+
+    # Fecha formateada
+    def _fmt_fecha(fecha):
+        if not fecha:
+            return ""
+        dias = {0:"Lun",1:"Mar",2:"Mié",3:"Jue",4:"Vie",5:"Sáb",6:"Dom"}
+        meses = {1:"enero",2:"febrero",3:"marzo",4:"abril",5:"mayo",6:"junio",
+                 7:"julio",8:"agosto",9:"septiembre",10:"octubre",11:"noviembre",12:"diciembre"}
+        return f"{dias[fecha.weekday()]} {fecha.day} de {meses[fecha.month]}"
+
+    fecha_fmt = _fmt_fecha(pedido.fecha_entrega)
+    es_funeral = pedido.metodo_entrega in ("funeral_envio", "funeral_recoger") or pedido.tipo_especial == "Funeral"
+
+    # Datos de entrega
+    entrega_lines = []
+    if pedido.metodo_entrega == "recoger":
+        entrega_lines.append("📍 *Recoger en tienda*")
+        entrega_lines.append("C. Sabino 610, Las Granjas, Chihuahua")
+        if fecha_fmt:
+            entrega_lines.append(f"Fecha: {fecha_fmt}")
+        if pedido.hora_exacta:
+            entrega_lines.append(f"Hora: {pedido.hora_exacta}")
+    elif es_funeral:
+        entrega_lines.append("🌹 *Pedido funeral*")
+        if pedido.direccion_entrega:
+            entrega_lines.append(f"📍 {pedido.direccion_entrega}")
+        if fecha_fmt:
+            entrega_lines.append(f"Fecha: {fecha_fmt}")
+    else:
+        entrega_lines.append("🚚 *Envío a domicilio*")
+        if pedido.receptor_nombre:
+            entrega_lines.append(f"Recibe: {pedido.receptor_nombre}")
+        if pedido.direccion_entrega:
+            entrega_lines.append(f"📍 {pedido.direccion_entrega}")
+        if fecha_fmt:
+            entrega_lines.append(f"Fecha: {fecha_fmt}")
+        horario_map = {"manana": "Mañana 9-2pm", "tarde": "Tarde 2-6pm", "noche": "Noche 6-9pm"}
+        horario_lbl = horario_map.get(pedido.horario_entrega, pedido.horario_entrega or "")
+        if pedido.hora_exacta:
+            entrega_lines.append(f"Hora: {pedido.hora_exacta}")
+        elif horario_lbl:
+            entrega_lines.append(f"Horario: {horario_lbl}")
+
+    # Construir mensaje
+    ticket_msg = f"🌸 *FLORERÍA LUCY*\n"
+    ticket_msg += f"Pedido: {pedido.numero}\n\n"
+    ticket_msg += "\n".join(items_lines) + "\n\n"
+    if pedido.envio and pedido.envio > 0:
+        ticket_msg += f"Subtotal: ${(pedido.subtotal or 0)/100:,.0f}\n"
+        ticket_msg += f"Envío: ${pedido.envio/100:,.0f}\n"
+    ticket_msg += f"*Total: ${(pedido.total or 0)/100:,.0f}*\n\n"
+    if entrega_lines:
+        ticket_msg += "\n".join(entrega_lines) + "\n"
+
+    # Mensaje base de configuración
+    cfg_r2 = await db.execute(select(ConfiguracionNegocio))
+    cfg2 = {c.clave: c.valor for c in cfg_r2.scalars().all()}
+    mensaje_base = cfg2.get("mensaje_pago_funeral" if es_funeral else "mensaje_pago_normal", "")
+
+    mensaje_completo = f"Hola {cli_nombre} 🌸\n\n{ticket_msg}\n{datos_pago_msg}"
+    if mensaje_base:
+        mensaje_completo += f"\n{mensaje_base}"
+
+    # Marcar ticket enviado
+    pedido.ticket_enviado_at = ahora()
+    await db.commit()
+
+    # Enviar en background
+    import asyncio
+    from app.routers.catalogo import _enviar_whatsapp
+    _tel = telefono
+    _msg = mensaje_completo
+    async def _send():
+        try:
+            await _enviar_whatsapp(_tel, _msg)
+        except Exception as e:
+            logger.warning(f"[POS] WhatsApp auto ticket error: {e}")
+    asyncio.create_task(_send())
 
 
 async def _serializar_pedido_pos(p, db):
