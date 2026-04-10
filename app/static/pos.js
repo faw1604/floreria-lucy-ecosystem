@@ -866,16 +866,19 @@ function abrirModalRegistro() {
 async function registrarCliente() {
   const nombre = document.getElementById('reg-nombre').value.trim();
   const tel = document.getElementById('reg-tel').value.trim();
+  const pais = document.getElementById('reg-pais').value;
   if (!nombre || !tel) {
     document.getElementById('reg-err').textContent = 'Nombre y telefono son obligatorios';
     document.getElementById('reg-err').style.display = '';
     return;
   }
+  // Formato: para México guardar solo 10 dígitos, para otros incluir LADA
+  const telefono = pais === '+52' ? tel : pais + tel;
   try {
     const r = await fetch('/pos/cliente', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        nombre, telefono: tel,
+        nombre, telefono,
         email: document.getElementById('reg-email').value.trim() || null,
         direccion: document.getElementById('reg-dir').value.trim() || null
       })
