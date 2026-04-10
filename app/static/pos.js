@@ -2527,6 +2527,8 @@ async function buscarClientesSec() {
           ${c.telefono ? `<button onclick="abrirWaCli('${esc(c.nombre)}','${c.telefono}')" style="padding:5px 10px;border:1px solid #25D366;background:#fff;color:#25D366;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">💬 WhatsApp</button>` : ''}
           <button onclick="verPedidosCliente(${c.id},'${esc(c.nombre)}')" style="padding:5px 10px;border:1px solid var(--borde);background:#fff;color:var(--texto);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">📋 Ver pedidos</button>
           <button onclick="nuevoPedidoCliente(${c.id},'${esc(c.nombre)}','${c.telefono}',false)" style="padding:5px 10px;border:1px solid var(--verde);background:var(--verde);color:#fff;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">➕ Nuevo pedido</button>
+          <button onclick="abrirEditarCliente(${c.id})" style="padding:5px 10px;border:1px solid var(--borde);background:#fff;color:var(--texto);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">✏️ Editar</button>
+          <button onclick="eliminarClienteUI(${c.id},'${esc(c.nombre)}')" style="padding:5px 10px;border:1px solid var(--rojo);background:#fff;color:var(--rojo);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">🗑 Eliminar</button>
         </div>
       </div>`
     ).join('') || '<div style="padding:10px;color:var(--texto2);font-size:12px">Sin resultados</div>';
@@ -2578,6 +2580,82 @@ async function enviarWaCli() {
     btn.textContent = 'Reintentar';
   }
   status.style.display = '';
+}
+
+// ── Editar cliente ──
+let editCliId = null;
+async function abrirEditarCliente(id) {
+  editCliId = id;
+  const errEl = document.getElementById('edit-cli-err');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  document.getElementById('edit-cli-nombre').value = '';
+  document.getElementById('edit-cli-tel').value = '';
+  document.getElementById('edit-cli-email').value = '';
+  document.getElementById('edit-cli-dir').value = '';
+  document.getElementById('modal-edit-cli').classList.add('active');
+  try {
+    const r = await fetch('/clientes/' + id, {credentials:'include'});
+    if (!r.ok) throw new Error('Error ' + r.status);
+    const c = await r.json();
+    document.getElementById('edit-cli-nombre').value = c.nombre || '';
+    document.getElementById('edit-cli-tel').value = c.telefono || '';
+    document.getElementById('edit-cli-email').value = c.email || '';
+    document.getElementById('edit-cli-dir').value = c.direccion_default || '';
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'No se pudo cargar el cliente'; errEl.style.display = ''; }
+  }
+}
+
+async function guardarEdicionCliente() {
+  if (!editCliId) return;
+  const errEl = document.getElementById('edit-cli-err');
+  errEl.style.display = 'none';
+  const payload = {
+    nombre: document.getElementById('edit-cli-nombre').value.trim(),
+    telefono: document.getElementById('edit-cli-tel').value.trim(),
+    email: document.getElementById('edit-cli-email').value.trim() || null,
+    direccion_default: document.getElementById('edit-cli-dir').value.trim() || null,
+  };
+  if (!payload.nombre || !payload.telefono) {
+    errEl.textContent = 'Nombre y teléfono son obligatorios';
+    errEl.style.display = '';
+    return;
+  }
+  try {
+    const r = await fetch('/clientes/' + editCliId, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      errEl.textContent = data.detail || 'Error al guardar';
+      errEl.style.display = '';
+      return;
+    }
+    document.getElementById('modal-edit-cli').classList.remove('active');
+    editCliId = null;
+    buscarClientesSec();
+  } catch(e) {
+    errEl.textContent = 'Error de red';
+    errEl.style.display = '';
+  }
+}
+
+async function eliminarClienteUI(id, nombre) {
+  if (!confirm('¿Eliminar a "' + nombre + '"?\n\nSolo se puede eliminar si no tiene pedidos en el historial.')) return;
+  try {
+    const r = await fetch('/clientes/' + id, {method:'DELETE', credentials:'include'});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      alert(data.detail || 'No se pudo eliminar');
+      return;
+    }
+    buscarClientesSec();
+  } catch(e) {
+    alert('Error de red al eliminar');
+  }
 }
 
 async function verPedidosCliente(id, nombre) {

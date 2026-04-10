@@ -12,6 +12,7 @@ from app.models.clientes import Cliente
 from app.models.configuracion import HorarioEspecifico, CodigoDescuento, ConfiguracionNegocio
 from app.core.config import TZ
 from app.core.estados import EstadoPedido as EP, EstadoFlorista as EF
+from app.core.utils import limpiar_telefono
 from datetime import date as date_type
 
 logger = logging.getLogger("floreria")
@@ -303,11 +304,11 @@ async def _generar_numero_pedido(db: AsyncSession) -> str:
 
 
 def _formatear_telefono(tel: str) -> str:
-    """Normaliza teléfono a 10 dígitos (sin prefijo 52)."""
-    digitos = "".join(c for c in tel if c.isdigit())
-    if len(digitos) > 10 and digitos.startswith("52"):
-        digitos = digitos[2:]
-    return digitos
+    """Normaliza teléfono a 10 dígitos (sin prefijo 52/521).
+
+    Wrapper local para mantener la firma; la lógica vive en core/utils.limpiar_telefono.
+    """
+    return limpiar_telefono(tel)
 
 
 async def _enviar_whatsapp(telefono: str, mensaje: str):

@@ -418,6 +418,20 @@ window._qzWs = null;
   </div>
 </div>
 
+<!-- Modal: Editar cliente -->
+<div class="modal-bg" id="modal-edit-cli" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal">
+    <button class="close" onclick="document.getElementById('modal-edit-cli').classList.remove('active')">&times;</button>
+    <h3>Editar cliente</h3>
+    <div class="frow"><label>Nombre *</label><input type="text" id="edit-cli-nombre"></div>
+    <div class="frow"><label>Teléfono *</label><input type="tel" id="edit-cli-tel" placeholder="10 dígitos"></div>
+    <div class="frow"><label>Email</label><input type="email" id="edit-cli-email"></div>
+    <div class="frow"><label>Dirección</label><input type="text" id="edit-cli-dir"></div>
+    <button onclick="guardarEdicionCliente()" style="width:100%;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;margin-top:8px">Guardar cambios</button>
+    <div id="edit-cli-err" style="color:var(--rojo);font-size:12px;margin-top:6px;display:none"></div>
+  </div>
+</div>
+
 <!-- Modal: Buscar funeraria -->
 <div class="modal-bg" id="modal-funeraria" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="modal">

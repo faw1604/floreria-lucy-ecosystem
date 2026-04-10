@@ -1,10 +1,31 @@
 """
 Utilidades centralizadas del sistema Florería Lucy.
 """
+import re
 from datetime import datetime
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import TZ
+
+
+def limpiar_telefono(tel: str | None) -> str:
+    """Normaliza un teléfono mexicano a 10 dígitos sin prefijo país.
+
+    Acepta variantes: '+52 614 123 4567', '5216141234567', '52 614...', '614-123-4567'.
+    Quita todo lo que no sea dígito y elimina los prefijos '521' (formato móvil
+    internacional viejo de México) y '52' (LADA país).
+
+    Para números no mexicanos (≠10 dígitos tras quitar prefijo) regresa los
+    dígitos limpios sin más transformación, para no romper otros países.
+    """
+    if not tel:
+        return ""
+    digits = re.sub(r"\D", "", tel)
+    if digits.startswith("521") and len(digits) > 10:
+        digits = digits[3:]
+    elif digits.startswith("52") and len(digits) > 10:
+        digits = digits[2:]
+    return digits
 
 
 def ahora() -> datetime:

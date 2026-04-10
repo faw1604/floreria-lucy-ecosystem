@@ -12,6 +12,7 @@ from app.models.productos import Producto
 from app.models.configuracion import ConfiguracionNegocio
 from app.core.config import TZ
 from app.core.estados import EstadoPedido as EP
+from app.core.utils import limpiar_telefono
 from app.routers.auth import verificar_sesion
 
 logger = logging.getLogger("floreria")
@@ -205,10 +206,7 @@ async def crear_pedido_desde_claudia(
     data = await request.json()
 
     # 1. Buscar o crear cliente
-    telefono_raw = data.get("telefono_cliente", "")
-    digitos = "".join(c for c in telefono_raw if c.isdigit())
-    if len(digitos) > 10 and digitos.startswith("52"):
-        digitos = digitos[2:]
+    digitos = limpiar_telefono(data.get("telefono_cliente", ""))
 
     cliente = None
     if digitos:

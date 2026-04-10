@@ -3,23 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.models.clientes import Cliente
+from app.models.pedidos import Pedido
 from app.routers.auth import verificar_sesion
 from app.core.security import generar_codigo_referido
+from app.core.utils import limpiar_telefono
 from datetime import date
+from sqlalchemy import func
 import json
-import re
 
 router = APIRouter()
-
-
-def limpiar_telefono(tel: str) -> str:
-    """Remove +52, 521, or country prefix from phone."""
-    digits = re.sub(r"\D", "", tel)
-    if digits.startswith("521") and len(digits) > 10:
-        digits = digits[3:]
-    elif digits.startswith("52") and len(digits) > 10:
-        digits = digits[2:]
-    return digits
 
 
 @router.get("/")
@@ -226,9 +218,18 @@ async def crear_cliente(
     request: dict,
     db: AsyncSession = Depends(get_db)
 ):
+    nombre = (request.get("nombre") or "").strip()
+    telefono = limpiar_telefono(request.get("telefono") or "")
+    if not nombre or not telefono:
+        raise HTTPException(status_code=400, detail="Nombre y teléfono son obligatorios")
+    # Si ya existe un cliente con ese teléfono, devolverlo en vez de duplicar
+    existing = await db.execute(select(Cliente).where(Cliente.telefono == telefono))
+    cliente = existing.scalar_one_or_none()
+    if cliente:
+        return {"id": cliente.id, "nombre": cliente.nombre, "telefono": cliente.telefono, "ya_existia": True}
     cliente = Cliente(
-        nombre=request.get("nombre", ""),
-        telefono=request.get("telefono", ""),
+        nombre=nombre,
+        telefono=telefono,
         direccion_default=request.get("direccion_default"),
         email=request.get("email"),
         fuente=request.get("fuente", "WhatsApp"),
@@ -236,7 +237,7 @@ async def crear_cliente(
     db.add(cliente)
     await db.commit()
     await db.refresh(cliente)
-    return {"id": cliente.id, "nombre": cliente.nombre, "telefono": cliente.telefono}
+    return {"id": cliente.id, "nombre": cliente.nombre, "telefono": cliente.telefono, "ya_existia": False}
 
 
 @router.get("/{cliente_id}")
@@ -269,6 +270,42 @@ async def actualizar_cliente(
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
     for campo in ["nombre", "telefono", "email", "direccion_default"]:
         if campo in request:
-            setattr(c, campo, request[campo])
+            valor = request[campo]
+            if campo == "telefono" and valor:
+                valor = limpiar_telefono(valor)
+                # Verificar que el nuevo teléfono no esté en uso por otro cliente
+                dup = await db.execute(
+                    select(Cliente).where(Cliente.telefono == valor, Cliente.id != cliente_id)
+                )
+                if dup.scalar_one_or_none():
+                    raise HTTPException(status_code=400, detail="Ese teléfono ya está en uso por otro cliente")
+            setattr(c, campo, valor)
     await db.commit()
     return {"ok": True, "id": c.id}
+
+
+@router.delete("/{cliente_id}")
+async def eliminar_cliente(
+    cliente_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Cliente).where(Cliente.id == cliente_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+    # No permitir eliminar si tiene pedidos asociados (los conservamos para historial / recuperación)
+    pedidos_r = await db.execute(
+        select(func.count(Pedido.id)).where(Pedido.customer_id == cliente_id)
+    )
+    n_pedidos = pedidos_r.scalar() or 0
+    if n_pedidos > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede eliminar: el cliente tiene {n_pedidos} pedido(s) en su historial",
+        )
+    await db.delete(c)
+    await db.commit()
+    return {"ok": True}

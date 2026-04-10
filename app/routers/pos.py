@@ -16,7 +16,7 @@ from app.models.pagos import MetodoPago
 from app.models.funerarias import Funeraria
 from app.models.configuracion import ConfiguracionNegocio
 from app.core.config import TZ
-from app.core.utils import ahora, hoy, generar_folio
+from app.core.utils import ahora, hoy, generar_folio, limpiar_telefono
 from app.core.estados import EstadoPedido as EP, EstadoFlorista as EF, MetodoEntrega as ME
 from app.routers.auth import verificar_sesion
 
@@ -130,21 +130,22 @@ async def pos_crear_cliente(
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
     data = await request.json()
-    telefono = "".join(c for c in data.get("telefono", "") if c.isdigit())
-    if len(telefono) > 10 and telefono.startswith("52"):
-        telefono = telefono[2:]
+    nombre = (data.get("nombre") or "").strip()
+    telefono = limpiar_telefono(data.get("telefono") or "")
+    if not nombre or not telefono:
+        raise HTTPException(status_code=400, detail="Nombre y teléfono son obligatorios")
     # Check duplicate
     existing = await db.execute(select(Cliente).where(Cliente.telefono == telefono))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Ya existe un cliente con ese teléfono")
     from app.core.security import generar_codigo_referido
     cliente = Cliente(
-        nombre=data.get("nombre", ""),
+        nombre=nombre,
         telefono=telefono,
         email=data.get("email"),
         direccion_default=data.get("direccion"),
         fuente="Mostrador",
-        codigo_referido=generar_codigo_referido(data.get("nombre", ""), telefono),
+        codigo_referido=generar_codigo_referido(nombre, telefono),
     )
     db.add(cliente)
     await db.commit()
