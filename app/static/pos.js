@@ -3099,36 +3099,60 @@ function setEntregasSub(sub, btn) {
   loadEntregasContent();
 }
 
+function _hoyISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 async function loadEntregas() {
+  // Precargar fecha con hoy si está vacía — fuente única de verdad
+  const el = document.getElementById('entregas-fecha');
+  if (el && !el.value) el.value = _hoyISO();
   loadEntregasResumen();
   loadEntregasContent();
 }
 
 function getEntregasFecha() {
   const el = document.getElementById('entregas-fecha');
-  return el && el.value ? el.value : '';
+  return el && el.value ? el.value : _hoyISO();
 }
 function loadEntregasConFecha() { loadEntregas(); }
 
 async function loadEntregasResumen() {
   try {
     const f = getEntregasFecha();
-    const q = f ? `?fecha=${f}` : '';
+    const q = `?fecha=${f}`;
     const r = await fetch(`/api/taller/entregas/resumen-dia${q}`, {credentials:'include'});
     if (!r.ok) return;
     const d = await r.json();
+    const cancelHtml = d.cancelados > 0 ? `<span>Cancelados: ${d.cancelados}</span>` : '';
     document.getElementById('entregas-resumen').innerHTML = `
       <span>Total del dia: ${d.total}</span>
       <span>Entregados: ${d.entregados}</span>
       <span>Pendientes: ${d.pendientes}</span>
+      ${cancelHtml}
       <span>Repartidores activos: ${d.repartidores_activos}</span>`;
-    // Badge
+    // Conteos por sub-tab en los botones
+    _setEntregaTabLabel('ent-tab-lobby', 'En espera en lobby', d.lobby_count);
+    _setEntregaTabLabel('ent-tab-recoger', 'Por recoger', d.recoger_count);
+    _setEntregaTabLabel('ent-tab-envios', 'Envios', d.envios_count);
+    // Badge sidebar — solo cuenta lo visible en la sección
     const badge = document.getElementById('badge-entregas');
     if (badge) {
-      const pending = d.pendientes;
-      badge.textContent = pending; badge.style.display = pending > 0 ? '' : 'none';
+      const visible = (d.lobby_count || 0) + (d.recoger_count || 0) + (d.envios_count || 0);
+      badge.textContent = visible;
+      badge.style.display = visible > 0 ? '' : 'none';
     }
   } catch(e) {}
+}
+
+function _setEntregaTabLabel(id, base, count) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count > 0 ? `${base} (${count})` : base;
 }
 
 function _entregaEstadoBadge(p) {
@@ -3151,8 +3175,8 @@ function _entregaEstadoBadge(p) {
   if (est === 'intento_fallido') {
     return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#fef2f2;color:#991b1b;font-weight:600;font-size:12px">No entregado</span>`;
   }
-  // listo_taller, Listo — pendiente de repartidor
-  return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#fef9c3;color:#854d0e;font-weight:600;font-size:12px">Pendiente</span>`;
+  // listo_taller, Listo — listo, esperando que el repartidor lo tome
+  return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#fef9c3;color:#854d0e;font-weight:600;font-size:12px">Por salir</span>`;
 }
 
 async function loadEntregasContent() {

@@ -905,11 +905,17 @@ async def entregas_lobby(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    query = select(Pedido).where(Pedido.estado.in_(EP.LISTOS), Pedido.metodo_entrega == ME.MOSTRADOR)
-    f = _parse_fecha(fecha)
-    if f:
-        query = query.where(Pedido.fecha_entrega == f)
-    result = await db.execute(query.order_by(Pedido.listo_at))
+    f = _parse_fecha(fecha) or hoy()
+    query = (
+        select(Pedido)
+        .where(
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega == ME.MOSTRADOR,
+            Pedido.fecha_entrega == f,
+        )
+        .order_by(Pedido.listo_at)
+    )
+    result = await db.execute(query)
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]
 
@@ -921,11 +927,17 @@ async def entregas_por_recoger(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    query = select(Pedido).where(Pedido.estado.in_(EP.LISTOS), Pedido.metodo_entrega.in_(ME.PARA_RECOGER))
-    f = _parse_fecha(fecha)
-    if f:
-        query = query.where(Pedido.fecha_entrega == f)
-    result = await db.execute(query.order_by(Pedido.fecha_entrega, Pedido.horario_entrega))
+    f = _parse_fecha(fecha) or hoy()
+    query = (
+        select(Pedido)
+        .where(
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_RECOGER),
+            Pedido.fecha_entrega == f,
+        )
+        .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
+    )
+    result = await db.execute(query)
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]
 
@@ -985,11 +997,52 @@ async def entregas_resumen_dia(
     )
     repartidores_activos = r_repartidores.scalar() or 0
 
+    r_cancelados = await db.execute(
+        select(func.count(Pedido.id)).where(
+            Pedido.fecha_entrega == fecha_hoy,
+            Pedido.estado == EP.CANCELADO,
+        )
+    )
+    cancelados = r_cancelados.scalar() or 0
+
+    # Conteos por sub-tab (mismo filtro que cada endpoint)
+    r_lobby = await db.execute(
+        select(func.count(Pedido.id)).where(
+            Pedido.fecha_entrega == fecha_hoy,
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega == ME.MOSTRADOR,
+        )
+    )
+    lobby_count = r_lobby.scalar() or 0
+
+    r_recoger = await db.execute(
+        select(func.count(Pedido.id)).where(
+            Pedido.fecha_entrega == fecha_hoy,
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_RECOGER),
+        )
+    )
+    recoger_count = r_recoger.scalar() or 0
+
+    estados_envio = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
+    r_envios = await db.execute(
+        select(func.count(Pedido.id)).where(
+            Pedido.fecha_entrega == fecha_hoy,
+            Pedido.estado.in_(estados_envio),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
+        )
+    )
+    envios_count = r_envios.scalar() or 0
+
     return {
         "total": total,
         "entregados": entregados,
         "pendientes": pendientes,
+        "cancelados": cancelados,
         "repartidores_activos": repartidores_activos,
+        "lobby_count": lobby_count,
+        "recoger_count": recoger_count,
+        "envios_count": envios_count,
     }
 
 
