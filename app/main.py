@@ -54,12 +54,13 @@ async def security_middleware(request: Request, call_next):
     # 2. CSP — controla qué recursos puede cargar el navegador
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://maps.googleapis.com; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "img-src 'self' https: data:; "
+        "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; "
+        "img-src 'self' https: data: blob:; "
         "font-src 'self' https://fonts.gstatic.com; "
         "connect-src 'self' https://maps.googleapis.com; "
         "child-src 'self' blob:; "
+        "frame-src 'self' https://www.google.com; "
         "object-src 'none'; "
         "frame-ancestors 'self'"
     )
