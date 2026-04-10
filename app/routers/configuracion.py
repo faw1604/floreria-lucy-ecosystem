@@ -75,6 +75,7 @@ async def config_para_claudia(
         "temporada_alta": temporada_modo == "alta",
         "temporada_fecha_fuerte": cfg.get("temporada_fecha_fuerte", ""),
         "temporada_dias_restriccion": cfg.get("temporada_dias_restriccion", "2"),
+        "mensaje_bienvenida": cfg.get("claudia_mensaje_bienvenida", "").strip(),
     }
 
 
