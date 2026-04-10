@@ -223,6 +223,7 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <button class="tab active" data-tab="nuevos">🔴 Nuevos <span class="tab-badge" id="badge-nuevos"></span></button>
   <button class="tab" data-tab="produccion">🔴 Produccion <span class="tab-badge" id="badge-produccion"></span></button>
   <button class="tab" data-tab="recoger">🔴 Por Recoger <span class="tab-badge" id="badge-recoger"></span></button>
+  <button class="tab" data-tab="envios">🚚 Envios <span class="tab-badge" id="badge-envios"></span></button>
   <button class="tab" data-tab="proximos">Proximos</button>
   <button class="tab" data-tab="realizados">Realizados</button>
   <button class="tab" data-tab="reservas">Reservas <span class="tab-badge" id="badge-reservas"></span></button>
@@ -250,6 +251,23 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
   <div class="tab-content" id="content-recoger">
     <input type="text" class="recoger-search" id="recoger-search" placeholder="Buscar por nombre o numero de orden..." oninput="filterRecoger()">
     <div id="recoger-body"></div>
+  </div>
+
+  <!-- ENVIOS -->
+  <div class="tab-content" id="content-envios">
+    <div class="sub-tabs" id="envios-subtabs">
+      <button class="sub-tab active" data-sub="hoy" onclick="setEnviosSub('hoy')">Hoy</button>
+      <button class="sub-tab" data-sub="manana" onclick="setEnviosSub('manana')">Manana</button>
+    </div>
+    <div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="envios-grupo" onchange="loadEnvios()" style="padding:8px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;min-width:160px">
+        <option value="">Todas las zonas</option>
+      </select>
+      <input type="text" class="recoger-search" id="envios-search" placeholder="Buscar por nombre o folio..." oninput="filterEnvios()" style="flex:1;min-width:200px">
+      <button class="act-btn btn-secondary" onclick="imprimirLoteEnvios()" id="btn-envios-lote" style="font-size:13px;padding:9px 14px">🖨 Imprimir lote</button>
+      <span id="envios-count" style="font-size:13px;color:var(--texto2);white-space:nowrap"></span>
+    </div>
+    <div id="envios-body"><div class="empty">Cargando...</div></div>
   </div>
 
   <!-- PROXIMOS -->
@@ -473,6 +491,7 @@ function refreshTab(tab) {
   if (tab === 'nuevos') loadNuevos();
   else if (tab === 'produccion') loadProduccion();
   else if (tab === 'recoger') loadRecoger();
+  else if (tab === 'envios') loadEnviosGruposYData();
   else if (tab === 'proximos') loadProximos();
   else if (tab === 'realizados') loadRealizados();
   else if (tab === 'reservas') { loadReservas(); loadReservasResumen(); }
@@ -526,6 +545,7 @@ async function loadBadges() {
     setBadge('badge-nuevos', d.nuevos);
     setBadge('badge-produccion', d.produccion);
     setBadge('badge-recoger', d.por_recoger);
+    setBadge('badge-envios', d.envios);
   } catch(e) {}
 }
 function setBadge(id, count) {
@@ -903,6 +923,122 @@ function filterRecoger() {
     (p.numero || '').toLowerCase().includes(q)
   );
   renderRecoger(filtered);
+}
+
+// ─── LOAD: Envios ───
+let enviosSub = 'hoy';
+let enviosData = [];
+
+function setEnviosSub(sub) {
+  enviosSub = sub;
+  document.querySelectorAll('#envios-subtabs .sub-tab').forEach(s => s.classList.toggle('active', s.dataset.sub === sub));
+  loadEnviosGruposYData();
+}
+
+async function loadEnviosGruposYData() {
+  // Cargar grupos primero (para poblar el dropdown), luego pedidos
+  try {
+    const r = await fetch(`${TALLER_API}/envios/grupos?fecha=${enviosSub}`, {credentials:'include'});
+    if (r.ok) {
+      const grupos = await r.json();
+      const sel = document.getElementById('envios-grupo');
+      const actual = sel.value;
+      let html = '<option value="">Todas las zonas</option>';
+      grupos.forEach(g => {
+        html += `<option value="${g.grupo}">${g.grupo} (${g.count})</option>`;
+      });
+      sel.innerHTML = html;
+      // Mantener selección si todavía existe
+      if (actual && grupos.some(g => g.grupo === actual)) sel.value = actual;
+    }
+  } catch(e) {}
+  loadEnvios();
+}
+
+async function loadEnvios() {
+  try {
+    const grupo = document.getElementById('envios-grupo').value;
+    const q = `?fecha=${enviosSub}` + (grupo ? `&grupo=${encodeURIComponent(grupo)}` : '');
+    const r = await fetch(`${TALLER_API}/envios${q}`, {credentials:'include'});
+    if (!r.ok) return;
+    enviosData = await r.json();
+    renderEnvios(enviosData);
+    // Etiqueta del botón de impresión
+    const btn = document.getElementById('btn-envios-lote');
+    if (btn) btn.textContent = grupo ? `🖨 Imprimir zona ${grupo}` : '🖨 Imprimir todas';
+    document.getElementById('envios-count').textContent = `${enviosData.length} pedido(s)`;
+  } catch(e) {}
+}
+
+function renderEnvios(data) {
+  const el = document.getElementById('envios-body');
+  if (!data.length) { el.innerHTML = '<div class="empty">🚚 Sin envios para esta seleccion</div>'; return; }
+  let html = `<table class="recoger-table"><thead><tr>
+    <th>Folio</th><th>Cliente</th><th>Receptor</th><th>Productos</th><th>Zona</th><th>Direccion</th><th>Horario</th><th>Etiqueta</th>
+  </tr></thead><tbody>`;
+  data.forEach(p => {
+    const hora = horarioLabel(p.horario_entrega, p.hora_exacta);
+    html += `<tr>
+      <td style="font-weight:700;color:var(--verde)">${p.numero}</td>
+      <td style="font-weight:600">${p.cliente_nombre || '—'}</td>
+      <td>${p.receptor_nombre || '—'}</td>
+      <td style="font-size:13px;color:var(--texto2)">${itemsCompacto(p.items)}</td>
+      <td style="font-size:12px;font-weight:600">${p.zona_entrega || '—'}</td>
+      <td style="font-size:12px;color:var(--texto2);max-width:280px">${p.direccion_entrega || '—'}</td>
+      <td>${hora}</td>
+      <td><button class="act-btn btn-secondary" onclick="imprimirEtiquetaIndividual(${p.id})" style="font-size:11px;padding:6px 10px">🖨</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function filterEnvios() {
+  const q = (document.getElementById('envios-search').value || '').toLowerCase().trim();
+  if (!q) { renderEnvios(enviosData); return; }
+  const filtered = enviosData.filter(p =>
+    (p.cliente_nombre || '').toLowerCase().includes(q) ||
+    (p.receptor_nombre || '').toLowerCase().includes(q) ||
+    (p.numero || '').toLowerCase().includes(q)
+  );
+  renderEnvios(filtered);
+}
+
+async function imprimirEtiquetaIndividual(pedidoId) {
+  // Reutiliza el flujo 2x1 existente (generarEtiquetaHtml + etiquetaPrintPage)
+  try {
+    const r = await fetch(`${TALLER_API}/pedidos/${pedidoId}/etiqueta-data`, {credentials:'include'});
+    if (!r.ok) { alert('Error al obtener datos de etiqueta'); return; }
+    const d = await r.json();
+    let html = '';
+    (d.items || []).forEach((nombre, i) => { html += generarEtiquetaHtml(d, nombre, i); });
+    const pw = window.open('', '_blank', 'width=250,height=200');
+    pw.document.write(etiquetaPrintPage(html));
+    pw.document.close();
+    pw.onload = () => { pw.print(); };
+    setTimeout(() => { try { pw.print(); } catch(e){} }, 300);
+  } catch(e) { alert('Error al imprimir etiqueta'); console.error(e); }
+}
+
+async function imprimirLoteEnvios() {
+  if (!enviosData.length) { alert('No hay envios para imprimir'); return; }
+  const grupo = document.getElementById('envios-grupo').value;
+  const q = `?fecha=${enviosSub}` + (grupo ? `&grupo=${encodeURIComponent(grupo)}` : '');
+  try {
+    const r = await fetch(`${TALLER_API}/envios/etiquetas-data${q}`, {credentials:'include'});
+    if (!r.ok) { alert('Error al cargar etiquetas'); return; }
+    const pedidos = await r.json();
+    if (!pedidos.length) { alert('No hay etiquetas para imprimir'); return; }
+    let html = '';
+    pedidos.forEach(d => {
+      (d.items || []).forEach((nombre, i) => { html += generarEtiquetaHtml(d, nombre, i); });
+    });
+    const pw = window.open('', '_blank', 'width=250,height=200');
+    pw.document.write(etiquetaPrintPage(html));
+    pw.document.close();
+    pw.onload = () => { pw.print(); };
+    setTimeout(() => { try { pw.print(); } catch(e){} }, 300);
+  } catch(e) { alert('Error al imprimir lote'); console.error(e); }
 }
 
 // ─── LOAD: Proximos ───

@@ -137,7 +137,16 @@ async def badges(
     )
     por_recoger = r_recoger.scalar() or 0
 
-    return {"nuevos": nuevos, "produccion": produccion, "por_recoger": por_recoger}
+    r_envios = await db.execute(
+        select(func.count(Pedido.id)).where(
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
+            Pedido.fecha_entrega == fecha_hoy,
+        )
+    )
+    envios = r_envios.scalar() or 0
+
+    return {"nuevos": nuevos, "produccion": produccion, "por_recoger": por_recoger, "envios": envios}
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +234,144 @@ async def por_recoger(
     )
     pedidos = result.scalars().all()
     return [await _serializar_pedido_taller(p, db) for p in pedidos]
+
+
+@router.get("/envios")
+async def envios(
+    fecha: str = "hoy",
+    grupo: str | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Pedidos LISTOS para envío de hoy o mañana, opcionalmente filtrados por grupo cardinal."""
+    _auth(panel_session)
+    from app.core.zonas import subzonas_de_grupo, orden_zona
+
+    f = hoy() if fecha == "hoy" else hoy() + timedelta(days=1)
+
+    query = (
+        select(Pedido)
+        .where(
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
+            Pedido.fecha_entrega == f,
+        )
+    )
+    if grupo:
+        subzonas = subzonas_de_grupo(grupo)
+        if subzonas:
+            query = query.where(Pedido.zona_entrega.in_(subzonas))
+
+    result = await db.execute(query)
+    pedidos = list(result.scalars().all())
+    # Ordenar: por nivel de cercanía de zona, luego por horario, luego por hora exacta
+    pedidos.sort(key=lambda p: (
+        orden_zona(p.zona_entrega),
+        p.horario_entrega or "",
+        p.hora_exacta or "",
+    ))
+    return [await _serializar_pedido_taller(p, db) for p in pedidos]
+
+
+@router.get("/envios/grupos")
+async def envios_grupos(
+    fecha: str = "hoy",
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve los grupos cardinales que tienen pedidos en la fecha indicada,
+    ordenados por cercanía, con el conteo de pedidos por grupo."""
+    _auth(panel_session)
+    from app.core.zonas import GRUPOS_ORDEN, grupo_de_zona
+
+    f = hoy() if fecha == "hoy" else hoy() + timedelta(days=1)
+    result = await db.execute(
+        select(Pedido.zona_entrega, func.count(Pedido.id))
+        .where(
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
+            Pedido.fecha_entrega == f,
+        )
+        .group_by(Pedido.zona_entrega)
+    )
+    counts: dict[str, int] = {}
+    for zona, n in result.all():
+        g = grupo_de_zona(zona) or "Sin zona"
+        counts[g] = counts.get(g, 0) + n
+    # Ordenar por GRUPOS_ORDEN, dejando "Sin zona" al final
+    out = []
+    for g in GRUPOS_ORDEN:
+        if g in counts:
+            out.append({"grupo": g, "count": counts[g]})
+    if "Sin zona" in counts:
+        out.append({"grupo": "Sin zona", "count": counts["Sin zona"]})
+    return out
+
+
+@router.get("/envios/etiquetas-data")
+async def envios_etiquetas_data(
+    fecha: str = "hoy",
+    grupo: str | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Datos de etiquetas para impresión por lote de envíos (filtrable por grupo)."""
+    _auth(panel_session)
+    from app.core.zonas import subzonas_de_grupo, orden_zona
+
+    f = hoy() if fecha == "hoy" else hoy() + timedelta(days=1)
+    query = (
+        select(Pedido)
+        .where(
+            Pedido.estado.in_(EP.LISTOS),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
+            Pedido.fecha_entrega == f,
+        )
+    )
+    if grupo:
+        subzonas = subzonas_de_grupo(grupo)
+        if subzonas:
+            query = query.where(Pedido.zona_entrega.in_(subzonas))
+
+    result = await db.execute(query)
+    pedidos_list = list(result.scalars().all())
+    pedidos_list.sort(key=lambda p: (
+        orden_zona(p.zona_entrega),
+        p.horario_entrega or "",
+        p.hora_exacta or "",
+    ))
+
+    all_etiquetas = []
+    for p in pedidos_list:
+        items_result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == p.id))
+        items_db = items_result.scalars().all()
+        items = []
+        for item in items_db:
+            prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+            prod = prod_result.scalar_one_or_none()
+            nombre = item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto")
+            for _ in range(item.cantidad):
+                items.append(nombre)
+        cliente_nombre = ""
+        if p.customer_id:
+            cli_result = await db.execute(select(Cliente).where(Cliente.id == p.customer_id))
+            cli = cli_result.scalar_one_or_none()
+            if cli:
+                cliente_nombre = cli.nombre
+        all_etiquetas.append({
+            "folio": p.numero,
+            "receptor_nombre": p.receptor_nombre or "",
+            "cliente_nombre": cliente_nombre,
+            "metodo_entrega": p.metodo_entrega or "",
+            "horario_entrega": p.horario_entrega or "",
+            "hora_exacta": p.hora_exacta or "",
+            "zona_entrega": p.zona_entrega or "",
+            "direccion_entrega": p.direccion_entrega or "",
+            "fecha_entrega": p.fecha_entrega.isoformat() if p.fecha_entrega else "",
+            "items": items,
+            "total_items": len(items),
+        })
+    return all_etiquetas
 
 
 @router.get("/proximos")

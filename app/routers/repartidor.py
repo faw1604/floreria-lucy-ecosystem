@@ -23,19 +23,14 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET", ""),
 )
 
+from app.core.zonas import ZONA_ORDER, orden_zona
+
 HORARIO_ORDER = {"mañana": 0, "manana": 0, "tarde": 1, "noche": 2}
-ZONA_ORDER = {
-    "Zona Central": 0,
-    "NOROESTE 1": 1, "NORESTE 1": 1, "PONIENTE 1": 1, "SUR 1": 1,
-    "NORESTE 2": 2, "NOROESTE 2": 2, "PONIENTE 2": 2, "SUR 2": 2, "ORIENTE 1": 2,
-    "PONIENTE 3": 3, "SUR 3": 3, "SURESTE 1": 3,
-    "NORTE": 4, "ORIENTE 2": 4, "SURESTE 2": 4,
-}
 
 
 def _sort_key(p):
     h = HORARIO_ORDER.get((p.horario_entrega or "").lower(), 9)
-    z = ZONA_ORDER.get(p.zona_entrega or "", 9)
+    z = orden_zona(p.zona_entrega)
     return (h, z)
 
 
