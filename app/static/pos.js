@@ -534,7 +534,7 @@ function clearGlobalDisc() { descGlobal = null; renderCart(); }
 // ═══════════════════════════════════════════
 function buildW3Form() {
   const badge = document.getElementById('w3-tipo-badge');
-  const labels = {mostrador:'🏪 Mostrador',domicilio:'🚚 Domicilio',recoger:'🛍 Recoger',funeral:'🌹 Funeral'};
+  const labels = {mostrador:'🏪 Mostrador',domicilio:'🚚 Domicilio',recoger:'🛍 Recoger',funeral:'🕊️ Funeral'};
   badge.textContent = labels[ordenTipo] || ordenTipo;
   let html = '';
 
@@ -1787,7 +1787,7 @@ function estadoLabel(estado) {
   return map[estado] || estado;
 }
 function tipoIcon(p) {
-  if (p.tipo_especial === 'Funeral') return '🌹';
+  if (p.tipo_especial === 'Funeral') return '🕊️';
   if (p.direccion_entrega) return '🚚';
   if (p.tipo_especial === 'Recoger') return '🛍';
   return '🏪';

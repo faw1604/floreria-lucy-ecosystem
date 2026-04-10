@@ -583,7 +583,7 @@ async def _enviar_ticket_pago_whatsapp(pedido, db):
         if pedido.hora_exacta:
             entrega_lines.append(f"Hora: {pedido.hora_exacta}")
     elif es_funeral:
-        entrega_lines.append("🌹 *Pedido funeral*")
+        entrega_lines.append("🕊️ *Pedido funeral*")
         if pedido.direccion_entrega:
             entrega_lines.append(f"📍 {pedido.direccion_entrega}")
         if fecha_fmt:
@@ -1043,7 +1043,7 @@ async def pos_aprobar_enviar_ticket(
         if pedido.hora_exacta:
             entrega_lines.append(f"Hora: {pedido.hora_exacta}")
     elif es_funeral:
-        entrega_lines.append("🌹 *Pedido funeral*")
+        entrega_lines.append("🕊️ *Pedido funeral*")
         if pedido.direccion_entrega:
             entrega_lines.append(f"📍 {pedido.direccion_entrega}")
         if fecha_fmt:
