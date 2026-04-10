@@ -25,8 +25,12 @@ router = APIRouter()
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _serializar_pedido_taller(p, db: AsyncSession) -> dict:
-    """Serializa un pedido con toda la info necesaria para el KDS del taller."""
+async def _serializar_pedido_taller(p, db: AsyncSession, rep_map: dict | None = None) -> dict:
+    """Serializa un pedido con toda la info necesaria para el KDS del taller.
+
+    Si se pasa rep_map (dict id→nombre), incluye repartidor_nombre. Pasarlo
+    desde el caller evita queries N+1 cuando se serializan listas grandes.
+    """
     # Items
     result = await db.execute(select(ItemPedido).where(ItemPedido.pedido_id == p.id))
     items_db = result.scalars().all()
@@ -78,6 +82,8 @@ async def _serializar_pedido_taller(p, db: AsyncSession) -> dict:
         "requiere_factura": p.requiere_factura,
         "metodo_entrega": p.metodo_entrega,
         "ruta": p.ruta,
+        "repartidor_id": p.repartidor_id,
+        "repartidor_nombre": (rep_map.get(p.repartidor_id) if rep_map and p.repartidor_id else None),
         "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
         "fecha_pedido": p.fecha_pedido.isoformat() if p.fecha_pedido else None,
         "produccion_at": p.produccion_at.isoformat() if p.produccion_at else None,
@@ -945,17 +951,100 @@ async def entregas_por_recoger(
 @router.get("/entregas/envios")
 async def entregas_envios(
     fecha: str | None = None,
+    estado: str = "por-salir",
+    grupo: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    """Envíos del POS con filtros por estado y grupo cardinal.
+
+    estado: por-salir | en-camino | completados | todos (default por-salir)
+    grupo:  Central | Noreste | Noroeste | Poniente | Sur | Oriente | Sureste | Norte
+    """
     _auth(panel_session)
-    estados_envio = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
-    query = select(Pedido).where(Pedido.estado.in_(estados_envio), Pedido.metodo_entrega.in_(ME.PARA_ENVIO))
+    from app.core.zonas import subzonas_de_grupo
+    from app.models.usuarios import Usuario
+
     f = _parse_fecha(fecha) or hoy()
-    query = query.where(Pedido.fecha_entrega == f)
+
+    # Mapear filtro de estado a la lista real de estados
+    if estado == "por-salir":
+        estados = EP.LISTOS
+    elif estado == "en-camino":
+        estados = [EP.EN_CAMINO]
+    elif estado == "completados":
+        estados = [EP.ENTREGADO]
+    else:  # todos
+        estados = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
+
+    query = (
+        select(Pedido)
+        .where(
+            Pedido.estado.in_(estados),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
+            Pedido.fecha_entrega == f,
+        )
+    )
+    if grupo:
+        subzonas = subzonas_de_grupo(grupo)
+        if subzonas:
+            query = query.where(Pedido.zona_entrega.in_(subzonas))
+
     result = await db.execute(query.order_by(Pedido.fecha_entrega, Pedido.horario_entrega))
-    pedidos = result.scalars().all()
-    return [await _serializar_pedido_taller(p, db) for p in pedidos]
+    pedidos = list(result.scalars().all())
+
+    # Mapa repartidor_id → nombre (1 sola query, evita N+1)
+    reps_r = await db.execute(select(Usuario).where(Usuario.rol == "repartidor"))
+    rep_map = {u.id: u.nombre for u in reps_r.scalars().all()}
+
+    return [await _serializar_pedido_taller(p, db, rep_map=rep_map) for p in pedidos]
+
+
+@router.get("/entregas/envios/grupos")
+async def entregas_envios_grupos(
+    fecha: str | None = None,
+    estado: str = "por-salir",
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Grupos cardinales con conteo de envíos en la fecha+estado dados.
+
+    Espejo del endpoint del taller pero acepta también el filtro de estado.
+    """
+    _auth(panel_session)
+    from app.core.zonas import GRUPOS_ORDEN, grupo_de_zona
+
+    f = _parse_fecha(fecha) or hoy()
+
+    if estado == "por-salir":
+        estados = EP.LISTOS
+    elif estado == "en-camino":
+        estados = [EP.EN_CAMINO]
+    elif estado == "completados":
+        estados = [EP.ENTREGADO]
+    else:
+        estados = EP.LISTOS + [EP.EN_CAMINO, EP.ENTREGADO, EP.INTENTO_FALLIDO]
+
+    result = await db.execute(
+        select(Pedido.zona_entrega, func.count(Pedido.id))
+        .where(
+            Pedido.estado.in_(estados),
+            Pedido.metodo_entrega.in_(ME.PARA_ENVIO),
+            Pedido.fecha_entrega == f,
+        )
+        .group_by(Pedido.zona_entrega)
+    )
+    counts: dict[str, int] = {}
+    for zona, n in result.all():
+        g = grupo_de_zona(zona) or "Sin zona"
+        counts[g] = counts.get(g, 0) + n
+    out = []
+    for g in GRUPOS_ORDEN:
+        if g in counts:
+            out.append({"grupo": g, "count": counts[g]})
+    if "Sin zona" in counts:
+        out.append({"grupo": "Sin zona", "count": counts["Sin zona"]})
+    return out
 
 
 @router.get("/entregas/resumen-dia")

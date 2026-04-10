@@ -266,6 +266,22 @@ window._qzWs = null;
         <input type="date" id="entregas-fecha" onchange="loadEntregasConFecha()" style="padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit">
       </div>
     </div>
+    <!-- Toolbar comun: busqueda en cualquier sub-tab -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <input type="text" id="entregas-search" placeholder="Buscar por folio, cliente o direccion..." oninput="filterEntregas()" style="flex:1;min-width:240px;padding:7px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit">
+    </div>
+    <!-- Toolbar especifica de Envios: estado + grupo cardinal -->
+    <div id="envios-filtros" style="display:none;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;gap:4px;align-items:center">
+        <button class="env-est-btn active" data-est="por-salir" onclick="setEnviosEstado('por-salir')" style="padding:6px 12px;border:1px solid var(--borde);border-radius:6px;background:var(--verde);color:#fff;cursor:pointer;font-family:inherit;font-weight:600;font-size:12px">Por salir</button>
+        <button class="env-est-btn" data-est="en-camino" onclick="setEnviosEstado('en-camino')" style="padding:6px 12px;border:1px solid var(--borde);border-radius:6px;background:#fff;cursor:pointer;font-family:inherit;font-weight:500;font-size:12px">En camino</button>
+        <button class="env-est-btn" data-est="completados" onclick="setEnviosEstado('completados')" style="padding:6px 12px;border:1px solid var(--borde);border-radius:6px;background:#fff;cursor:pointer;font-family:inherit;font-weight:500;font-size:12px">Completados</button>
+        <button class="env-est-btn" data-est="todos" onclick="setEnviosEstado('todos')" style="padding:6px 12px;border:1px solid var(--borde);border-radius:6px;background:#fff;cursor:pointer;font-family:inherit;font-weight:500;font-size:12px">Todos</button>
+      </div>
+      <select id="envios-grupo-pos" onchange="loadEntregasContent()" style="padding:7px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;min-width:160px">
+        <option value="">Todas las zonas</option>
+      </select>
+    </div>
     <div id="entregas-content"></div>
   </div>
 </div>
