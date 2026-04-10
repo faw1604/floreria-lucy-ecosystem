@@ -3179,6 +3179,19 @@ function _setEntregaTabLabel(id, base, count) {
   el.textContent = count > 0 ? `${base} (${count})` : base;
 }
 
+function _salioHace(isoStr) {
+  if (!isoStr) return '';
+  const t = new Date(isoStr);
+  if (isNaN(t)) return '';
+  const diffMin = Math.round((Date.now() - t.getTime()) / 60000);
+  if (diffMin < 0) return '';
+  if (diffMin < 1) return 'Salio recien';
+  if (diffMin < 60) return `Salio hace ${diffMin} min`;
+  const h = Math.floor(diffMin / 60);
+  const m = diffMin % 60;
+  return m ? `Salio hace ${h}h ${m}min` : `Salio hace ${h}h`;
+}
+
 function _entregaEstadoBadge(p) {
   const est = p.estado;
   if (est === 'Entregado') {
@@ -3194,7 +3207,9 @@ function _entregaEstadoBadge(p) {
   }
   if (est === 'En camino') {
     const detalle = p.repartidor_nombre ? ` — ${p.repartidor_nombre}` : (p.ruta ? ` — Ruta ${p.ruta}` : '');
-    return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#dbeafe;color:#1e40af;font-weight:600;font-size:12px">En camino${detalle}</span>`;
+    const salida = _salioHace(p.inicio_ruta_at);
+    const salidaHtml = salida ? `<div style="font-size:11px;font-weight:500;opacity:.85;margin-top:2px">${salida}</div>` : '';
+    return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#dbeafe;color:#1e40af;font-weight:600;font-size:12px">En camino${detalle}${salidaHtml}</span>`;
   }
   if (est === 'intento_fallido') {
     return `<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:#fef2f2;color:#991b1b;font-weight:600;font-size:12px">No entregado</span>`;
@@ -3250,7 +3265,7 @@ function renderEntregasTable(data) {
     html += '<th style="padding:10px 12px;text-align:left">Producto(s)</th>';
   }
   html += '<th style="padding:10px 12px;text-align:left">Estado</th>';
-  if (!isEnvios) html += '<th style="padding:10px 12px;text-align:left">Accion</th>';
+  html += '<th style="padding:10px 12px;text-align:left">' + (isEnvios ? 'Acciones' : 'Accion') + '</th>';
   html += '</tr></thead><tbody>';
   data.forEach(p => {
     const items = (p.items||[]).map(i => `${i.cantidad>1?i.cantidad+'x ':''}${i.nombre}`).join(', ') || '—';
@@ -3276,11 +3291,63 @@ function renderEntregasTable(data) {
       html += `<td style="padding:10px 12px;color:var(--texto2)">${items}</td>`;
     }
     html += `<td style="padding:10px 12px">${estadoHtml}</td>`;
-    if (!isEnvios) html += `<td style="padding:10px 12px"><button onclick="entregaMarcar(${p.id})" style="padding:8px 14px;background:var(--verde);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">✅ Entregado</button></td>`;
+    if (isEnvios) {
+      const trackBtn = p.tracking_token ? `<a href="/catalogo/seguimiento.html?token=${p.tracking_token}" target="_blank" style="padding:6px 10px;background:#fff;border:1px solid var(--borde);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:var(--texto);text-decoration:none;display:inline-block">📱 Tracking</a>` : '';
+      html += `<td style="padding:10px 12px"><div style="display:flex;gap:4px;flex-wrap:wrap"><button onclick="verDetalleEnvio(${p.id})" style="padding:6px 10px;background:#fff;border:1px solid var(--borde);border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:var(--texto)">📋 Detalle</button>${trackBtn}</div></td>`;
+    } else {
+      html += `<td style="padding:10px 12px"><button onclick="entregaMarcar(${p.id})" style="padding:8px 14px;background:var(--verde);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px">✅ Entregado</button></td>`;
+    }
     html += '</tr>';
   });
   html += '</tbody></table>';
   el.innerHTML = html;
+}
+
+function verDetalleEnvio(pedidoId) {
+  // Usa los datos ya cargados (entregasRawData) — no hace fetch nuevo
+  const p = entregasRawData.find(x => x.id === pedidoId);
+  if (!p) { alert('Pedido no encontrado'); return; }
+  document.getElementById('detalle-envio-title').textContent = `📦 ${p.numero}`;
+
+  const linea = (label, value) => value ? `<div style="margin-bottom:6px"><strong>${label}:</strong> ${value}</div>` : '';
+  const items = (p.items || []).map(i => `<li>${i.cantidad>1?i.cantidad+'x ':''}${i.nombre}${i.observaciones?' <em style="color:#888">— '+i.observaciones+'</em>':''}</li>`).join('');
+  const horario = p.hora_exacta || p.horario_entrega || '';
+  const fechaCorta = p.fecha_entrega || '';
+  const salida = _salioHace(p.inicio_ruta_at);
+  const estadoBadge = _entregaEstadoBadge(p);
+
+  const body = `
+    <div style="margin-bottom:14px">${estadoBadge}</div>
+    <div style="background:#f9f9f9;padding:12px;border-radius:8px;margin-bottom:12px">
+      <div style="font-weight:700;color:var(--verde);margin-bottom:8px;font-size:13px;text-transform:uppercase">Cliente</div>
+      ${linea('Nombre', p.cliente_nombre)}
+      ${linea('Telefono', p.cliente_telefono)}
+    </div>
+    <div style="background:#f9f9f9;padding:12px;border-radius:8px;margin-bottom:12px">
+      <div style="font-weight:700;color:var(--verde);margin-bottom:8px;font-size:13px;text-transform:uppercase">Entrega</div>
+      ${linea('Receptor', p.receptor_nombre)}
+      ${linea('Tel receptor', p.receptor_telefono)}
+      ${linea('Direccion', p.direccion_entrega)}
+      ${linea('Zona', p.zona_entrega)}
+      ${linea('Fecha', fechaCorta)}
+      ${linea('Horario', horario)}
+      ${p.repartidor_nombre ? linea('Repartidor', p.repartidor_nombre) : ''}
+      ${salida ? linea('Salida', salida) : ''}
+    </div>
+    <div style="background:#f9f9f9;padding:12px;border-radius:8px;margin-bottom:12px">
+      <div style="font-weight:700;color:var(--verde);margin-bottom:8px;font-size:13px;text-transform:uppercase">Productos</div>
+      <ul style="margin:0;padding-left:20px">${items || '<li>—</li>'}</ul>
+    </div>
+    ${p.dedicatoria ? `<div style="background:#fef9c3;padding:12px;border-radius:8px;margin-bottom:12px"><div style="font-weight:700;color:#854d0e;margin-bottom:6px;font-size:13px;text-transform:uppercase">💌 Dedicatoria</div><div style="font-style:italic">${p.dedicatoria}</div></div>` : ''}
+    ${p.notas_internas ? `<div style="background:#fee2e2;padding:12px;border-radius:8px;margin-bottom:12px"><div style="font-weight:700;color:#991b1b;margin-bottom:6px;font-size:13px;text-transform:uppercase">⚠️ Notas internas</div><div>${p.notas_internas}</div></div>` : ''}
+    ${p.nota_florista ? `<div style="background:#dbeafe;padding:12px;border-radius:8px;margin-bottom:12px"><div style="font-weight:700;color:#1e40af;margin-bottom:6px;font-size:13px;text-transform:uppercase">🌸 Nota florista</div><div>${p.nota_florista}</div></div>` : ''}
+    <div style="background:#f9f9f9;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+      <div><strong>Total:</strong> $${((p.total||0)/100).toFixed(2)}</div>
+      ${p.forma_pago ? `<div style="font-size:12px;color:var(--texto2)">${p.forma_pago}</div>` : ''}
+    </div>
+  `;
+  document.getElementById('detalle-envio-body').innerHTML = body;
+  document.getElementById('modal-detalle-envio').classList.add('active');
 }
 
 function filterEntregas() {

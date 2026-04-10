@@ -498,6 +498,15 @@ window._qzWs = null;
   </div>
 </div>
 
+<!-- Modal: Detalle de envio (sub-pestaña Envios) -->
+<div class="modal-bg" id="modal-detalle-envio" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:560px;width:95%;max-height:85vh;overflow-y:auto">
+    <button class="close" onclick="document.getElementById('modal-detalle-envio').classList.remove('active')">&times;</button>
+    <h3 id="detalle-envio-title" style="margin-bottom:12px">Detalle del pedido</h3>
+    <div id="detalle-envio-body" style="font-size:13px;line-height:1.5"></div>
+  </div>
+</div>
+
 <!-- Modal: Clave admin para acciones en transacciones -->
 <div class="modal-bg" id="modal-clave-admin" onclick="if(event.target===this)cerrarClaveAdmin()">
   <div class="modal" style="max-width:360px;text-align:center">

@@ -84,6 +84,8 @@ async def _serializar_pedido_taller(p, db: AsyncSession, rep_map: dict | None = 
         "ruta": p.ruta,
         "repartidor_id": p.repartidor_id,
         "repartidor_nombre": (rep_map.get(p.repartidor_id) if rep_map and p.repartidor_id else None),
+        "inicio_ruta_at": p.inicio_ruta_at.isoformat() if p.inicio_ruta_at else None,
+        "tracking_token": p.tracking_token,
         "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
         "fecha_pedido": p.fecha_pedido.isoformat() if p.fecha_pedido else None,
         "produccion_at": p.produccion_at.isoformat() if p.produccion_at else None,
