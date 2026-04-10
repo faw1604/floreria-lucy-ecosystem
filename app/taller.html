@@ -1244,6 +1244,9 @@ function generarEtiquetaHtml(d, nombre, i) {
   } else if (isEnvio) {
     const zonaHorario = [d.zona_entrega, d.horario_entrega].filter(Boolean).map(s => normTxt(s)).join(' - ');
     metodoLine = `<div class="etq-metodo etq-envio">ENVIO ${zonaHorario ? '- ' + zonaHorario : ''}</div>`;
+    if (d.direccion_entrega) {
+      metodoLine += `<div class="etq-dir">${normTxt(d.direccion_entrega)}</div>`;
+    }
   }
   return `<div class="etq">
     <div class="etq-row1"><span class="etq-folio">${normTxt(d.folio)}</span><span class="etq-badge">${i+1} de ${d.total_items}</span></div>
@@ -1267,9 +1270,10 @@ function etiquetaPrintPage(html) {
     .etq-sep{border-top:2px solid #000;margin:1px 0}
     .etq-prod{font-size:10px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .etq-para{font-size:9.5px;font-weight:500;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .etq-metodo{font-size:8.5px;font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .etq-metodo{font-size:8px;font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .etq-recoger{color:#000;border-top:1px solid #000;padding-top:1px}
     .etq-envio{color:#000;border-top:1px solid #000;padding-top:1px}
+    .etq-dir{font-size:7px;font-weight:500;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   </style></head><body>${html}</body></html>`;
 }
 

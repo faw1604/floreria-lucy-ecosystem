@@ -585,7 +585,7 @@ function abrirMaps() {
   const dirs = pedidos.map(p => encodeURIComponent(p.direccion_entrega + ', Chihuahua, México'));
   const last = dirs.pop();
   let url = `https://www.google.com/maps/dir/?api=1&destination=${last}`;
-  if (dirs.length) url += `&waypoints=${dirs.join('|')}`;
+  if (dirs.length) url += `&waypoints=optimize:true|${dirs.join('|')}`;
   window.open(url, '_blank');
 }
 

@@ -549,6 +549,7 @@ async def etiqueta_data(
         "metodo_entrega": pedido.metodo_entrega or "",
         "horario_entrega": pedido.horario_entrega or "",
         "zona_entrega": pedido.zona_entrega or "",
+        "direccion_entrega": pedido.direccion_entrega or "",
         "items": items,
         "total_items": len(items),
     }
@@ -710,6 +711,7 @@ async def etiquetas_manana_data(
             "metodo_entrega": p.metodo_entrega or "",
             "horario_entrega": p.horario_entrega or "",
             "zona_entrega": p.zona_entrega or "",
+            "direccion_entrega": p.direccion_entrega or "",
             "items": items,
             "total_items": len(items),
         })
