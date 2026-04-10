@@ -1240,10 +1240,23 @@ function generarEtiquetaHtml(d, nombre, i) {
   let metodoLine = '';
   if (isRecoger) {
     paraLine = 'Para: ' + normTxt(d.cliente_nombre || d.receptor_nombre || '---');
-    metodoLine = `<div class="etq-metodo etq-recoger">RECOGER ${d.horario_entrega ? '- ' + normTxt(d.horario_entrega) : ''}</div>`;
+    let fechaCortaRec = '';
+    if (d.fecha_entrega) {
+      const [y,m,dd] = d.fecha_entrega.split('-');
+      const meses = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      fechaCortaRec = parseInt(dd) + ' ' + meses[parseInt(m)];
+    }
+    const partesRec = [fechaCortaRec, d.horario_entrega].filter(Boolean).map(s => normTxt(s)).join(' - ');
+    metodoLine = `<div class="etq-metodo etq-recoger">RECOGER ${partesRec ? '- ' + partesRec : ''}</div>`;
   } else if (isEnvio) {
-    const zonaHorario = [d.zona_entrega, d.horario_entrega].filter(Boolean).map(s => normTxt(s)).join(' - ');
-    metodoLine = `<div class="etq-metodo etq-envio">ENVIO ${zonaHorario ? '- ' + zonaHorario : ''}</div>`;
+    let fechaCorta = '';
+    if (d.fecha_entrega) {
+      const [y,m,dd] = d.fecha_entrega.split('-');
+      const meses = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      fechaCorta = parseInt(dd) + ' ' + meses[parseInt(m)];
+    }
+    const partes = [d.zona_entrega, fechaCorta, d.horario_entrega].filter(Boolean).map(s => normTxt(s)).join(' - ');
+    metodoLine = `<div class="etq-metodo etq-envio">ENVIO ${partes ? '- ' + partes : ''}</div>`;
     if (d.direccion_entrega) {
       metodoLine += `<div class="etq-dir">${normTxt(d.direccion_entrega)}</div>`;
     }

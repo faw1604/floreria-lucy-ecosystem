@@ -550,6 +550,7 @@ async def etiqueta_data(
         "horario_entrega": pedido.horario_entrega or "",
         "zona_entrega": pedido.zona_entrega or "",
         "direccion_entrega": pedido.direccion_entrega or "",
+        "fecha_entrega": pedido.fecha_entrega.isoformat() if pedido.fecha_entrega else "",
         "items": items,
         "total_items": len(items),
     }
@@ -712,6 +713,7 @@ async def etiquetas_manana_data(
             "horario_entrega": p.horario_entrega or "",
             "zona_entrega": p.zona_entrega or "",
             "direccion_entrega": p.direccion_entrega or "",
+            "fecha_entrega": p.fecha_entrega.isoformat() if p.fecha_entrega else "",
             "items": items,
             "total_items": len(items),
         })
