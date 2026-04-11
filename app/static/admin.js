@@ -2044,9 +2044,29 @@ async function loadCuentas() {
   } catch(e) {}
 }
 
+async function crearCuentasDefault() {
+  if (!confirm('¿Crear las cuentas Caja y Caja Chica?')) return;
+  try {
+    const r = await fetch(API+'/api/admin/cuentas-financieras/seed-default', {method:'POST', credentials:'include'});
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      return alert('Error: '+(err.detail||r.status));
+    }
+    showToast('Cuentas creadas ✓');
+    loadCuentas();
+  } catch(e) { alert('Error: '+e.message); }
+}
+
 function renderCuentasCards() {
   const cont = document.getElementById('cuentas-cards');
   if (!cont) return;
+  if (!cuentasSaldos || cuentasSaldos.length === 0) {
+    cont.innerHTML = `<div style="grid-column:1/-1;background:var(--crema);border:2px dashed var(--borde);border-radius:12px;padding:32px;text-align:center">
+      <div style="font-size:14px;color:var(--texto2);margin-bottom:12px">Sin cuentas configuradas</div>
+      <button class="btn-primary" onclick="crearCuentasDefault()">+ Crear Caja y Caja Chica</button>
+    </div>`;
+    return;
+  }
   cont.innerHTML = cuentasSaldos.map(c => {
     const color = c.tipo === 'caja' ? 'var(--dorado)' : 'var(--verde)';
     const icon = c.tipo === 'caja' ? '💵' : '🏦';

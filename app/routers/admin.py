@@ -1695,6 +1695,62 @@ async def listar_cuentas_financieras(
     ]
 
 
+@router.post("/cuentas-financieras")
+async def crear_cuenta_financiera(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    try:
+        fecha_ini = data.get("fecha_inicio") or datetime.now(TZ).date().isoformat()
+        if isinstance(fecha_ini, str):
+            fecha_ini = date.fromisoformat(fecha_ini)
+        await db.execute(text("""
+            INSERT INTO cuentas_financieras (nombre, tipo, saldo_inicial, fecha_inicio, fondo_base, activo)
+            VALUES (:n, :t, :s, :f, :fb, true)
+            ON CONFLICT (nombre) DO NOTHING
+        """), {
+            "n": data["nombre"], "t": data["tipo"],
+            "s": int(data.get("saldo_inicial", 0)),
+            "f": fecha_ini,
+            "fb": int(data.get("fondo_base", 0)),
+        })
+        await db.commit()
+        return {"ok": True}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cuentas-financieras/seed-default")
+async def seed_default_cuentas(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Crea Caja y Caja Chica si no existen. Idempotente."""
+    _auth(panel_session)
+    hoy = datetime.now(TZ).date()
+    seeds = [
+        ("Caja", "caja", 0, 100000),  # fondo $1000
+        ("Caja Chica", "caja_chica", 0, 0),
+    ]
+    creadas = 0
+    for nombre, tipo, saldo, fondo in seeds:
+        exists = (await db.execute(text(
+            "SELECT id FROM cuentas_financieras WHERE nombre = :n"
+        ), {"n": nombre})).fetchone()
+        if not exists:
+            await db.execute(text("""
+                INSERT INTO cuentas_financieras (nombre, tipo, saldo_inicial, fecha_inicio, fondo_base, activo)
+                VALUES (:n, :t, :s, :f, :fb, true)
+            """), {"n": nombre, "t": tipo, "s": saldo, "f": hoy, "fb": fondo})
+            creadas += 1
+    await db.commit()
+    return {"ok": True, "creadas": creadas}
+
+
 @router.put("/cuentas-financieras/{cuenta_id}")
 async def actualizar_cuenta_financiera(
     cuenta_id: int,
