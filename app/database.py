@@ -56,6 +56,7 @@ async def inicializar_db():
             ("productos", "destacado", "BOOLEAN DEFAULT FALSE"),
             ("productos", "vender_por_fraccion", "BOOLEAN DEFAULT FALSE"),
             ("items_pedido", "gramos", "INTEGER"),
+            ("egresos", "cuenta_id", "INTEGER"),
         ]
         for tabla, col, tipo in _migrations:
             try:
@@ -112,6 +113,22 @@ async def inicializar_db():
                 ), {"c": clave, "v": valor, "d": desc})
             except Exception:
                 pass
+
+        # Seed cuentas financieras (Caja + Caja Chica) si no existen
+        try:
+            from datetime import date as _date
+            hoy_seed = _date.today()
+            _cuentas_seed = [
+                ("Caja", "caja", 0, 100000),  # fondo $1000
+                ("Caja Chica", "caja_chica", 0, 0),
+            ]
+            for nombre, tipo, saldo, fondo in _cuentas_seed:
+                await conn.execute(text(
+                    "INSERT INTO cuentas_financieras (nombre, tipo, saldo_inicial, fecha_inicio, fondo_base, activo) "
+                    "VALUES (:n, :t, :s, :f, :fb, true) ON CONFLICT (nombre) DO NOTHING"
+                ), {"n": nombre, "t": tipo, "s": saldo, "f": hoy_seed, "fb": fondo})
+        except Exception as e:
+            _log.warning(f"Seed cuentas_financieras: {e}")
 
     # 5. Seed funerarias nuevas + actualizar dirección Elian Perches
     async with engine.begin() as conn:

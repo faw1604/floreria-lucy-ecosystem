@@ -15,7 +15,7 @@ from app.models.configuracion import CodigoDescuento
 from app.models.usuarios import Usuario
 from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso, CategoriaGasto
 from app.models.banners import BannerCatalogo
-from app.models.cuentas import CuentaTransferencia
+from app.models.cuentas import CuentaTransferencia, CuentaFinanciera, MovimientoCuenta
 from app.models.fiscales import DatosFiscalesCliente
 from app.models.proveedores import Proveedor
 
@@ -132,7 +132,7 @@ async def listar_egresos(
     db: AsyncSession = Depends(get_db),
 ):
     _auth(panel_session)
-    sql = "SELECT id, fecha, concepto, categoria, monto, metodo_pago, proveedor, notas, referencia, es_recurrente FROM egresos"
+    sql = "SELECT id, fecha, concepto, categoria, monto, metodo_pago, proveedor, notas, referencia, es_recurrente, cuenta_id FROM egresos"
     params = {}
     wheres = []
     if desde:
@@ -148,7 +148,7 @@ async def listar_egresos(
     return [
         {"id": r[0], "fecha": str(r[1]), "concepto": r[2], "categoria": r[3],
          "monto": r[4], "metodo_pago": r[5], "proveedor": r[6], "notas": r[7],
-         "referencia": r[8], "es_recurrente": r[9]}
+         "referencia": r[8], "es_recurrente": r[9], "cuenta_id": r[10]}
         for r in result.fetchall()
     ]
 
@@ -164,13 +164,14 @@ async def crear_egreso(
     try:
         fecha_val = date.fromisoformat(data["fecha"]) if isinstance(data["fecha"], str) else data["fecha"]
         await db.execute(text("""
-            INSERT INTO egresos (fecha, concepto, categoria, monto, metodo_pago, proveedor, notas, referencia, es_recurrente)
-            VALUES (:f, :c, :cat, :m, :mp, :prov, :n, :ref, :er)
+            INSERT INTO egresos (fecha, concepto, categoria, monto, metodo_pago, proveedor, notas, referencia, es_recurrente, cuenta_id)
+            VALUES (:f, :c, :cat, :m, :mp, :prov, :n, :ref, :er, :ci)
         """), {
             "f": fecha_val, "c": data["concepto"], "cat": data.get("categoria", "otro"),
             "m": data.get("monto", 0), "mp": data.get("metodo_pago"),
             "prov": data.get("proveedor"), "n": data.get("notas"),
             "ref": data.get("referencia"), "er": data.get("es_recurrente", False),
+            "ci": data.get("cuenta_id"),
         })
         await db.commit()
         return {"ok": True}
@@ -190,7 +191,7 @@ async def actualizar_egreso(
     data = await request.json()
     sets = []
     params = {"id": egreso_id}
-    for k in ["concepto", "categoria", "monto", "metodo_pago", "proveedor", "notas", "referencia"]:
+    for k in ["concepto", "categoria", "monto", "metodo_pago", "proveedor", "notas", "referencia", "cuenta_id"]:
         if k in data:
             sets.append(f"{k} = :{k}")
             params[k] = data[k]
@@ -1673,3 +1674,230 @@ async def stock_historial(
         }
         for r in rows
     ]
+
+
+# ══════ CUENTAS FINANCIERAS (Caja + Caja Chica) ══════
+
+@router.get("/cuentas-financieras")
+async def listar_cuentas_financieras(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    result = await db.execute(text(
+        "SELECT id, nombre, tipo, saldo_inicial, fecha_inicio, fondo_base, activo "
+        "FROM cuentas_financieras ORDER BY id"
+    ))
+    return [
+        {"id": r[0], "nombre": r[1], "tipo": r[2], "saldo_inicial": r[3],
+         "fecha_inicio": str(r[4]), "fondo_base": r[5], "activo": r[6]}
+        for r in result.fetchall()
+    ]
+
+
+@router.put("/cuentas-financieras/{cuenta_id}")
+async def actualizar_cuenta_financiera(
+    cuenta_id: int,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    sets = []
+    params = {"id": cuenta_id}
+    for k in ["nombre", "saldo_inicial", "fondo_base", "activo"]:
+        if k in data:
+            sets.append(f"{k} = :{k}")
+            params[k] = data[k]
+    if "fecha_inicio" in data:
+        sets.append("fecha_inicio = :fecha_inicio")
+        params["fecha_inicio"] = (
+            date.fromisoformat(data["fecha_inicio"])
+            if isinstance(data["fecha_inicio"], str) else data["fecha_inicio"]
+        )
+    if not sets:
+        return {"ok": True}
+    await db.execute(text(
+        f"UPDATE cuentas_financieras SET {', '.join(sets)} WHERE id = :id"
+    ), params)
+    await db.commit()
+    return {"ok": True}
+
+
+async def _saldo_cuenta(db: AsyncSession, cuenta: tuple) -> dict:
+    """Calcula el saldo actual de una cuenta financiera.
+
+    Para tipo='caja': suma automáticamente los pedidos pagados en efectivo
+    desde fecha_inicio (no requiere registrar movimientos manuales).
+    Para cualquier tipo: suma movimientos manuales y resta egresos asignados.
+    """
+    cid, nombre, tipo, saldo_ini, f_ini, fondo = cuenta
+    deposito_tipos = ['deposito_corte_pos', 'deposito_manual', 'transferencia_in', 'ajuste_positivo']
+    retiro_tipos = ['retiro_manual', 'transferencia_out', 'ajuste_negativo']
+    dep = (await db.execute(text(
+        "SELECT COALESCE(SUM(monto),0) FROM movimientos_cuenta "
+        "WHERE cuenta_id=:cid AND tipo = ANY(:tipos) AND fecha >= :fi"
+    ), {"cid": cid, "tipos": deposito_tipos, "fi": f_ini})).scalar() or 0
+    ret = (await db.execute(text(
+        "SELECT COALESCE(SUM(monto),0) FROM movimientos_cuenta "
+        "WHERE cuenta_id=:cid AND tipo = ANY(:tipos) AND fecha >= :fi"
+    ), {"cid": cid, "tipos": retiro_tipos, "fi": f_ini})).scalar() or 0
+    egr = (await db.execute(text(
+        "SELECT COALESCE(SUM(monto),0) FROM egresos WHERE cuenta_id=:cid AND fecha >= :fi"
+    ), {"cid": cid, "fi": f_ini})).scalar() or 0
+    pos_efectivo = 0
+    if tipo == 'caja':
+        # Pedidos POS pagados en efectivo desde fecha_inicio
+        from datetime import time as time_type
+        from app.core.estados import EstadoPedido as _EP
+        try:
+            estados_venta = list(_EP.VENTA_COMPLETADA)
+        except Exception:
+            estados_venta = ['pagado', 'En producción', 'listo_taller', 'En camino', 'Entregado']
+        f_ini_dt = datetime.combine(f_ini, time_type.min)
+        pos_efectivo = (await db.execute(text(
+            "SELECT COALESCE(SUM(total),0) FROM pedidos "
+            "WHERE pago_confirmado_at >= :fi "
+            "AND LOWER(COALESCE(forma_pago,'')) LIKE '%efectivo%' "
+            "AND estado = ANY(:estados)"
+        ), {"fi": f_ini_dt, "estados": estados_venta})).scalar() or 0
+    saldo = (saldo_ini or 0) + int(dep) - int(ret) - int(egr) + int(pos_efectivo)
+    return {
+        "id": cid, "nombre": nombre, "tipo": tipo,
+        "saldo_inicial": saldo_ini, "fecha_inicio": str(f_ini),
+        "fondo_base": fondo,
+        "depositos": int(dep), "retiros": int(ret),
+        "egresos": int(egr), "ingresos_efectivo_pos": int(pos_efectivo),
+        "saldo_actual": saldo,
+    }
+
+
+@router.get("/cuentas-financieras/saldos")
+async def saldos_cuentas(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    cuentas = (await db.execute(text(
+        "SELECT id, nombre, tipo, saldo_inicial, fecha_inicio, fondo_base "
+        "FROM cuentas_financieras WHERE activo = true ORDER BY id"
+    ))).fetchall()
+    return [await _saldo_cuenta(db, c) for c in cuentas]
+
+
+@router.get("/movimientos-cuenta")
+async def listar_movimientos(
+    cuenta_id: int | None = None,
+    desde: str | None = None,
+    hasta: str | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    sql = ("SELECT id, cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, "
+           "referencia_tipo, referencia_id, notas FROM movimientos_cuenta")
+    wheres = []
+    params = {}
+    if cuenta_id:
+        wheres.append("(cuenta_id = :cid OR cuenta_destino_id = :cid)")
+        params["cid"] = cuenta_id
+    if desde:
+        wheres.append("fecha >= :desde")
+        params["desde"] = date.fromisoformat(desde)
+    if hasta:
+        wheres.append("fecha <= :hasta")
+        params["hasta"] = date.fromisoformat(hasta)
+    if wheres:
+        sql += " WHERE " + " AND ".join(wheres)
+    sql += " ORDER BY fecha DESC, id DESC LIMIT 500"
+    result = await db.execute(text(sql), params)
+    return [
+        {"id": r[0], "cuenta_id": r[1], "fecha": str(r[2]), "tipo": r[3],
+         "concepto": r[4], "monto": r[5], "cuenta_destino_id": r[6],
+         "referencia_tipo": r[7], "referencia_id": r[8], "notas": r[9]}
+        for r in result.fetchall()
+    ]
+
+
+@router.post("/movimientos-cuenta")
+async def crear_movimiento(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    data = await request.json()
+    try:
+        fecha_val = (date.fromisoformat(data["fecha"])
+                     if isinstance(data["fecha"], str) else data["fecha"])
+        await db.execute(text("""
+            INSERT INTO movimientos_cuenta
+                (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo, referencia_id, notas)
+            VALUES (:cid, :f, :t, :c, :m, :cd, :rt, :ri, :n)
+        """), {
+            "cid": data["cuenta_id"], "f": fecha_val, "t": data["tipo"],
+            "c": data.get("concepto", ""), "m": int(data.get("monto", 0)),
+            "cd": data.get("cuenta_destino_id"),
+            "rt": data.get("referencia_tipo"),
+            "ri": data.get("referencia_id"),
+            "n": data.get("notas"),
+        })
+        await db.commit()
+        return {"ok": True}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/movimientos-cuenta/{mov_id}")
+async def eliminar_movimiento(
+    mov_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    _auth(panel_session)
+    await db.execute(text("DELETE FROM movimientos_cuenta WHERE id = :id"), {"id": mov_id})
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/cuentas-financieras/cerrar-semana")
+async def cerrar_semana_caja(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Transfiere el saldo de Caja a Caja Chica.
+    Crea 2 movimientos (out + in) y resetea fecha_inicio de Caja a mañana."""
+    _auth(panel_session)
+    caja_row = (await db.execute(text(
+        "SELECT id, nombre, tipo, saldo_inicial, fecha_inicio, fondo_base "
+        "FROM cuentas_financieras WHERE tipo='caja' AND activo=true LIMIT 1"
+    ))).fetchone()
+    chica_row = (await db.execute(text(
+        "SELECT id FROM cuentas_financieras WHERE tipo='caja_chica' AND activo=true LIMIT 1"
+    ))).fetchone()
+    if not caja_row or not chica_row:
+        raise HTTPException(status_code=400, detail="Faltan cuentas Caja y/o Caja Chica")
+    caja_id = caja_row[0]
+    chica_id = chica_row[0]
+    saldo_info = await _saldo_cuenta(db, tuple(caja_row))
+    saldo_caja = saldo_info["saldo_actual"]
+    if saldo_caja <= 0:
+        return {"ok": True, "transferido": 0, "mensaje": "Caja en $0, nada que transferir"}
+    hoy = datetime.now(TZ).date()
+    await db.execute(text("""
+        INSERT INTO movimientos_cuenta (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo)
+        VALUES (:cid, :f, 'transferencia_out', 'Cierre semanal → Caja Chica', :m, :cd, 'cierre_semanal')
+    """), {"cid": caja_id, "f": hoy, "m": saldo_caja, "cd": chica_id})
+    await db.execute(text("""
+        INSERT INTO movimientos_cuenta (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo)
+        VALUES (:cid, :f, 'transferencia_in', 'Cierre semanal ← Caja', :m, :co, 'cierre_semanal')
+    """), {"cid": chica_id, "f": hoy, "m": saldo_caja, "co": caja_id})
+    # Reset Caja: fecha_inicio = mañana, saldo_inicial = 0
+    manana = hoy + timedelta(days=1)
+    await db.execute(text(
+        "UPDATE cuentas_financieras SET fecha_inicio = :f, saldo_inicial = 0 WHERE id = :id"
+    ), {"f": manana, "id": caja_id})
+    await db.commit()
+    return {"ok": True, "transferido": saldo_caja}

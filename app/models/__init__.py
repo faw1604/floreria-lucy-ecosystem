@@ -8,7 +8,7 @@ from app.models.configuracion import ConfiguracionNegocio, HorarioEspecifico, Co
 from app.models.usuarios import Usuario
 from app.models.egresos import Egreso, GastoRecurrente, MetodoPagoEgreso, OtroIngreso, CategoriaGasto
 from app.models.banners import BannerCatalogo
-from app.models.cuentas import CuentaTransferencia
+from app.models.cuentas import CuentaTransferencia, CuentaFinanciera, MovimientoCuenta
 from app.models.fiscales import DatosFiscalesCliente
 from app.models.proveedores import Proveedor
 from app.models.reservas import Reserva
@@ -33,6 +33,8 @@ __all__ = [
     "OtroIngreso",
     "CategoriaGasto",
     "CuentaTransferencia",
+    "CuentaFinanciera",
+    "MovimientoCuenta",
     "DatosFiscalesCliente",
     "Proveedor",
     "BannerCatalogo",

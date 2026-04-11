@@ -1508,6 +1508,7 @@ function getFinDates() {
   if (p === 'hoy') return {desde: hoy, hasta: hoy};
   if (p === 'semana') { const d = new Date(now); d.setDate(d.getDate()-d.getDay()); const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); return {desde:ds, hasta:hoy}; }
   if (p === 'mes') return {desde: hoy.substring(0,8)+'01', hasta: hoy};
+  if (p === 'anio') return {desde: hoy.substring(0,4)+'-01-01', hasta: hoy};
   return {desde: hoy, hasta: hoy};
 }
 
@@ -1536,6 +1537,7 @@ function finSubTab(id) {
   if (id === 'fin-utilidad') loadUtilidad();
   if (id === 'fin-flujo') loadFlujo();
   if (id === 'fin-cortes') loadCortes();
+  if (id === 'fin-cuentas') loadCuentas();
 }
 
 let _finRawActivos = [];
@@ -1546,7 +1548,11 @@ async function loadFinanzas() {
   const {desde, hasta} = getFinDates();
   try {
     const periodo = document.getElementById('fin-periodo').value;
-    const r = await fetch(API + '/pos/pedidos-hoy?filtrar_por=pago_confirmado_at&periodo=' + (periodo === 'rango' ? 'rango&fecha_inicio=' + desde + '&fecha_fin=' + hasta : periodo), {credentials:'include'});
+    // 'anio' no es nativo del endpoint -> se manda como rango
+    const periodoQS = (periodo === 'rango' || periodo === 'anio')
+      ? 'rango&fecha_inicio=' + desde + '&fecha_fin=' + hasta
+      : periodo;
+    const r = await fetch(API + '/pos/pedidos-hoy?filtrar_por=pago_confirmado_at&periodo=' + periodoQS, {credentials:'include'});
     if (!r.ok) return;
     const data = await r.json();
     finData.ingresos = data;
@@ -1711,23 +1717,58 @@ function catGastoOptions(selected) {
 
 async function loadEgresos() {
   await loadMetodosPago();
+  await loadCuentasFinList();
   const {desde, hasta} = getFinDates();
   try {
     const r = await fetch(API + '/api/admin/egresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
     if (!r.ok) return;
     const data = await r.json();
     finData.egresos = data;
+    renderEgresos();
+  } catch(e) {}
+}
+
+function renderEgresos() {
+  const all = finData.egresos || [];
+  const q = (document.getElementById('fin-egr-search')?.value || '').trim().toLowerCase();
+  const data = q ? all.filter(e =>
+    (e.concepto||'').toLowerCase().includes(q) ||
+    (e.proveedor||'').toLowerCase().includes(q) ||
+    (e.categoria||'').toLowerCase().includes(q) ||
+    (e.notas||'').toLowerCase().includes(q)
+  ) : all;
+  {
+    // KPIs egresos
+    const totalEgr = data.reduce((s,e)=>s+(e.monto||0), 0);
+    const numEgr = data.length;
+    const promedio = numEgr ? Math.round(totalEgr/numEgr) : 0;
+    const porMetodo = {};
+    const porCategoria = {};
+    data.forEach(e => {
+      const m = e.metodo_pago || 'Sin método';
+      porMetodo[m] = (porMetodo[m]||0) + (e.monto||0);
+      const c = e.categoria || 'Sin categoría';
+      porCategoria[c] = (porCategoria[c]||0) + (e.monto||0);
+    });
+    let kpisEgr = `<div class="kpi-card"><div class="kpi-label">Total egresos</div><div class="kpi-value" style="color:var(--rojo)">${fmt$(totalEgr)}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${numEgr}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Promedio</div><div class="kpi-value">${fmt$(promedio)}</div></div>`;
+    for (const [m,v] of Object.entries(porMetodo)) kpisEgr += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
+    for (const [c,v] of Object.entries(porCategoria)) kpisEgr += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
+    const kpisEl = document.getElementById('fin-egr-kpis');
+    if (kpisEl) kpisEl.innerHTML = kpisEgr;
+    const cuentaName = (id) => (cuentasFin.find(c=>c.id===id)||{}).nombre || '';
     const tbody = document.getElementById('egresos-tbody');
     tbody.innerHTML = data.map(e => `<tr>
       <td>${fmtDate(e.fecha)}</td>
-      <td>${esc(e.concepto)}${e.es_recurrente ? ' <span style="color:var(--dorado);font-size:10px">RECURRENTE</span>' : ''}</td>
+      <td>${esc(e.concepto)}${e.es_recurrente ? ' <span style="color:var(--dorado);font-size:10px">RECURRENTE</span>' : ''}${e.cuenta_id ? ' <span style="color:var(--verde);font-size:10px">'+esc(cuentaName(e.cuenta_id))+'</span>' : ''}</td>
       <td>${esc(e.categoria)}</td>
       <td>${esc(e.metodo_pago||'—')}</td>
       <td>${esc(e.proveedor||'—')}</td>
       <td style="font-weight:600">${fmt$(e.monto)}</td>
       <td style="white-space:nowrap"><button class="btn-sm" onclick="verEgreso(${e.id})">👁</button> <button class="btn-sm" onclick="editarEgreso(${e.id})">Editar</button> <button class="btn-sm" onclick="eliminarEgreso(${e.id})" style="color:var(--rojo)">🗑</button></td>
     </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--texto2)">Sin egresos</td></tr>';
-  } catch(e) {}
+  }
 }
 
 function mpOptions(selected) {
@@ -1738,11 +1779,13 @@ async function abrirModalEgreso(eg) {
   await loadMetodosPago();
   await loadCategoriasGasto();
   await loadProveedores();
+  await loadCuentasFinList();
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('modal-egreso-body').innerHTML = `
     <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${eg?.fecha||hoy}"></div>
     <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
     <div class="field"><label>Categoría</label><select id="eg-cat"><option value="">Selecciona...</option>${catGastoOptions(eg?.categoria)}</select></div>
+    <div class="field"><label>Cuenta de origen *</label><select id="eg-cuenta"><option value="">Selecciona...</option>${cuentasOptions(eg?.cuenta_id)}</select></div>
     <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
     <div class="field"><label>Proveedor</label>
       <div style="display:flex;gap:6px">
@@ -1759,6 +1802,7 @@ async function abrirModalEgreso(eg) {
 }
 
 async function guardarEgreso(id) {
+  const cuentaIdRaw = document.getElementById('eg-cuenta')?.value || '';
   const body = {
     fecha: document.getElementById('eg-fecha').value,
     concepto: document.getElementById('eg-concepto').value.trim(),
@@ -1768,6 +1812,7 @@ async function guardarEgreso(id) {
     monto: Math.round(parseFloat(document.getElementById('eg-monto').value || 0) * 100),
     notas: document.getElementById('eg-notas').value.trim() || null,
     referencia: document.getElementById('eg-ref')?.value?.trim() || null,
+    cuenta_id: cuentaIdRaw ? parseInt(cuentaIdRaw) : null,
   };
   if (!body.fecha || !body.concepto || !body.monto) return alert('Fecha, concepto y monto son obligatorios');
   const url = id ? API+'/api/admin/egresos/'+id : API+'/api/admin/egresos';
@@ -1969,6 +2014,207 @@ async function eliminarGastoRec(id) {
   if (!confirm('¿Eliminar?')) return;
   await fetch(API+'/api/admin/gastos-recurrentes/'+id, {method:'DELETE', credentials:'include'});
   abrirGastosRecurrentes();
+}
+
+// ─────── CUENTAS FINANCIERAS (Caja + Caja Chica) ───────
+let cuentasFin = [];
+let cuentasSaldos = [];
+
+async function loadCuentasFinList() {
+  try {
+    const r = await fetch(API+'/api/admin/cuentas-financieras', {credentials:'include'});
+    if (r.ok) cuentasFin = await r.json();
+  } catch(e) {}
+}
+
+function cuentasOptions(selected) {
+  return (cuentasFin||[]).filter(c=>c.activo).map(c =>
+    `<option value="${c.id}" ${String(selected)===String(c.id)?'selected':''}>${esc(c.nombre)}</option>`
+  ).join('');
+}
+
+async function loadCuentas() {
+  await loadCuentasFinList();
+  try {
+    const r = await fetch(API+'/api/admin/cuentas-financieras/saldos', {credentials:'include'});
+    if (!r.ok) return;
+    cuentasSaldos = await r.json();
+    renderCuentasCards();
+    loadMovimientosCuentas();
+  } catch(e) {}
+}
+
+function renderCuentasCards() {
+  const cont = document.getElementById('cuentas-cards');
+  if (!cont) return;
+  cont.innerHTML = cuentasSaldos.map(c => {
+    const color = c.tipo === 'caja' ? 'var(--dorado)' : 'var(--verde)';
+    const icon = c.tipo === 'caja' ? '💵' : '🏦';
+    return `<div style="background:#fff;border:2px solid ${color};border-radius:12px;padding:18px;box-shadow:0 2px 6px rgba(0,0,0,.05)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-size:13px;color:var(--texto2);text-transform:uppercase;letter-spacing:.5px">${icon} ${esc(c.nombre)}</div>
+          <div style="font-size:11px;color:var(--texto2);margin-top:2px">Desde ${c.fecha_inicio}</div>
+        </div>
+        <button class="btn-sm" onclick="abrirConfigCuenta(${c.id})" title="Configurar">⚙</button>
+      </div>
+      <div style="font-size:32px;font-weight:700;color:${color};margin:8px 0">${fmt$(c.saldo_actual)}</div>
+      <div style="font-size:11px;color:var(--texto2);line-height:1.6">
+        Saldo inicial: ${fmt$(c.saldo_inicial)}<br>
+        ${c.tipo==='caja' ? 'Ventas efectivo POS: '+fmt$(c.ingresos_efectivo_pos)+'<br>' : ''}
+        + Depósitos / transferencias: ${fmt$(c.depositos)}<br>
+        − Egresos: ${fmt$(c.egresos)}<br>
+        − Retiros / transferencias: ${fmt$(c.retiros)}
+        ${c.fondo_base ? '<br><span style="color:var(--dorado)">Fondo físico: '+fmt$(c.fondo_base)+'</span>' : ''}
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--texto2);padding:12px">Sin cuentas configuradas</div>';
+}
+
+async function loadMovimientosCuentas() {
+  try {
+    const r = await fetch(API+'/api/admin/movimientos-cuenta', {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const cuentaName = (id) => (cuentasFin.find(c=>c.id===id)||{}).nombre || '—';
+    const tipoLabel = {
+      deposito_corte_pos: 'Depósito (corte POS)',
+      deposito_manual: 'Depósito manual',
+      retiro_manual: 'Retiro manual',
+      transferencia_in: 'Transferencia ↓',
+      transferencia_out: 'Transferencia ↑',
+      ajuste_positivo: 'Ajuste +',
+      ajuste_negativo: 'Ajuste −',
+    };
+    const tbody = document.getElementById('cuentas-mvts-tbody');
+    tbody.innerHTML = data.map(m => {
+      const esOut = m.tipo === 'transferencia_out' || m.tipo === 'retiro_manual' || m.tipo === 'ajuste_negativo';
+      const color = esOut ? 'var(--rojo)' : 'var(--verde)';
+      const signo = esOut ? '−' : '+';
+      return `<tr>
+        <td>${fmtDate(m.fecha)}</td>
+        <td>${esc(cuentaName(m.cuenta_id))}${m.cuenta_destino_id ? ' → '+esc(cuentaName(m.cuenta_destino_id)) : ''}</td>
+        <td>${esc(tipoLabel[m.tipo]||m.tipo)}</td>
+        <td>${esc(m.concepto||'')}</td>
+        <td style="font-weight:600;color:${color}">${signo} ${fmt$(m.monto)}</td>
+        <td><button class="btn-sm" onclick="eliminarMovimiento(${m.id})" style="color:var(--rojo)">🗑</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--texto2)">Sin movimientos</td></tr>';
+  } catch(e) {}
+}
+
+async function abrirConfigCuenta(id) {
+  const c = cuentasFin.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4>Configurar: ${esc(c.nombre)}</h4>
+    <div class="field"><label>Saldo inicial (pesos)</label><input type="number" id="cf-saldo" value="${(c.saldo_inicial/100).toFixed(2)}" step="0.01"></div>
+    <div class="field"><label>Fecha de inicio (desde cuándo se calcula el saldo)</label><input type="date" id="cf-fecha" value="${c.fecha_inicio}"></div>
+    <div class="field"><label>Fondo físico base (pesos, solo Caja)</label><input type="number" id="cf-fondo" value="${(c.fondo_base/100).toFixed(2)}" step="0.01"></div>
+    <div style="font-size:11px;color:var(--texto2);background:var(--crema);padding:8px;border-radius:6px;margin-top:8px">
+      <strong>Saldo inicial</strong>: dinero que ya estaba en la cuenta antes de empezar a usar el sistema. Los egresos y movimientos posteriores a la fecha de inicio se sumarán/restarán automáticamente.
+    </div>
+    <button class="btn-primary" onclick="guardarConfigCuenta(${id})" style="width:100%;margin-top:12px">Guardar</button>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function guardarConfigCuenta(id) {
+  const body = {
+    saldo_inicial: Math.round(parseFloat(document.getElementById('cf-saldo').value||0)*100),
+    fecha_inicio: document.getElementById('cf-fecha').value,
+    fondo_base: Math.round(parseFloat(document.getElementById('cf-fondo').value||0)*100),
+  };
+  const r = await fetch(API+'/api/admin/cuentas-financieras/'+id, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) return alert('Error al guardar');
+  cerrarModal('modal-egreso');
+  showToast('Cuenta actualizada ✓');
+  loadCuentas();
+}
+
+async function abrirModalMovimiento() {
+  await loadCuentasFinList();
+  const hoy = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4>Registrar movimiento</h4>
+    <div class="field"><label>Cuenta *</label><select id="mv-cuenta"><option value="">Selecciona...</option>${cuentasOptions()}</select></div>
+    <div class="field"><label>Tipo *</label>
+      <select id="mv-tipo" onchange="onMvTipoChange()">
+        <option value="deposito_manual">Depósito manual (entra dinero)</option>
+        <option value="retiro_manual">Retiro manual (sale dinero)</option>
+        <option value="transferencia_out">Transferencia a otra cuenta</option>
+        <option value="ajuste_positivo">Ajuste + (corrección)</option>
+        <option value="ajuste_negativo">Ajuste − (corrección)</option>
+      </select>
+    </div>
+    <div class="field" id="mv-destino-wrap" style="display:none"><label>Cuenta destino *</label><select id="mv-destino"><option value="">Selecciona...</option>${cuentasOptions()}</select></div>
+    <div class="field"><label>Fecha *</label><input type="date" id="mv-fecha" value="${hoy}"></div>
+    <div class="field"><label>Concepto *</label><input id="mv-concepto" placeholder="Ej. Retiro a bolsita, Pago efectivo proveedor"></div>
+    <div class="field"><label>Monto * (pesos)</label><input type="number" id="mv-monto" step="0.01"></div>
+    <div class="field"><label>Notas</label><textarea id="mv-notas"></textarea></div>
+    <button class="btn-primary" onclick="guardarMovimiento()" style="width:100%;margin-top:8px">Guardar</button>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+function onMvTipoChange() {
+  const tipo = document.getElementById('mv-tipo').value;
+  document.getElementById('mv-destino-wrap').style.display = (tipo === 'transferencia_out') ? '' : 'none';
+}
+
+async function guardarMovimiento() {
+  const tipo = document.getElementById('mv-tipo').value;
+  const cuenta_id = parseInt(document.getElementById('mv-cuenta').value||0);
+  if (!cuenta_id) return alert('Selecciona la cuenta');
+  const concepto = document.getElementById('mv-concepto').value.trim();
+  if (!concepto) return alert('Concepto obligatorio');
+  const monto = Math.round(parseFloat(document.getElementById('mv-monto').value||0)*100);
+  if (!monto || monto <= 0) return alert('Monto debe ser positivo');
+  const body = {
+    cuenta_id, tipo,
+    fecha: document.getElementById('mv-fecha').value,
+    concepto, monto,
+    notas: document.getElementById('mv-notas').value.trim() || null,
+  };
+  if (tipo === 'transferencia_out') {
+    const dest = parseInt(document.getElementById('mv-destino').value||0);
+    if (!dest) return alert('Selecciona cuenta destino');
+    if (dest === cuenta_id) return alert('Cuenta destino debe ser distinta');
+    body.cuenta_destino_id = dest;
+    // Crear out
+    await fetch(API+'/api/admin/movimientos-cuenta', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+    // Crear in del lado destino
+    const bodyIn = {...body, cuenta_id: dest, cuenta_destino_id: cuenta_id, tipo: 'transferencia_in'};
+    await fetch(API+'/api/admin/movimientos-cuenta', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(bodyIn)});
+  } else {
+    await fetch(API+'/api/admin/movimientos-cuenta', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+  }
+  cerrarModal('modal-egreso');
+  showToast('Movimiento registrado ✓');
+  loadCuentas();
+}
+
+async function eliminarMovimiento(id) {
+  if (!confirm('¿Eliminar movimiento? (Si es transferencia, debes eliminar también el movimiento espejo en la otra cuenta)')) return;
+  await fetch(API+'/api/admin/movimientos-cuenta/'+id, {method:'DELETE', credentials:'include'});
+  loadCuentas();
+}
+
+async function confirmarCerrarSemana() {
+  if (!confirm('¿Cerrar semana? Todo el saldo de Caja se transferirá a Caja Chica y Caja arrancará en $0 desde mañana.')) return;
+  try {
+    const r = await fetch(API+'/api/admin/cuentas-financieras/cerrar-semana', {method:'POST', credentials:'include'});
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      return alert('Error: '+(err.detail||r.status));
+    }
+    const d = await r.json();
+    showToast(d.mensaje || ('Transferido '+fmt$(d.transferido||0)+' a Caja Chica ✓'));
+    loadCuentas();
+  } catch(e) { alert('Error: '+e.message); }
 }
 
 // --- Categorías de gasto ---

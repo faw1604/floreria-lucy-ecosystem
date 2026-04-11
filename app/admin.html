@@ -272,7 +272,7 @@
   <div class="sec-header">
     <h2>Finanzas</h2>
     <div class="sec-actions">
-      <select id="fin-periodo" onchange="onFinPeriodoChange()"><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="rango">Rango personalizado</option></select>
+      <select id="fin-periodo" onchange="onFinPeriodoChange()"><option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="anio">Este año</option><option value="rango">Rango personalizado</option></select>
       <input type="date" id="fin-desde" style="display:none" onchange="reloadAllFinanzas()">
       <input type="date" id="fin-hasta" style="display:none" onchange="reloadAllFinanzas()">
       <button class="btn-primary" onclick="abrirModalOtroIngreso()">+ Otro ingreso</button>
@@ -288,6 +288,7 @@
       <button class="sub-tab" onclick="finSubTab('fin-utilidad')">Utilidad</button>
       <button class="sub-tab" onclick="finSubTab('fin-flujo')">Flujo de caja</button>
       <button class="sub-tab" onclick="finSubTab('fin-cortes')">Cortes de caja</button>
+      <button class="sub-tab" onclick="finSubTab('fin-cuentas')">Cuentas</button>
     </div>
     <div class="sub-content" id="fin-ingresos-content">
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
@@ -307,12 +308,23 @@
         <button class="btn-sm" onclick="abrirCategoriasGasto()">Categorías</button>
         <button class="btn-sm" onclick="abrirProveedores()">Proveedores</button>
         <button class="btn-sm" onclick="abrirMetodosPagoEgreso()">Métodos de pago</button>
+        <input id="fin-egr-search" type="text" placeholder="Buscar por concepto, proveedor, categoría..." oninput="renderEgresos()" style="flex:1;min-width:220px;padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-family:inherit">
       </div>
+      <div class="kpi-row" id="fin-egr-kpis"></div>
       <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Categoría</th><th>Método pago</th><th>Proveedor</th><th>Monto</th><th></th></tr></thead><tbody id="egresos-tbody"></tbody></table></div>
     </div>
     <div class="sub-content" id="fin-utilidad-content" style="display:none"><div id="utilidad-card"></div><canvas id="utilidad-chart" height="280" style="margin-top:16px"></canvas></div>
     <div class="sub-content" id="fin-flujo-content" style="display:none"><canvas id="flujo-chart" height="280"></canvas><div class="table-wrap" style="margin-top:16px"><table class="data-table"><thead><tr><th>Fecha</th><th>Ingresos</th><th>Egresos</th><th>Saldo</th><th>Acumulado</th></tr></thead><tbody id="flujo-tbody"></tbody></table></div><button class="btn-sm" onclick="exportarFlujo()" style="margin-top:8px">📥 Exportar flujo</button></div>
     <div class="sub-content" id="fin-cortes-content" style="display:none"><div id="cortes-list"></div></div>
+    <div class="sub-content" id="fin-cuentas-content" style="display:none">
+      <div id="cuentas-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:20px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="abrirModalMovimiento()">+ Registrar movimiento</button>
+        <button class="btn-dorado" onclick="confirmarCerrarSemana()">📅 Cerrar semana (Caja → Caja Chica)</button>
+      </div>
+      <h4 style="margin-top:16px;margin-bottom:8px;color:var(--verde)">Movimientos recientes</h4>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Cuenta</th><th>Tipo</th><th>Concepto</th><th>Monto</th><th></th></tr></thead><tbody id="cuentas-mvts-tbody"></tbody></table></div>
+    </div>
   </div>
 </div>
 

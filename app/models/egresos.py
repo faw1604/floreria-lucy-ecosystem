@@ -35,6 +35,7 @@ class Egreso(Base):
     notas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     referencia: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     es_recurrente: Mapped[bool] = mapped_column(Boolean, default=False)
+    cuenta_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(TZ))
 
 
