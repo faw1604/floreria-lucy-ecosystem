@@ -1876,19 +1876,34 @@ async function abrirGastosRecurrentes() {
   try {
     const r = await fetch(API+'/api/admin/gastos-recurrentes', {credentials:'include'});
     const data = await r.json();
-    const {desde, hasta} = getFinDates();
-    // Check which are paid in period
-    const er = await fetch(API+'/api/admin/egresos?desde='+desde+'&hasta='+hasta, {credentials:'include'});
+    // Check paid status por frecuencia (rodante desde hoy)
+    const hoyD = new Date(); hoyD.setHours(0,0,0,0);
+    const hastaRec = hoyD.toISOString().split('T')[0];
+    const desdeRec = new Date(hoyD.getTime() - 35*24*3600*1000).toISOString().split('T')[0];
+    const er = await fetch(API+'/api/admin/egresos?desde='+desdeRec+'&hasta='+hastaRec, {credentials:'include'});
     const egs = await er.json();
-    const paidNames = new Set(egs.filter(e=>e.es_recurrente).map(e=>e.concepto));
+    // Mapa concepto -> fecha del pago recurrente más reciente
+    const ultimoPago = {};
+    egs.filter(e=>e.es_recurrente).forEach(e => {
+      const prev = ultimoPago[e.concepto];
+      if (!prev || e.fecha > prev) ultimoPago[e.concepto] = e.fecha;
+    });
+    const diasFrecuencia = {semanal:7, quincenal:15, mensual:30};
+    const estaPagado = (g) => {
+      const f = ultimoPago[g.nombre];
+      if (!f) return null;
+      const dias = Math.floor((hoyD - new Date(f+'T00:00:00')) / (24*3600*1000));
+      const limite = diasFrecuencia[g.frecuencia] ?? 30;
+      return dias < limite ? f : null;
+    };
 
     document.getElementById('modal-egreso-body').innerHTML = `
       <h4 style="margin-bottom:12px">Gastos recurrentes</h4>
       ${data.filter(g=>g.activo).map(g => {
-        const paid = paidNames.has(g.nombre);
+        const paidFecha = estaPagado(g);
         return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--borde)">
           <div style="flex:1"><strong>${esc(g.nombre)}</strong><br><span style="font-size:11px;color:var(--texto2)">${g.categoria} · ${g.frecuencia} · ${fmt$(g.monto_sugerido)}${g.metodo_pago ? ' · '+esc(g.metodo_pago) : ''}${g.proveedor ? ' · '+esc(g.proveedor) : ''}</span></div>
-          ${paid ? '<span style="color:var(--verde);font-size:12px;font-weight:600">Pagado ✓</span>' : `<button class="btn-dorado" onclick="pagarRecurrente(${g.id},'${esc(g.nombre)}',${g.monto_sugerido},'${esc(g.categoria)}','${esc(g.proveedor||'')}','${esc(g.metodo_pago||'')}')">Marcar pagado</button>`}
+          ${paidFecha ? `<span style="color:var(--verde);font-size:12px;font-weight:600" title="Pagado el ${paidFecha}">Pagado ✓<br><span style="font-size:10px;font-weight:400;color:var(--texto2)">${paidFecha}</span></span>` : `<button class="btn-dorado" onclick="pagarRecurrente(${g.id},'${esc(g.nombre)}',${g.monto_sugerido},'${esc(g.categoria)}','${esc(g.proveedor||'')}','${esc(g.metodo_pago||'')}')">Marcar pagado</button>`}
           <button class="btn-sm" onclick="eliminarGastoRec(${g.id})" style="font-size:11px">🗑</button>
         </div>`;
       }).join('') || '<div style="color:var(--texto2);padding:12px">Sin gastos recurrentes</div>'}
@@ -1936,9 +1951,9 @@ async function confirmarPagoRec(nombre, categoria) {
   };
   if (!body.monto) return alert('Monto es obligatorio');
   await fetch(API+'/api/admin/egresos', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
-  cerrarModal('modal-egreso');
   showToast('Pago registrado ✓');
   loadEgresos();
+  abrirGastosRecurrentes();
 }
 
 async function crearGastoRec() {
