@@ -347,6 +347,18 @@ window._qzWs = null;
 
 <!-- ═══ MODALS ═══ -->
 
+<!-- Modal: Cantidad en gramos (venta por fracción) -->
+<div class="modal-bg" id="modal-gramos" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="modal" style="max-width:380px">
+    <button class="close" onclick="document.getElementById('modal-gramos').classList.remove('active')">&times;</button>
+    <h3 id="gramos-titulo">Cantidad en gramos</h3>
+    <div style="font-size:12px;color:var(--texto2);margin-bottom:8px" id="gramos-precio-kilo"></div>
+    <div class="frow"><label>Gramos *</label><input type="number" id="gramos-input" min="1" placeholder="Ej: 200" oninput="actualizarPrecioGramos()" onkeydown="if(event.key==='Enter')confirmarGramos()"></div>
+    <div style="background:var(--crema);border-radius:8px;padding:10px;text-align:center;margin:10px 0;font-size:14px"><strong>Total:</strong> <span id="gramos-total">$0.00</span></div>
+    <button onclick="confirmarGramos()" style="width:100%;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px">Agregar al carrito</button>
+  </div>
+</div>
+
 <!-- Modal: Reservas disponibles -->
 <div class="modal-bg" id="modal-reservas-pos" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="modal" style="max-width:600px;max-height:80vh;overflow-y:auto">

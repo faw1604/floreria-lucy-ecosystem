@@ -324,7 +324,12 @@ function renderProds() {
 function addToCart(prodId) {
   const p = productos.find(x => x.id === prodId);
   if (!p) return;
-  const existing = carrito.find(x => x.producto_id === prodId && !x.es_custom);
+  // Si es venta por fracción, abrir modal de gramos en vez de incrementar
+  if (p.vender_por_fraccion) {
+    abrirModalGramos(p);
+    return;
+  }
+  const existing = carrito.find(x => x.producto_id === prodId && !x.es_custom && !x.gramos);
   if (existing) { existing.cantidad++; }
   else {
     carrito.push({
@@ -333,6 +338,52 @@ function addToCart(prodId) {
       descuento: null, es_custom: false, observaciones: null
     });
   }
+  renderCart();
+}
+
+// ─── Venta por fracción (gramos) ───
+let _gramosProd = null;
+
+function abrirModalGramos(p) {
+  _gramosProd = p;
+  const precioKilo = p.precio_descuento || p.precio;
+  document.getElementById('gramos-titulo').textContent = p.nombre;
+  document.getElementById('gramos-precio-kilo').textContent = `Precio por kilo: $${(precioKilo/100).toFixed(2)}`;
+  document.getElementById('gramos-input').value = '';
+  document.getElementById('gramos-total').textContent = '$0.00';
+  document.getElementById('modal-gramos').classList.add('active');
+  setTimeout(() => document.getElementById('gramos-input').focus(), 50);
+}
+
+function actualizarPrecioGramos() {
+  if (!_gramosProd) return;
+  const gramos = parseInt(document.getElementById('gramos-input').value) || 0;
+  const precioKilo = _gramosProd.precio_descuento || _gramosProd.precio;
+  const total = Math.round(precioKilo * gramos / 1000);
+  document.getElementById('gramos-total').textContent = `$${(total/100).toFixed(2)}`;
+}
+
+function confirmarGramos() {
+  if (!_gramosProd) return;
+  const gramos = parseInt(document.getElementById('gramos-input').value) || 0;
+  if (gramos <= 0) { alert('Ingresa una cantidad válida en gramos'); return; }
+  const precioKilo = _gramosProd.precio_descuento || _gramosProd.precio;
+  const precioTotal = Math.round(precioKilo * gramos / 1000);
+  carrito.push({
+    producto_id: _gramosProd.id,
+    nombre: `${_gramosProd.nombre} (${gramos}g)`,
+    codigo: _gramosProd.codigo,
+    categoria: _gramosProd.categoria,
+    precio: precioTotal,  // precio total ya calculado, cantidad=1
+    cantidad: 1,
+    imagen_url: _gramosProd.imagen_url,
+    descuento: null,
+    es_custom: false,
+    observaciones: null,
+    gramos: gramos,  // marca este item como venta por fracción
+  });
+  document.getElementById('modal-gramos').classList.remove('active');
+  _gramosProd = null;
   renderCart();
 }
 
@@ -1241,8 +1292,11 @@ function buildPayload(estado) {
     cantidad: it.cantidad,
     precio_unitario: it.precio,
     es_personalizado: it.es_custom,
-    nombre_personalizado: it.es_custom ? it.nombre : null,
+    // Si es venta por fracción, mandar el nombre con (200g) como personalizado
+    // para que el ticket y el taller lo muestren correctamente.
+    nombre_personalizado: it.es_custom ? it.nombre : (it.gramos ? it.nombre : null),
     observaciones: it.observaciones || null,
+    gramos: it.gramos || null,
   }));
 
   const pagos = Object.entries(selectedPays).map(([nombre, monto]) => ({

@@ -442,6 +442,15 @@ async function abrirModalProducto(prod) {
       <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-web" ${prod?.visible_catalogo !== false ? 'checked' : ''}> Mostrar en catalogo</label>
       <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="pf-destacado" ${prod?.destacado ? 'checked' : ''}> ⭐ Destacado <span style="font-size:10px;color:var(--texto2)">(aparece primero en catalogo)</span></label>
     </div>
+    <!-- VENTA POR FRACCIÓN -->
+    <div style="border:1px solid var(--borde);border-radius:10px;padding:14px;margin:14px 0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="font-size:13px;font-weight:600">Vender por fracción (gramos)</label>
+        <input type="checkbox" id="pf-fraccion" ${prod?.vender_por_fraccion ? 'checked' : ''} onchange="onFraccionToggle()">
+      </div>
+      <div style="font-size:11px;color:var(--texto2)">El precio será por <strong>kilo</strong>. En el POS se vende en gramos (cualquier cantidad). El total se calcula automáticamente.</div>
+      <div id="pf-fraccion-warn" style="${prod?.vender_por_fraccion ? '' : 'display:none'};font-size:11px;color:var(--naranja);margin-top:6px;padding:6px 8px;background:#fff7ed;border-radius:6px">⚠️ Los productos por fracción NO se muestran en el catálogo web — solo POS.</div>
+    </div>
     <!-- STOCK -->
     <div style="border:1px solid var(--borde);border-radius:10px;padding:14px;margin:14px 0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -450,7 +459,7 @@ async function abrirModalProducto(prod) {
       </div>
       ${hasActiveVariants ? '<div style="font-size:11px;color:var(--naranja);margin-bottom:6px">El stock lo controla cada variante</div>' : '<div style="font-size:11px;color:var(--texto2);margin-bottom:6px">Stock desactivado = siempre disponible. Actívalo para controlar piezas limitadas.</div>'}
       <div id="pf-stock-field" style="${prod?.stock_activo && !hasActiveVariants ? '' : 'display:none'}">
-        <div class="field"><label>Unidades en stock</label><input type="number" id="pf-stock" value="${prod?.stock||0}" min="0"></div>
+        <div class="field"><label id="pf-stock-label">${prod?.vender_por_fraccion ? 'Stock (gramos)' : 'Unidades en stock'}</label><input type="number" id="pf-stock" value="${prod?.stock||0}" min="0"></div>
       </div>
     </div>
     <!-- VARIANTES -->
@@ -526,6 +535,20 @@ function updateStockByVariantes() {
 
 function onStockToggle() {
   document.getElementById('pf-stock-field').style.display = document.getElementById('pf-stock-activo').checked ? '' : 'none';
+}
+
+function onFraccionToggle() {
+  const checked = document.getElementById('pf-fraccion').checked;
+  const warn = document.getElementById('pf-fraccion-warn');
+  if (warn) warn.style.display = checked ? '' : 'none';
+  // Cambiar label del stock dinámicamente
+  const stockLabel = document.getElementById('pf-stock-label');
+  if (stockLabel) stockLabel.textContent = checked ? 'Stock (gramos)' : 'Unidades en stock';
+  // Si se activa fracción, automáticamente desmarcar "Mostrar en catálogo" porque no aplica
+  if (checked) {
+    const web = document.getElementById('pf-web');
+    if (web && web.checked) web.checked = false;
+  }
 }
 
 function onCatChange() {
@@ -615,6 +638,7 @@ async function guardarProducto(id) {
     medida_alto: document.getElementById('pf-alto')?.value ? parseFloat(document.getElementById('pf-alto').value) : null,
     medida_ancho: document.getElementById('pf-ancho')?.value ? parseFloat(document.getElementById('pf-ancho').value) : null,
     destacado: document.getElementById('pf-destacado').checked,
+    vender_por_fraccion: document.getElementById('pf-fraccion')?.checked || false,
   };
   if (!body.nombre || !body.categoria || !body.precio) return alert('Nombre, categoría y precio son obligatorios');
   const url = id ? API + '/productos/' + id : API + '/productos/';
