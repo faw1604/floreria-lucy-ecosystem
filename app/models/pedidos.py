@@ -74,6 +74,9 @@ class ItemPedido(Base):
     es_personalizado: Mapped[bool] = mapped_column(Boolean, default=False)
     nombre_personalizado: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     observaciones: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Venta por fracción: cuando > 0, el item se vendió por gramos.
+    # cantidad queda en 1, precio_unitario = precio total calculado, gramos = cantidad real.
+    gramos: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
 
 class NotificacionLog(Base):

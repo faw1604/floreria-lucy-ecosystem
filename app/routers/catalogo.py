@@ -116,6 +116,7 @@ async def catalogo_productos(
             Producto.disponible_hoy == True,
             Producto.visible_catalogo == True,
             Producto.imagen_url.isnot(None),
+            Producto.vender_por_fraccion == False,  # productos por fracción son solo POS
         )
         .order_by(Producto.destacado.desc(), Producto.categoria, Producto.nombre)
     )

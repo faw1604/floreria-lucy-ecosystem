@@ -54,6 +54,8 @@ async def inicializar_db():
             ("gastos_recurrentes", "metodo_pago", "VARCHAR(100)"),
             ("pedidos", "ticket_enviado_at", "TIMESTAMP"),
             ("productos", "destacado", "BOOLEAN DEFAULT FALSE"),
+            ("productos", "vender_por_fraccion", "BOOLEAN DEFAULT FALSE"),
+            ("items_pedido", "gramos", "INTEGER"),
         ]
         for tabla, col, tipo in _migrations:
             try:

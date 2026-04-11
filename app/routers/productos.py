@@ -95,6 +95,7 @@ async def crear_producto(
         medida_alto=request.get("medida_alto"),
         medida_ancho=request.get("medida_ancho"),
         destacado=request.get("destacado", False),
+        vender_por_fraccion=request.get("vender_por_fraccion", False),
     )
     db.add(producto)
     await db.commit()
@@ -114,7 +115,7 @@ async def actualizar_producto(
     producto = result.scalar_one_or_none()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones", "imagen_url", "visible_catalogo", "codigo", "stock_activo", "stock", "medida_alto", "medida_ancho", "costo_unitario", "destacado"]:
+    for campo in ["nombre", "categoria", "precio", "precio_descuento", "costo", "activo", "disponible_hoy", "descripcion", "etiquetas", "dimensiones", "imagen_url", "visible_catalogo", "codigo", "stock_activo", "stock", "medida_alto", "medida_ancho", "costo_unitario", "destacado", "vender_por_fraccion"]:
         if campo in request:
             setattr(producto, campo, request[campo])
     await db.commit()

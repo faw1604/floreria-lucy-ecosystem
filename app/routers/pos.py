@@ -73,6 +73,7 @@ async def pos_productos(
         "id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria,
         "precio": p.precio, "precio_descuento": p.precio_descuento,
         "imagen_url": p.imagen_url, "disponible_hoy": p.disponible_hoy,
+        "vender_por_fraccion": p.vender_por_fraccion,
     } for p in prods]
 
 
@@ -449,6 +450,7 @@ async def _pos_crear_pedido_inner(request, db):
             es_personalizado=it.get("es_personalizado", False),
             nombre_personalizado=it.get("nombre_personalizado"),
             observaciones=it.get("observaciones"),
+            gramos=it.get("gramos"),
         ))
 
     # Descontar stock si el pedido está pagado
@@ -459,7 +461,9 @@ async def _pos_crear_pedido_inner(request, db):
                 prod_r = await db.execute(select(Producto).where(Producto.id == pid))
                 prod = prod_r.scalar_one_or_none()
                 if prod and prod.stock_activo and prod.stock > 0:
-                    prod.stock = max(0, prod.stock - it["cantidad"])
+                    # Si se vendió por gramos, descontar gramos. Si no, unidades.
+                    cantidad_descontar = it.get("gramos") or it["cantidad"]
+                    prod.stock = max(0, prod.stock - cantidad_descontar)
 
     # Save datos fiscales if factura
     _dfd = data.get("datos_fiscales")
@@ -1147,7 +1151,9 @@ async def _pos_finalizar_inner(pedido_id, request, db):
         if item.producto_id:
             prod = (await db.execute(select(Producto).where(Producto.id == item.producto_id))).scalar_one_or_none()
             if prod and prod.stock_activo and prod.stock > 0:
-                prod.stock = max(0, prod.stock - item.cantidad)
+                # Si el item se vendió por gramos, descontar gramos. Si no, unidades.
+                cantidad_descontar = item.gramos or item.cantidad
+                prod.stock = max(0, prod.stock - cantidad_descontar)
 
     await db.commit()
 
@@ -1362,6 +1368,7 @@ async def pos_completar_pedido(
             es_personalizado=it.get("es_personalizado", False),
             nombre_personalizado=it.get("nombre_personalizado"),
             observaciones=it.get("observaciones"),
+            gramos=it.get("gramos"),
         ))
 
     await db.commit()
