@@ -1729,26 +1729,62 @@ async def seed_default_cuentas(
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Crea Caja y Caja Chica si no existen. Idempotente."""
+    """Crea tablas + seed Caja y Caja Chica si no existen. Idempotente.
+    Usa SQL crudo para no depender del create_all de SQLAlchemy."""
     _auth(panel_session)
-    hoy = datetime.now(TZ).date()
-    seeds = [
-        ("Caja", "caja", 0, 100000),  # fondo $1000
-        ("Caja Chica", "caja_chica", 0, 0),
-    ]
-    creadas = 0
-    for nombre, tipo, saldo, fondo in seeds:
-        exists = (await db.execute(text(
-            "SELECT id FROM cuentas_financieras WHERE nombre = :n"
-        ), {"n": nombre})).fetchone()
-        if not exists:
-            await db.execute(text("""
-                INSERT INTO cuentas_financieras (nombre, tipo, saldo_inicial, fecha_inicio, fondo_base, activo)
-                VALUES (:n, :t, :s, :f, :fb, true)
-            """), {"n": nombre, "t": tipo, "s": saldo, "f": hoy, "fb": fondo})
-            creadas += 1
-    await db.commit()
-    return {"ok": True, "creadas": creadas}
+    try:
+        # 1. Crear tablas si no existen
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS cuentas_financieras (
+                id SERIAL PRIMARY KEY,
+                nombre VARCHAR(100) UNIQUE NOT NULL,
+                tipo VARCHAR(20) NOT NULL,
+                saldo_inicial INTEGER DEFAULT 0,
+                fecha_inicio DATE NOT NULL,
+                fondo_base INTEGER DEFAULT 0,
+                activo BOOLEAN DEFAULT true,
+                created_at TIMESTAMP
+            )
+        """))
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS movimientos_cuenta (
+                id SERIAL PRIMARY KEY,
+                cuenta_id INTEGER NOT NULL,
+                fecha DATE NOT NULL,
+                tipo VARCHAR(30) NOT NULL,
+                concepto VARCHAR(200) NOT NULL,
+                monto INTEGER NOT NULL,
+                cuenta_destino_id INTEGER,
+                referencia_tipo VARCHAR(50),
+                referencia_id INTEGER,
+                notas TEXT,
+                created_at TIMESTAMP
+            )
+        """))
+        # 2. Asegurar columna cuenta_id en egresos
+        await db.execute(text("ALTER TABLE egresos ADD COLUMN IF NOT EXISTS cuenta_id INTEGER"))
+        # 3. Seed cuentas
+        hoy = datetime.now(TZ).date()
+        seeds = [
+            ("Caja", "caja", 0, 100000),
+            ("Caja Chica", "caja_chica", 0, 0),
+        ]
+        creadas = 0
+        for nombre, tipo, saldo, fondo in seeds:
+            exists = (await db.execute(text(
+                "SELECT id FROM cuentas_financieras WHERE nombre = :n"
+            ), {"n": nombre})).fetchone()
+            if not exists:
+                await db.execute(text("""
+                    INSERT INTO cuentas_financieras (nombre, tipo, saldo_inicial, fecha_inicio, fondo_base, activo, created_at)
+                    VALUES (:n, :t, :s, :f, :fb, true, NOW())
+                """), {"n": nombre, "t": tipo, "s": saldo, "f": hoy, "fb": fondo})
+                creadas += 1
+        await db.commit()
+        return {"ok": True, "creadas": creadas}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Seed cuentas: {str(e)}")
 
 
 @router.put("/cuentas-financieras/{cuenta_id}")
