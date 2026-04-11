@@ -1835,9 +1835,14 @@ async def _saldo_cuenta(db: AsyncSession, cuenta: tuple) -> dict:
         "SELECT COALESCE(SUM(monto),0) FROM movimientos_cuenta "
         "WHERE cuenta_id=:cid AND tipo = ANY(:tipos) AND fecha >= :fi"
     ), {"cid": cid, "tipos": retiro_tipos, "fi": f_ini})).scalar() or 0
+    # Match egresos por cuenta_id explícito O por método_pago = nombre cuenta
     egr = (await db.execute(text(
-        "SELECT COALESCE(SUM(monto),0) FROM egresos WHERE cuenta_id=:cid AND fecha >= :fi"
-    ), {"cid": cid, "fi": f_ini})).scalar() or 0
+        "SELECT COALESCE(SUM(monto),0) FROM egresos "
+        "WHERE fecha >= :fi AND ("
+        "  cuenta_id = :cid "
+        "  OR LOWER(TRIM(COALESCE(metodo_pago,''))) = LOWER(TRIM(:nombre))"
+        ")"
+    ), {"cid": cid, "fi": f_ini, "nombre": nombre})).scalar() or 0
     pos_efectivo = 0
     if tipo == 'caja':
         # Pedidos POS pagados en efectivo desde fecha_inicio

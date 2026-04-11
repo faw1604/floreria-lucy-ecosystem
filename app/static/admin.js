@@ -1757,11 +1757,10 @@ function renderEgresos() {
     for (const [c,v] of Object.entries(porCategoria)) kpisEgr += `<div class="kpi-card"><div class="kpi-label">${esc(c)}</div><div class="kpi-value">${fmt$(v)}</div></div>`;
     const kpisEl = document.getElementById('fin-egr-kpis');
     if (kpisEl) kpisEl.innerHTML = kpisEgr;
-    const cuentaName = (id) => (cuentasFin.find(c=>c.id===id)||{}).nombre || '';
     const tbody = document.getElementById('egresos-tbody');
     tbody.innerHTML = data.map(e => `<tr>
       <td>${fmtDate(e.fecha)}</td>
-      <td>${esc(e.concepto)}${e.es_recurrente ? ' <span style="color:var(--dorado);font-size:10px">RECURRENTE</span>' : ''}${e.cuenta_id ? ' <span style="color:var(--verde);font-size:10px">'+esc(cuentaName(e.cuenta_id))+'</span>' : ''}</td>
+      <td>${esc(e.concepto)}${e.es_recurrente ? ' <span style="color:var(--dorado);font-size:10px">RECURRENTE</span>' : ''}</td>
       <td>${esc(e.categoria)}</td>
       <td>${esc(e.metodo_pago||'—')}</td>
       <td>${esc(e.proveedor||'—')}</td>
@@ -1785,8 +1784,7 @@ async function abrirModalEgreso(eg) {
     <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${eg?.fecha||hoy}"></div>
     <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
     <div class="field"><label>Categoría</label><select id="eg-cat"><option value="">Selecciona...</option>${catGastoOptions(eg?.categoria)}</select></div>
-    <div class="field"><label>Cuenta de origen *</label><select id="eg-cuenta"><option value="">Selecciona...</option>${cuentasOptions(eg?.cuenta_id)}</select></div>
-    <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select></div>
+    <div class="field"><label>Método de pago *</label><select id="eg-mp"><option value="">Selecciona...</option>${mpOptions(eg?.metodo_pago)}</select><div style="font-size:11px;color:var(--texto2);margin-top:4px">💡 Si seleccionas "Caja" o "Caja chica", el gasto se descuenta automáticamente del saldo de esa cuenta.</div></div>
     <div class="field"><label>Proveedor</label>
       <div style="display:flex;gap:6px">
         <select id="eg-prov" style="flex:1"><option value="">Sin proveedor</option>${provOptions(eg?.proveedor)}</select>
@@ -1802,7 +1800,6 @@ async function abrirModalEgreso(eg) {
 }
 
 async function guardarEgreso(id) {
-  const cuentaIdRaw = document.getElementById('eg-cuenta')?.value || '';
   const body = {
     fecha: document.getElementById('eg-fecha').value,
     concepto: document.getElementById('eg-concepto').value.trim(),
@@ -1812,7 +1809,6 @@ async function guardarEgreso(id) {
     monto: Math.round(parseFloat(document.getElementById('eg-monto').value || 0) * 100),
     notas: document.getElementById('eg-notas').value.trim() || null,
     referencia: document.getElementById('eg-ref')?.value?.trim() || null,
-    cuenta_id: cuentaIdRaw ? parseInt(cuentaIdRaw) : null,
   };
   if (!body.fecha || !body.concepto || !body.monto) return alert('Fecha, concepto y monto son obligatorios');
   const url = id ? API+'/api/admin/egresos/'+id : API+'/api/admin/egresos';
