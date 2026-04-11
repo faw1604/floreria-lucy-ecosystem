@@ -1,6 +1,10 @@
 # CLAUDE.md — Florería Lucy Ecosystem
 > Documento maestro consolidado. Leer COMPLETO antes de tocar cualquier archivo.
-> Versión: 29-mar-2026
+> Versión: 10-abr-2026
+>
+> ⚠️ La sección "PENDIENTES CRÍTICOS" puede quedar desactualizada entre sesiones.
+> Para la lista viva de pendientes, leer SIEMPRE primero la memoria persistente:
+> `~/.claude/projects/C--Users-EQUIPO-floreria-lucy-ecosystem/memory/project_pendientes_post_sesion2.md`
 
 ---
 
@@ -228,9 +232,16 @@ generar_folio()  # FL-YYYY-XXXX único con MAX
 
 ## PENDIENTES CRÍTICOS
 
-1. Verificar flujo catálogo web end-to-end (pedido web → taller → entrega)
-2. Revisar bugs panel repartidor
-3. Conectar Claudia al ecosistema
+⚠️ **Esta lista NO se mantiene aquí.** La fuente autoritativa de pendientes vivos es la memoria persistente de Claude:
+
+`~/.claude/projects/C--Users-EQUIPO-floreria-lucy-ecosystem/memory/project_pendientes_post_sesion2.md`
+
+Claude debe leer ese archivo al inicio de cada sesión antes de listar pendientes a Fer. Se actualiza al final de cada sesión productiva. Mantener una copia aquí causa drift y confusión.
+
+Última snapshot conocida (10-abr-2026, puede estar desactualizada):
+1. Mensaje de bienvenida Claudia configurable — INCOMPLETO (Railway agentkit no agarró deploy, ver memoria)
+2. Verificar flujo catálogo web end-to-end
+3. Bugs panel repartidor
 4. Migración ~550 fotos Kyte → Cloudinary
 5. Armador cajas chocolates (CLAUDE_chocolates_caja.md listo)
 
