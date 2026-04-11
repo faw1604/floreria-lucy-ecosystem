@@ -224,7 +224,9 @@ function onPOSFechaChange() {
   });
   if (isTodayPOS) {
     const hr = nowPOS.getHours() + nowPOS.getMinutes() / 60;
-    const cutoffs = {manana: 11, tarde: 16, noche: 18 + 50/60, turno1: 12, turno2: 17.5};
+    // POS: la última ruta (noche 6-9pm) NO tiene cutoff — Fer la habilita a discreción
+    // hasta el final del día. Web sigue con su cutoff de 18:50 en catalogo.html.
+    const cutoffs = {manana: 11, tarde: 16, noche: 24, turno1: 12, turno2: 17.5};
     horBtns.querySelectorAll('.hor-btn').forEach(btn => {
       const m = btn.getAttribute('onclick') && btn.getAttribute('onclick').match(/'([^']+)'\)/);
       if (!m) return;
