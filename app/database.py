@@ -38,6 +38,15 @@ async def inicializar_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # 1b. Extensión unaccent para búsquedas sin acentos
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        try:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            _log.info("Extensión unaccent: OK")
+        except Exception as e:
+            _log.warning(f"Extensión unaccent: {e}")
+
     # 2. Migraciones manuales en conexión separada
     async with engine.begin() as conn:
         from sqlalchemy import text

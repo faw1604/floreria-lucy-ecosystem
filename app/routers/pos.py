@@ -103,8 +103,12 @@ async def pos_buscar_cliente(
         raise HTTPException(status_code=401, detail="No autenticado")
     if len(q) < 2:
         return []
+    from sqlalchemy import text, literal_column
+    unaccent_q = func.unaccent(q)
     query = select(Cliente).where(
-        (Cliente.nombre.ilike(f"%{q}%")) | (Cliente.telefono.ilike(f"%{q}%")) | (Cliente.codigo_referido.ilike(f"%{q}%"))
+        (func.unaccent(Cliente.nombre).ilike(func.concat('%', unaccent_q, '%')))
+        | (Cliente.telefono.ilike(f"%{q}%"))
+        | (Cliente.codigo_referido.ilike(f"%{q}%"))
     ).limit(15)
     result = await db.execute(query)
     clientes = result.scalars().all()
