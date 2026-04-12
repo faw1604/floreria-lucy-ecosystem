@@ -1843,6 +1843,12 @@ async def _saldo_cuenta(db: AsyncSession, cuenta: tuple) -> dict:
         "  OR LOWER(TRIM(COALESCE(metodo_pago,''))) = LOWER(TRIM(:nombre))"
         ")"
     ), {"cid": cid, "fi": f_ini, "nombre": nombre})).scalar() or 0
+    # Match otros_ingresos por método_pago = nombre cuenta (no tiene cuenta_id)
+    otros_ing = (await db.execute(text(
+        "SELECT COALESCE(SUM(monto),0) FROM otros_ingresos "
+        "WHERE fecha >= :fi "
+        "AND LOWER(TRIM(COALESCE(metodo_pago,''))) = LOWER(TRIM(:nombre))"
+    ), {"fi": f_ini, "nombre": nombre})).scalar() or 0
     pos_efectivo = 0
     if tipo == 'caja':
         # Pedidos POS pagados en efectivo desde fecha_inicio
@@ -1859,13 +1865,14 @@ async def _saldo_cuenta(db: AsyncSession, cuenta: tuple) -> dict:
             "AND LOWER(COALESCE(forma_pago,'')) LIKE '%efectivo%' "
             "AND estado = ANY(:estados)"
         ), {"fi": f_ini_dt, "estados": estados_venta})).scalar() or 0
-    saldo = (saldo_ini or 0) + int(dep) - int(ret) - int(egr) + int(pos_efectivo)
+    saldo = (saldo_ini or 0) + int(dep) - int(ret) - int(egr) + int(pos_efectivo) + int(otros_ing)
     return {
         "id": cid, "nombre": nombre, "tipo": tipo,
         "saldo_inicial": saldo_ini, "fecha_inicio": str(f_ini),
         "fondo_base": fondo,
         "depositos": int(dep), "retiros": int(ret),
         "egresos": int(egr), "ingresos_efectivo_pos": int(pos_efectivo),
+        "otros_ingresos": int(otros_ing),
         "saldo_actual": saldo,
     }
 

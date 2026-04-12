@@ -1677,7 +1677,7 @@ async function abrirModalOtroIngreso() {
     <div class="field"><label>Fecha *</label><input type="date" id="oi-fecha" value="${hoy}"></div>
     <div class="field"><label>Concepto *</label><input id="oi-concepto" placeholder="Ej: Clase de arreglos florales"></div>
     <div class="field"><label>Monto * (pesos)</label><input type="number" id="oi-monto" step="0.01"></div>
-    <div class="field"><label>Método de pago</label><select id="oi-mp"><option value="">Selecciona...</option>${mpOptions()}</select></div>
+    <div class="field"><label>Método de pago</label><select id="oi-mp"><option value="">Selecciona...</option>${mpOptions()}</select><div style="font-size:11px;color:var(--texto2);margin-top:4px">💡 Si seleccionas "Caja" o "Caja chica", el ingreso se suma automáticamente al saldo de esa cuenta.</div></div>
     <div class="field"><label>Notas</label><textarea id="oi-notas"></textarea></div>
     <button class="btn-primary" onclick="guardarOtroIngreso()" style="width:100%;margin-top:8px">Guardar</button>
   `;
@@ -2078,6 +2078,7 @@ function renderCuentasCards() {
       <div style="font-size:11px;color:var(--texto2);line-height:1.6">
         Saldo inicial: ${fmt$(c.saldo_inicial)}<br>
         ${c.tipo==='caja' ? 'Ventas efectivo POS: '+fmt$(c.ingresos_efectivo_pos)+'<br>' : ''}
+        ${c.otros_ingresos ? '+ Otros ingresos: '+fmt$(c.otros_ingresos)+'<br>' : ''}
         + Depósitos / transferencias: ${fmt$(c.depositos)}<br>
         − Egresos: ${fmt$(c.egresos)}<br>
         − Retiros / transferencias: ${fmt$(c.retiros)}
