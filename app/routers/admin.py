@@ -215,21 +215,22 @@ async def importar_egresos_kyte(
         return None
 
     def parse_valor(v):
+        """Kyte usa formato europeo: coma=decimal, punto=miles.
+           "30.000" -> 30000  |  "713,03" -> 713.03  |  "1.234,56" -> 1234.56
+           "850" -> 850  |  numeros nativos int/float pasan tal cual."""
         if v is None:
             return 0
         if isinstance(v, (int, float)):
             return int(round(float(v) * 100))
         s = str(v).strip().replace(" ", "").replace("$", "")
-        # "8955,38" → 8955.38 ; "1.234,56" → 1234.56
-        if "," in s and "." in s:
+        if not s:
+            return 0
+        if "," in s:
+            # Coma = decimal. Puntos = miles, los quitamos.
             s = s.replace(".", "").replace(",", ".")
-        elif "," in s:
-            # podría ser miles o decimal — si tiene 3 dígitos después es miles
-            partes = s.split(",")
-            if len(partes[-1]) == 2:
-                s = s.replace(",", ".")
-            else:
-                s = s.replace(",", "")
+        else:
+            # Sin coma: puntos son separador de miles (formato Kyte). Quitar.
+            s = s.replace(".", "")
         try:
             return int(round(float(s) * 100))
         except Exception:
@@ -299,34 +300,33 @@ async def importar_egresos_kyte(
         })
 
     # Dedupe contra BD existente por referencia
+    existing_set = set()
     if a_importar:
         kyte_ids = [r["kyte_id"] for r in a_importar]
         existing = (await db.execute(text(
             "SELECT referencia FROM egresos WHERE referencia = ANY(:ids)"
         ), {"ids": kyte_ids})).fetchall()
         existing_set = {row[0] for row in existing}
-        nuevos = [r for r in a_importar if r["kyte_id"] not in existing_set]
-        ya_existen = len(a_importar) - len(nuevos)
-    else:
-        nuevos = []
-        ya_existen = 0
+    nuevos = [r for r in a_importar if r["kyte_id"] not in existing_set]
+    a_actualizar = [r for r in a_importar if r["kyte_id"] in existing_set]
 
     # Resumen
-    total_monto = sum(r["monto"] for r in nuevos)
+    total_monto = sum(r["monto"] for r in a_importar)
     por_categoria = {}
-    for r in nuevos:
+    for r in a_importar:
         por_categoria[r["categoria"]] = por_categoria.get(r["categoria"], 0) + r["monto"]
     por_metodo = {}
-    for r in nuevos:
+    for r in a_importar:
         m = r["metodo_pago"] or "(sin método)"
         por_metodo[m] = por_metodo.get(m, 0) + r["monto"]
 
     resumen = {
         "total_filas_xlsx": len(rows) - 1,
-        "ya_existen_en_bd": ya_existen,
         "skipped_filtro_fecha": skipped_filtro,
         "skipped_invalido": skipped_invalido,
-        "a_importar": len(nuevos),
+        "a_insertar_nuevos": len(nuevos),
+        "a_actualizar_existentes": len(a_actualizar),
+        "a_importar": len(a_importar),
         "monto_total": total_monto,
         "por_categoria": por_categoria,
         "por_metodo_pago": por_metodo,
@@ -334,16 +334,17 @@ async def importar_egresos_kyte(
             {"fecha": str(r["fecha"]), "concepto": r["concepto"],
              "categoria": r["categoria"], "monto": r["monto"],
              "metodo_pago": r["metodo_pago"], "proveedor": r["proveedor"]}
-            for r in nuevos[:5]
+            for r in a_importar[:5]
         ],
         "dry_run": dry_run,
     }
 
-    if dry_run or not nuevos:
+    if dry_run or not a_importar:
         return resumen
 
-    # Insertar
+    # UPSERT: insert nuevos, update existentes
     insertados = 0
+    actualizados = 0
     try:
         for r in nuevos:
             await db.execute(text("""
@@ -357,12 +358,30 @@ async def importar_egresos_kyte(
                 "ref": r["kyte_id"], "er": r["es_recurrente"],
             })
             insertados += 1
+        for r in a_actualizar:
+            await db.execute(text("""
+                UPDATE egresos SET
+                    fecha = :f, concepto = :c, categoria = :cat,
+                    monto = :m, metodo_pago = :mp, proveedor = :prov,
+                    notas = :n, es_recurrente = :er
+                WHERE referencia = :ref
+            """), {
+                "f": r["fecha"], "c": r["concepto"], "cat": r["categoria"],
+                "m": r["monto"], "mp": r["metodo_pago"],
+                "prov": r["proveedor"], "n": r["notas"],
+                "ref": r["kyte_id"], "er": r["es_recurrente"],
+            })
+            actualizados += 1
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Importación falló tras {insertados}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Importación falló (insertados={insertados}, actualizados={actualizados}): {e}"
+        )
 
     resumen["insertados"] = insertados
+    resumen["actualizados"] = actualizados
     return resumen
 
 

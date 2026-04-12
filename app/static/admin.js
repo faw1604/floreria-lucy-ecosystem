@@ -2066,10 +2066,10 @@ async function kyteDryRun() {
   let html = `<div style="background:var(--crema);border-radius:8px;padding:12px;font-size:12px">
     <div style="font-weight:600;color:var(--verde);margin-bottom:6px">Vista previa</div>
     <div>Total filas en xlsx: <strong>${d.total_filas_xlsx}</strong></div>
-    <div>Ya existen en BD (skip): <strong>${d.ya_existen_en_bd}</strong></div>
     <div>Fuera de rango fecha: <strong>${d.skipped_filtro_fecha}</strong></div>
     <div>Inválidos: <strong>${d.skipped_invalido}</strong></div>
-    <div style="margin-top:6px;font-size:14px">Se importarán: <strong style="color:var(--verde)">${d.a_importar}</strong> egresos</div>
+    <div style="margin-top:6px;font-size:14px">A insertar (nuevos): <strong style="color:var(--verde)">${d.a_insertar_nuevos||0}</strong></div>
+    <div style="font-size:14px">A actualizar (ya existían): <strong style="color:var(--dorado)">${d.a_actualizar_existentes||0}</strong></div>
     <div>Monto total: <strong style="color:var(--verde)">${fmt$(d.monto_total)}</strong></div>`;
   if (Object.keys(d.por_categoria||{}).length) {
     html += '<div style="margin-top:8px"><strong>Por categoría:</strong></div>';
@@ -2091,16 +2091,16 @@ async function kyteDryRun() {
   }
   html += '</div>';
   cont.innerHTML = html;
-  document.getElementById('kyte-confirmar').disabled = (d.a_importar === 0);
+  document.getElementById('kyte-confirmar').disabled = ((d.a_insertar_nuevos||0) + (d.a_actualizar_existentes||0) === 0);
 }
 
 async function kyteImportar() {
-  if (!confirm('¿Importar los egresos a la base de datos? Esto NO se puede deshacer fácilmente.')) return;
+  if (!confirm('¿Importar/actualizar egresos en la base de datos?')) return;
   const btn = document.getElementById('kyte-confirmar');
   btn.disabled = true; btn.textContent = 'Importando...';
   const d = await _kytePost(false);
   if (!d) { btn.disabled = false; btn.textContent = 'Importar'; return; }
-  showToast(`Importados: ${d.insertados||0} egresos ✓`);
+  showToast(`Insertados: ${d.insertados||0} · Actualizados: ${d.actualizados||0} ✓`);
   cerrarModal('modal-egreso');
   loadEgresos();
 }
