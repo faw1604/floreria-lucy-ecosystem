@@ -1532,7 +1532,7 @@ async def pos_corte_caja(
                 por_metodo[m] = por_metodo.get(m, 0) + (p.total or 0)
 
     # Period label
-    dias = ["DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB"]
+    dias = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]
     meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
     labels = {
         "hoy": f"Hoy · {dias[hoy.weekday()]} {hoy.day} {meses[hoy.month-1]} {hoy.year}",
