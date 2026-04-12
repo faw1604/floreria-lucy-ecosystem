@@ -2012,6 +2012,99 @@ async function eliminarGastoRec(id) {
   abrirGastosRecurrentes();
 }
 
+// ─────── IMPORTAR EGRESOS DESDE KYTE ───────
+function abrirImportarKyte() {
+  document.getElementById('modal-egreso-body').innerHTML = `
+    <h4 style="margin-bottom:12px">Importar egresos desde Kyte</h4>
+    <div style="font-size:12px;color:var(--texto2);margin-bottom:12px">
+      Sube el export <strong>.xlsx</strong> de Kyte (Expenses). El sistema:<br>
+      • Filtra por rango de fechas opcional<br>
+      • Mapea categorías Kyte → tus categorías<br>
+      • Detecta duplicados por ID Kyte (puedes correrlo varias veces)<br>
+      • Te muestra preview antes de importar
+    </div>
+    <div class="field"><label>Archivo xlsx *</label><input type="file" id="kyte-file" accept=".xlsx"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="field"><label>Desde (opcional)</label><input type="date" id="kyte-desde" value="2026-01-01"></div>
+      <div class="field"><label>Hasta (opcional)</label><input type="date" id="kyte-hasta" value="2026-03-31"></div>
+    </div>
+    <div id="kyte-preview" style="margin-top:12px"></div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn-sm" onclick="kyteDryRun()" style="flex:1">👁 Vista previa</button>
+      <button class="btn-primary" id="kyte-confirmar" onclick="kyteImportar()" disabled style="flex:1">Importar</button>
+    </div>
+  `;
+  document.getElementById('modal-egreso').classList.add('active');
+}
+
+async function _kytePost(dryRun) {
+  const f = document.getElementById('kyte-file').files[0];
+  if (!f) { alert('Selecciona el archivo xlsx'); return null; }
+  const desde = document.getElementById('kyte-desde').value;
+  const hasta = document.getElementById('kyte-hasta').value;
+  const fd = new FormData();
+  fd.append('file', f);
+  let url = API+'/api/admin/egresos/importar-kyte?dry_run='+(dryRun?'true':'false');
+  if (desde) url += '&desde='+desde;
+  if (hasta) url += '&hasta='+hasta;
+  try {
+    const r = await fetch(url, {method:'POST', credentials:'include', body: fd});
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      alert('Error: '+(err.detail||r.status));
+      return null;
+    }
+    return await r.json();
+  } catch(e) { alert('Error: '+e.message); return null; }
+}
+
+async function kyteDryRun() {
+  const cont = document.getElementById('kyte-preview');
+  cont.innerHTML = '<div style="padding:12px;color:var(--texto2)">Procesando...</div>';
+  const d = await _kytePost(true);
+  if (!d) { cont.innerHTML = ''; return; }
+  let html = `<div style="background:var(--crema);border-radius:8px;padding:12px;font-size:12px">
+    <div style="font-weight:600;color:var(--verde);margin-bottom:6px">Vista previa</div>
+    <div>Total filas en xlsx: <strong>${d.total_filas_xlsx}</strong></div>
+    <div>Ya existen en BD (skip): <strong>${d.ya_existen_en_bd}</strong></div>
+    <div>Fuera de rango fecha: <strong>${d.skipped_filtro_fecha}</strong></div>
+    <div>Inválidos: <strong>${d.skipped_invalido}</strong></div>
+    <div style="margin-top:6px;font-size:14px">Se importarán: <strong style="color:var(--verde)">${d.a_importar}</strong> egresos</div>
+    <div>Monto total: <strong style="color:var(--verde)">${fmt$(d.monto_total)}</strong></div>`;
+  if (Object.keys(d.por_categoria||{}).length) {
+    html += '<div style="margin-top:8px"><strong>Por categoría:</strong></div>';
+    for (const [k,v] of Object.entries(d.por_categoria)) {
+      html += `<div style="padding-left:12px">${esc(k)}: ${fmt$(v)}</div>`;
+    }
+  }
+  if (Object.keys(d.por_metodo_pago||{}).length) {
+    html += '<div style="margin-top:8px"><strong>Por método pago:</strong></div>';
+    for (const [k,v] of Object.entries(d.por_metodo_pago)) {
+      html += `<div style="padding-left:12px">${esc(k)}: ${fmt$(v)}</div>`;
+    }
+  }
+  if (d.primeros_5?.length) {
+    html += '<div style="margin-top:8px"><strong>Primeros 5:</strong></div>';
+    for (const r of d.primeros_5) {
+      html += `<div style="padding-left:12px;font-size:11px">${r.fecha} · ${esc(r.concepto)} · ${esc(r.categoria)} · ${fmt$(r.monto)}${r.proveedor?' · '+esc(r.proveedor):''}</div>`;
+    }
+  }
+  html += '</div>';
+  cont.innerHTML = html;
+  document.getElementById('kyte-confirmar').disabled = (d.a_importar === 0);
+}
+
+async function kyteImportar() {
+  if (!confirm('¿Importar los egresos a la base de datos? Esto NO se puede deshacer fácilmente.')) return;
+  const btn = document.getElementById('kyte-confirmar');
+  btn.disabled = true; btn.textContent = 'Importando...';
+  const d = await _kytePost(false);
+  if (!d) { btn.disabled = false; btn.textContent = 'Importar'; return; }
+  showToast(`Importados: ${d.insertados||0} egresos ✓`);
+  cerrarModal('modal-egreso');
+  loadEgresos();
+}
+
 // ─────── CUENTAS FINANCIERAS (Caja + Caja Chica) ───────
 let cuentasFin = [];
 let cuentasSaldos = [];

@@ -125,6 +125,247 @@ async def cambiar_password(
 
 # ══════ EGRESOS ══════
 
+@router.post("/egresos/importar-kyte")
+async def importar_egresos_kyte(
+    file: UploadFile = File(...),
+    dry_run: bool = True,
+    desde: str | None = None,
+    hasta: str | None = None,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Importa egresos desde un export xlsx de Kyte.
+    Columnas esperadas: ID, Pagado, Fecha/Hora (creación), Nombre del gasto,
+    Valor, Categoría, Proveedor, Fecha de vencimiento, Fecha de pago,
+    Fecha de referencia, Recurrente, Observación.
+    Dedupe por ID Kyte guardado en columna 'referencia'.
+    Si dry_run=true, devuelve preview sin escribir nada.
+    Filtra por rango opcional [desde, hasta]."""
+    _auth(panel_session)
+    import openpyxl
+    from io import BytesIO
+    contenido = await file.read()
+    try:
+        wb = openpyxl.load_workbook(BytesIO(contenido), data_only=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo leer xlsx: {e}")
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows or len(rows) < 2:
+        raise HTTPException(status_code=400, detail="Archivo vacío")
+    headers = [str(h or '').strip().lower() for h in rows[0]]
+
+    def col(name_substring):
+        for i, h in enumerate(headers):
+            if name_substring in h:
+                return i
+        return -1
+
+    idx_id = col("id")
+    idx_pagado = col("pagado")
+    idx_nombre = col("nombre")
+    idx_valor = col("valor")
+    idx_cat = col("categor")
+    idx_prov = col("proveedor")
+    idx_fpago = col("fecha de pago")
+    idx_recurrente = col("recurrente")
+    idx_obs = col("observa")
+
+    if min(idx_id, idx_nombre, idx_valor, idx_fpago) < 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Columnas faltantes. Headers detectados: {headers}",
+        )
+
+    # Mapeo categorías Kyte → categorías sistema
+    cat_map = {
+        "flor": "Flor",
+        "funcion": "Nomina",  # Funcionários
+        "transporte": "Transporte",
+        "log": "Transporte",
+        "gastos del hogar": "Otros",
+        "insumos": "Insumos",
+        "servicios": "Servicios",
+        "mantenimiento": "Mantenimiento",
+        "impuestos": "Otros",
+        "otros": "Otros",
+    }
+
+    def map_cat(raw):
+        if not raw:
+            return "Otros"
+        r = str(raw).strip().lower()
+        for k, v in cat_map.items():
+            if k in r:
+                return v
+        return "Otros"
+
+    def map_metodo_pago(obs):
+        if not obs:
+            return None
+        o = str(obs).strip().lower()
+        if o in ("cc", "caja chica"):
+            return "Caja chica"
+        if o in ("efectivo", "caja"):
+            return "Caja"
+        if "tdc" in o:
+            return None  # ambiguo, Fer edita después
+        if "transfer" in o:
+            return None
+        return None
+
+    def parse_valor(v):
+        if v is None:
+            return 0
+        if isinstance(v, (int, float)):
+            return int(round(float(v) * 100))
+        s = str(v).strip().replace(" ", "").replace("$", "")
+        # "8955,38" → 8955.38 ; "1.234,56" → 1234.56
+        if "," in s and "." in s:
+            s = s.replace(".", "").replace(",", ".")
+        elif "," in s:
+            # podría ser miles o decimal — si tiene 3 dígitos después es miles
+            partes = s.split(",")
+            if len(partes[-1]) == 2:
+                s = s.replace(",", ".")
+            else:
+                s = s.replace(",", "")
+        try:
+            return int(round(float(s) * 100))
+        except Exception:
+            return 0
+
+    def parse_fecha(v):
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.date()
+        if isinstance(v, date):
+            return v
+        s = str(v).strip()
+        # Formatos posibles: "1/4/2025", "01/04/2025", "2025-04-01"
+        for fmt in ("%d/%m/%Y", "%d/%m/%y", "%Y-%m-%d", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    desde_d = date.fromisoformat(desde) if desde else None
+    hasta_d = date.fromisoformat(hasta) if hasta else None
+
+    # Procesar filas
+    a_importar = []
+    skipped_filtro = 0
+    skipped_invalido = 0
+    for row in rows[1:]:
+        if not row or row[idx_id] is None:
+            continue
+        kyte_id = str(row[idx_id]).strip()
+        fecha = parse_fecha(row[idx_fpago])
+        if not fecha:
+            skipped_invalido += 1
+            continue
+        if desde_d and fecha < desde_d:
+            skipped_filtro += 1
+            continue
+        if hasta_d and fecha > hasta_d:
+            skipped_filtro += 1
+            continue
+        monto = parse_valor(row[idx_valor])
+        if monto <= 0:
+            skipped_invalido += 1
+            continue
+        concepto = str(row[idx_nombre] or "").strip() or "(sin nombre)"
+        cat_raw = row[idx_cat] if idx_cat >= 0 else None
+        proveedor = str(row[idx_prov] or "").strip() if idx_prov >= 0 else None
+        proveedor = proveedor or None
+        recurrente = False
+        if idx_recurrente >= 0:
+            recurrente = str(row[idx_recurrente] or "").strip().lower() in ("si", "sí", "yes", "true", "1")
+        obs = str(row[idx_obs] or "").strip() if idx_obs >= 0 else None
+        obs = obs or None
+        a_importar.append({
+            "kyte_id": kyte_id,
+            "fecha": fecha,
+            "concepto": concepto,
+            "categoria": map_cat(cat_raw),
+            "categoria_original": str(cat_raw or ""),
+            "monto": monto,
+            "metodo_pago": map_metodo_pago(obs),
+            "proveedor": proveedor,
+            "notas": obs,
+            "es_recurrente": recurrente,
+        })
+
+    # Dedupe contra BD existente por referencia
+    if a_importar:
+        kyte_ids = [r["kyte_id"] for r in a_importar]
+        existing = (await db.execute(text(
+            "SELECT referencia FROM egresos WHERE referencia = ANY(:ids)"
+        ), {"ids": kyte_ids})).fetchall()
+        existing_set = {row[0] for row in existing}
+        nuevos = [r for r in a_importar if r["kyte_id"] not in existing_set]
+        ya_existen = len(a_importar) - len(nuevos)
+    else:
+        nuevos = []
+        ya_existen = 0
+
+    # Resumen
+    total_monto = sum(r["monto"] for r in nuevos)
+    por_categoria = {}
+    for r in nuevos:
+        por_categoria[r["categoria"]] = por_categoria.get(r["categoria"], 0) + r["monto"]
+    por_metodo = {}
+    for r in nuevos:
+        m = r["metodo_pago"] or "(sin método)"
+        por_metodo[m] = por_metodo.get(m, 0) + r["monto"]
+
+    resumen = {
+        "total_filas_xlsx": len(rows) - 1,
+        "ya_existen_en_bd": ya_existen,
+        "skipped_filtro_fecha": skipped_filtro,
+        "skipped_invalido": skipped_invalido,
+        "a_importar": len(nuevos),
+        "monto_total": total_monto,
+        "por_categoria": por_categoria,
+        "por_metodo_pago": por_metodo,
+        "primeros_5": [
+            {"fecha": str(r["fecha"]), "concepto": r["concepto"],
+             "categoria": r["categoria"], "monto": r["monto"],
+             "metodo_pago": r["metodo_pago"], "proveedor": r["proveedor"]}
+            for r in nuevos[:5]
+        ],
+        "dry_run": dry_run,
+    }
+
+    if dry_run or not nuevos:
+        return resumen
+
+    # Insertar
+    insertados = 0
+    try:
+        for r in nuevos:
+            await db.execute(text("""
+                INSERT INTO egresos
+                    (fecha, concepto, categoria, monto, metodo_pago, proveedor, notas, referencia, es_recurrente)
+                VALUES (:f, :c, :cat, :m, :mp, :prov, :n, :ref, :er)
+            """), {
+                "f": r["fecha"], "c": r["concepto"], "cat": r["categoria"],
+                "m": r["monto"], "mp": r["metodo_pago"],
+                "prov": r["proveedor"], "n": r["notas"],
+                "ref": r["kyte_id"], "er": r["es_recurrente"],
+            })
+            insertados += 1
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Importación falló tras {insertados}: {e}")
+
+    resumen["insertados"] = insertados
+    return resumen
+
+
 @router.get("/egresos")
 async def listar_egresos(
     desde: str | None = None, hasta: str | None = None,
