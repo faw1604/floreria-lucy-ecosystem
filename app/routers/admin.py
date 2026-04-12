@@ -1990,34 +1990,57 @@ async def cerrar_semana_caja(
     """Transfiere el saldo de Caja a Caja Chica.
     Crea 2 movimientos (out + in) y resetea fecha_inicio de Caja a mañana."""
     _auth(panel_session)
-    caja_row = (await db.execute(text(
-        "SELECT id, nombre, tipo, saldo_inicial, fecha_inicio, fondo_base "
-        "FROM cuentas_financieras WHERE tipo='caja' AND activo=true LIMIT 1"
-    ))).fetchone()
-    chica_row = (await db.execute(text(
-        "SELECT id FROM cuentas_financieras WHERE tipo='caja_chica' AND activo=true LIMIT 1"
-    ))).fetchone()
-    if not caja_row or not chica_row:
-        raise HTTPException(status_code=400, detail="Faltan cuentas Caja y/o Caja Chica")
-    caja_id = caja_row[0]
-    chica_id = chica_row[0]
-    saldo_info = await _saldo_cuenta(db, tuple(caja_row))
-    saldo_caja = saldo_info["saldo_actual"]
-    if saldo_caja <= 0:
-        return {"ok": True, "transferido": 0, "mensaje": "Caja en $0, nada que transferir"}
-    hoy = datetime.now(TZ).date()
-    await db.execute(text("""
-        INSERT INTO movimientos_cuenta (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo)
-        VALUES (:cid, :f, 'transferencia_out', 'Cierre semanal → Caja Chica', :m, :cd, 'cierre_semanal')
-    """), {"cid": caja_id, "f": hoy, "m": saldo_caja, "cd": chica_id})
-    await db.execute(text("""
-        INSERT INTO movimientos_cuenta (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo)
-        VALUES (:cid, :f, 'transferencia_in', 'Cierre semanal ← Caja', :m, :co, 'cierre_semanal')
-    """), {"cid": chica_id, "f": hoy, "m": saldo_caja, "co": caja_id})
-    # Reset Caja: fecha_inicio = mañana, saldo_inicial = 0
-    manana = hoy + timedelta(days=1)
-    await db.execute(text(
-        "UPDATE cuentas_financieras SET fecha_inicio = :f, saldo_inicial = 0 WHERE id = :id"
-    ), {"f": manana, "id": caja_id})
-    await db.commit()
-    return {"ok": True, "transferido": saldo_caja}
+    try:
+        caja_row = (await db.execute(text(
+            "SELECT id, nombre, tipo, saldo_inicial, fecha_inicio, fondo_base "
+            "FROM cuentas_financieras WHERE tipo='caja' AND activo=true LIMIT 1"
+        ))).fetchone()
+        chica_row = (await db.execute(text(
+            "SELECT id FROM cuentas_financieras WHERE tipo='caja_chica' AND activo=true LIMIT 1"
+        ))).fetchone()
+        if not caja_row or not chica_row:
+            raise HTTPException(status_code=400, detail="Faltan cuentas Caja y/o Caja Chica")
+        caja_id = caja_row[0]
+        chica_id = chica_row[0]
+        saldo_info = await _saldo_cuenta(db, tuple(caja_row))
+        saldo_caja = saldo_info["saldo_actual"]
+        if saldo_caja <= 0:
+            return {"ok": True, "transferido": 0, "mensaje": "Caja en $0, nada que transferir"}
+        hoy = datetime.now(TZ).date()
+        # Asegurar que la tabla movimientos_cuenta exista
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS movimientos_cuenta (
+                id SERIAL PRIMARY KEY,
+                cuenta_id INTEGER NOT NULL,
+                fecha DATE NOT NULL,
+                tipo VARCHAR(30) NOT NULL,
+                concepto VARCHAR(200) NOT NULL,
+                monto INTEGER NOT NULL,
+                cuenta_destino_id INTEGER,
+                referencia_tipo VARCHAR(50),
+                referencia_id INTEGER,
+                notas TEXT,
+                created_at TIMESTAMP
+            )
+        """))
+        await db.execute(text("""
+            INSERT INTO movimientos_cuenta (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo, created_at)
+            VALUES (:cid, :f, 'transferencia_out', 'Cierre semanal -> Caja Chica', :m, :cd, 'cierre_semanal', NOW())
+        """), {"cid": caja_id, "f": hoy, "m": saldo_caja, "cd": chica_id})
+        await db.execute(text("""
+            INSERT INTO movimientos_cuenta (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo, created_at)
+            VALUES (:cid, :f, 'transferencia_in', 'Cierre semanal <- Caja', :m, :co, 'cierre_semanal', NOW())
+        """), {"cid": chica_id, "f": hoy, "m": saldo_caja, "co": caja_id})
+        # Reset Caja: fecha_inicio = mañana, saldo_inicial = 0
+        manana = hoy + timedelta(days=1)
+        await db.execute(text(
+            "UPDATE cuentas_financieras SET fecha_inicio = :f, saldo_inicial = 0 WHERE id = :id"
+        ), {"f": manana, "id": caja_id})
+        await db.commit()
+        return {"ok": True, "transferido": saldo_caja}
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Cerrar semana: {type(e).__name__}: {str(e)}")
