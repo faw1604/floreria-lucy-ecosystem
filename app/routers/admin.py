@@ -1825,16 +1825,16 @@ async def _saldo_cuenta(db: AsyncSession, cuenta: tuple) -> dict:
     Para cualquier tipo: suma movimientos manuales y resta egresos asignados.
     """
     cid, nombre, tipo, saldo_ini, f_ini, fondo = cuenta
-    deposito_tipos = ['deposito_corte_pos', 'deposito_manual', 'transferencia_in', 'ajuste_positivo']
-    retiro_tipos = ['retiro_manual', 'transferencia_out', 'ajuste_negativo']
     dep = (await db.execute(text(
         "SELECT COALESCE(SUM(monto),0) FROM movimientos_cuenta "
-        "WHERE cuenta_id=:cid AND tipo = ANY(:tipos) AND fecha >= :fi"
-    ), {"cid": cid, "tipos": deposito_tipos, "fi": f_ini})).scalar() or 0
+        "WHERE cuenta_id=:cid AND fecha >= :fi AND tipo IN "
+        "('deposito_corte_pos','deposito_manual','transferencia_in','ajuste_positivo')"
+    ), {"cid": cid, "fi": f_ini})).scalar() or 0
     ret = (await db.execute(text(
         "SELECT COALESCE(SUM(monto),0) FROM movimientos_cuenta "
-        "WHERE cuenta_id=:cid AND tipo = ANY(:tipos) AND fecha >= :fi"
-    ), {"cid": cid, "tipos": retiro_tipos, "fi": f_ini})).scalar() or 0
+        "WHERE cuenta_id=:cid AND fecha >= :fi AND tipo IN "
+        "('retiro_manual','transferencia_out','ajuste_negativo')"
+    ), {"cid": cid, "fi": f_ini})).scalar() or 0
     # Match egresos por cuenta_id explícito O por método_pago = nombre cuenta
     egr = (await db.execute(text(
         "SELECT COALESCE(SUM(monto),0) FROM egresos "
