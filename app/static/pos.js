@@ -2495,6 +2495,15 @@ async function confirmarCancelarTrans() {
 let lastCorteData = null;
 
 async function abrirCorteCaja() {
+  // Restricción: si el periodo NO es "hoy", pedir clave admin (anti-chismosos)
+  if (transFilterPeriodo && transFilterPeriodo !== 'hoy') {
+    pedirClaveAdmin(() => _abrirCorteCajaInner());
+    return;
+  }
+  _abrirCorteCajaInner();
+}
+
+async function _abrirCorteCajaInner() {
   document.getElementById('corte-content').innerHTML = '<div style="padding:20px;color:var(--texto2)">Cargando...</div>';
   document.getElementById('modal-corte').classList.add('active');
   try {

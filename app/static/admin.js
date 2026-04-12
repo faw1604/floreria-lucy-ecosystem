@@ -2558,8 +2558,91 @@ async function exportarFlujo() {
 }
 
 // --- CORTES DE CAJA ---
+let _cortesLastData = null;
+
+function _cortesPeriodoQS() {
+  const p = document.getElementById('cortes-periodo').value;
+  const d = document.getElementById('cortes-desde');
+  const h = document.getElementById('cortes-hasta');
+  d.style.display = (p === 'rango') ? '' : 'none';
+  h.style.display = (p === 'rango') ? '' : 'none';
+  if (p === 'rango') {
+    if (!d.value || !h.value) return null;
+    return 'rango&fecha_inicio='+d.value+'&fecha_fin='+h.value;
+  }
+  // 'anio' no es nativo del backend → calcular rango
+  if (p === 'anio') {
+    const hoy = new Date();
+    const anio = hoy.getFullYear();
+    const desde = anio+'-01-01';
+    const hasta = hoy.toISOString().split('T')[0];
+    return 'rango&fecha_inicio='+desde+'&fecha_fin='+hasta;
+  }
+  return p;
+}
+
 async function loadCortes() {
-  document.getElementById('cortes-list').innerHTML = '<div style="color:var(--texto2);font-size:13px;padding:20px;text-align:center">Cortes de caja disponibles en el POS → Transacciones → Corte de caja</div>';
+  const qs = _cortesPeriodoQS();
+  if (!qs) return;
+  try {
+    const r = await fetch(API+'/pos/corte-caja?periodo='+qs, {credentials:'include'});
+    if (!r.ok) return;
+    const d = await r.json();
+    _cortesLastData = d;
+    // KPIs
+    const kpisEl = document.getElementById('cortes-kpis');
+    let kpis = `<div class="kpi-card"><div class="kpi-label">Total vendido</div><div class="kpi-value" style="color:var(--verde)">${fmt$(Math.round(d.total*100))}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Transacciones</div><div class="kpi-value">${d.total_transacciones}</div></div>
+      <div class="kpi-card"><div class="kpi-label">Ticket promedio</div><div class="kpi-value">${fmt$(d.total_transacciones?Math.round(d.total*100/d.total_transacciones):0)}</div></div>`;
+    for (const [m,v] of Object.entries(d.por_metodo||{})) {
+      if (v > 0) kpis += `<div class="kpi-card"><div class="kpi-label">${esc(m)}</div><div class="kpi-value">${fmt$(Math.round(v*100))}</div></div>`;
+    }
+    kpisEl.innerHTML = kpis;
+    // Detalle
+    document.getElementById('cortes-detalle').innerHTML = `<div style="font-size:13px;color:var(--texto2);background:var(--crema);padding:12px;border-radius:8px">${esc(d.periodo||'')}</div>`;
+  } catch(e) {}
+  // Histórico cierres semanales (desde movimientos_cuenta)
+  try {
+    const r = await fetch(API+'/api/admin/movimientos-cuenta', {credentials:'include'});
+    if (r.ok) {
+      const mvts = await r.json();
+      const cierres = mvts.filter(m => m.referencia_tipo === 'cierre_semanal' && m.tipo === 'transferencia_out');
+      const tbody = document.getElementById('cortes-historico-tbody');
+      tbody.innerHTML = cierres.map(m => `<tr>
+        <td>${fmtDate(m.fecha)}</td>
+        <td style="font-weight:600;color:var(--verde)">${fmt$(m.monto)}</td>
+        <td>${esc(m.concepto||'')}</td>
+      </tr>`).join('') || '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--texto2)">Sin cierres semanales todavía</td></tr>';
+    }
+  } catch(e) {}
+}
+
+function imprimirCorteAdmin() {
+  const d = _cortesLastData;
+  if (!d) return alert('Carga primero un periodo');
+  const fP = (v) => '$' + v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const w = window.open('', '_blank');
+  let html = `<html><head><title>Corte de caja</title>
+    <style>
+      body{font-family:'Inter',Arial,sans-serif;padding:24px;max-width:480px;margin:auto}
+      h1{font-size:18px;text-align:center;color:#193a2c;margin:0 0 4px}
+      .periodo{text-align:center;color:#666;font-size:13px;margin-bottom:16px}
+      .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #ccc}
+      .total{font-size:18px;font-weight:700;color:#193a2c;border-top:2px solid #193a2c;border-bottom:2px solid #193a2c;padding:10px 0;margin-top:8px}
+      .footer{text-align:center;color:#999;font-size:11px;margin-top:24px}
+    </style></head><body>
+    <h1>FLORERÍA LUCY — Corte de caja</h1>
+    <div class="periodo">${esc(d.periodo||'')}</div>
+    <div class="row"><span>Transacciones</span><span><strong>${d.total_transacciones}</strong></span></div>`;
+  for (const [m,v] of Object.entries(d.por_metodo||{})) {
+    if (v > 0) html += `<div class="row"><span>${esc(m)}</span><span>${fP(v)}</span></div>`;
+  }
+  html += `<div class="row total"><span>TOTAL</span><span>${fP(d.total)}</span></div>
+    <div class="footer">${new Date().toLocaleString('es-MX',{timeZone:'America/Chihuahua'})}</div>
+    </body></html>`;
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 200);
 }
 
 // --- EXPORTAR ---

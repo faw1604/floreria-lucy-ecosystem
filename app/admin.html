@@ -316,7 +316,27 @@
     </div>
     <div class="sub-content" id="fin-utilidad-content" style="display:none"><div id="utilidad-card"></div><canvas id="utilidad-chart" height="280" style="margin-top:16px"></canvas></div>
     <div class="sub-content" id="fin-flujo-content" style="display:none"><canvas id="flujo-chart" height="280"></canvas><div class="table-wrap" style="margin-top:16px"><table class="data-table"><thead><tr><th>Fecha</th><th>Ingresos</th><th>Egresos</th><th>Saldo</th><th>Acumulado</th></tr></thead><tbody id="flujo-tbody"></tbody></table></div><button class="btn-sm" onclick="exportarFlujo()" style="margin-top:8px">📥 Exportar flujo</button></div>
-    <div class="sub-content" id="fin-cortes-content" style="display:none"><div id="cortes-list"></div></div>
+    <div class="sub-content" id="fin-cortes-content" style="display:none">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <select id="cortes-periodo" onchange="loadCortes()" style="padding:6px 10px;border:1px solid var(--borde);border-radius:8px;font-size:12px;font-family:inherit">
+          <option value="hoy">Hoy</option>
+          <option value="ayer">Ayer</option>
+          <option value="semana" selected>Esta semana</option>
+          <option value="semana_pasada">Semana pasada</option>
+          <option value="mes">Este mes</option>
+          <option value="mes_pasado">Mes pasado</option>
+          <option value="anio">Este año</option>
+          <option value="rango">Rango personalizado</option>
+        </select>
+        <input type="date" id="cortes-desde" style="display:none;padding:6px 8px;border:1px solid var(--borde);border-radius:8px;font-size:12px" onchange="loadCortes()">
+        <input type="date" id="cortes-hasta" style="display:none;padding:6px 8px;border:1px solid var(--borde);border-radius:8px;font-size:12px" onchange="loadCortes()">
+        <button class="btn-sm" onclick="imprimirCorteAdmin()">🖨 Imprimir corte</button>
+      </div>
+      <div class="kpi-row" id="cortes-kpis"></div>
+      <div id="cortes-detalle" style="margin-top:16px"></div>
+      <h4 style="margin-top:24px;margin-bottom:8px;color:var(--verde)">Histórico de cierres semanales</h4>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha cierre</th><th>Monto transferido</th><th>Concepto</th></tr></thead><tbody id="cortes-historico-tbody"></tbody></table></div>
+    </div>
     <div class="sub-content" id="fin-cuentas-content" style="display:none">
       <div id="cuentas-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:20px"></div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
