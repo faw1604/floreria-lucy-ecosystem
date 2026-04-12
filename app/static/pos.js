@@ -1458,8 +1458,13 @@ function mostrarModalCreado(result) {
 
 function cerrarModalCreado() {
   document.getElementById('modal-creado').classList.remove('active');
+  const wasEditing = !!editingPedidoId;
   resetVenta();
-  goWin(1);
+  if (wasEditing) {
+    navTo('pendientes');
+  } else {
+    goWin(1);
+  }
 }
 
 function resetVenta() {
@@ -1843,15 +1848,19 @@ function estadoLabel(estado) {
   return map[estado] || estado;
 }
 function tipoIcon(p) {
-  if (p.tipo_especial === 'Funeral') return '🕊️';
+  const m = p.metodo_entrega || '';
+  if (m.startsWith('funeral')) return '🕊️';
+  if (m === 'recoger') return '🛍';
+  if (m === 'envio') return '🚚';
   if (p.direccion_entrega) return '🚚';
-  if (p.tipo_especial === 'Recoger') return '🛍';
   return '🏪';
 }
 function tipoLabel(p) {
-  if (p.tipo_especial === 'Funeral') return 'Funeral';
+  const m = p.metodo_entrega || '';
+  if (m.startsWith('funeral')) return 'Funeral';
+  if (m === 'recoger') return 'Recoger';
+  if (m === 'envio') return 'Domicilio';
   if (p.direccion_entrega) return 'Domicilio';
-  if (p.tipo_especial === 'Recoger') return 'Recoger';
   return 'Mostrador';
 }
 function canalLabel(canal) {
