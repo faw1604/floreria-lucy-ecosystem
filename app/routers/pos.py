@@ -63,7 +63,7 @@ async def pos_productos(
         raise HTTPException(status_code=401, detail="No autenticado")
     query = select(Producto).where(Producto.activo == True)
     if q:
-        query = query.where(Producto.nombre.ilike(f"%{q}%"))
+        query = query.where(func.unaccent(Producto.nombre).ilike(func.concat('%', func.unaccent(q), '%')))
     if categoria:
         query = query.where(Producto.categoria == categoria)
     query = query.order_by(Producto.categoria, Producto.nombre)
