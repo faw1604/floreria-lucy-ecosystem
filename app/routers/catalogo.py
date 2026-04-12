@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
-import os, logging, httpx
+import os, logging, httpx, json
 from app.core.limiter import limiter
 from app.database import get_db
 from app.models.productos import Producto
@@ -153,6 +153,7 @@ async def catalogo_productos(
             "precio_descuento_display": f"${p.precio_descuento // 100:,}" if p.precio_descuento else None,
             "descripcion": p.descripcion,
             "imagen_url": p.imagen_url,
+            "imagenes_extra": json.loads(p.imagenes_extra) if p.imagenes_extra else [],
             "disponible_hoy": p.disponible_hoy,
             "etiquetas": p.etiquetas,
             "dimensiones": p.dimensiones,
@@ -185,6 +186,7 @@ async def catalogo_producto_detalle(producto_id: int, db: AsyncSession = Depends
         "precio_descuento_display": f"${p.precio_descuento // 100:,}" if p.precio_descuento else None,
         "descripcion": p.descripcion,
         "imagen_url": p.imagen_url,
+        "imagenes_extra": json.loads(p.imagenes_extra) if p.imagenes_extra else [],
         "etiquetas": p.etiquetas,
         "dimensiones": p.dimensiones,
         "medida_alto": float(p.medida_alto) if p.medida_alto else None,

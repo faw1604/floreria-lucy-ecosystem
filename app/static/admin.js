@@ -405,6 +405,21 @@ async function abrirModalProducto(prod) {
         </div>
       </div>
     </div>
+    <!-- FOTOS EXTRA -->
+    <div class="field">
+      <label>Fotos adicionales <span style="font-weight:400;color:var(--texto2)">(menú de opciones, detalles, etc.)</span></label>
+      <div id="pf-extras-preview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        ${(prod?._imagenes_extra||[]).map((url,i) => `
+          <div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;background:var(--borde)">
+            <img src="${esc(url)}" style="width:100%;height:100%;object-fit:cover">
+            <button onclick="quitarFotoExtra(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:20px;padding:0">&times;</button>
+          </div>
+        `).join('')}
+      </div>
+      <input type="file" id="pf-extras-file" accept="image/*" multiple onchange="subirFotosExtra()">
+      <input type="hidden" id="pf-extras" value='${esc(JSON.stringify(prod?._imagenes_extra||[]))}'>
+      <div id="pf-extras-status" style="font-size:11px;color:var(--texto2);margin-top:4px"></div>
+    </div>
     <!-- BÁSICO -->
     <div class="field"><label>Nombre *</label><input id="pf-nombre" value="${esc(prod?.nombre||'')}"></div>
     <div class="field"><label>Categoría *</label><select id="pf-cat" onchange="onCatChange()"><option value="">Selecciona...</option>${catOptions}</select></div>
@@ -600,6 +615,43 @@ async function subirImagenProd() {
   } catch(e) { document.getElementById('pf-img-status').textContent = 'Error al subir'; }
 }
 
+async function subirFotosExtra() {
+  const files = document.getElementById('pf-extras-file').files;
+  if (!files.length) return;
+  const status = document.getElementById('pf-extras-status');
+  const extras = JSON.parse(document.getElementById('pf-extras').value || '[]');
+  for (let i = 0; i < files.length; i++) {
+    status.textContent = `Subiendo ${i+1} de ${files.length}...`;
+    const fd = new FormData();
+    fd.append('imagen', files[i]);
+    try {
+      const r = await fetch(API + '/productos/subir-imagen', {method:'POST', body:fd, credentials:'include'});
+      const data = await r.json();
+      if (data.url) extras.push(data.url);
+    } catch(e) { status.textContent = `Error en foto ${i+1}`; return; }
+  }
+  document.getElementById('pf-extras').value = JSON.stringify(extras);
+  renderExtrasPreview(extras);
+  status.textContent = `${files.length} foto(s) subida(s) ✓`;
+  document.getElementById('pf-extras-file').value = '';
+}
+
+function quitarFotoExtra(idx) {
+  const extras = JSON.parse(document.getElementById('pf-extras').value || '[]');
+  extras.splice(idx, 1);
+  document.getElementById('pf-extras').value = JSON.stringify(extras);
+  renderExtrasPreview(extras);
+}
+
+function renderExtrasPreview(extras) {
+  document.getElementById('pf-extras-preview').innerHTML = extras.map((url, i) => `
+    <div style="position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;background:var(--borde)">
+      <img src="${esc(url)}" style="width:100%;height:100%;object-fit:cover">
+      <button onclick="quitarFotoExtra(${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:12px;cursor:pointer;line-height:20px;padding:0">&times;</button>
+    </div>
+  `).join('');
+}
+
 async function generarDescIA(mejorar) {
   const nombre = document.getElementById('pf-nombre').value.trim();
   const cat = document.getElementById('pf-cat').value;
@@ -639,6 +691,7 @@ async function guardarProducto(id) {
     medida_ancho: document.getElementById('pf-ancho')?.value ? parseFloat(document.getElementById('pf-ancho').value) : null,
     destacado: document.getElementById('pf-destacado').checked,
     vender_por_fraccion: document.getElementById('pf-fraccion')?.checked || false,
+    imagenes_extra: document.getElementById('pf-extras').value || null,
   };
   if (!body.nombre || !body.categoria || !body.precio) return alert('Nombre, categoría y precio son obligatorios');
   const url = id ? API + '/productos/' + id : API + '/productos/';

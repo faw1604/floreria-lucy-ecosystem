@@ -67,7 +67,8 @@ async def obtener_producto(producto_id: int, db: AsyncSession = Depends(get_db))
     producto = result.scalar_one_or_none()
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return {"id": producto.id, "codigo": producto.codigo, "nombre": producto.nombre, "categoria": producto.categoria, "precio": producto.precio, "precio_descuento": producto.precio_descuento, "costo": producto.costo, "disponible_hoy": producto.disponible_hoy, "descripcion": producto.descripcion, "imagen_url": producto.imagen_url, "etiquetas": producto.etiquetas, "dimensiones": producto.dimensiones, "activo": producto.activo, "visible_catalogo": producto.visible_catalogo, "stock_activo": producto.stock_activo, "stock": producto.stock, "medida_alto": float(producto.medida_alto) if producto.medida_alto else None, "medida_ancho": float(producto.medida_ancho) if producto.medida_ancho else None, "destacado": producto.destacado, "vender_por_fraccion": producto.vender_por_fraccion}
+    import json as _json
+    return {"id": producto.id, "codigo": producto.codigo, "nombre": producto.nombre, "categoria": producto.categoria, "precio": producto.precio, "precio_descuento": producto.precio_descuento, "costo": producto.costo, "disponible_hoy": producto.disponible_hoy, "descripcion": producto.descripcion, "imagen_url": producto.imagen_url, "_imagenes_extra": _json.loads(producto.imagenes_extra) if producto.imagenes_extra else [], "etiquetas": producto.etiquetas, "dimensiones": producto.dimensiones, "activo": producto.activo, "visible_catalogo": producto.visible_catalogo, "stock_activo": producto.stock_activo, "stock": producto.stock, "medida_alto": float(producto.medida_alto) if producto.medida_alto else None, "medida_ancho": float(producto.medida_ancho) if producto.medida_ancho else None, "destacado": producto.destacado, "vender_por_fraccion": producto.vender_por_fraccion}
 
 @router.post("/")
 async def crear_producto(
@@ -96,6 +97,7 @@ async def crear_producto(
         medida_ancho=request.get("medida_ancho"),
         destacado=request.get("destacado", False),
         vender_por_fraccion=request.get("vender_por_fraccion", False),
+        imagenes_extra=request.get("imagenes_extra"),
     )
     db.add(producto)
     await db.commit()

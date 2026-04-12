@@ -37,6 +37,7 @@ class Producto(Base):
     costo_unitario: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     destacado: Mapped[bool] = mapped_column(Boolean, default=False)
     vender_por_fraccion: Mapped[bool] = mapped_column(Boolean, default=False)
+    imagenes_extra: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array de URLs
 
 
 class ProductoVariante(Base):
