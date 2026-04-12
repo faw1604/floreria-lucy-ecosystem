@@ -314,14 +314,15 @@ def _formatear_telefono(tel: str) -> str:
 
 async def _enviar_whatsapp(telefono: str, mensaje: str):
     """Envía mensaje WhatsApp directo a Whapi. Fallback a proxy agentkit si falla."""
-    # Normalizar a solo dígitos, formato 52XXXXXXXXXX (sin el 1 extra)
+    # Normalizar a solo dígitos, formato 521XXXXXXXXXX para México
     digitos = "".join(c for c in telefono if c.isdigit())
     if len(digitos) == 10:
-        digitos = "52" + digitos
-    elif len(digitos) == 13 and digitos.startswith("521"):
-        digitos = "52" + digitos[3:]
+        digitos = "521" + digitos
+    elif len(digitos) == 12 and digitos.startswith("52"):
+        # 52 + 10 dígitos sin el 1 → agregar
+        digitos = "521" + digitos[2:]
     elif not digitos.startswith("52") and len(digitos) <= 10:
-        digitos = "52" + digitos
+        digitos = "521" + digitos
 
     whapi_token = os.environ.get("WHAPI_TOKEN")
     if whapi_token:
