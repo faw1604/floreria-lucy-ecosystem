@@ -313,27 +313,41 @@ def _formatear_telefono(tel: str) -> str:
 
 
 async def _enviar_whatsapp(telefono: str, mensaje: str):
-    """Envía mensaje WhatsApp vía Claudia (agentkit) proxy."""
-    agentkit_url = os.getenv("AGENTKIT_URL", "https://whatsapp-agentkit-production-4e69.up.railway.app")
-    agentkit_key = os.getenv("AGENTKIT_API_KEY", "")
-    # Normalizar a solo dígitos
+    """Envía mensaje WhatsApp directo a Whapi. Fallback a proxy agentkit si falla."""
+    # Normalizar a solo dígitos, formato 52XXXXXXXXXX (sin el 1 extra)
     digitos = "".join(c for c in telefono if c.isdigit())
     if len(digitos) == 10:
-        # 10 dígitos sin código de país → asumir México
-        digitos = "521" + digitos
-    elif digitos.startswith("52") and not digitos.startswith("521"):
-        # México con 52 pero sin 1 → agregar 1
-        digitos = "521" + digitos[2:]
-    elif digitos.startswith("1") and len(digitos) == 11:
-        # USA/Canadá: 1 + 10 dígitos → dejar como está
-        pass
-    elif len(digitos) > 10 and not digitos.startswith("52") and not digitos.startswith("1"):
-        # Otro país con código → dejar como está
-        pass
-    elif len(digitos) <= 10 and not digitos.startswith("521"):
-        # Fallback: asumir México
-        digitos = "521" + digitos
-    logger.info(f"[WHAPI] Enviando via Claudia a {digitos}")
+        digitos = "52" + digitos
+    elif len(digitos) == 13 and digitos.startswith("521"):
+        digitos = "52" + digitos[3:]
+    elif not digitos.startswith("52") and len(digitos) <= 10:
+        digitos = "52" + digitos
+
+    whapi_token = os.environ.get("WHAPI_TOKEN")
+    if whapi_token:
+        # Intento directo a Whapi (mismo método que POS)
+        logger.info(f"[WHAPI] Enviando directo a {digitos}")
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                r = await client.post(
+                    "https://gate.whapi.cloud/messages/text",
+                    headers={"Authorization": f"Bearer {whapi_token}", "Content-Type": "application/json"},
+                    json={"to": digitos, "body": mensaje},
+                )
+            if r.status_code in (200, 201):
+                logger.info(f"[WHAPI] WhatsApp enviado directo OK — {r.status_code}")
+                return
+            else:
+                logger.error(f"[WHAPI] Error directo {r.status_code}: {r.text[:300]}")
+        except Exception as e:
+            logger.error(f"[WHAPI] Error directo: {type(e).__name__}: {e}")
+    else:
+        logger.warning("[WHAPI] WHAPI_TOKEN no configurado, intentando proxy")
+
+    # Fallback: proxy via agentkit
+    agentkit_url = os.getenv("AGENTKIT_URL", "https://whatsapp-agentkit-production-4e69.up.railway.app")
+    agentkit_key = os.getenv("AGENTKIT_API_KEY", "")
+    logger.info(f"[WHAPI] Fallback proxy agentkit a {digitos}")
     try:
         headers = {"Content-Type": "application/json"}
         if agentkit_key:
@@ -345,11 +359,11 @@ async def _enviar_whatsapp(telefono: str, mensaje: str):
                 json={"telefono": digitos, "mensaje": mensaje},
             )
         if r.status_code >= 400:
-            logger.error(f"[WHAPI] Error via Claudia {r.status_code}: {r.text[:300]}")
+            logger.error(f"[WHAPI] Error proxy {r.status_code}: {r.text[:300]}")
         else:
-            logger.info(f"[WHAPI] WhatsApp enviado via Claudia — {r.status_code}")
+            logger.info(f"[WHAPI] WhatsApp enviado via proxy — {r.status_code}")
     except Exception as e:
-        logger.error(f"[WHAPI] Error enviando via Claudia: {type(e).__name__}: {e}")
+        logger.error(f"[WHAPI] Error proxy: {type(e).__name__}: {e}")
 
 
 @router.post("/pedido")
