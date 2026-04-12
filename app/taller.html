@@ -1378,19 +1378,17 @@ function generarEtiquetaHtml(d, nombre, i) {
   let funeralInfo = '';
 
   if (isFuneral) {
-    // En funeral: receptor_nombre es el fallecido, cliente_nombre es quien compra
-    paraLine = 'De: ' + normTxt(d.cliente_nombre || '---');
-    // Extraer datos de notas_internas (formato: "Funeraria: X | Fallecido: Y | Banda: Z")
+    // En funeral: receptor_nombre es el fallecido
+    paraLine = 'Para: ' + normTxt(d.receptor_nombre || d.cliente_nombre || '---');
+    // Extraer datos de notas_internas
     const notas = d.notas_internas || '';
     const partes = notas.split('|').map(s => s.trim());
-    let funeraria = '', fallecido = '', banda = '';
+    let funeraria = '', banda = '';
     partes.forEach(p => {
       if (p.startsWith('Funeraria:')) funeraria = p.replace('Funeraria:', '').trim();
-      if (p.startsWith('Fallecido:')) fallecido = p.replace('Fallecido:', '').trim();
       if (p.startsWith('Banda:')) banda = p.replace('Banda:', '').trim();
     });
     funeralInfo = `<div class="etq-metodo etq-funeral" style="background:#1a1a1a;color:#fff">FUNERAL</div>`;
-    if (fallecido) funeralInfo += `<div class="etq-dir" style="font-weight:700">Fallecido: ${normTxt(fallecido)}</div>`;
     if (funeraria) funeralInfo += `<div class="etq-dir">Funeraria: ${normTxt(funeraria)}</div>`;
     if (banda) funeralInfo += `<div class="etq-dir">Banda: ${normTxt(banda)}</div>`;
     if (d.direccion_entrega && !funeraria) {
