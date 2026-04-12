@@ -1933,12 +1933,28 @@ async def crear_movimiento(
     _auth(panel_session)
     data = await request.json()
     try:
+        # Asegurar que la tabla exista (por si el create_all no la creó al arranque)
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS movimientos_cuenta (
+                id SERIAL PRIMARY KEY,
+                cuenta_id INTEGER NOT NULL,
+                fecha DATE NOT NULL,
+                tipo VARCHAR(30) NOT NULL,
+                concepto VARCHAR(200) NOT NULL,
+                monto INTEGER NOT NULL,
+                cuenta_destino_id INTEGER,
+                referencia_tipo VARCHAR(50),
+                referencia_id INTEGER,
+                notas TEXT,
+                created_at TIMESTAMP
+            )
+        """))
         fecha_val = (date.fromisoformat(data["fecha"])
                      if isinstance(data["fecha"], str) else data["fecha"])
         await db.execute(text("""
             INSERT INTO movimientos_cuenta
-                (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo, referencia_id, notas)
-            VALUES (:cid, :f, :t, :c, :m, :cd, :rt, :ri, :n)
+                (cuenta_id, fecha, tipo, concepto, monto, cuenta_destino_id, referencia_tipo, referencia_id, notas, created_at)
+            VALUES (:cid, :f, :t, :c, :m, :cd, :rt, :ri, :n, NOW())
         """), {
             "cid": data["cuenta_id"], "f": fecha_val, "t": data["tipo"],
             "c": data.get("concepto", ""), "m": int(data.get("monto", 0)),

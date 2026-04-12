@@ -2196,22 +2196,31 @@ async function guardarMovimiento() {
     concepto, monto,
     notas: document.getElementById('mv-notas').value.trim() || null,
   };
-  if (tipo === 'transferencia_out') {
-    const dest = parseInt(document.getElementById('mv-destino').value||0);
-    if (!dest) return alert('Selecciona cuenta destino');
-    if (dest === cuenta_id) return alert('Cuenta destino debe ser distinta');
-    body.cuenta_destino_id = dest;
-    // Crear out
-    await fetch(API+'/api/admin/movimientos-cuenta', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
-    // Crear in del lado destino
-    const bodyIn = {...body, cuenta_id: dest, cuenta_destino_id: cuenta_id, tipo: 'transferencia_in'};
-    await fetch(API+'/api/admin/movimientos-cuenta', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(bodyIn)});
-  } else {
-    await fetch(API+'/api/admin/movimientos-cuenta', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+  const postMv = async (b) => {
+    const r = await fetch(API+'/api/admin/movimientos-cuenta', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(b)});
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      throw new Error(err.detail || ('HTTP '+r.status));
+    }
+  };
+  try {
+    if (tipo === 'transferencia_out') {
+      const dest = parseInt(document.getElementById('mv-destino').value||0);
+      if (!dest) return alert('Selecciona cuenta destino');
+      if (dest === cuenta_id) return alert('Cuenta destino debe ser distinta');
+      body.cuenta_destino_id = dest;
+      await postMv(body);
+      const bodyIn = {...body, cuenta_id: dest, cuenta_destino_id: cuenta_id, tipo: 'transferencia_in'};
+      await postMv(bodyIn);
+    } else {
+      await postMv(body);
+    }
+    cerrarModal('modal-egreso');
+    showToast('Movimiento registrado ✓');
+    loadCuentas();
+  } catch(e) {
+    alert('Error al guardar: '+e.message);
   }
-  cerrarModal('modal-egreso');
-  showToast('Movimiento registrado ✓');
-  loadCuentas();
 }
 
 async function eliminarMovimiento(id) {
