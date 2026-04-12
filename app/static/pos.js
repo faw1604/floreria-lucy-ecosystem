@@ -1683,7 +1683,8 @@ function imprimirTicket() {
 // ─── Dedicatoria Card (3.5 x 5 in) ───
 function buildDedicatoriaCard(info) {
   const folio = info.folio || '';
-  const receptor = info.receptor_nombre || '';
+  const isFuneral = info.tipo === 'funeral' || info.tipo_especial === 'Funeral' || (info.metodo_entrega || '').startsWith('funeral');
+  const receptor = isFuneral ? (info.cliente_nombre || info.receptor_nombre || '') : (info.receptor_nombre || '');
   const dedicatoria = info.dedicatoria || '';
   const fechaEntrega = info.fecha_entrega ? formatearFecha(info.fecha_entrega) : '';
   const cornerSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='60' height='60'><path d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/><path d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/><circle cx='50' cy='5' r='2.5' fill='%23333'/><circle cx='5' cy='50' r='2.5' fill='%23333'/><path d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/><path d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/><circle cx='35' cy='5' r='1.5' fill='%23333'/><circle cx='5' cy='35' r='1.5' fill='%23333'/><path d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/><path d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/></svg>`;
@@ -2267,7 +2268,7 @@ function pagoIcon(forma) {
 
 function obsIcon(p) {
   if (p.dedicatoria) {
-    return `<button onclick='imprimirDedicatoriaDesdeTransaccion(${JSON.stringify({folio:p.folio,receptor_nombre:p.receptor_nombre||"",dedicatoria:p.dedicatoria,fecha_entrega:p.fecha_entrega||""}).replace(/'/g,"&#39;")})' title="Imprimir dedicatoria" style="background:none;border:none;cursor:pointer;font-size:16px">💌</button>`;
+    return `<button onclick='imprimirDedicatoriaDesdeTransaccion(${JSON.stringify({folio:p.folio,receptor_nombre:p.receptor_nombre||"",cliente_nombre:p.cliente_nombre||"",dedicatoria:p.dedicatoria,fecha_entrega:p.fecha_entrega||"",tipo_especial:p.tipo_especial||"",metodo_entrega:p.metodo_entrega||""}).replace(/'/g,"&#39;")})' title="Imprimir dedicatoria" style="background:none;border:none;cursor:pointer;font-size:16px">💌</button>`;
   }
   if (p.notas_internas) return '<span title="' + esc(p.notas_internas) + '" style="cursor:help">💬</span>';
   return '<span style="color:var(--texto2)">-</span>';

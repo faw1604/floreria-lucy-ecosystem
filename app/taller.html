@@ -1370,11 +1370,40 @@ function normTxt(s) { return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g
 
 function generarEtiquetaHtml(d, nombre, i) {
   const me = (d.metodo_entrega || '').toLowerCase();
+  const isFuneral = d.tipo_especial === 'Funeral' || me.startsWith('funeral');
   const isRecoger = me === 'recoger' || me === 'funeral_recoger';
   const isEnvio = me === 'envio' || me === 'funeral_envio';
   let paraLine = 'Para: ' + normTxt(d.receptor_nombre || d.cliente_nombre || '---');
   let metodoLine = '';
-  if (isRecoger) {
+  let funeralInfo = '';
+
+  if (isFuneral) {
+    // En funeral: receptor_nombre es el fallecido, cliente_nombre es quien compra
+    paraLine = 'De: ' + normTxt(d.cliente_nombre || '---');
+    // Extraer datos de notas_internas (formato: "Funeraria: X | Fallecido: Y | Banda: Z")
+    const notas = d.notas_internas || '';
+    const partes = notas.split('|').map(s => s.trim());
+    let funeraria = '', fallecido = '', banda = '';
+    partes.forEach(p => {
+      if (p.startsWith('Funeraria:')) funeraria = p.replace('Funeraria:', '').trim();
+      if (p.startsWith('Fallecido:')) fallecido = p.replace('Fallecido:', '').trim();
+      if (p.startsWith('Banda:')) banda = p.replace('Banda:', '').trim();
+    });
+    funeralInfo = `<div class="etq-metodo etq-funeral" style="background:#1a1a1a;color:#fff">FUNERAL</div>`;
+    if (fallecido) funeralInfo += `<div class="etq-dir" style="font-weight:700">Fallecido: ${normTxt(fallecido)}</div>`;
+    if (funeraria) funeralInfo += `<div class="etq-dir">Funeraria: ${normTxt(funeraria)}</div>`;
+    if (banda) funeralInfo += `<div class="etq-dir">Banda: ${normTxt(banda)}</div>`;
+    if (d.direccion_entrega && !funeraria) {
+      funeralInfo += `<div class="etq-dir">${normTxt(d.direccion_entrega)}</div>`;
+    }
+    let fechaCorta = '';
+    if (d.fecha_entrega) {
+      const [y,m,dd] = d.fecha_entrega.split('-');
+      const meses = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      fechaCorta = parseInt(dd) + ' ' + meses[parseInt(m)];
+    }
+    if (fechaCorta) funeralInfo += `<div class="etq-dir">${fechaCorta}</div>`;
+  } else if (isRecoger) {
     paraLine = 'Para: ' + normTxt(d.cliente_nombre || d.receptor_nombre || '---');
     let fechaCortaRec = '';
     if (d.fecha_entrega) {
@@ -1402,7 +1431,7 @@ function generarEtiquetaHtml(d, nombre, i) {
     <div class="etq-sep"></div>
     <div class="etq-prod">${normTxt(nombre)}</div>
     <div class="etq-para">${paraLine}</div>
-    ${metodoLine}
+    ${isFuneral ? funeralInfo : metodoLine}
   </div>`;
 }
 

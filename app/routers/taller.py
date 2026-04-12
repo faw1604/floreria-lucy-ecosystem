@@ -381,6 +381,9 @@ async def envios_etiquetas_data(
             "fecha_entrega": p.fecha_entrega.isoformat() if p.fecha_entrega else "",
             "items": items,
             "total_items": len(items),
+            "tipo_especial": p.tipo_especial or "",
+            "notas_internas": p.notas_internas or "",
+            "dedicatoria": p.dedicatoria or "",
         })
     return all_etiquetas
 
@@ -711,6 +714,9 @@ async def etiqueta_data(
         "fecha_entrega": pedido.fecha_entrega.isoformat() if pedido.fecha_entrega else "",
         "items": items,
         "total_items": len(items),
+        "tipo_especial": pedido.tipo_especial or "",
+        "notas_internas": pedido.notas_internas or "",
+        "dedicatoria": pedido.dedicatoria or "",
     }
 
 
