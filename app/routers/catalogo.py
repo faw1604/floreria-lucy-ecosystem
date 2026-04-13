@@ -541,9 +541,10 @@ async def _crear_pedido_web_inner(request, db):
 
     horario = data.get("horario_entrega")
     hora_exacta = None
-    if horario == "hora_especifica":
+    if horario == "hora_especifica" or tipo == "recoger":
         hora_exacta = data.get("hora_especifica")
-        horario = "hora_exacta"
+        if hora_exacta:
+            horario = "hora_exacta"
 
     import secrets
     tracking_token = secrets.token_urlsafe(32)
