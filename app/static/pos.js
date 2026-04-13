@@ -3754,109 +3754,12 @@ setInterval(async()=>{
   }catch(e){}
 }, 30000);
 
-// ══════ QZ TRAY — CAJÓN DE DINERO ══════
-const QZ_PRINTER = 'impresora 80mm automatica';
-let _qzReady = false;
+// ══════ QZ TRAY — REMOVIDO (CN-002 security) ══════
+// QZ Tray y su llave privada fueron eliminados por seguridad.
+// Si se necesita reconectar QZ Tray, generar nuevo certificado/llave
+// y almacenarlos en el servidor, nunca en JavaScript del cliente.
 
-const QZ_CERT = `-----BEGIN CERTIFICATE-----
-MIIECzCCAvOgAwIBAgIGAZ1HNW7lMA0GCSqGSIb3DQEBCwUAMIGiMQswCQYDVQQG
-EwJVUzELMAkGA1UECAwCTlkxEjAQBgNVBAcMCUNhbmFzdG90YTEbMBkGA1UECgwS
-UVogSW5kdXN0cmllcywgTExDMRswGQYDVQQLDBJRWiBJbmR1c3RyaWVzLCBMTEMx
-HDAaBgkqhkiG9w0BCQEWDXN1cHBvcnRAcXouaW8xGjAYBgNVBAMMEVFaIFRyYXkg
-RGVtbyBDZXJ0MB4XDTI2MDMzMTA0MDI1N1oXDTQ2MDMzMTA0MDI1N1owgaIxCzAJ
-BgNVBAYTAlVTMQswCQYDVQQIDAJOWTESMBAGA1UEBwwJQ2FuYXN0b3RhMRswGQYD
-VQQKDBJRWiBJbmR1c3RyaWVzLCBMTEMxGzAZBgNVBAsMElFaIEluZHVzdHJpZXMs
-IExMQzEcMBoGCSqGSIb3DQEJARYNc3VwcG9ydEBxei5pbzEaMBgGA1UEAwwRUVog
-VHJheSBEZW1vIENlcnQwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCI
-aIyvEBQQ06JRIeAaG418yL2/HT72G+Zieb3PjUeonh1a07AcfJq0Vy9s8//Sw302
-ZAYAVCJt+tGYZdvYkcaEkJIe3Ue2RLsglZL77a01L1C+EyEcTlanmBsmzCWW6wdb
-qg4LO/c2gGjrZoqfjjr2VvhuoOM4edAK8nFbRPDOK+89C5i7/fICHeU4Qcgcn4++
-lcSdIAhcob0grf3DD2ZT9f4nlio9ZrPHAw66MyIEyiKCbvh/hewExgllR7BBaf7P
-E0ewyVPZ7rGgsXKnBod0uKqDZNwjESGlvrd/DMorEqX313MS/tYiFghSJDGzJ60c
-IDTVe729WcNx+5K26Zg/AgMBAAGjRTBDMBIGA1UdEwEB/wQIMAYBAf8CAQEwDgYD
-VR0PAQH/BAQDAgEGMB0GA1UdDgQWBBQu8MVBAd6OXR6kL9FlMTpp/1hIXDANBgkq
-hkiG9w0BAQsFAAOCAQEADeya39Hb/xfEftOM5+29iE07W6EALVRB3xCVy7mA8G4u
-WsR3mqACc4kYzBYsKw5+IIIwJV1aNHkSXz3R54Od38dkqscdS+WWmWHRCmAhwIHi
-B1x2GOdH2jCAiRDnmyrLrY3SVCSgeocWf41RSqBz3zyy5XwWOR8oQ9jTVp7M1H7C
-nktwQecgGroCwekarsXqu050cdNlVPINk5vyLTKuTlWMH8WrBTtYex9E9sNoWrv+
-VR6Fhz+ALIP2XjedHV7lBc5SaNe0GaFoi9WtGoGI4X8DQrCCMgECRyKO3wH6I/vp
-L70DkyPgHV5GnWNeXiTeFp32/6CqpN0o8zhZ8tUzvg==
------END CERTIFICATE-----`;
-
-const QZ_KEY = `-----BEGIN PRIVATE KEY-----
-MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCIaIyvEBQQ06JR
-IeAaG418yL2/HT72G+Zieb3PjUeonh1a07AcfJq0Vy9s8//Sw302ZAYAVCJt+tGY
-ZdvYkcaEkJIe3Ue2RLsglZL77a01L1C+EyEcTlanmBsmzCWW6wdbqg4LO/c2gGjr
-Zoqfjjr2VvhuoOM4edAK8nFbRPDOK+89C5i7/fICHeU4Qcgcn4++lcSdIAhcob0g
-rf3DD2ZT9f4nlio9ZrPHAw66MyIEyiKCbvh/hewExgllR7BBaf7PE0ewyVPZ7rGg
-sXKnBod0uKqDZNwjESGlvrd/DMorEqX313MS/tYiFghSJDGzJ60cIDTVe729WcNx
-+5K26Zg/AgMBAAECggEAMnYatRhJk//2Z/UUJhRTPvoz12NGS1z+2ScYJJOrEqGL
-UnJFEAS4ZkZqcO/Cj4Fp7JkL70swgWbr6mij73Xd7mRc6bYKNU8vuloayb+e97HN
-OMNy2DnSrKUERlH3BeFkE3DRSS6hwTO3nH2Ogn/nKAH8XVB/PgEyCRqu/IiAXIQx
-5pkf1vvS+YEc1i+0l2piO3Ws0YnsU+9s1p3DYe/jbGNlfoY/3ya1Il6vW5Y+i3y6
-38igBYIvFNySwhE8whatfd3n+4VdJUnrdnuKauLs2p26OD4XRqzFaZHotN8v34sg
-KLLYTzOPyWQS/CarKb3On11k3UIdBpvQw5s/9gYYgQKBgQDAd538yTBjf0XNA1m+
-N5NgbmAfKDcpxCFpsjlwKCcJlLDNL1ELtfr6KF33DowU1CbbyAoCEG0b3QFPvYZ+
-S5c97ad70153M/TVeXCZ731EN+2RuacxPnsor6P7/7Bfy1giIi8ioxrx4HtnXoJm
-G4IDltz6zHG5VJiPO/anCU9kbwKBgQC1b7JjTqFbGCbici/a2gjUpxeyeVubwbo5
-mlrEbqaVo0eJZPL8F0Dvi5kJXs5aFfOWK8Oz7hTAiaLFPh6NSMh+hSOX5eSVJ6d9
-SMIKcmEuptLm4pK3o/ZbZEQvc57DK4itm+3+uoZYx17xibnLFMkuDHbA9JCabaU1
-D9YrJbQRMQKBgBrPTsGMoOHrM6ToJ5MYmL3hAiC08GIwANuBSQD3huCNxsb+JVL1
-SX2ZK+WjMB4iozsQNVyuPxSXh3w9EUP8cZfdx+u2uLzwDtXBsc6vjop3I++dpc11
-P6CePsB2kHH3mFJA4sH3aGRy+Z2fi5h/km+/jw6cdeb0AsBJAQWphVafAoGAcjZw
-/jCWREjM2Yl19HeCTZMtyKy6bS8jcnVnI/ZfqRzSwHuqteRRfTnMSWjDz1O4NdUw
-6cg6igVaUH3NL7UceQCIqmsOXJJMzgIKHBdqc7qSUsNYBoARafCRN6m5zDRQYrEg
-vVRfk+1VKAlBysQ37GPuMYMCsCPLdr6UXC7szlECgYASnhXV2eGVMZaKgHLz8gC7
-txzOB1dlkS2ID/SAsuaPM2G4mqNLQ9rlo3RP0SCf3TLncuhzfiIrZq5DFbOuUYI0
-SgfeVGVyJtzrES2nOCvghU1Y/iCAOAXKcMEPE7MrvNdr7dgAsBiXP4lFve6q3pNT
-Gsa+G3ZLtJ3U5MGLsWAqQg==
------END PRIVATE KEY-----`;
-
-async function qzConnect() {
-  if (_qzReady) return true;
-  try {
-    if (!qz.websocket.isActive()) {
-      qz.security.setCertificatePromise(() => Promise.resolve(QZ_CERT));
-      qz.security.setSignaturePromise((toSign) => {
-        return (resolve) => {
-          const pk = KEYUTIL.getKey(QZ_KEY);
-          const sig = new KJUR.crypto.Signature({alg: 'SHA256withRSA'});
-          sig.init(pk);
-          sig.updateString(toSign);
-          resolve(hextob64(sig.sign()));
-        };
-      });
-      await qz.websocket.connect();
-    }
-    _qzReady = true;
-    console.log('[QZ] Conectado (trusted)');
-    return true;
-  } catch(e) {
-    console.warn('[QZ] No se pudo conectar:', e.message || e);
-    return false;
-  }
-}
-
-async function abrirCajon() {
-  const ok = await qzConnect();
-  if (!ok) { console.warn('[QZ] Sin conexión'); return; }
-  const ws = window._qzWs;
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify({
-      call: 'print',
-      promise: {uid: 'drawer-' + Date.now()},
-      params: {
-        printer: {name: QZ_PRINTER},
-        options: {},
-        data: [{data: 'G3AAGfo=', type: 'raw', format: 'base64'}]
-      }
-    }));
-    console.log('[QZ] Cajón abierto');
-  } else {
-    console.warn('[QZ] Websocket no disponible, readyState:', ws?.readyState);
-  }
-}
-
-// QZ Tray: ya no se conecta automáticamente al cargar
-// La impresora abre el cajón via window.print() — no necesita QZ
-// qzConnect(); // Deshabilitado — mantener por si se necesita manualmente
+/* QZ_REMOVED_START — código eliminado incluía:
+const QZ_PRINTER, QZ_CERT, QZ_KEY, qzConnect(), abrirCajon()
+QZ_REMOVED_END */
+const _qzRemoved = true; // placeholder para evitar errores si algo referencia QZ
