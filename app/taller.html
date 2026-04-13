@@ -799,7 +799,7 @@ function renderCardProduccion(p) {
       <div class="kds-badges">${badges}</div>
       <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
-      ${p.fecha_entrega ? `<div class="kds-hora-big">📅 ${formatFecha(p.fecha_entrega)} — ${horarioLabel(p.horario_entrega, p.hora_exacta)}</div>` : ''}
+      ${p.fecha_entrega || horarioLabel(p.horario_entrega, p.hora_exacta) ? `<div class="kds-hora-big">${p.fecha_entrega ? '📅 ' + formatFecha(p.fecha_entrega) : ''}${p.fecha_entrega && horarioLabel(p.horario_entrega, p.hora_exacta) ? ' — ' : ''}${horarioLabel(p.horario_entrega, p.hora_exacta) || ''}</div>` : ''}
       ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.zona_entrega ? 'Zona '+p.zona_entrega+' — ' : ''}${p.direccion_entrega}</div>` : ''}
       ${p.dedicatoria ? `<div class="kds-dedicatoria">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}

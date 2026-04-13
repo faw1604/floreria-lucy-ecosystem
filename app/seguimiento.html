@@ -474,11 +474,12 @@ function renderTracking(data) {
   // Delivery info
   if (data.fecha_entrega) {
     const horarios = {manana: 'Mañana (9-2pm)', tarde: 'Tarde (2-6pm)', noche: 'Noche (6-9pm)', hora_exacta: 'Hora específica'};
+    const horarioDisplay = data.hora_exacta || horarios[data.horario_entrega] || data.horario_entrega || '';
     html += `
       <div class="info-card">
         <h3>Información de entrega</h3>
         <div class="info-row"><strong>Fecha:</strong> ${data.fecha_entrega}</div>
-        ${data.horario_entrega ? `<div class="info-row"><strong>Horario:</strong> ${horarios[data.horario_entrega] || data.horario_entrega}</div>` : ''}
+        ${horarioDisplay ? `<div class="info-row"><strong>Horario:</strong> ${horarioDisplay}</div>` : ''}
       </div>
     `;
   }

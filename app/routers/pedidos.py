@@ -382,9 +382,9 @@ async def ticket_digital(
         from datetime import datetime as dt
         fecha_entrega = dt.combine(pedido.fecha_entrega, dt.min.time()).strftime("%d/%m/%Y")
 
-    recoger = not pedido.direccion_entrega and not pedido.zona_entrega
+    recoger = (pedido.metodo_entrega or "").startswith("recoger") or (not pedido.direccion_entrega and not pedido.zona_entrega)
     horario_map = {"manana": "Mañana 9-2pm", "mañana": "Mañana 9-2pm", "tarde": "Tarde 2-6pm", "noche": "Noche 6-9pm"}
-    horario = horario_map.get((pedido.horario_entrega or "").lower(), pedido.horario_entrega or "")
+    horario = pedido.hora_exacta or horario_map.get((pedido.horario_entrega or "").lower(), pedido.horario_entrega or "")
 
     if recoger:
         entrega_html = f"""
