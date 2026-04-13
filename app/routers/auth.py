@@ -1,9 +1,10 @@
 import hashlib, hmac, json, logging, base64
+import bcrypt as _bcrypt
 from fastapi import APIRouter, Request, HTTPException, Cookie, Depends
 from app.core.limiter import limiter
 from fastapi.responses import JSONResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 from app.core.config import settings
 from app.database import get_db
 from app.models.usuarios import Usuario
@@ -60,6 +61,35 @@ def obtener_rol(session_token: str | None) -> str | None:
     return info["r"] if info else None
 
 
+# ── Password hashing (bcrypt con migración desde SHA-256) ──
+
+def _hash_password(password: str) -> str:
+    """Hash password con bcrypt."""
+    return _bcrypt.hashpw(password.encode(), _bcrypt.gensalt(rounds=12)).decode()
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """Verifica password contra bcrypt o SHA-256 legacy."""
+    # bcrypt hashes empiezan con $2b$
+    if stored_hash.startswith("$2b$"):
+        return _bcrypt.checkpw(password.encode(), stored_hash.encode())
+    # Legacy SHA-256 (64 hex chars)
+    return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+
+
+async def _migrate_hash_if_needed(db: AsyncSession, user_id: int, password: str, stored_hash: str):
+    """Si el hash es SHA-256 legacy, re-hashear con bcrypt."""
+    if stored_hash.startswith("$2b$"):
+        return  # Ya es bcrypt
+    try:
+        new_hash = _hash_password(password)
+        await db.execute(text("UPDATE usuarios SET password_hash = :h WHERE id = :id"), {"h": new_hash, "id": user_id})
+        await db.commit()
+        logger.info(f"[AUTH] Password migrado a bcrypt para user_id={user_id}")
+    except Exception as e:
+        logger.error(f"[AUTH] Error migrando hash user_id={user_id}: {e}")
+
+
 @router.post("/login")
 @limiter.limit("10/minute")
 async def login(request: Request, db: AsyncSession = Depends(get_db)):
@@ -76,10 +106,11 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
         if not user:
             logger.warning(f"[AUTH] Login fallido (usuario no existe): username={username} ip={client_ip}")
             raise HTTPException(status_code=401, detail="Usuario no encontrado")
-        pw_hash = hashlib.sha256(password.encode()).hexdigest()
-        if user.password_hash != pw_hash:
+        if not _verify_password(password, user.password_hash):
             logger.warning(f"[AUTH] Login fallido (password incorrecto): username={username} ip={client_ip}")
             raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+        # Migración transparente: re-hashear con bcrypt si aún es SHA-256
+        await _migrate_hash_if_needed(db, user.id, password, user.password_hash)
         token = _make_token(user.id, user.username, user.rol)
         redirect = {
             "admin": "/panel/",

@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta
 import os, cloudinary, cloudinary.uploader
 from app.database import get_db
 from app.core.config import TZ
-from app.routers.auth import verificar_sesion, obtener_rol
+from app.routers.auth import verificar_sesion, obtener_rol, _hash_password
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.productos import Producto, Categoria, ProductoVariante
 import logging
@@ -60,11 +60,10 @@ async def crear_usuario(
 ):
     _auth(panel_session)
     data = await request.json()
-    import hashlib
     password = data.get("password", "")
     if not password:
         raise HTTPException(status_code=400, detail="Contraseña requerida")
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    pw_hash = _hash_password(password)
     try:
         await db.execute(text(
             "INSERT INTO usuarios (nombre, username, password_hash, rol, activo) VALUES (:n, :u, :p, :r, true)"
@@ -119,8 +118,7 @@ async def cambiar_password(
     password = data.get("password", "")
     if len(password) < 8:
         raise HTTPException(status_code=400, detail="Contraseña muy corta (mínimo 8 caracteres)")
-    import hashlib
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
+    pw_hash = _hash_password(password)
     await db.execute(text("UPDATE usuarios SET password_hash = :p WHERE id = :id"), {"p": pw_hash, "id": user_id})
     await db.commit()
     return {"ok": True}
