@@ -988,16 +988,23 @@ async def eliminar_banner(
 # ══════ FACTURACIÓN ══════
 
 def _fact_row(r):
+    subtotal = r[5] or 0  # p.subtotal
+    total = r[6] or 0     # p.total
+    envio = r[7] or 0     # p.envio
+    # IVA = total - subtotal - envio (lo que se sumó de impuestos)
+    iva = total - subtotal - envio
+    if iva < 0:
+        iva = 0
     return {"id":r[0],"folio":r[1],"fecha":str(r[2]) if r[2] else None,"cliente":r[3],
-     "canal":r[4],"subtotal":r[5],"iva":round(r[5]*0.16),"total":r[5]+round(r[5]*0.16),
-     "estado":r[6],"datos_fiscales_id":r[7],"folio_fiscal":r[8],"customer_id":r[9]}
+     "canal":r[4],"subtotal":subtotal,"iva":iva,"total":total,
+     "estado":r[8],"datos_fiscales_id":r[9],"folio_fiscal":r[10],"customer_id":r[11]}
 
 @router.get("/facturacion/pendientes")
 async def facturacion_pendientes(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
     result = await db.execute(text("""
         SELECT p.id, p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador'),
-               p.canal, p.total, p.estado, p.datos_fiscales_id, p.folio_fiscal, p.customer_id
+               p.canal, p.subtotal, p.total, p.envio, p.estado, p.datos_fiscales_id, p.folio_fiscal, p.customer_id
         FROM pedidos p LEFT JOIN clientes c ON c.id=p.customer_id
         WHERE p.requiere_factura = true AND (p.facturado = false OR p.facturado IS NULL)
         ORDER BY p.fecha_entrega DESC
@@ -1009,7 +1016,7 @@ async def facturacion_facturados(panel_session: str | None = Cookie(default=None
     _auth(panel_session)
     result = await db.execute(text("""
         SELECT p.id, p.numero, p.fecha_entrega, COALESCE(c.nombre,'Mostrador'),
-               p.canal, p.total, p.estado, p.datos_fiscales_id, p.folio_fiscal, p.customer_id
+               p.canal, p.subtotal, p.total, p.envio, p.estado, p.datos_fiscales_id, p.folio_fiscal, p.customer_id
         FROM pedidos p LEFT JOIN clientes c ON c.id=p.customer_id
         WHERE p.facturado = true ORDER BY p.fecha_entrega DESC
     """))
