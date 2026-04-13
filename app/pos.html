@@ -502,7 +502,14 @@ window._qzWs = null;
 <div class="modal-bg" id="modal-cancelar" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="modal" style="max-width:340px;text-align:center">
     <h3>¿Cancelar este pedido?</h3>
-    <p style="font-size:13px;color:var(--texto2);margin-bottom:16px">El pedido <strong id="cancel-folio"></strong> sera marcado como cancelado.</p>
+    <p style="font-size:13px;color:var(--texto2);margin-bottom:12px">El pedido <strong id="cancel-folio"></strong> sera marcado como cancelado.</p>
+    <select id="cancel-razon" style="width:100%;padding:10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;margin-bottom:16px;font-family:Inter,sans-serif">
+      <option value="falta_respuesta">Falta de respuesta</option>
+      <option value="duplicado">Pedido duplicado</option>
+      <option value="cliente_solicito">El cliente lo solicitó</option>
+      <option value="sin_disponibilidad">Sin disponibilidad</option>
+      <option value="otro">Otro</option>
+    </select>
     <div style="display:flex;gap:8px">
       <button onclick="document.getElementById('modal-cancelar').classList.remove('active')" style="flex:1;padding:10px;border:1px solid var(--borde);background:#fff;border-radius:8px;font-size:13px;font-weight:500">No</button>
       <button onclick="confirmarCancelar()" style="flex:1;padding:10px;background:var(--rojo);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600">Cancelar pedido</button>

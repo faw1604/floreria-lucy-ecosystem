@@ -2035,9 +2035,14 @@ function pedirCancelar(id, folio) {
   document.getElementById('modal-cancelar').classList.add('active');
 }
 async function confirmarCancelar() {
+  const razon = document.getElementById('cancel-razon').value;
   document.getElementById('modal-cancelar').classList.remove('active');
   try {
-    const r = await fetch(`/pos/pedido/${cancelPedidoId}/cancelar`, { method: 'PATCH' });
+    const r = await fetch(`/pos/pedido/${cancelPedidoId}/cancelar`, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({razon})
+    });
     if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
     pendAllData = pendAllData.filter(p => p.id !== cancelPedidoId);
     renderPendTable(pendAllData);

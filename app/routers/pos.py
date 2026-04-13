@@ -1601,6 +1601,7 @@ async def pos_verificar_clave_admin(
 @router.patch("/pedido/{pedido_id}/cancelar")
 async def pos_cancelar_pedido(
     pedido_id: int,
+    request: Request,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1610,8 +1611,27 @@ async def pos_cancelar_pedido(
     pedido = result.scalar_one_or_none()
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Leer razón del body (puede venir vacío en PATCH sin body)
+    razon = "falta_respuesta"
+    try:
+        data = await request.json()
+        razon = data.get("razon", "falta_respuesta")
+    except Exception:
+        pass
+
+    _razones_msg = {
+        "falta_respuesta": "por falta de respuesta",
+        "duplicado": "porque se detectó como duplicado",
+        "cliente_solicito": "a solicitud tuya",
+        "sin_disponibilidad": "porque no tenemos disponibilidad en este momento",
+        "otro": "",
+    }
+    razon_texto = _razones_msg.get(razon, "")
+
     pedido.estado = "Cancelado"
     pedido.estado_florista = "cancelado"
+    pedido.cancelado_razon = razon
     await db.commit()
 
     # Enviar WhatsApp de cancelación al cliente (solo web/WhatsApp, no mostrador)
@@ -1624,14 +1644,15 @@ async def pos_cancelar_pedido(
                 from app.routers.catalogo import _enviar_whatsapp
                 _tel = cli.telefono
                 _folio = pedido.numero
+                _msg = (
+                    f"Tu pedido {_folio} ha sido cancelado{' ' + razon_texto if razon_texto else ''}. "
+                    f"Por favor no realices ningun pago ya que tu pedido no sera registrado.\n\n"
+                    f"Si deseas hacer un nuevo pedido:\n"
+                    f"www.florerialucy.com 🌸"
+                )
                 async def _send():
                     try:
-                        await _enviar_whatsapp(_tel,
-                            f"Tu pedido {_folio} ha sido cancelado por falta de respuesta. "
-                            f"Por favor no realices ningún pago ya que tu pedido no será registrado.\n\n"
-                            f"Si deseas hacer un nuevo pedido:\n"
-                            f"www.florerialucy.com 🌸"
-                        )
+                        await _enviar_whatsapp(_tel, _msg)
                     except Exception:
                         pass
                 asyncio.create_task(_send())
