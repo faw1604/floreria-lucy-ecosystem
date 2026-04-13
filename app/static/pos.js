@@ -2098,6 +2098,11 @@ function editarPendiente(p) {
     if (p.direccion_entrega) dirVerificada = true;
   }
 
+  // Restore factura state
+  if (p.requiere_factura) {
+    conFactura = true;
+  }
+
   // Navigate to ventas > win1
   navTo('ventas');
   renderCart();

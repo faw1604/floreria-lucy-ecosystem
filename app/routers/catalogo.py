@@ -468,6 +468,16 @@ async def _crear_pedido_web_inner(request, db):
         subtotal += precio * cantidad
         items_validos.append({"producto": prod, "cantidad": cantidad, "precio": precio})
 
+    # IVA: si requiere factura, 16% sobre productos no-chocolate
+    impuesto = 0
+    if data.get("requiere_factura"):
+        sub_flores = sum(
+            iv["precio"] * iv["cantidad"]
+            for iv in items_validos
+            if "chocolates gourmet" not in (iv["producto"].categoria or "").lower()
+        )
+        impuesto = int(sub_flores * 0.16)
+
     # Buscar o crear cliente
     result = await db.execute(select(Cliente).where(Cliente.telefono == telefono))
     cliente = result.scalar_one_or_none()
@@ -605,7 +615,7 @@ async def _crear_pedido_web_inner(request, db):
         pago_confirmado=False,
         subtotal=subtotal,
         envio=envio,
-        total=subtotal + envio,
+        total=subtotal + impuesto + envio,
         tipo_especial="Funeral" if tipo == "funeral" else ("Recoger" if tipo == "recoger" else None),
         metodo_entrega="funeral_envio" if tipo == "funeral" else ("recoger" if tipo == "recoger" else "envio"),
         requiere_factura=data.get("requiere_factura", False),
