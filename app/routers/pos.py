@@ -4,7 +4,7 @@ from sqlalchemy import select, func
 from datetime import datetime, timedelta
 import httpx
 from app.core.limiter import limiter
-import os
+import os, json
 import logging
 
 logger = logging.getLogger("floreria")
@@ -433,6 +433,7 @@ async def _pos_crear_pedido_inner(request, db):
         dedicatoria=data.get("dedicatoria"),
         notas_internas=notas or None,
         forma_pago=", ".join([p.get("nombre") or str(p.get("metodo_pago_id", "")) for p in pagos]) if pagos else "Efectivo",
+        pagos_detalle=json.dumps([{"nombre": p.get("nombre", ""), "monto": p.get("monto", 0)} for p in pagos]) if pagos else None,
         pago_confirmado=estado_pedido == "pagado",
         pago_confirmado_at=ahora() if estado_pedido == "pagado" else None,
         subtotal=subtotal,
@@ -682,7 +683,7 @@ async def _serializar_pedido_pos(p, db):
         "id": p.id, "folio": p.numero, "estado": p.estado, "canal": p.canal,
         "cliente_nombre": cliente_nombre, "cliente_telefono": cliente_telefono, "customer_id": p.customer_id,
         "items": items, "subtotal": p.subtotal, "envio": p.envio, "total": p.total,
-        "forma_pago": p.forma_pago, "pago_confirmado": p.pago_confirmado,
+        "forma_pago": p.forma_pago, "pagos_detalle": p.pagos_detalle, "pago_confirmado": p.pago_confirmado,
         "tipo_especial": p.tipo_especial, "horario_entrega": p.horario_entrega,
         "hora_exacta": p.hora_exacta, "zona_entrega": p.zona_entrega,
         "direccion_entrega": p.direccion_entrega, "receptor_nombre": p.receptor_nombre,
@@ -862,10 +863,21 @@ async def pos_pedidos_hoy(
             # No sumar cancelados ni rechazados al total de ventas
             if p.estado not in (EP.CANCELADO, "Cancelado", "rechazado"):
                 total_vendido += p.total or 0
-                for metodo in (p.forma_pago or "").split(", "):
-                    metodo = metodo.strip()
-                    if metodo:
-                        desglose_pago[metodo] = desglose_pago.get(metodo, 0) + (p.total or 0)
+                _desglosado = False
+                if p.pagos_detalle:
+                    try:
+                        for d in json.loads(p.pagos_detalle):
+                            m = (d.get("nombre") or "").strip()
+                            if m:
+                                desglose_pago[m] = desglose_pago.get(m, 0) + (d.get("monto") or 0)
+                        _desglosado = True
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                if not _desglosado:
+                    for metodo in (p.forma_pago or "").split(", "):
+                        metodo = metodo.strip()
+                        if metodo:
+                            desglose_pago[metodo] = desglose_pago.get(metodo, 0) + (p.total or 0)
 
     # Ordenar finalizados por fecha de pago (más reciente primero)
     finalizados.sort(key=lambda x: x.get("pago_confirmado_at") or "", reverse=True)
@@ -1331,6 +1343,7 @@ async def pos_completar_pedido(
     pedido.envio = envio
     pedido.total = total
     pedido.forma_pago = ", ".join([p.get("nombre") or "" for p in pagos]) if pagos else pedido.forma_pago
+    pedido.pagos_detalle = json.dumps([{"nombre": p.get("nombre", ""), "monto": p.get("monto", 0)} for p in pagos]) if pagos else pedido.pagos_detalle
     pedido.customer_id = data.get("cliente_id") or pedido.customer_id
     pedido.tipo_especial = "Funeral" if tipo == "funeral" else None
     pedido.direccion_entrega = data.get("direccion_entrega") or pedido.direccion_entrega
@@ -1530,10 +1543,24 @@ async def pos_corte_caja(
     por_metodo = {}
     for p in pedidos:
         total += p.total or 0
-        for m in (p.forma_pago or "").split(","):
-            m = m.strip()
-            if m:
-                por_metodo[m] = por_metodo.get(m, 0) + (p.total or 0)
+        # Usar pagos_detalle si existe (desglose real), sino fallback a forma_pago
+        if p.pagos_detalle:
+            try:
+                detalle = json.loads(p.pagos_detalle)
+                for d in detalle:
+                    m = (d.get("nombre") or "").strip()
+                    if m:
+                        por_metodo[m] = por_metodo.get(m, 0) + (d.get("monto") or 0)
+                continue
+            except (json.JSONDecodeError, TypeError):
+                pass
+        # Fallback: pedidos sin desglose (anteriores al cambio)
+        metodos = [m.strip() for m in (p.forma_pago or "").split(",") if m.strip()]
+        if len(metodos) == 1:
+            por_metodo[metodos[0]] = por_metodo.get(metodos[0], 0) + (p.total or 0)
+        elif metodos:
+            # Sin desglose, no se puede saber cuánto fue cada uno — asignar al primero
+            por_metodo[metodos[0]] = por_metodo.get(metodos[0], 0) + (p.total or 0)
 
     # Period label
     dias = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"]

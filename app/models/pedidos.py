@@ -25,7 +25,8 @@ class Pedido(Base):
     receptor_telefono: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     dedicatoria: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     notas_internas: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    forma_pago: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    forma_pago: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    pagos_detalle: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: [{nombre, monto}]
     pago_confirmado: Mapped[bool] = mapped_column(Boolean, default=False)
     subtotal: Mapped[int] = mapped_column(Integer, default=0)  # en centavos
     envio: Mapped[int] = mapped_column(Integer, default=0)  # en centavos

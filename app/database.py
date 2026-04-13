@@ -67,6 +67,8 @@ async def inicializar_db():
             ("items_pedido", "gramos", "INTEGER"),
             ("egresos", "cuenta_id", "INTEGER"),
             ("productos", "imagenes_extra", "TEXT"),
+            ("pedidos", "pagos_detalle", "TEXT"),
+            ("pedidos", "forma_pago", "VARCHAR(100)"),
         ]
         for tabla, col, tipo in _migrations:
             try:
