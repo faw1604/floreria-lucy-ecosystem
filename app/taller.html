@@ -759,7 +759,7 @@ function renderCardNuevos(p) {
       <div class="kds-cliente">👤 ${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}${p.cliente_telefono ? ` · ${p.cliente_telefono}` : ''}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
       <div class="kds-detail" style="font-weight:600">💰 $${((p.total||0)/100).toLocaleString()}</div>
-      <div class="kds-detail" style="font-weight:600">${tipoEntregaLabel(p)}${(p.metodo_entrega||'').includes('envio') && horarioLabel(p.horario_entrega, p.hora_exacta) ? ' — ' + horarioLabel(p.horario_entrega, p.hora_exacta) : ''}</div>
+      <div class="kds-detail" style="font-weight:600">${tipoEntregaLabel(p)}${horarioLabel(p.horario_entrega, p.hora_exacta) ? ' — ' + horarioLabel(p.horario_entrega, p.hora_exacta) : ''}</div>
       ${p.fecha_entrega ? `<div class="kds-detail">📅 ${formatFecha(p.fecha_entrega)}</div>` : ''}
       ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.direccion_entrega}</div>` : ''}
       ${p.receptor_nombre && p.receptor_nombre !== p.cliente_nombre ? `<div class="kds-detail">🎁 Recibe: ${p.receptor_nombre}${p.receptor_telefono ? ' · ' + p.receptor_telefono : ''}</div>` : ''}
