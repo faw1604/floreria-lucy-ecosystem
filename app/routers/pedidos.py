@@ -10,7 +10,7 @@ from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
 from app.models.productos import Producto
 from app.models.configuracion import ConfiguracionNegocio
-from app.core.config import TZ
+from app.core.config import TZ, settings
 from app.core.estados import EstadoPedido as EP
 from app.core.utils import limpiar_telefono
 from app.routers.auth import verificar_sesion
@@ -353,10 +353,18 @@ async def obtener_items_pedido(
 @router.get("/{pedido_id}/ticket-digital")
 async def ticket_digital(
     pedido_id: int,
+    token: str | None = None,
+    panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db)
 ):
     from fastapi.responses import HTMLResponse
     from html import escape as esc
+    # Requiere sesión válida O token HMAC firmado (para links compartidos)
+    if not verificar_sesion(panel_session):
+        import hmac as _hmac
+        expected = _hmac.new(settings.SESSION_SECRET.encode(), str(pedido_id).encode(), "sha256").hexdigest()[:16]
+        if not token or token != expected:
+            raise HTTPException(status_code=401, detail="No autorizado")
     result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
     pedido = result.scalar_one_or_none()
     if not pedido:

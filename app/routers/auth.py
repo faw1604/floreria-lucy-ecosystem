@@ -121,12 +121,12 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
         logger.info(f"[AUTH] Login exitoso: username={username} rol={user.rol} ip={client_ip}")
         response = JSONResponse({"status": "ok", "rol": user.rol, "nombre": user.nombre, "redirect": redirect})
     else:
-        # Legacy: password-only login (backward compat)
+        # Legacy: password-only login — DEPRECADO, usar username+password
         if password != settings.PANEL_PASSWORD:
             logger.warning(f"[AUTH] Login legacy fallido ip={client_ip}")
             raise HTTPException(status_code=401, detail="Contraseña incorrecta")
         token = LEGACY_TOKEN
-        logger.info(f"[AUTH] Login legacy exitoso ip={client_ip}")
+        logger.warning(f"[AUTH] ⚠ Login legacy usado (DEPRECADO) ip={client_ip} — migrar a usuario con username")
         response = JSONResponse({"status": "ok", "rol": "admin", "nombre": "Admin", "redirect": "/panel/"})
 
     response.set_cookie(
