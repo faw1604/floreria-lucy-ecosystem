@@ -409,7 +409,33 @@ async def ticket_digital(
         {"<p style='margin:4px 0'><strong>Direccion:</strong> " + esc(pedido.direccion_entrega) + "</p>" if pedido.direccion_entrega else ""}
         """
 
+    # Desglose fiscal
+    subtotal_display = f"${pedido.subtotal // 100:,}" if pedido.subtotal else "$0"
     total_display = f"${pedido.total // 100:,}" if pedido.total else "$0"
+    impuesto_diff = (pedido.total or 0) - (pedido.subtotal or 0) - (pedido.envio or 0)
+    desglose_html = ""
+    if pedido.requiere_factura and impuesto_diff > 0:
+        # Calcular IVA vs IEPS por categoría
+        sub_flores = 0
+        sub_choco = 0
+        for item in items_db:
+            prod_r2 = await db.execute(select(Producto).where(Producto.id == item.producto_id))
+            prod2 = prod_r2.scalar_one_or_none()
+            cat = (prod2.categoria if prod2 else "").lower()
+            monto = (item.precio_unitario or 0) * item.cantidad
+            if "chocolates gourmet" in cat:
+                sub_choco += monto
+            else:
+                sub_flores += monto
+        iva = int(sub_flores * 0.16)
+        ieps = int(sub_choco * 0.08)
+        desglose_html = f'<div style="font-size:13px;text-align:right;padding:4px 0;color:#555">Subtotal: {subtotal_display}</div>'
+        if iva > 0:
+            desglose_html += f'<div style="font-size:13px;text-align:right;padding:2px 0;color:#d4a843">IVA 16%: ${iva // 100:,}</div>'
+        if ieps > 0:
+            desglose_html += f'<div style="font-size:13px;text-align:right;padding:2px 0;color:#888">IEPS 8%: ${ieps // 100:,} (desglosado)</div>'
+        if pedido.envio:
+            desglose_html += f'<div style="font-size:13px;text-align:right;padding:2px 0;color:#555">Envio: ${pedido.envio // 100:,}</div>'
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
@@ -435,6 +461,7 @@ async def ticket_digital(
       <thead><tr><td style="padding:6px 0;font-weight:600;border-bottom:2px solid #193a2c">Producto</td><td style="padding:6px 0;font-weight:600;border-bottom:2px solid #193a2c;text-align:right">Precio</td></tr></thead>
       <tbody>{items_html}</tbody>
     </table>
+    {desglose_html}
     <div style="text-align:right;font-size:18px;font-weight:700;color:#193a2c;padding:8px 0;border-top:2px solid #193a2c">
       Total: {total_display}
     </div>

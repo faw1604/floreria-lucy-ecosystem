@@ -1660,11 +1660,13 @@ function buildInfoFromPedido(p) {
   let tipo = 'mostrador';
   if (p.tipo_especial === 'Funeral') tipo = 'funeral';
   else if (p.direccion_entrega) tipo = 'domicilio';
-  else if (p.hora_exacta) tipo = 'recoger';
+  else if ((p.metodo_entrega||'').startsWith('recoger') || p.hora_exacta || p.tipo_especial === 'Recoger') tipo = 'recoger';
+  // Calcular impuesto como diferencia si no viene explícito
+  const impCalc = (p.total||0) - (p.subtotal||0) - (p.envio||0);
   return {
     folio: p.folio, fecha: p.fecha_pedido, items: p.items || [], tipo,
     subtotal: p.subtotal, envio: p.envio, total: p.total,
-    impuesto: 0, descuento: 0, comision: 0, cargo_hora: 0,
+    impuesto: impCalc > 0 ? impCalc : 0, descuento: 0, comision: 0, cargo_hora: 0,
     zona_envio: p.zona_entrega || '', forma_pago: p.forma_pago || '', pagos: [],
     cliente_nombre: p.cliente_nombre, cliente_telefono: p.cliente_telefono,
     receptor_nombre: p.receptor_nombre, receptor_telefono: p.receptor_telefono,
