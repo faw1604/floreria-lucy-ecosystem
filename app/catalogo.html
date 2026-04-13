@@ -2421,7 +2421,7 @@ async function onFechaChange() {
     const opts = buildRecogerOpts(fecha);
     let minHour = 0;
     if (isToday) {
-      minHour = currentHour + 2;
+      minHour = currentHour + 1.5;
     } else {
       // Mañana: mínimo 11:30 (tiempo de elaboración)
       // Pasado mañana o después: mínimo 9:30
