@@ -1,4 +1,4 @@
-import hashlib, json, logging
+import hashlib, hmac, json, logging, base64
 from fastapi import APIRouter, Request, HTTPException, Cookie, Depends
 from app.core.limiter import limiter
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -17,11 +17,15 @@ LEGACY_TOKEN = hashlib.sha256(
 ).hexdigest()
 
 
+def _hmac_sig(payload_str: str) -> str:
+    """HMAC-SHA256 signature (full 64 hex chars)."""
+    return hmac.new(settings.SESSION_SECRET.encode(), payload_str.encode(), "sha256").hexdigest()
+
+
 def _make_token(user_id: int, username: str, rol: str) -> str:
     """Create session token encoding user info."""
     payload = json.dumps({"id": user_id, "u": username, "r": rol})
-    sig = hashlib.sha256(f"{payload}:{settings.SESSION_SECRET}".encode()).hexdigest()[:16]
-    import base64
+    sig = _hmac_sig(payload)
     return base64.b64encode(f"{payload}|{sig}".encode()).decode()
 
 
@@ -33,11 +37,12 @@ def _parse_token(token: str) -> dict | None:
     if token == LEGACY_TOKEN:
         return {"id": 0, "u": "admin", "r": "admin"}
     try:
-        import base64
         decoded = base64.b64decode(token).decode()
         payload_str, sig = decoded.rsplit("|", 1)
-        expected_sig = hashlib.sha256(f"{payload_str}:{settings.SESSION_SECRET}".encode()).hexdigest()[:16]
-        if sig != expected_sig:
+        expected_sig = _hmac_sig(payload_str)
+        # Accept both new full HMAC and old truncated sha256 (transition)
+        old_sig = hashlib.sha256(f"{payload_str}:{settings.SESSION_SECRET}".encode()).hexdigest()[:16]
+        if not hmac.compare_digest(sig, expected_sig) and sig != old_sig:
             return None
         return json.loads(payload_str)
     except Exception:

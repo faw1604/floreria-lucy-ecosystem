@@ -32,6 +32,12 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Global exception handler — never leak internals to the client
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"[UNHANDLED] {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Error interno del servidor"})
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://www.florerialucy.com", "https://florerialucy.com"],
