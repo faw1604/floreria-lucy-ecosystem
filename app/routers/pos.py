@@ -1721,8 +1721,8 @@ async def pos_enviar_whatsapp_cliente(
             return {"error": f"Whapi {r.status_code}: {r.text[:300]}"}
         return {"ok": True}
     except Exception as e:
-        import traceback
-        return {"error": f"Error al enviar: {type(e).__name__}: {e}", "trace": traceback.format_exc()}
+        logger.error(f"[POS WHATSAPP] Error al enviar: {type(e).__name__}: {e}", exc_info=True)
+        return {"error": "Error al enviar mensaje de WhatsApp"}
 
 
 @router.post("/enviar-ticket-whatsapp")

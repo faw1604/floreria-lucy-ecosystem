@@ -2,6 +2,8 @@ __pycache__/
 *.py[cod]
 *.db
 .env
+.env.*
+!.env.example
 venv/
 .venv/
 *.egg-info/
@@ -9,3 +11,12 @@ dist/
 build/
 .idea/
 .vscode/
+kyte_ventas/
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+credentials*.json
+service-account*.json
+clientes_export.csv

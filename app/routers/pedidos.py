@@ -356,6 +356,7 @@ async def ticket_digital(
     db: AsyncSession = Depends(get_db)
 ):
     from fastapi.responses import HTMLResponse
+    from html import escape as esc
     result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
     pedido = result.scalar_one_or_none()
     if not pedido:
@@ -368,7 +369,7 @@ async def ticket_digital(
     for item in items_db:
         prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
         prod = prod_result.scalar_one_or_none()
-        nombre = item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto")
+        nombre = esc(item.nombre_personalizado if item.es_personalizado and item.nombre_personalizado else (prod.nombre if prod else "Producto"))
         precio = f"${item.precio_unitario * item.cantidad // 100:,}"
         items_html += f'<tr><td style="padding:6px 0;border-bottom:1px solid #eee">{item.cantidad}x {nombre}</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">{precio}</td></tr>'
 
@@ -388,16 +389,16 @@ async def ticket_digital(
     if recoger:
         entrega_html = f"""
         <p style="margin:4px 0"><strong>Modalidad:</strong> Recoger en tienda</p>
-        <p style="margin:4px 0"><strong>Cliente:</strong> {pedido.receptor_nombre or ''}</p>
-        {"<p style='margin:4px 0'><strong>Hora aprox:</strong> " + pedido.hora_exacta + "</p>" if pedido.hora_exacta else ""}
+        <p style="margin:4px 0"><strong>Cliente:</strong> {esc(pedido.receptor_nombre or '')}</p>
+        {"<p style='margin:4px 0'><strong>Hora aprox:</strong> " + esc(pedido.hora_exacta) + "</p>" if pedido.hora_exacta else ""}
         """
     else:
         entrega_html = f"""
-        <p style="margin:4px 0"><strong>Horario:</strong> {horario}</p>
-        {"<p style='margin:4px 0'><strong>Zona:</strong> " + pedido.zona_entrega + "</p>" if pedido.zona_entrega else ""}
-        <p style="margin:4px 0"><strong>Recibe:</strong> {pedido.receptor_nombre or ''}</p>
-        {"<p style='margin:4px 0'><strong>Tel:</strong> " + pedido.receptor_telefono + "</p>" if pedido.receptor_telefono else ""}
-        {"<p style='margin:4px 0'><strong>Direccion:</strong> " + pedido.direccion_entrega + "</p>" if pedido.direccion_entrega else ""}
+        <p style="margin:4px 0"><strong>Horario:</strong> {esc(horario)}</p>
+        {"<p style='margin:4px 0'><strong>Zona:</strong> " + esc(pedido.zona_entrega) + "</p>" if pedido.zona_entrega else ""}
+        <p style="margin:4px 0"><strong>Recibe:</strong> {esc(pedido.receptor_nombre or '')}</p>
+        {"<p style='margin:4px 0'><strong>Tel:</strong> " + esc(pedido.receptor_telefono) + "</p>" if pedido.receptor_telefono else ""}
+        {"<p style='margin:4px 0'><strong>Direccion:</strong> " + esc(pedido.direccion_entrega) + "</p>" if pedido.direccion_entrega else ""}
         """
 
     total_display = f"${pedido.total // 100:,}" if pedido.total else "$0"

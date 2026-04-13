@@ -383,7 +383,7 @@ async def crear_pedido_web(
         raise
     except Exception as e:
         logger.error(f"[CATALOGO PEDIDO] Error: {e}\n{_tb.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Error interno al procesar pedido")
 
 async def _crear_pedido_web_inner(request, db):
     data = await request.json()

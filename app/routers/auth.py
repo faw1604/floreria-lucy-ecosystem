@@ -1,4 +1,4 @@
-import hashlib, json
+import hashlib, json, logging
 from fastapi import APIRouter, Request, HTTPException, Cookie, Depends
 from app.core.limiter import limiter
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.database import get_db
 from app.models.usuarios import Usuario
 
+logger = logging.getLogger("floreria")
 router = APIRouter()
 
 # Legacy token for backward compat (old single-password sessions)
@@ -61,14 +62,18 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
     username = data.get("username", "").strip()
     password = data.get("password", "")
 
+    client_ip = request.client.host if request.client else "unknown"
+
     # Try username+password login
     if username:
         result = await db.execute(select(Usuario).where(Usuario.username == username, Usuario.activo == True))
         user = result.scalar_one_or_none()
         if not user:
+            logger.warning(f"[AUTH] Login fallido (usuario no existe): username={username} ip={client_ip}")
             raise HTTPException(status_code=401, detail="Usuario no encontrado")
         pw_hash = hashlib.sha256(password.encode()).hexdigest()
         if user.password_hash != pw_hash:
+            logger.warning(f"[AUTH] Login fallido (password incorrecto): username={username} ip={client_ip}")
             raise HTTPException(status_code=401, detail="Contraseña incorrecta")
         token = _make_token(user.id, user.username, user.rol)
         redirect = {
@@ -77,12 +82,15 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
             "florista": "/panel/taller",
             "repartidor": "/panel/repartidor",
         }.get(user.rol, "/panel/")
+        logger.info(f"[AUTH] Login exitoso: username={username} rol={user.rol} ip={client_ip}")
         response = JSONResponse({"status": "ok", "rol": user.rol, "nombre": user.nombre, "redirect": redirect})
     else:
         # Legacy: password-only login (backward compat)
         if password != settings.PANEL_PASSWORD:
+            logger.warning(f"[AUTH] Login legacy fallido ip={client_ip}")
             raise HTTPException(status_code=401, detail="Contraseña incorrecta")
         token = LEGACY_TOKEN
+        logger.info(f"[AUTH] Login legacy exitoso ip={client_ip}")
         response = JSONResponse({"status": "ok", "rol": "admin", "nombre": "Admin", "redirect": "/panel/"})
 
     response.set_cookie(
@@ -91,6 +99,7 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
         max_age=settings.SESION_DURACION,
         httponly=True,
         samesite="lax",
+        secure=settings.ENVIRONMENT == "production",
         path="/",
     )
     return response

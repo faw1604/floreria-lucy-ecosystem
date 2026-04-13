@@ -5,7 +5,7 @@ from datetime import datetime, date, timedelta
 import os, cloudinary, cloudinary.uploader
 from app.database import get_db
 from app.core.config import TZ
-from app.routers.auth import verificar_sesion
+from app.routers.auth import verificar_sesion, obtener_rol
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.productos import Producto, Categoria, ProductoVariante
 import logging
@@ -22,8 +22,8 @@ from app.models.proveedores import Proveedor
 router = APIRouter()
 
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", "ddku2wmpk"),
-    api_key=os.getenv("CLOUDINARY_API_KEY", "543563876228939"),
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", ""),
+    api_key=os.getenv("CLOUDINARY_API_KEY", ""),
     api_secret=os.getenv("CLOUDINARY_API_SECRET", ""),
 )
 
@@ -31,6 +31,9 @@ cloudinary.config(
 def _auth(panel_session):
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
+    rol = obtener_rol(panel_session)
+    if rol != "admin":
+        raise HTTPException(status_code=403, detail="Acceso denegado: se requiere rol admin")
 
 
 # ══════ USUARIOS ══════
@@ -114,8 +117,8 @@ async def cambiar_password(
     _auth(panel_session)
     data = await request.json()
     password = data.get("password", "")
-    if len(password) < 4:
-        raise HTTPException(status_code=400, detail="Contraseña muy corta")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Contraseña muy corta (mínimo 8 caracteres)")
     import hashlib
     pw_hash = hashlib.sha256(password.encode()).hexdigest()
     await db.execute(text("UPDATE usuarios SET password_hash = :p WHERE id = :id"), {"p": pw_hash, "id": user_id})
