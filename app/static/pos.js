@@ -1877,7 +1877,8 @@ async function loadPendientes(params) {
   }
   try {
     // Pendientes: traer TODOS sin filtro de fecha (un pendiente de ayer sigue siendo pendiente)
-    let url = '/pos/pedidos-hoy?periodo=todos&estado=pendiente_pago';
+    const canceladosOn = document.getElementById('fp-cancelados')?.checked;
+    let url = '/pos/pedidos-hoy?periodo=todos' + (canceladosOn ? '' : '&estado=pendiente_pago');
     if (params) url += '&' + params;
     const r = await fetch(url);
     if (!r.ok) {
@@ -1995,6 +1996,8 @@ function onToggleCancelados() {
     if (on) cb.checked = false;
     cb.closest('.fp-check').style.opacity = on ? '.4' : '1';
   });
+  _lastPendHash = '';
+  loadPendientes(on ? 'estado=cancelado' : '');
 }
 
 function getFilterParams() {
