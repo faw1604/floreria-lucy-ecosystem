@@ -2474,7 +2474,7 @@ function renderStep3Fields() {
     <div class="order-field"><label>Horario de velación <span class="required">*</span></label>
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <div style="flex:1"><label style="font-size:11px;color:var(--texto2)">Inicia</label><select id="of-vel-inicia" onchange="onVelacionChange()"><option value="">No sé</option><option value="Ya inició">Ya inició</option>${timeOpts.map(t => `<option value="${t}">${t}</option>`).join('')}</select></div>
-        <div style="flex:1"><label style="font-size:11px;color:var(--texto2)">Termina</label><select id="of-vel-termina" onchange="onVelacionChange()"><option value="">No sé</option>${timeOpts.map(t => `<option value="${t}">${t}</option>`).join('')}</select></div>
+        <div style="flex:1"><label style="font-size:11px;color:var(--texto2)">Termina</label><select id="of-vel-termina" onchange="onVelacionChange()"><option value="">No sé</option>${timeOpts.map(t => `<option value="${t}">Hoy ${t}</option>`).join('')}${timeOpts.map(t => `<option value="Día siguiente ${t}">Día sig. ${t}</option>`).join('')}</select></div>
       </div>
       <div id="of-vel-disclaimer" style="display:none;background:#fef3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 12px;font-size:12px;color:#856404;line-height:1.4">⚠️ Si no conoces el horario, tu pedido podría no llegar a tiempo. Te recomendamos confirmar con la funeraria antes de ordenar.</div>
     </div>`;
