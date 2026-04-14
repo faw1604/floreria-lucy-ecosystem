@@ -2384,7 +2384,16 @@ function renderStep3Fields() {
   const titles = {domicilio: 'Datos de envío', recoger: 'Datos de recogida', funeral: 'Datos del funeral'};
   document.getElementById('order-form-title').textContent = titles[tipo] || 'Datos del pedido';
 
-  const {minDate, todayBlocked} = calcMinDate();
+  let {minDate, todayBlocked} = calcMinDate();
+  // Funeral: permitir hoy si es antes de 18:30 (el backend valida 18:30)
+  if (tipo === 'funeral') {
+    const now = getChihuahuaNow();
+    const hour = now.getHours() + now.getMinutes() / 60;
+    if (hour < 18.5) {
+      minDate = fmtDateLocal(now);
+      todayBlocked = false;
+    }
+  }
 
   // Time slots (fallback for funeral velacion)
   const timeOpts = [];
