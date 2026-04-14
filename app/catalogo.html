@@ -1076,9 +1076,14 @@ function buildQueue() {
   // Score products by occasion relevance (tags + name matching)
   const hints = selectedOccasion ? (OCCASION_HINTS[selectedOccasion] || []) : [];
   function occasionScore(p) {
-    if (!hints.length) return 0;
     let score = 0;
     const nameLow = p.nombre.toLowerCase();
+    const catLow = (p.categoria || '').toLowerCase();
+    // Regalos (peluches, chocolates, extras) van al final cuando hay ocasión seleccionada
+    if (selectedOccasion && selectedOccasion !== 'sin_ocasion') {
+      if (REGALOS_CATS.some(r => catLow === r)) score -= 10;
+    }
+    if (!hints.length) return score;
     // Check etiquetas
     if (p.etiquetas) {
       try {
