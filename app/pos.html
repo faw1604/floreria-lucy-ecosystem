@@ -308,6 +308,17 @@ window._qzWs = null;
       <span id="pos-cat-result" style="margin-left:10px;font-size:12px"></span>
     </div>
 
+    <!-- Limpiar historial -->
+    <div style="background:#fff;border:1px solid var(--borde);border-radius:12px;padding:16px;margin-bottom:16px">
+      <h3 style="margin:0 0 8px;font-size:15px">Limpiar historial de Claudia</h3>
+      <p style="margin:0 0 10px;font-size:12px;color:var(--texto2)">Borra el historial de un contacto para que Claudia lo trate como cliente nuevo</p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="pos-limpiar-tel" placeholder="Ej: 5216141234567" style="flex:1;padding:7px 10px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit">
+        <button style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="posLimpiarHistorial()">Limpiar</button>
+      </div>
+      <span id="pos-limpiar-result" style="display:block;margin-top:8px;font-size:12px"></span>
+    </div>
+
     <!-- Inbox de Chats -->
     <div style="background:#fff;border:1px solid var(--borde);border-radius:12px;padding:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">

@@ -3669,6 +3669,20 @@ async function posEnviarCatalogo() {
   finally { btn.disabled = false; btn.textContent = 'Enviar por Claudia'; }
 }
 
+async function posLimpiarHistorial() {
+  const tel = document.getElementById('pos-limpiar-tel').value.trim().replace(/\D/g,'');
+  const result = document.getElementById('pos-limpiar-result');
+  if (!tel || tel.length < 10) { result.textContent = 'Ingresa un teléfono válido (con lada)'; result.style.color = 'var(--rojo)'; return; }
+  if (!confirm(`¿Borrar historial de ${tel}? Claudia lo tratará como cliente nuevo.`)) return;
+  result.textContent = 'Limpiando...'; result.style.color = 'var(--texto2)';
+  try {
+    const r = await fetch(`/api/claudia/historial/${tel}`, {method: 'DELETE', credentials: 'include'});
+    if (!r.ok) { const e = await r.json().catch(()=>({})); result.textContent = e.detail || 'Error'; result.style.color = 'var(--rojo)'; return; }
+    result.textContent = 'Historial borrado ✓'; result.style.color = 'var(--verde)';
+    document.getElementById('pos-limpiar-tel').value = '';
+  } catch(e) { result.textContent = 'Error de conexión'; result.style.color = 'var(--rojo)'; }
+}
+
 async function posLoadChats() {
   try {
     const r = await fetch('/api/claudia/chats', {credentials:'include'});

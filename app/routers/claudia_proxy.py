@@ -132,3 +132,9 @@ async def claudia_guardar_nota(request: Request, panel_session: str | None = Coo
 async def claudia_eliminar_nota(nota_id: int, panel_session: str | None = Cookie(default=None)):
     _auth(panel_session)
     return await _proxy_delete(f"{AGENTKIT_URL}/notas-chat/{nota_id}")
+
+
+@router.delete("/historial/{telefono}")
+async def claudia_limpiar_historial(telefono: str, panel_session: str | None = Cookie(default=None)):
+    _auth(panel_session)
+    return await _proxy_delete(f"{AGENTKIT_URL}/historial-chat/{telefono}")
