@@ -44,6 +44,8 @@ body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;m
 
 /* KDS Card — Nuevos */
 .kds-card{background:var(--blanco);border-radius:16px;box-shadow:var(--sombra);overflow:hidden;transition:all .2s;border-left:5px solid var(--borde)}
+.kds-card.kds-expanded .kds-body,.kds-card.kds-expanded .kds-actions,.kds-card.kds-expanded div[style*="display:none"]{display:block!important}
+.kds-card.kds-expanded .kds-card-head span:last-child{transform:rotate(180deg)}
 .kds-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1)}
 .kds-card-head{padding:14px 16px 10px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .kds-num{font-size:22px;font-weight:800;color:var(--verde);letter-spacing:-.02em}
@@ -787,26 +789,33 @@ function renderCardProduccion(p) {
     pagoBanner = '<div style="background:#f59e0b;color:#fff;font-size:12px;font-weight:700;padding:8px 12px;margin:0 0 4px;text-align:center;border-radius:8px">⚠️ NO REALIZAR — FALTA PAGO</div>';
   }
 
+  const collapsed = temporadaActiva;
+  const tipoLabel = tipoEntregaLabel(p);
+  const horaLabel = horarioLabel(p.horario_entrega, p.hora_exacta);
+  const itemsResumen = (p.items||[]).map(i => `${i.cantidad}x ${i.nombre}`).join(', ');
+
   return `<div class="kds-card ${esPendientePago ? '' : urg}" data-id="${p.id}" ${esPendientePago ? 'style="opacity:.75;border:2px dashed #f59e0b"' : ''}>
-    <div class="kds-card-head">
+    <div class="kds-card-head" ${collapsed ? `onclick="this.parentElement.classList.toggle('kds-expanded')" style="cursor:pointer"` : ''}>
       <div>
         <div class="kds-num">${tipoIcon(p)} ${p.numero}</div>
+        ${collapsed ? `<div style="font-size:11px;color:#888;margin-top:2px">${tipoLabel}${horaLabel ? ' — '+horaLabel : ''}</div>` : ''}
       </div>
-      ${esPendientePago ? '<span style="color:#f59e0b;font-size:12px;font-weight:700">⏳ Pendiente pago</span>' : cd}
+      ${esPendientePago ? '<span style="color:#f59e0b;font-size:12px;font-weight:700">⏳ Pendiente pago</span>' : collapsed ? '<span style="font-size:16px;color:#888">▼</span>' : cd}
     </div>
-    <div class="kds-body">
+    ${collapsed ? `<div style="font-size:12px;color:#555;padding:0 12px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${itemsResumen}</div>` : ''}
+    <div class="kds-body" ${collapsed ? 'style="display:none"' : ''}>
       ${pagoBanner}
       <div class="kds-badges">${badges}</div>
       <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
-      ${p.fecha_entrega || horarioLabel(p.horario_entrega, p.hora_exacta) ? `<div class="kds-hora-big">${p.fecha_entrega ? '📅 ' + formatFecha(p.fecha_entrega) : ''}${p.fecha_entrega && horarioLabel(p.horario_entrega, p.hora_exacta) ? ' — ' : ''}${horarioLabel(p.horario_entrega, p.hora_exacta) || ''}</div>` : ''}
+      ${p.fecha_entrega || horaLabel ? `<div class="kds-hora-big">${p.fecha_entrega ? '📅 ' + formatFecha(p.fecha_entrega) : ''}${p.fecha_entrega && horaLabel ? ' — ' : ''}${horaLabel || ''}</div>` : ''}
       ${p.direccion_entrega ? `<div class="kds-detail">📍 ${p.zona_entrega ? 'Zona '+p.zona_entrega+' — ' : ''}${p.direccion_entrega}</div>` : ''}
       ${p.dedicatoria ? `<div class="kds-dedicatoria">"${p.dedicatoria}"</div>` : ''}
       ${p.notas_internas ? `<div class="kds-notas">${p.notas_internas}</div>` : ''}
       ${!esPendientePago && timerProd ? `<div class="kds-detail" style="margin-top:4px">🔧 En produccion ${timerProd}</div>` : ''}
     </div>
-    <div style="padding:0 12px 4px"><button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')" style="width:100%">📷 Ver foto</button></div>
-    ${esPendientePago ? '' : `<div class="kds-actions">
+    <div ${collapsed ? 'style="display:none"' : 'style="padding:0 12px 4px"'}><button class="act-btn btn-secondary" onclick="verFotos(${p.id},'${esc(p.numero)}')" style="width:100%">📷 Ver foto</button></div>
+    ${esPendientePago ? '' : `<div class="kds-actions" ${collapsed ? 'style="display:none"' : ''}>
       <button class="act-btn btn-secondary" onclick="listoCurrentId=${p.id};listoImprimirEtiqueta2x1()">🏷 Etiqueta</button>
       <button class="act-btn btn-listo" onclick="accionListo(${p.id})">✅ LISTO</button>
     </div>`}
