@@ -15,12 +15,49 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("floreria")
 
+async def _auto_liberar_chats_viejos():
+    """Libera chats 'esperando_humano' con 5+ días sin actividad."""
+    import asyncio, httpx, os
+    from datetime import datetime, timedelta
+    url = os.getenv("AGENTKIT_URL", "https://whatsapp-agentkit-production-4e69.up.railway.app")
+    api_key = os.getenv("AGENTKIT_API_KEY", "")
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-Admin-Key"] = api_key
+    while True:
+        await asyncio.sleep(6 * 3600)  # cada 6 horas
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                r = await client.get(f"{url}/chats-activos", headers=headers)
+                if r.status_code != 200:
+                    continue
+                chats = r.json()
+                ahora = datetime.utcnow()
+                for c in chats:
+                    if c.get("estado") != "esperando_humano":
+                        continue
+                    ts = c.get("timestamp")
+                    if not ts:
+                        continue
+                    try:
+                        chat_time = datetime.fromisoformat(ts.replace("Z", "+00:00")).replace(tzinfo=None)
+                    except Exception:
+                        continue
+                    if (ahora - chat_time).days >= 5:
+                        await client.post(f"{url}/liberar-chat", json={"telefono": c["telefono"]}, headers=headers)
+                        logger.info(f"[AUTO] Chat liberado (5+ días): {c['telefono']}")
+        except Exception as e:
+            logger.error(f"[AUTO] Error liberando chats: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
     await inicializar_db()
     logger.info("Base de datos inicializada")
     logger.info(f"Ambiente: {settings.ENVIRONMENT}")
+    task = asyncio.create_task(_auto_liberar_chats_viejos())
     yield
+    task.cancel()
 
 app = FastAPI(
     title="Florería Lucy — Ecosistema",
