@@ -1659,8 +1659,8 @@ async def pos_cancelar_pedido(
     pedido.cancelado_razon = razon
     await db.commit()
 
-    # Enviar WhatsApp de cancelación al cliente (solo web/WhatsApp, no mostrador)
-    if pedido.canal in ("Web", "WhatsApp") and pedido.customer_id:
+    # Enviar WhatsApp de cancelación al cliente (cualquier canal con teléfono)
+    if pedido.customer_id:
         try:
             cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
             cli = cli_r.scalar_one_or_none()
