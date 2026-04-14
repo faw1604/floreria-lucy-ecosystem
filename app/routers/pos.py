@@ -9,7 +9,7 @@ import logging
 
 logger = logging.getLogger("floreria")
 from app.database import get_db
-from app.models.productos import Producto
+from app.models.productos import Producto, ProductoVariante
 from app.models.clientes import Cliente
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.pagos import MetodoPago
@@ -69,11 +69,27 @@ async def pos_productos(
     query = query.order_by(Producto.categoria, Producto.nombre)
     result = await db.execute(query)
     prods = result.scalars().all()
+
+    # Cargar variantes activas de todos los productos
+    prod_ids = [p.id for p in prods]
+    variantes_map = {}
+    if prod_ids:
+        vars_r = await db.execute(
+            select(ProductoVariante)
+            .where(ProductoVariante.producto_id.in_(prod_ids), ProductoVariante.activo == True)
+            .order_by(ProductoVariante.tipo, ProductoVariante.nombre)
+        )
+        for v in vars_r.scalars().all():
+            variantes_map.setdefault(v.producto_id, []).append({
+                "id": v.id, "tipo": v.tipo, "nombre": v.nombre, "precio": v.precio,
+            })
+
     return [{
         "id": p.id, "codigo": p.codigo, "nombre": p.nombre, "categoria": p.categoria,
         "precio": p.precio, "precio_descuento": p.precio_descuento,
         "imagen_url": p.imagen_url, "disponible_hoy": p.disponible_hoy,
         "vender_por_fraccion": p.vender_por_fraccion,
+        "variantes": variantes_map.get(p.id, []),
     } for p in prods]
 
 
@@ -456,6 +472,8 @@ async def _pos_crear_pedido_inner(request, db):
             nombre_personalizado=it.get("nombre_personalizado"),
             observaciones=it.get("observaciones"),
             gramos=it.get("gramos"),
+            variante_id=it.get("variante_id"),
+            variante_nombre=it.get("variante_nombre"),
         ))
 
     # Descontar stock si el pedido está pagado
@@ -567,6 +585,8 @@ async def _enviar_ticket_pago_whatsapp(pedido, db):
             prod_r = await db.execute(select(Producto).where(Producto.id == it.producto_id))
             prod = prod_r.scalar_one_or_none()
             nombre_it = prod.nombre if prod else "Producto"
+        if it.variante_nombre:
+            nombre_it += f" ({it.variante_nombre})"
         precio_it = (it.precio_unitario or 0) * it.cantidad
         items_lines.append(f"{it.cantidad}x {nombre_it} — ${precio_it/100:,.0f}")
 
@@ -671,6 +691,8 @@ async def _serializar_pedido_pos(p, db):
             "nombre_personalizado": it.nombre_personalizado,
             "codigo": prod.codigo if prod else None,
             "imagen_url": prod.imagen_url if prod else None,
+            "variante_id": it.variante_id,
+            "variante_nombre": it.variante_nombre,
         })
     cliente_nombre = None
     cliente_telefono = None
@@ -1037,6 +1059,8 @@ async def pos_aprobar_enviar_ticket(
             prod_r = await db.execute(select(Producto).where(Producto.id == it.producto_id))
             prod = prod_r.scalar_one_or_none()
             nombre_it = prod.nombre if prod else "Producto"
+        if it.variante_nombre:
+            nombre_it += f" ({it.variante_nombre})"
         precio_it = (it.precio_unitario or 0) * it.cantidad
         items_lines.append(f"{it.cantidad}x {nombre_it} — ${precio_it/100:,.0f}")
 
@@ -1384,6 +1408,8 @@ async def pos_completar_pedido(
             nombre_personalizado=it.get("nombre_personalizado"),
             observaciones=it.get("observaciones"),
             gramos=it.get("gramos"),
+            variante_id=it.get("variante_id"),
+            variante_nombre=it.get("variante_nombre"),
         ))
 
     await db.commit()

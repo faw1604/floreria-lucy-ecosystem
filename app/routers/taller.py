@@ -40,6 +40,8 @@ async def _serializar_pedido_taller(p, db: AsyncSession, rep_map: dict | None = 
         prod = prod_result.scalar_one_or_none()
         # Si es venta por fracción, el nombre_personalizado ya incluye "(200g)"
         nombre_final = item.nombre_personalizado or (prod.nombre if prod else "Producto eliminado")
+        if item.variante_nombre:
+            nombre_final += f" ({item.variante_nombre})"
         items.append({
             "nombre": nombre_final,
             "codigo": prod.codigo if prod else None,
@@ -49,6 +51,7 @@ async def _serializar_pedido_taller(p, db: AsyncSession, rep_map: dict | None = 
             "nombre_personalizado": item.nombre_personalizado,
             "observaciones": item.observaciones,
             "gramos": item.gramos,
+            "variante_nombre": item.variante_nombre,
         })
 
     # Cliente
@@ -361,6 +364,8 @@ async def envios_etiquetas_data(
             prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
             prod = prod_result.scalar_one_or_none()
             nombre = item.nombre_personalizado or (prod.nombre if prod else "Producto")
+            if item.variante_nombre:
+                nombre += f" ({item.variante_nombre})"
             for _ in range(item.cantidad):
                 items.append(nombre)
         cliente_nombre = ""
@@ -693,6 +698,8 @@ async def etiqueta_data(
         prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
         prod = prod_result.scalar_one_or_none()
         nombre = item.nombre_personalizado or (prod.nombre if prod else "Producto")
+        if item.variante_nombre:
+            nombre += f" ({item.variante_nombre})"
         for _ in range(item.cantidad):
             items.append(nombre)
     # Nombre del cliente
@@ -800,6 +807,8 @@ async def _generar_etiqueta(pedido: Pedido, db: AsyncSession, item_index: int | 
         prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
         prod = prod_result.scalar_one_or_none()
         nombre = item.nombre_personalizado or (prod.nombre if prod else "Producto")
+        if item.variante_nombre:
+            nombre += f" ({item.variante_nombre})"
         lineas.append(f"  {item.cantidad}x {nombre}")
         if item.observaciones:
             lineas.append(f"     Obs: {item.observaciones}")
@@ -860,6 +869,8 @@ async def etiquetas_manana_data(
             prod_result = await db.execute(select(Producto).where(Producto.id == item.producto_id))
             prod = prod_result.scalar_one_or_none()
             nombre = item.nombre_personalizado or (prod.nombre if prod else "Producto")
+            if item.variante_nombre:
+                nombre += f" ({item.variante_nombre})"
             for _ in range(item.cantidad):
                 items.append(nombre)
         cliente_nombre = ""

@@ -800,29 +800,103 @@ function updateCartFab() {
   }
 }
 
-function addToCart(product) {
+function addToCart(product, selectedVariante) {
   if (product.sin_stock) return;
-  const existing = cart.find(p => p.id === product.id);
+  // Si tiene variantes y no se eligió una, mostrar selector
+  if (product.variantes && product.variantes.length > 0 && !selectedVariante) {
+    showVariantSelector(product);
+    return;
+  }
+  const varId = selectedVariante ? selectedVariante.id : null;
+  const existing = cart.find(p => p.id === product.id && (p.variante_id || null) === varId);
   if (existing) {
     existing.qty = (existing.qty || 1) + 1;
   } else {
-    cart.push({...product, qty: 1});
+    const item = {...product, qty: 1};
+    if (selectedVariante) {
+      item.variante_id = selectedVariante.id;
+      item.variante_nombre = selectedVariante.nombre;
+      if (selectedVariante.precio && selectedVariante.precio > 0) {
+        item.precio = selectedVariante.precio;
+        item.precio_descuento = null;
+      }
+    }
+    cart.push(item);
   }
   saveCart();
-  // Show toast
+  showCartToast();
+}
+
+function showCartToast() {
   const toast = document.createElement('div');
   toast.textContent = '\u2713 Agregado al carrito';
   toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#193a2c;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:all .3s ease;font-family:Inter,sans-serif';
   document.body.appendChild(toast);
   requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => toast.remove(), 300); }, 1800);
-  // Cart bounce animation
   const cartFab = document.querySelector('.cart-fab');
   if (cartFab) {
     cartFab.classList.remove('cart-bounce');
     void cartFab.offsetWidth;
     cartFab.classList.add('cart-bounce');
   }
+}
+
+function showVariantSelector(product) {
+  // Agrupar variantes por tipo
+  const grupos = {};
+  product.variantes.forEach(v => {
+    if (!grupos[v.tipo]) grupos[v.tipo] = [];
+    grupos[v.tipo].push(v);
+  });
+  const tipoKeys = Object.keys(grupos);
+  let html = `<div style="padding:24px">
+    <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:var(--verde);margin-bottom:4px">${product.nombre}</div>
+    <div style="font-size:13px;color:var(--texto2);margin-bottom:16px">Selecciona una opción</div>`;
+  tipoKeys.forEach(tipo => {
+    if (tipoKeys.length > 1) html += `<div style="font-size:12px;font-weight:600;color:var(--texto2);margin-bottom:8px;text-transform:uppercase">${tipo}</div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">`;
+    grupos[tipo].forEach(v => {
+      const precioStr = v.precio && v.precio > 0 && v.precio !== product.precio ? ` · $${(v.precio/100).toLocaleString()}` : '';
+      html += `<button onclick="selectVariant(${product.id},${v.id})" style="padding:10px 18px;border:1.5px solid var(--borde);border-radius:10px;background:#fff;font-size:13px;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s">${v.nombre}${precioStr}</button>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  let modal = document.getElementById('modal-variante');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-variante';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:300;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s';
+    modal.innerHTML = `<div id="modal-variante-body" style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:70vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease-out"></div>`;
+    modal.onclick = e => { if (e.target === modal) closeVariantModal(); };
+    document.body.appendChild(modal);
+  }
+  document.getElementById('modal-variante-body').innerHTML = html;
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => {
+    modal.style.opacity = '1';
+    document.getElementById('modal-variante-body').style.transform = 'translateY(0)';
+  });
+  modal._productId = product.id;
+}
+
+function selectVariant(productId, varianteId) {
+  const product = allProducts.find(p => p.id === productId) || detailProduct;
+  if (!product) return;
+  const variante = product.variantes.find(v => v.id === varianteId);
+  if (!variante) return;
+  closeVariantModal();
+  addToCart(product, variante);
+}
+
+function closeVariantModal() {
+  const modal = document.getElementById('modal-variante');
+  if (!modal) return;
+  modal.style.opacity = '0';
+  document.getElementById('modal-variante-body').style.transform = 'translateY(100%)';
+  setTimeout(() => { modal.style.display = 'none'; }, 250);
 }
 
 function changeQty(index, delta) {
@@ -1340,7 +1414,7 @@ function renderCart() {
     <div class="cart-item" id="cart-item-${idx}" data-idx="${idx}">
       <img src="${p.imagen_url}" alt="${p.nombre}">
       <div class="cart-item-info">
-        <div class="cart-item-name">${p.nombre}</div>
+        <div class="cart-item-name">${p.nombre}${p.variante_nombre ? `<span style="display:block;font-size:11px;color:var(--texto2);font-weight:400">${p.variante_nombre}</span>` : ''}</div>
         <div class="cart-item-price">${renderPrice(p, 'cart-item-price')}</div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
           <button onclick="event.stopPropagation();changeQty(${idx},-1)" style="width:26px;height:26px;border:1px solid var(--borde);border-radius:6px;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
@@ -1448,6 +1522,7 @@ function openDetail(index, source) {
     ${p.dimensiones ? `<div class="detail-dims">📐 Dimensiones: ${p.dimensiones}</div>` : ''}
     ${(p.medida_alto || p.medida_ancho) ? `<div class="detail-dims">📐 Medidas aproximadas: ${p.medida_alto ? p.medida_alto+' cm alto' : ''}${p.medida_alto && p.medida_ancho ? ' × ' : ''}${p.medida_ancho ? p.medida_ancho+' cm ancho' : ''}</div>` : ''}
     ${tagsHtml}
+    ${p.variantes && p.variantes.length ? `<div style="margin-top:12px">${renderDetailVariantes(p)}</div>` : ''}
     ${p.descripcion ? `<div class="detail-desc">${p.descripcion}</div>` : ''}
     ${p.codigo ? `<div class="detail-code">Código: ${p.codigo}</div>` : ''}
     <div style="margin-top:12px;display:flex;gap:8px">
@@ -1460,6 +1535,22 @@ function openDetail(index, source) {
   `;
   document.getElementById('detail-overlay').classList.add('open');
   document.getElementById('detail-panel').classList.add('open');
+}
+
+function renderDetailVariantes(p) {
+  const grupos = {};
+  p.variantes.forEach(v => { if (!grupos[v.tipo]) grupos[v.tipo] = []; grupos[v.tipo].push(v); });
+  let html = '';
+  for (const [tipo, vars] of Object.entries(grupos)) {
+    html += `<div style="font-size:12px;font-weight:600;color:var(--texto2);margin-bottom:6px;text-transform:uppercase">${tipo}</div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">`;
+    vars.forEach(v => {
+      const precioStr = v.precio && v.precio > 0 && v.precio !== p.precio ? ` · $${(v.precio/100).toLocaleString()}` : '';
+      html += `<span style="padding:6px 14px;border:1px solid var(--borde);border-radius:8px;font-size:12px;color:var(--texto)">${v.nombre}${precioStr}</span>`;
+    });
+    html += `</div>`;
+  }
+  return html;
 }
 
 function closeDetail() {
@@ -3132,7 +3223,7 @@ async function submitOrder() {
   try {
     const body = {
       tipo: pedidoWeb.tipo,
-      items: cart.map(p => ({producto_id: p.id, cantidad: p.qty || 1})),
+      items: cart.map(p => ({producto_id: p.id, cantidad: p.qty || 1, variante_id: p.variante_id || null})),
       cliente_nombre: pedidoWeb.cliente_nombre,
       cliente_telefono: pedidoWeb.telefono_completo,
       cliente_email: pedidoWeb.cliente_email || null,

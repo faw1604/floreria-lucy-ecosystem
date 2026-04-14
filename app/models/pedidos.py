@@ -78,6 +78,9 @@ class ItemPedido(Base):
     # Venta por fracción: cuando > 0, el item se vendió por gramos.
     # cantidad queda en 1, precio_unitario = precio total calculado, gramos = cantidad real.
     gramos: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Variante seleccionada
+    variante_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    variante_nombre: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
 
 class NotificacionLog(Base):

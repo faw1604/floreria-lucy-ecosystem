@@ -6,7 +6,7 @@ from datetime import datetime
 import os, logging, httpx, json
 from app.core.limiter import limiter
 from app.database import get_db
-from app.models.productos import Producto
+from app.models.productos import Producto, ProductoVariante
 from app.models.pedidos import Pedido, ItemPedido
 from app.models.clientes import Cliente
 from app.models.configuracion import HorarioEspecifico, CodigoDescuento, ConfiguracionNegocio
@@ -141,6 +141,22 @@ async def catalogo_productos(
 
     result = await db.execute(query)
     productos = result.scalars().all()
+
+    # Cargar variantes activas de todos los productos de una vez
+    prod_ids = [p.id for p in productos]
+    variantes_map = {}
+    if prod_ids:
+        vars_result = await db.execute(
+            select(ProductoVariante)
+            .where(ProductoVariante.producto_id.in_(prod_ids), ProductoVariante.activo == True)
+            .order_by(ProductoVariante.tipo, ProductoVariante.nombre)
+        )
+        for v in vars_result.scalars().all():
+            variantes_map.setdefault(v.producto_id, []).append({
+                "id": v.id, "tipo": v.tipo, "nombre": v.nombre,
+                "precio": v.precio, "imagen_url": v.imagen_url,
+            })
+
     return [
         {
             "id": p.id,
@@ -161,6 +177,7 @@ async def catalogo_productos(
             "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None,
             "sin_stock": p.stock_activo and p.stock <= 0,
             "destacado": p.destacado,
+            "variantes": variantes_map.get(p.id, []),
         }
         for p in productos
     ]
@@ -465,8 +482,26 @@ async def _crear_pedido_web_inner(request, db):
 
         precio = prod.precio_descuento if (prod.precio_descuento and prod.precio_descuento < prod.precio) else prod.precio
         cantidad = item.get("cantidad", 1)
+
+        # Variante: validar si viene y aplicar precio
+        variante_id = item.get("variante_id")
+        variante_nombre = None
+        if variante_id:
+            var_r = await db.execute(select(ProductoVariante).where(
+                ProductoVariante.id == variante_id,
+                ProductoVariante.producto_id == prod.id,
+                ProductoVariante.activo == True,
+            ))
+            variante = var_r.scalar_one_or_none()
+            if not variante:
+                raise HTTPException(status_code=400, detail=f"Variante no válida para '{prod.nombre}'")
+            variante_nombre = variante.nombre
+            if variante.precio and variante.precio > 0:
+                precio = variante.precio
+
         subtotal += precio * cantidad
-        items_validos.append({"producto": prod, "cantidad": cantidad, "precio": precio})
+        items_validos.append({"producto": prod, "cantidad": cantidad, "precio": precio,
+                              "variante_id": variante_id, "variante_nombre": variante_nombre})
 
     # IVA: si requiere factura, 16% sobre productos no-chocolate
     impuesto = 0
@@ -632,6 +667,8 @@ async def _crear_pedido_web_inner(request, db):
             producto_id=iv["producto"].id,
             cantidad=iv["cantidad"],
             precio_unitario=iv["precio"],
+            variante_id=iv.get("variante_id"),
+            variante_nombre=iv.get("variante_nombre"),
         )
         db.add(item_pedido)
 

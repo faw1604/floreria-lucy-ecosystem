@@ -321,24 +321,66 @@ function renderProds() {
 // ═══════════════════════════════════════════
 // CART
 // ═══════════════════════════════════════════
-function addToCart(prodId) {
+function addToCart(prodId, selectedVariante) {
   const p = productos.find(x => x.id === prodId);
   if (!p) return;
-  // Si es venta por fracción, abrir modal de gramos en vez de incrementar
-  if (p.vender_por_fraccion) {
-    abrirModalGramos(p);
+  // Si es venta por fracción, abrir modal de gramos
+  if (p.vender_por_fraccion) { abrirModalGramos(p); return; }
+  // Si tiene variantes y no se eligió una, mostrar selector
+  if (p.variantes && p.variantes.length > 0 && !selectedVariante) {
+    abrirModalVariantes(p);
     return;
   }
-  const existing = carrito.find(x => x.producto_id === prodId && !x.es_custom && !x.gramos);
+  const varId = selectedVariante ? selectedVariante.id : null;
+  const existing = carrito.find(x => x.producto_id === prodId && !x.es_custom && !x.gramos && (x.variante_id || null) === varId);
   if (existing) { existing.cantidad++; }
   else {
+    const precio = (selectedVariante && selectedVariante.precio > 0) ? selectedVariante.precio : (p.precio_descuento || p.precio);
     carrito.push({
       producto_id: p.id, nombre: p.nombre, codigo: p.codigo, categoria: p.categoria,
-      precio: p.precio_descuento || p.precio, cantidad: 1, imagen_url: p.imagen_url,
-      descuento: null, es_custom: false, observaciones: null
+      precio, cantidad: 1, imagen_url: p.imagen_url,
+      descuento: null, es_custom: false, observaciones: null,
+      variante_id: varId, variante_nombre: selectedVariante ? selectedVariante.nombre : null,
     });
   }
   renderCart();
+}
+
+function abrirModalVariantes(p) {
+  const grupos = {};
+  p.variantes.forEach(v => { if (!grupos[v.tipo]) grupos[v.tipo] = []; grupos[v.tipo].push(v); });
+  const tipoKeys = Object.keys(grupos);
+  let html = `<h3 style="margin:0 0 4px">${p.nombre}</h3><p style="margin:0 0 16px;color:var(--texto2);font-size:13px">Selecciona una opción</p>`;
+  tipoKeys.forEach(tipo => {
+    if (tipoKeys.length > 1) html += `<div style="font-size:12px;font-weight:600;color:var(--texto2);margin-bottom:6px;text-transform:uppercase">${tipo}</div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">`;
+    grupos[tipo].forEach(v => {
+      const precioStr = v.precio > 0 && v.precio !== p.precio ? ` · $${(v.precio/100).toLocaleString()}` : '';
+      html += `<button class="btn-edit" onclick="seleccionarVariante(${p.id},${v.id})" style="padding:8px 16px;font-size:13px">${v.nombre}${precioStr}</button>`;
+    });
+    html += `</div>`;
+  });
+  // Reuse modal-rayo structure
+  let modal = document.getElementById('modal-variantes-pos');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-variantes-pos';
+    modal.className = 'modal-bg active';
+    modal.innerHTML = `<div class="modal" style="max-width:400px"><button class="modal-close" onclick="document.getElementById('modal-variantes-pos').classList.remove('active')">&times;</button><div id="modal-variantes-body"></div></div>`;
+    modal.onclick = e => { if (e.target === modal) modal.classList.remove('active'); };
+    document.body.appendChild(modal);
+  }
+  document.getElementById('modal-variantes-body').innerHTML = html;
+  modal.classList.add('active');
+}
+
+function seleccionarVariante(prodId, varianteId) {
+  const p = productos.find(x => x.id === prodId);
+  if (!p) return;
+  const v = p.variantes.find(x => x.id === varianteId);
+  if (!v) return;
+  document.getElementById('modal-variantes-pos').classList.remove('active');
+  addToCart(prodId, v);
 }
 
 // ─── Venta por fracción (gramos) ───
@@ -502,7 +544,7 @@ function renderCart() {
         : `<button class="ci-disc-btn" onclick="toggleItemDisc(${i})">Descuento</button>`;
       return `<div class="ci">
         <div class="ciinfo">
-          <div class="ciname">${it.nombre}${it.es_custom?' ⚡':''}</div>
+          <div class="ciname">${it.nombre}${it.es_custom?' ⚡':''}${it.variante_nombre ? ` <span style="font-weight:400;color:var(--texto2);font-size:11px">(${it.variante_nombre})</span>` : ''}</div>
           ${it.codigo ? `<div class="cicode">${it.codigo}</div>` : ''}
           <div class="ciprice">${priceHtml}</div>
           ${discBtn}
@@ -1297,6 +1339,8 @@ function buildPayload(estado) {
     nombre_personalizado: it.es_custom ? it.nombre : (it.gramos ? it.nombre : null),
     observaciones: it.observaciones || null,
     gramos: it.gramos || null,
+    variante_id: it.variante_id || null,
+    variante_nombre: it.variante_nombre || null,
   }));
 
   const pagos = Object.entries(selectedPays).map(([nombre, monto]) => ({
@@ -1614,7 +1658,7 @@ function buildMiniTickets(info) {
 function buildInfoFromPOS() {
   const r = lastResult;
   const items = lastCarritoSnap.map(it => ({
-    nombre: it.nombre, cantidad: it.cantidad, precio_unitario: it.precio
+    nombre: it.nombre + (it.variante_nombre ? ` (${it.variante_nombre})` : ''), cantidad: it.cantidad, precio_unitario: it.precio
   }));
   const tipo = ordenTipo || 'mostrador';
   return {
@@ -2076,7 +2120,9 @@ function editarPendiente(p) {
     imagen_url: it.imagen_url || null,
     descuento: null,
     es_custom: !!it.es_personalizado,
-    observaciones: it.observaciones || null
+    observaciones: it.observaciones || null,
+    variante_id: it.variante_id || null,
+    variante_nombre: it.variante_nombre || null,
   }));
 
   // Determine type
