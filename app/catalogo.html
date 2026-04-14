@@ -2471,8 +2471,12 @@ function renderStep3Fields() {
     <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje...">${pedidoWeb.dedicatoria||''}</textarea></div>
     <div class="order-field"><label>Fecha de entrega <span class="required">*</span></label><input type="date" id="of-fecha" value="${pedidoWeb.fecha_entrega||''}" min="${minDate}" onchange="onFechaChange()"></div>
     <div id="of-wa-restriction" style="display:none"></div>
-    <div class="order-field"><label>Horario velación</label>
-      <select id="of-velacion"><option value="">Selecciona</option><option value="Ya inició" ${pedidoWeb.horario_velacion==='Ya inició'?'selected':''}>Ya inició</option>${timeOpts.map(t => `<option value="Inicia a las ${t}" ${pedidoWeb.horario_velacion===('Inicia a las '+t)?'selected':''}>Inicia a las ${t}</option>`).join('')}</select>
+    <div class="order-field"><label>Horario de velación <span class="required">*</span></label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div style="flex:1"><label style="font-size:11px;color:var(--texto2)">Inicia</label><select id="of-vel-inicia" onchange="onVelacionChange()"><option value="">No sé</option><option value="Ya inició">Ya inició</option>${timeOpts.map(t => `<option value="${t}">${t}</option>`).join('')}</select></div>
+        <div style="flex:1"><label style="font-size:11px;color:var(--texto2)">Termina</label><select id="of-vel-termina" onchange="onVelacionChange()"><option value="">No sé</option>${timeOpts.map(t => `<option value="${t}">${t}</option>`).join('')}</select></div>
+      </div>
+      <div id="of-vel-disclaimer" style="display:none;background:#fef3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 12px;font-size:12px;color:#856404;line-height:1.4">⚠️ Si no conoces el horario, tu pedido podría no llegar a tiempo. Te recomendamos confirmar con la funeraria antes de ordenar.</div>
     </div>`;
   }
 
@@ -2513,6 +2517,13 @@ function esFechaFuerte(fechaStr) {
 function esFechaFuerteExacta(fechaStr) {
   if (!catConfig || catConfig.temporada_modo !== 'alta') return false;
   return fechaStr === catConfig.temporada_fecha_fuerte;
+}
+
+function onVelacionChange() {
+  const inicia = document.getElementById('of-vel-inicia')?.value || '';
+  const termina = document.getElementById('of-vel-termina')?.value || '';
+  const disc = document.getElementById('of-vel-disclaimer');
+  if (disc) disc.style.display = (!inicia && !termina) ? '' : 'none';
 }
 
 async function onFechaChange() {
@@ -3054,7 +3065,13 @@ function saveStep3Data() {
     pedidoWeb.bandas_extra = bandasData.extras;
     pedidoWeb.bandas_extra_costo = bandasData.extraCost;
     pedidoWeb.dedicatoria = (document.getElementById('of-dedicatoria')?.value || '').trim();
-    pedidoWeb.horario_velacion = document.getElementById('of-velacion')?.value || '';
+    const velInicia = document.getElementById('of-vel-inicia')?.value || '';
+    const velTermina = document.getElementById('of-vel-termina')?.value || '';
+    let velParts = [];
+    if (velInicia) velParts.push(velInicia === 'Ya inició' ? 'Ya inició' : `Inicia ${velInicia}`);
+    if (velTermina) velParts.push(`Termina ${velTermina}`);
+    if (!velInicia && !velTermina) velParts.push('Horario no confirmado');
+    pedidoWeb.horario_velacion = velParts.join(' · ');
   }
 }
 
