@@ -289,6 +289,39 @@ async def catalogo_seleccionar(request: Request):
     }
 
 
+@router.post("/carrito-compartido")
+async def crear_carrito_compartido(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Crea un carrito compartido desde POS y devuelve código corto."""
+    from app.models.pedidos import CarritoCompartido
+    import secrets
+    data = await request.json()
+    items = data.get("items", [])
+    if not items:
+        raise HTTPException(status_code=400, detail="El carrito está vacío")
+    codigo = secrets.token_urlsafe(6)[:8]
+    carrito = CarritoCompartido(codigo=codigo, items_json=json.dumps(items))
+    db.add(carrito)
+    await db.commit()
+    return {"ok": True, "codigo": codigo, "url": f"https://www.florerialucy.com/catalogo?carrito={codigo}"}
+
+
+@router.get("/carrito-compartido/{codigo}")
+async def obtener_carrito_compartido(
+    codigo: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve los items de un carrito compartido."""
+    from app.models.pedidos import CarritoCompartido
+    result = await db.execute(select(CarritoCompartido).where(CarritoCompartido.codigo == codigo))
+    carrito = result.scalar_one_or_none()
+    if not carrito:
+        raise HTTPException(status_code=404, detail="Carrito no encontrado")
+    return {"items": json.loads(carrito.items_json), "codigo": carrito.codigo}
+
+
 @router.get("/validar-descuento")
 async def validar_descuento(
     codigo: str,

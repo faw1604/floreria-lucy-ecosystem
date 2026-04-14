@@ -3385,6 +3385,45 @@ function startFechaEspecial() {
   }
   // Si viene con ?modo= → usar ese modo. Si no → classic por defecto (quitar landing vieja)
   startMode(modo === 'dynamic' ? 'dynamic' : 'classic');
+
+  // Carrito compartido — pre-cargar productos desde link generado en POS
+  const carritoCode = params.get('carrito');
+  if (carritoCode) {
+    (async () => {
+      try {
+        const r = await fetch(`${API}/catalogo/carrito-compartido/${carritoCode}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        const waitProds = setInterval(() => {
+          if (allProducts.length > 0) {
+            clearInterval(waitProds);
+            cart = []; // Limpiar carrito actual
+            (data.items || []).forEach(ci => {
+              const prod = allProducts.find(p => p.id === ci.producto_id);
+              if (!prod) return;
+              const item = {...prod, qty: ci.cantidad || 1};
+              if (ci.variante_id && prod.variantes) {
+                const v = prod.variantes.find(x => x.id === ci.variante_id);
+                if (v) {
+                  item.variante_id = v.id;
+                  item.variante_nombre = v.nombre;
+                  if (v.precio && v.precio > 0) { item.precio = v.precio; item.precio_descuento = null; }
+                }
+              }
+              cart.push(item);
+            });
+            saveCart();
+            // Ir directo al carrito
+            showView('classic');
+            document.getElementById('cart-overlay').classList.add('open');
+            renderCart();
+          }
+        }, 200);
+        setTimeout(() => clearInterval(waitProds), 5000);
+      } catch(e) { console.error('Error cargando carrito compartido:', e); }
+    })();
+  }
+
   // Pick up products added from producto.html page
   const pending = JSON.parse(localStorage.getItem('fl_add_to_cart') || '[]');
   if (pending.length > 0) {

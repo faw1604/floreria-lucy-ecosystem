@@ -83,6 +83,16 @@ class ItemPedido(Base):
     variante_nombre: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
 
+class CarritoCompartido(Base):
+    __tablename__ = "carritos_compartidos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    codigo: Mapped[str] = mapped_column(String(12), unique=True, index=True)
+    items_json: Mapped[str] = mapped_column(Text)  # JSON: [{producto_id, cantidad, variante_id?}]
+    creado_en: Mapped[datetime] = mapped_column(DateTime, default=ahora)
+    usado: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
 class NotificacionLog(Base):
     __tablename__ = "notificaciones_log"
 

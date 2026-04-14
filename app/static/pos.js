@@ -589,8 +589,39 @@ function renderCartTotals() {
     html += desgl;
     html += fiscalFieldsHtml();
   }
-  html += `<button class="btn-continuar" ${carrito.length===0?'disabled':''} onclick="goWin(2)">Continuar orden →</button>`;
+  html += `<div style="display:flex;gap:8px">`;
+  html += `<button class="btn-continuar" style="flex:1" ${carrito.length===0?'disabled':''} onclick="goWin(2)">Continuar orden →</button>`;
+  html += `<button class="btn-continuar" style="flex:0;padding:0 14px;background:#d4a843;color:#193a2c;font-size:14px" ${carrito.length===0?'disabled':''} onclick="compartirCarrito()" title="Compartir carrito por WhatsApp">🔗</button>`;
+  html += `</div>`;
   document.getElementById('cart-totals').innerHTML = html;
+}
+
+async function compartirCarrito() {
+  if (carrito.length === 0) return;
+  const items = carrito.filter(it => it.producto_id).map(it => ({
+    producto_id: it.producto_id,
+    cantidad: it.cantidad,
+    variante_id: it.variante_id || null,
+  }));
+  if (!items.length) { alert('Solo hay productos personalizados, no se puede compartir'); return; }
+  try {
+    const r = await fetch('/catalogo/carrito-compartido', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({items})
+    });
+    const data = await r.json();
+    if (!data.ok) { alert(data.detail || 'Error'); return; }
+    const url = data.url;
+    const total = carrito.reduce((s, it) => s + it.precio * it.cantidad, 0);
+    const msg = `Hola! 🌸 Tu pedido en Florería Lucy está listo:\n\n` +
+      carrito.map(it => `• ${it.cantidad}x ${it.nombre}${it.variante_nombre ? ' ('+it.variante_nombre+')' : ''}`).join('\n') +
+      `\n\nTotal: $${(total/100).toLocaleString()}\n\n` +
+      `Completa tus datos aquí para confirmar:\n${url}`;
+    // Copiar al portapapeles
+    await navigator.clipboard.writeText(msg);
+    alert('Mensaje copiado al portapapeles. Pégalo en el chat de WhatsApp del cliente.');
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 function toggleIva() { ivaActivo = !ivaActivo; renderCart(); }
