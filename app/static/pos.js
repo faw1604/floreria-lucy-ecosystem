@@ -616,8 +616,7 @@ async function compartirCarrito() {
     const total = carrito.reduce((s, it) => s + it.precio * it.cantidad, 0);
     const msg = `Hola! 🌸 Tu pedido en Florería Lucy está listo:\n\n` +
       carrito.map(it => `• ${it.cantidad}x ${it.nombre}${it.variante_nombre ? ' ('+it.variante_nombre+')' : ''}`).join('\n') +
-      `\n\nTotal: $${(total/100).toLocaleString()}\n\n` +
-      `Completa tus datos aquí para confirmar:\n${url}`;
+      `\n\nCompleta tus datos aquí para confirmar tu pedido:\n${url}`;
     // Copiar al portapapeles
     await navigator.clipboard.writeText(msg);
     alert('Mensaje copiado al portapapeles. Pégalo en el chat de WhatsApp del cliente.');
