@@ -1136,13 +1136,12 @@ function buildQueue() {
     precio: 0,
     id: -1
   };
-  const withPromos = [];
-  items.forEach((p, i) => {
-    withPromos.push(p);
-    if ((i + 1) % 5 === 0 && i < items.length - 1) {
-      withPromos.push({...PROMO_CARD});
-    }
-  });
+  // Promo card only once, near the middle of the queue
+  const withPromos = [...items];
+  const mid = Math.floor(items.length / 2);
+  if (items.length >= 8) {
+    withPromos.splice(mid, 0, {...PROMO_CARD});
+  }
   return withPromos;
 }
 
@@ -1660,14 +1659,24 @@ function setFlower(f) { flowerFilter = f; renderFlowerPills(); renderClassicGrid
 function onSearch() { searchQuery = document.getElementById('search-input').value; renderClassicGrid(); }
 function filterCombos() { sectionFilter = 'general'; catFilter = '_combos'; flowerFilter = null; renderSectionTabs(); renderCatPills(); renderFlowerPills(); renderClassicGrid(); }
 function showCombosFromSwipe() {
-  currentMode = 'classic';
-  showView('classic');
-  initClassic().then(() => { setTimeout(filterCombos, 100); });
+  // Saltar la promo card y seguir deslizando
+  dynIndex++;
+  renderDynCard();
+  // Mostrar mini-toast
+  _swipeToast('Combos disponibles en la vista de catálogo 🛍');
 }
 function showRegalosFromSwipe() {
-  currentMode = 'classic';
-  showView('classic');
-  initClassic().then(() => { setTimeout(() => { setSection('regalos'); }, 100); });
+  dynIndex++;
+  renderDynCard();
+  _swipeToast('Regalos disponibles en la vista de catálogo 🎁');
+}
+function _swipeToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {position:'fixed',bottom:'100px',left:'50%',transform:'translateX(-50%)',background:'#193a2c',color:'#fff',padding:'10px 20px',borderRadius:'24px',fontSize:'13px',fontWeight:'500',zIndex:'999',opacity:'0',transition:'opacity .3s',whiteSpace:'nowrap'});
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.style.opacity = '1');
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
 }
 
 function renderClassicGrid() {
