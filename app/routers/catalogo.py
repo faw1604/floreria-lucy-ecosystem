@@ -482,8 +482,12 @@ async def _crear_pedido_web_inner(request, db):
     if tipo == "funeral":
         from app.core.utils import ahora
         hora_actual = ahora()
-        if hora_actual.hour * 60 + hora_actual.minute >= 18 * 60 + 30:
-            raise HTTPException(status_code=400, detail="Los pedidos de funeral solo se aceptan hasta las 6:30 PM")
+        # Límite: 30 min antes del cierre (Lun-Vie 18:30, Sáb 17:30, Dom 14:30)
+        dia = hora_actual.weekday()  # 0=Lun, 6=Dom
+        limites = {6: 14*60+30, 5: 17*60+30}  # Dom, Sáb
+        limite_min = limites.get(dia, 18*60+30)  # default Lun-Vie
+        if hora_actual.hour * 60 + hora_actual.minute >= limite_min:
+            raise HTTPException(status_code=400, detail="Ya pasó el horario límite para pedidos funeral de hoy")
         if not data.get("nombre_fallecido"):
             raise HTTPException(status_code=400, detail="Nombre del fallecido es obligatorio")
 
