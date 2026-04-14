@@ -975,9 +975,7 @@ async def pos_aprobar_enviar_ticket(
     if pedido.estado != EP.PENDIENTE_PAGO:
         raise HTTPException(status_code=400, detail=f"Pedido debe estar en pendiente_pago (actual: {pedido.estado})")
 
-    # 2. Verificar forma_pago
-    if not pedido.forma_pago:
-        raise HTTPException(status_code=400, detail="El pedido no tiene método de pago asignado")
+    # 2. forma_pago puede estar vacía — se envía solo el resumen sin datos de pago
 
     # 3. Obtener teléfono del cliente
     telefono = None
