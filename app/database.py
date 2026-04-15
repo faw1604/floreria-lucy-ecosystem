@@ -83,7 +83,14 @@ async def inicializar_db():
         except Exception:
             pass
 
-        # One-shot: fix dedicatoria funeral pedido 5106
+        # One-shot: fix pedidos funeral sin metodo_entrega + dedicatoria 5106
+        try:
+            await conn.execute(text(
+                "UPDATE pedidos SET metodo_entrega = 'funeral_envio' WHERE tipo_especial = 'Funeral' AND (metodo_entrega IS NULL OR metodo_entrega = '')"
+            ))
+            _log.info("  Fix funeral metodo_entrega: OK")
+        except Exception:
+            pass
         try:
             r = await conn.execute(text("SELECT dedicatoria FROM pedidos WHERE id = 5106"))
             row = r.fetchone()
