@@ -108,6 +108,68 @@ async def inicializar_db():
         except Exception as e:
             _log.error(f"Tabla reservas ERROR: {e}")
 
+    # 3b. Crear tablas catálogos fiscales (regímenes + usos CFDI)
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS regimenes_fiscales (
+                    codigo VARCHAR(10) PRIMARY KEY,
+                    nombre VARCHAR(200) NOT NULL
+                )
+            """))
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS usos_cfdi (
+                    codigo VARCHAR(10) PRIMARY KEY,
+                    nombre VARCHAR(200) NOT NULL
+                )
+            """))
+            # Seed regímenes fiscales SAT más comunes
+            await conn.execute(text("""
+                INSERT INTO regimenes_fiscales (codigo, nombre) VALUES
+                ('601', 'General de Ley Personas Morales'),
+                ('603', 'Personas Morales con Fines no Lucrativos'),
+                ('605', 'Sueldos y Salarios'),
+                ('606', 'Arrendamiento'),
+                ('608', 'Demás ingresos'),
+                ('610', 'Residentes en el Extranjero'),
+                ('612', 'Personas Físicas con Actividades Empresariales y Profesionales'),
+                ('614', 'Ingresos por intereses'),
+                ('616', 'Sin obligaciones fiscales'),
+                ('620', 'Sociedades Cooperativas de Producción'),
+                ('621', 'Incorporación Fiscal'),
+                ('622', 'Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras'),
+                ('623', 'Opcional para Grupos de Sociedades'),
+                ('624', 'Coordinados'),
+                ('625', 'Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas'),
+                ('626', 'Régimen Simplificado de Confianza')
+                ON CONFLICT (codigo) DO NOTHING
+            """))
+            # Seed usos CFDI más comunes
+            await conn.execute(text("""
+                INSERT INTO usos_cfdi (codigo, nombre) VALUES
+                ('G01', 'Adquisición de mercancías'),
+                ('G02', 'Devoluciones, descuentos o bonificaciones'),
+                ('G03', 'Gastos en general'),
+                ('I01', 'Construcciones'),
+                ('I02', 'Mobiliario y equipo de oficina por inversiones'),
+                ('I03', 'Equipo de transporte'),
+                ('I04', 'Equipo de cómputo y accesorios'),
+                ('I08', 'Otra maquinaria y equipo'),
+                ('D01', 'Honorarios médicos, dentales y gastos hospitalarios'),
+                ('D02', 'Gastos médicos por incapacidad o discapacidad'),
+                ('D03', 'Gastos funerales'),
+                ('D04', 'Donativos'),
+                ('D10', 'Pagos por servicios educativos'),
+                ('P01', 'Por definir'),
+                ('S01', 'Sin efectos fiscales'),
+                ('CP01', 'Pagos')
+                ON CONFLICT (codigo) DO NOTHING
+            """))
+            _log.info("Tablas catálogos fiscales: OK")
+        except Exception as e:
+            _log.error(f"Tablas catálogos fiscales ERROR: {e}")
+
     # 4. Seed configuración negocio
     async with engine.begin() as conn:
         from sqlalchemy import text

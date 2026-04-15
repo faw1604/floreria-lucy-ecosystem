@@ -1265,7 +1265,12 @@ async function ensureFiscalCatalogos() {
   if (_fiscalCatalogos) return _fiscalCatalogos;
   try {
     const r = await fetch('/api/admin/catalogos-fiscales',{credentials:'include'});
-    _fiscalCatalogos = await r.json();
+    if (r.ok) {
+      const d = await r.json();
+      _fiscalCatalogos = {regimenes: d.regimenes||[], usos: d.usos||[]};
+    } else {
+      _fiscalCatalogos = {regimenes:[],usos:[]};
+    }
   } catch(e) { _fiscalCatalogos = {regimenes:[],usos:[]}; }
   return _fiscalCatalogos;
 }
