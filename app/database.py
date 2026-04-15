@@ -82,24 +82,6 @@ async def inicializar_db():
             await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_pedidos_tracking_token ON pedidos (tracking_token) WHERE tracking_token IS NOT NULL"))
         except Exception:
             pass
-        # One-shot: fix pagos_detalle pedido 5086
-        try:
-            import json as _j
-            await conn.execute(text(
-                "UPDATE pedidos SET pagos_detalle = :det WHERE numero LIKE :num AND pagos_detalle IS NULL"
-            ), {"det": _j.dumps([{"nombre": "Tarjeta credito", "monto": 54200}, {"nombre": "Efectivo", "monto": 27200}]), "num": "%5086"})
-            _log.info("  Fix pagos_detalle 5086: OK")
-        except Exception:
-            pass
-
-        # One-shot: fix dedicatoria funeral pedido 5106
-        try:
-            await conn.execute(text(
-                "UPDATE pedidos SET dedicatoria = :ded WHERE id = 5106"
-            ), {"ded": "Con profundo amor y respeto.\n† Juan José González García"})
-            _log.info("  Fix dedicatoria 5106: OK")
-        except Exception:
-            pass
 
     # 3. Crear tabla reservas en conexión separada
     async with engine.begin() as conn:
