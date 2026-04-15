@@ -92,6 +92,15 @@ async def inicializar_db():
         except Exception:
             pass
 
+        # One-shot: fix dedicatoria funeral pedido 5106
+        try:
+            await conn.execute(text(
+                "UPDATE pedidos SET dedicatoria = :ded WHERE id = 5106"
+            ), {"ded": "Con profundo amor y respeto.\n† Juan José González García"})
+            _log.info("  Fix dedicatoria 5106: OK")
+        except Exception:
+            pass
+
     # 3. Crear tabla reservas en conexión separada
     async with engine.begin() as conn:
         from sqlalchemy import text
