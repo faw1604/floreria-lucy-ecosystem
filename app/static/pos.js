@@ -1759,9 +1759,19 @@ function imprimirTicket() {
 // ─── Dedicatoria Card (3.5 x 5 in) ───
 function buildDedicatoriaCard(info) {
   const folio = info.folio || '';
-  const receptor = info.receptor_nombre || '';
-  const dedicatoria = info.dedicatoria || '';
+  let receptor = info.receptor_nombre || '';
+  let dedicatoria = info.dedicatoria || '';
   const fechaEntrega = info.fecha_entrega ? formatearFecha(info.fecha_entrega) : '';
+  // Funeral: si la dedicatoria tiene † nombre, usarlo como receptor y separar el texto
+  const isFuneral = (info.tipo_especial === 'Funeral' || (info.metodo_entrega || '').startsWith('funeral'));
+  if (isFuneral && dedicatoria.includes('†')) {
+    const lines = dedicatoria.split('\n');
+    const crossLine = lines.find(l => l.trim().startsWith('†'));
+    if (crossLine) {
+      receptor = crossLine.trim();
+      dedicatoria = lines.filter(l => !l.trim().startsWith('†')).join('\n').trim();
+    }
+  }
   const cornerSvg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='60' height='60'><path d='M5 50 C5 25 25 5 50 5' fill='none' stroke='%23333' stroke-width='1.5'/><path d='M5 35 C5 18 18 5 35 5' fill='none' stroke='%23333' stroke-width='1'/><circle cx='50' cy='5' r='2.5' fill='%23333'/><circle cx='5' cy='50' r='2.5' fill='%23333'/><path d='M10 50 C12 38 20 20 38 12' fill='none' stroke='%23333' stroke-width='0.8'/><path d='M50 10 Q30 12 12 30' fill='none' stroke='%23333' stroke-width='0.8'/><circle cx='35' cy='5' r='1.5' fill='%23333'/><circle cx='5' cy='35' r='1.5' fill='%23333'/><path d='M8 8 Q12 20 8 32' fill='none' stroke='%23333' stroke-width='0.7'/><path d='M8 8 Q20 12 32 8' fill='none' stroke='%23333' stroke-width='0.7'/></svg>`;
   const cornerData = 'data:image/svg+xml,' + encodeURIComponent(cornerSvg.replace(/%23/g,'#'));
   return `<div class="dedi-card">
