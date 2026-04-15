@@ -356,6 +356,16 @@ async def _generar_numero_pedido(db: AsyncSession) -> str:
     return await generar_folio(db)
 
 
+def _dedicatoria_funeral(dedicatoria: str | None, fallecido: str | None) -> str | None:
+    """Combina dedicatoria + nombre del fallecido con cruz."""
+    partes = []
+    if dedicatoria and dedicatoria.strip():
+        partes.append(dedicatoria.strip())
+    if fallecido and fallecido.strip():
+        partes.append(f"† {fallecido.strip()}")
+    return "\n".join(partes) if partes else None
+
+
 def _formatear_telefono(tel: str) -> str:
     """Normaliza teléfono a 10 dígitos (sin prefijo 52/521).
 
@@ -681,7 +691,7 @@ async def _crear_pedido_web_inner(request, db):
         direccion_entrega=data.get("funeral_direccion") if (tipo == "funeral" and data.get("funeral_domicilio")) else data.get("direccion_entrega"),
         receptor_nombre=data.get("nombre_destinatario") if tipo == "domicilio" else nombre_cliente,
         receptor_telefono=_formatear_telefono(data.get("telefono_destinatario") or "") if tipo == "domicilio" else telefono,
-        dedicatoria=data.get("dedicatoria"),
+        dedicatoria=_dedicatoria_funeral(data.get("dedicatoria"), data.get("nombre_fallecido")) if tipo == "funeral" else data.get("dedicatoria"),
         notas_internas=" | ".join(notas_partes) if notas_partes else None,
         forma_pago=data.get("forma_pago"),
         pago_confirmado=False,

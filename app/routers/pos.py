@@ -23,6 +23,15 @@ from app.routers.auth import verificar_sesion
 router = APIRouter()
 
 
+def _dedicatoria_funeral(dedicatoria: str | None, fallecido: str | None) -> str | None:
+    partes = []
+    if dedicatoria and dedicatoria.strip():
+        partes.append(dedicatoria.strip())
+    if fallecido and fallecido.strip():
+        partes.append(f"† {fallecido.strip()}")
+    return "\n".join(partes) if partes else None
+
+
 async def _generar_folio(db: AsyncSession) -> str:
     return await generar_folio(db)
 
@@ -446,7 +455,7 @@ async def _pos_crear_pedido_inner(request, db):
         direccion_entrega=_dir_entrega,
         receptor_nombre=_receptor,
         receptor_telefono=data.get("telefono_destinatario"),
-        dedicatoria=data.get("dedicatoria"),
+        dedicatoria=_dedicatoria_funeral(data.get("dedicatoria"), data.get("nombre_fallecido")) if tipo == "funeral" else data.get("dedicatoria"),
         notas_internas=notas or None,
         forma_pago=", ".join([p.get("nombre") or str(p.get("metodo_pago_id", "")) for p in pagos]) if pagos else "Efectivo",
         pagos_detalle=json.dumps([{"nombre": p.get("nombre", ""), "monto": p.get("monto", 0)} for p in pagos]) if pagos else None,
@@ -1371,7 +1380,11 @@ async def pos_completar_pedido(
     pedido.direccion_entrega = data.get("direccion_entrega") or pedido.direccion_entrega
     pedido.receptor_nombre = data.get("nombre_destinatario") or pedido.receptor_nombre
     pedido.receptor_telefono = data.get("telefono_destinatario") or pedido.receptor_telefono
-    pedido.dedicatoria = data.get("dedicatoria") or pedido.dedicatoria
+    _dedi = data.get("dedicatoria")
+    if pedido.tipo_especial == "Funeral":
+        pedido.dedicatoria = _dedicatoria_funeral(_dedi, data.get("nombre_fallecido")) or pedido.dedicatoria
+    else:
+        pedido.dedicatoria = _dedi or pedido.dedicatoria
     pedido.notas_internas = data.get("notas_entrega") or pedido.notas_internas
     pedido.ruta = data.get("ruta") or pedido.ruta
     if "requiere_factura" in data:
