@@ -2986,7 +2986,9 @@ async function loadFacturados() {
       <td>${esc(p.canal)}</td>
       <td style="font-weight:600">${fmt$(p.total)}</td>
       <td style="color:var(--dorado);font-weight:600">${esc(p.folio_fiscal||'—')}</td>
-      <td>${p.datos_fiscales_id ? '<span style="color:var(--verde)">✓</span>' : '—'}</td>
+      <td>
+        <button class="btn-sm" onclick="verDatosFiscales(${p.id})">Datos</button>
+      </td>
     </tr>`).join('');
   } catch(e) {}
 }
