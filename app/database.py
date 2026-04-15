@@ -83,24 +83,6 @@ async def inicializar_db():
         except Exception:
             pass
 
-        # One-shot: fix pedidos funeral sin metodo_entrega + dedicatoria 5106
-        try:
-            await conn.execute(text(
-                "UPDATE pedidos SET metodo_entrega = 'funeral_envio' WHERE tipo_especial = 'Funeral' AND (metodo_entrega IS NULL OR metodo_entrega = '')"
-            ))
-            _log.info("  Fix funeral metodo_entrega: OK")
-        except Exception:
-            pass
-        try:
-            r = await conn.execute(text("SELECT dedicatoria FROM pedidos WHERE id = 5106"))
-            row = r.fetchone()
-            if row and row[0] and '\u2020' not in (row[0] or ''):
-                await conn.execute(text(
-                    "UPDATE pedidos SET dedicatoria = dedicatoria || :suffix WHERE id = 5106"
-                ), {"suffix": "\n† Juan José González García"})
-                _log.info("  Fix dedicatoria 5106: OK")
-        except Exception:
-            pass
 
     # 3. Crear tabla reservas en conexión separada
     async with engine.begin() as conn:

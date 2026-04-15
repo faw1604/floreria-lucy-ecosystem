@@ -1267,7 +1267,7 @@ async def pos_editar_pedido(
     campos_editables = [
         "receptor_nombre", "receptor_telefono", "direccion_entrega",
         "dedicatoria", "notas_internas", "horario_entrega", "hora_exacta",
-        "fecha_entrega",
+        "fecha_entrega", "metodo_entrega",
     ]
     for campo in campos_editables:
         if campo in data:
