@@ -124,51 +124,53 @@ async def inicializar_db():
                     nombre VARCHAR(200) NOT NULL
                 )
             """))
-            # Seed regímenes fiscales SAT más comunes
-            await conn.execute(text("""
-                INSERT INTO regimenes_fiscales (codigo, nombre) VALUES
-                ('601', 'General de Ley Personas Morales'),
-                ('603', 'Personas Morales con Fines no Lucrativos'),
-                ('605', 'Sueldos y Salarios'),
-                ('606', 'Arrendamiento'),
-                ('608', 'Demás ingresos'),
-                ('610', 'Residentes en el Extranjero'),
-                ('612', 'Personas Físicas con Actividades Empresariales y Profesionales'),
-                ('614', 'Ingresos por intereses'),
-                ('616', 'Sin obligaciones fiscales'),
-                ('620', 'Sociedades Cooperativas de Producción'),
-                ('621', 'Incorporación Fiscal'),
-                ('622', 'Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras'),
-                ('623', 'Opcional para Grupos de Sociedades'),
-                ('624', 'Coordinados'),
-                ('625', 'Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas'),
-                ('626', 'Régimen Simplificado de Confianza')
-                ON CONFLICT (codigo) DO NOTHING
-            """))
-            # Seed usos CFDI más comunes
-            await conn.execute(text("""
-                INSERT INTO usos_cfdi (codigo, nombre) VALUES
-                ('G01', 'Adquisición de mercancías'),
-                ('G02', 'Devoluciones, descuentos o bonificaciones'),
-                ('G03', 'Gastos en general'),
-                ('I01', 'Construcciones'),
-                ('I02', 'Mobiliario y equipo de oficina por inversiones'),
-                ('I03', 'Equipo de transporte'),
-                ('I04', 'Equipo de cómputo y accesorios'),
-                ('I08', 'Otra maquinaria y equipo'),
-                ('D01', 'Honorarios médicos, dentales y gastos hospitalarios'),
-                ('D02', 'Gastos médicos por incapacidad o discapacidad'),
-                ('D03', 'Gastos funerales'),
-                ('D04', 'Donativos'),
-                ('D10', 'Pagos por servicios educativos'),
-                ('P01', 'Por definir'),
-                ('S01', 'Sin efectos fiscales'),
-                ('CP01', 'Pagos')
-                ON CONFLICT (codigo) DO NOTHING
-            """))
-            _log.info("Tablas catálogos fiscales: OK")
+            _regimenes = [
+                ("601", "General de Ley Personas Morales"),
+                ("603", "Personas Morales con Fines no Lucrativos"),
+                ("605", "Sueldos y Salarios"),
+                ("606", "Arrendamiento"),
+                ("608", "Demas ingresos"),
+                ("610", "Residentes en el Extranjero"),
+                ("612", "Personas Fisicas con Actividades Empresariales y Profesionales"),
+                ("614", "Ingresos por intereses"),
+                ("616", "Sin obligaciones fiscales"),
+                ("620", "Sociedades Cooperativas de Produccion"),
+                ("621", "Incorporacion Fiscal"),
+                ("622", "Actividades Agricolas, Ganaderas, Silvicolas y Pesqueras"),
+                ("623", "Opcional para Grupos de Sociedades"),
+                ("624", "Coordinados"),
+                ("625", "Regimen de las Actividades Empresariales con ingresos a traves de Plataformas Tecnologicas"),
+                ("626", "Regimen Simplificado de Confianza"),
+            ]
+            for codigo, nombre in _regimenes:
+                await conn.execute(text(
+                    "INSERT INTO regimenes_fiscales (codigo, nombre) VALUES (:c, :n) ON CONFLICT (codigo) DO NOTHING"
+                ), {"c": codigo, "n": nombre})
+            _usos = [
+                ("G01", "Adquisicion de mercancias"),
+                ("G02", "Devoluciones, descuentos o bonificaciones"),
+                ("G03", "Gastos en general"),
+                ("I01", "Construcciones"),
+                ("I02", "Mobiliario y equipo de oficina por inversiones"),
+                ("I03", "Equipo de transporte"),
+                ("I04", "Equipo de computo y accesorios"),
+                ("I08", "Otra maquinaria y equipo"),
+                ("D01", "Honorarios medicos, dentales y gastos hospitalarios"),
+                ("D02", "Gastos medicos por incapacidad o discapacidad"),
+                ("D03", "Gastos funerales"),
+                ("D04", "Donativos"),
+                ("D10", "Pagos por servicios educativos"),
+                ("P01", "Por definir"),
+                ("S01", "Sin efectos fiscales"),
+                ("CP01", "Pagos"),
+            ]
+            for codigo, nombre in _usos:
+                await conn.execute(text(
+                    "INSERT INTO usos_cfdi (codigo, nombre) VALUES (:c, :n) ON CONFLICT (codigo) DO NOTHING"
+                ), {"c": codigo, "n": nombre})
+            _log.info("Tablas catalogos fiscales: OK")
         except Exception as e:
-            _log.error(f"Tablas catálogos fiscales ERROR: {e}")
+            _log.error(f"Tablas catalogos fiscales ERROR: {e}")
 
     # 4. Seed configuración negocio
     async with engine.begin() as conn:
