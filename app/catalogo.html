@@ -2485,8 +2485,9 @@ function renderStep3Fields() {
   if (document.getElementById('of-fecha')?.value) {
     setTimeout(() => onFechaChange(), 50);
   }
-  // Load funerarias dropdown
+  // Load funerarias dropdown (also preload for domicilio address detection)
   if (tipo === 'funeral') { loadAllFunerarias().then(() => filterFunerarias()); renderBandas(); }
+  else if (tipo === 'domicilio') { loadAllFunerarias(); }
 }
 
 function selectHorario(h) {
@@ -2796,8 +2797,55 @@ function onCatDirInput() {
   pedidoWeb.geo_data = null;
   document.getElementById('cat-geo-badge').innerHTML = '';
   const q = (document.getElementById('of-direccion').value || '').trim();
-  if (q.length < 3) { document.getElementById('cat-dir-suggestions').style.display = 'none'; return; }
+  if (q.length < 3) { document.getElementById('cat-dir-suggestions').style.display = 'none'; hideFunerariaWarning(); return; }
+  checkDireccionFuneraria(q);
   _catDirDebounce = setTimeout(() => fetchCatDirSuggestions(q), 300);
+}
+
+function checkDireccionFuneraria(q) {
+  const warn = document.getElementById('cat-funeraria-warn');
+  if (!allFunerarias || !allFunerarias.length || pedidoWeb.tipo === 'funeral') { if (warn) warn.style.display = 'none'; return; }
+  const ql = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const match = allFunerarias.find(f => {
+    const nl = (f.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (nl && ql.includes(nl)) return true;
+    if (f.direccion) {
+      const dl = f.direccion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (dl && ql.includes(dl)) return true;
+    }
+    return false;
+  });
+  if (match) showFunerariaWarning(match.nombre);
+  else hideFunerariaWarning();
+}
+
+function showFunerariaWarning(nombre) {
+  let warn = document.getElementById('cat-funeraria-warn');
+  if (!warn) {
+    warn = document.createElement('div');
+    warn.id = 'cat-funeraria-warn';
+    const field = document.getElementById('of-direccion')?.closest('.order-field');
+    if (field) field.appendChild(warn);
+    else return;
+  }
+  warn.style.cssText = 'margin-top:8px;padding:10px 14px;background:#fef3c7;border:1px solid #d4a843;border-radius:8px;font-size:13px;line-height:1.5;color:#92400e';
+  warn.innerHTML = 'Detectamos que esta dirección puede corresponder a <strong>' + nombre + '</strong>. Para envíos a funerarias contamos con arreglos especiales con dedicatoria y entrega directa. <a href="#" onclick="goToFuneral();return false" style="color:#193a2c;font-weight:600;text-decoration:underline">Ver arreglos fúnebres →</a>';
+  warn.style.display = '';
+}
+
+function hideFunerariaWarning() {
+  const warn = document.getElementById('cat-funeraria-warn');
+  if (warn) warn.style.display = 'none';
+}
+
+function goToFuneral() {
+  hideFunerariaWarning();
+  pedidoWeb.tipo = 'funeral';
+  pedidoWeb.direccion_entrega = '';
+  document.querySelectorAll('.order-tipo-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tipo === 'funeral');
+  });
+  renderStep3Fields();
 }
 
 async function fetchCatDirSuggestions(q) {
@@ -2817,6 +2865,7 @@ async function selectCatDirSuggestion(placeId, description) {
   document.getElementById('of-direccion').value = description;
   pedidoWeb.direccion_entrega = description;
   document.getElementById('cat-dir-suggestions').style.display = 'none';
+  checkDireccionFuneraria(description);
   document.getElementById('cat-geo-badge').innerHTML = '<span style="font-size:12px;color:var(--texto2)">Buscando zona...</span>';
   try {
     const r = await fetch(`${API}/catalogo/direccion/seleccionar`, {
