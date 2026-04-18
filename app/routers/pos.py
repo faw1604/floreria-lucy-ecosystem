@@ -1344,10 +1344,13 @@ async def pos_completar_pedido(
         _metodo = ME.MOSTRADOR
     elif tipo == "recoger":
         _metodo = ME.RECOGER
-    elif tipo == "funeral" and data.get("direccion_entrega"):
-        _metodo = ME.FUNERAL_ENVIO
     elif tipo == "funeral":
-        _metodo = ME.FUNERAL_RECOGER
+        # Funeral con funeraria_id o direccion_entrega → envío a funeraria/domicilio
+        # Funeral sin nada de eso → cliente pasa a recoger
+        if data.get("funeraria_id") or data.get("direccion_entrega"):
+            _metodo = ME.FUNERAL_ENVIO
+        else:
+            _metodo = ME.FUNERAL_RECOGER
     else:
         _metodo = ME.ENVIO
 
