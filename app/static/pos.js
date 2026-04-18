@@ -454,6 +454,15 @@ function changeQty(idx, delta) {
 
 function removeItem(idx) { carrito.splice(idx, 1); renderCart(); }
 
+function editItemObs(idx) {
+  const it = carrito[idx];
+  if (!it) return;
+  const nuevo = prompt('Banda(s) para "' + it.nombre + '":\n(Si son varias, separa con " | ")\nMáx 36 caracteres por banda', it.observaciones || '');
+  if (nuevo === null) return;
+  carrito[idx].observaciones = nuevo.trim() ? nuevo.trim().toUpperCase() : null;
+  renderCart();
+}
+
 function toggleItemDisc(idx) {
   const row = document.getElementById('ci-disc-' + idx);
   row.style.display = row.style.display === 'none' ? 'flex' : 'none';
@@ -542,11 +551,15 @@ function renderCart() {
       const discBtn = it.descuento
         ? `<button class="ci-disc-btn" onclick="clearItemDisc(${i})">× Quitar descuento</button>`
         : `<button class="ci-disc-btn" onclick="toggleItemDisc(${i})">Descuento</button>`;
+      const obsHtml = it.observaciones
+        ? `<div class="ci-obs" style="font-size:11px;color:var(--dorado);background:#fef3c7;padding:4px 8px;border-radius:6px;margin-top:4px;line-height:1.4"><span style="font-weight:600">🎀 </span>${it.observaciones}<button onclick="editItemObs(${i})" style="background:none;border:none;color:var(--verde);cursor:pointer;font-size:11px;text-decoration:underline;margin-left:6px;padding:0">editar</button></div>`
+        : (ordenTipo === 'funeral' ? `<button onclick="editItemObs(${i})" style="background:none;border:1px dashed var(--borde);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--verde);cursor:pointer;margin-top:4px">+ Agregar banda</button>` : '');
       return `<div class="ci">
         <div class="ciinfo">
           <div class="ciname">${it.nombre}${it.es_custom?' ⚡':''}${it.variante_nombre ? ` <span style="font-weight:400;color:var(--texto2);font-size:11px">(${it.variante_nombre})</span>` : ''}</div>
           ${it.codigo ? `<div class="cicode">${it.codigo}</div>` : ''}
           <div class="ciprice">${priceHtml}</div>
+          ${obsHtml}
           ${discBtn}
           <div class="ci-disc-row" id="ci-disc-${i}" style="display:none">
             <input type="number" id="cid-val-${i}" placeholder="0" step="any">

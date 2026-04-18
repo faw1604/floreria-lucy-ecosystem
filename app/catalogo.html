@@ -2879,27 +2879,33 @@ function renderBandas() {
     const cat = (p.categoria || '').toLowerCase();
     const isConjunto = cat.includes('conjuntos funebres') || cat.includes('conjuntos fúnebres');
     const numBandas = isConjunto ? 2 : 1;
-    for (let b = 0; b < numBandas; b++) {
-      bandaItems.push({
-        productIdx: idx,
-        productName: p.nombre,
-        bandaNum: b + 1,
-        totalForProduct: numBandas,
-        globalIdx: bandaCount
-      });
-      bandaCount++;
+    // Una banda por cada unidad: si hay 3 arreglos del mismo producto, son 3 bandas
+    const qty = p.qty || 1;
+    for (let unit = 0; unit < qty; unit++) {
+      for (let b = 0; b < numBandas; b++) {
+        bandaItems.push({
+          productIdx: idx,
+          productName: p.nombre,
+          bandaNum: b + 1,
+          unitNum: unit + 1,
+          totalUnits: qty,
+          totalForProduct: numBandas,
+          globalIdx: bandaCount
+        });
+        bandaCount++;
+      }
     }
   });
 
   let html = '<div style="font-size:13px;color:var(--texto2);margin-bottom:8px">' + bandaCount + ' banda' + (bandaCount !== 1 ? 's' : '') + ' incluida' + (bandaCount !== 1 ? 's' : '') + '</div>';
 
   bandaItems.forEach((b, i) => {
-    const label = b.totalForProduct > 1
-      ? b.productName + ' — Banda ' + b.bandaNum
-      : b.productName;
+    let label = b.productName;
+    if (b.totalUnits > 1) label += ' #' + b.unitNum;
+    if (b.totalForProduct > 1) label += ' — Banda ' + b.bandaNum;
     html += '<div class="order-field" style="margin-bottom:8px">' +
       '<label style="font-size:12px;color:var(--texto2)">' + label + ' <span style="font-size:11px">(máx 36 chars)</span></label>' +
-      '<input type="text" class="banda-input" data-idx="' + i + '" maxlength="36" placeholder="Ej: DE PARTE DE TUS AMIGOS" oninput="updateBandaCharCount(this)" style="font-size:13px;text-transform:uppercase">' +
+      '<input type="text" class="banda-input" data-product-idx="' + b.productIdx + '" data-unit-num="' + b.unitNum + '" data-banda-num="' + b.bandaNum + '" maxlength="36" placeholder="Ej: DE PARTE DE TUS AMIGOS" oninput="updateBandaCharCount(this)" style="font-size:13px;text-transform:uppercase">' +
       '<div class="banda-char-count" style="font-size:10px;color:var(--texto2);text-align:right;margin-top:1px">36 caracteres</div>' +
       '</div>';
   });
@@ -2944,9 +2950,19 @@ function updateExtraBandaCost() {
 }
 
 function collectBandas() {
-  const included = Array.from(document.querySelectorAll('.banda-input')).map(i => i.value.trim().toUpperCase());
+  const inputs = Array.from(document.querySelectorAll('.banda-input'));
+  const included = inputs.map(i => i.value.trim().toUpperCase());
+  // Agrupar por productIdx (cart index): {0: [["banda1"], ["banda1"]], 1: [["banda1","banda2"]]}
+  const porItem = {};
+  inputs.forEach(input => {
+    const pIdx = parseInt(input.dataset.productIdx);
+    const uNum = parseInt(input.dataset.unitNum) - 1;
+    if (!porItem[pIdx]) porItem[pIdx] = [];
+    if (!porItem[pIdx][uNum]) porItem[pIdx][uNum] = [];
+    porItem[pIdx][uNum].push(input.value.trim().toUpperCase());
+  });
   const extras = Array.from(document.querySelectorAll('.banda-extra-input')).map(i => i.value.trim().toUpperCase());
-  return { included, extras, extraCount: extras.length, extraCost: extras.length * 8000 };
+  return { included, extras, porItem, extraCount: extras.length, extraCost: extras.length * 8000 };
 }
 
 function showFunerariaDropdown() {
@@ -3086,6 +3102,7 @@ function saveStep3Data() {
     pedidoWeb.bandas = bandasData.included;
     pedidoWeb.bandas_extra = bandasData.extras;
     pedidoWeb.bandas_extra_costo = bandasData.extraCost;
+    pedidoWeb._bandasPorItem = bandasData.porItem;
     pedidoWeb.dedicatoria = (document.getElementById('of-dedicatoria')?.value || '').trim();
     const velInicia = document.getElementById('of-vel-inicia')?.value || '';
     const velTermina = document.getElementById('of-vel-termina')?.value || '';
@@ -3272,9 +3289,15 @@ async function submitOrder() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-inline"></span> Procesando...';
   try {
+    const bandasPorItemMap = (pedidoWeb.tipo === 'funeral' && pedidoWeb._bandasPorItem) ? pedidoWeb._bandasPorItem : {};
     const body = {
       tipo: pedidoWeb.tipo,
-      items: cart.map(p => ({producto_id: p.id, cantidad: p.qty || 1, variante_id: p.variante_id || null})),
+      items: cart.map((p, idx) => ({
+        producto_id: p.id,
+        cantidad: p.qty || 1,
+        variante_id: p.variante_id || null,
+        bandas: bandasPorItemMap[idx] || null  // Array de arrays: [[banda1], [banda1,banda2]] = unidad 1, unidad 2
+      })),
       cliente_nombre: pedidoWeb.cliente_nombre,
       cliente_telefono: pedidoWeb.telefono_completo,
       cliente_email: pedidoWeb.cliente_email || null,

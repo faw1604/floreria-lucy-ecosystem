@@ -548,7 +548,8 @@ async def _crear_pedido_web_inner(request, db):
 
         subtotal += precio * cantidad
         items_validos.append({"producto": prod, "cantidad": cantidad, "precio": precio,
-                              "variante_id": variante_id, "variante_nombre": variante_nombre})
+                              "variante_id": variante_id, "variante_nombre": variante_nombre,
+                              "bandas": item.get("bandas")})
 
     # IVA: si requiere factura, 16% sobre productos no-chocolate
     impuesto = 0
@@ -709,6 +710,27 @@ async def _crear_pedido_web_inner(request, db):
 
     # Crear items
     for iv in items_validos:
+        # Construir observaciones con bandas: "Banda: TEXTO" o "U1-B1: TEXTO | U1-B2: TEXTO | U2-B1: TEXTO"
+        observaciones = None
+        bandas_item = iv.get("bandas")
+        if bandas_item and isinstance(bandas_item, list):
+            partes = []
+            for u_idx, unidad_bandas in enumerate(bandas_item):
+                if not unidad_bandas:
+                    continue
+                for b_idx, banda_texto in enumerate(unidad_bandas):
+                    if not banda_texto:
+                        continue
+                    if iv["cantidad"] > 1 and len(unidad_bandas) > 1:
+                        partes.append(f"U{u_idx+1}-B{b_idx+1}: {banda_texto}")
+                    elif iv["cantidad"] > 1:
+                        partes.append(f"U{u_idx+1}: {banda_texto}")
+                    elif len(unidad_bandas) > 1:
+                        partes.append(f"Banda {b_idx+1}: {banda_texto}")
+                    else:
+                        partes.append(f"Banda: {banda_texto}")
+            if partes:
+                observaciones = " | ".join(partes)
         item_pedido = ItemPedido(
             pedido_id=pedido.id,
             producto_id=iv["producto"].id,
@@ -716,6 +738,7 @@ async def _crear_pedido_web_inner(request, db):
             precio_unitario=iv["precio"],
             variante_id=iv.get("variante_id"),
             variante_nombre=iv.get("variante_nombre"),
+            observaciones=observaciones,
         )
         db.add(item_pedido)
 

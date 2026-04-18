@@ -702,6 +702,7 @@ async def _serializar_pedido_pos(p, db):
             "imagen_url": prod.imagen_url if prod else None,
             "variante_id": it.variante_id,
             "variante_nombre": it.variante_nombre,
+            "observaciones": it.observaciones,
         })
     cliente_nombre = None
     cliente_telefono = None

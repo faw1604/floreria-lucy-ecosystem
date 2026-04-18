@@ -621,7 +621,14 @@ function itemsDetalle(items) {
   return items.map(it => {
     const n = it.es_personalizado ? `⚡ ${it.nombre_personalizado || it.nombre}` : it.nombre;
     let s = `<div style="font-size:14px;font-weight:600">${it.cantidad > 1 ? it.cantidad + 'x ' : ''}${n}${it.codigo ? ` <span style="font-size:11px;color:var(--texto2)">${it.codigo}</span>` : ''}</div>`;
-    if (it.observaciones) s += `<div style="font-size:12px;font-style:italic;color:var(--texto2)">${it.observaciones}</div>`;
+    if (it.observaciones) {
+      const esBanda = /banda|U\d+/i.test(it.observaciones);
+      if (esBanda) {
+        s += `<div style="font-size:12px;background:#fef3c7;border-left:3px solid #d4a843;padding:4px 8px;margin-top:3px;color:#7a5c0a;border-radius:4px"><strong>🎀 ${it.observaciones}</strong></div>`;
+      } else {
+        s += `<div style="font-size:12px;font-style:italic;color:var(--texto2)">${it.observaciones}</div>`;
+      }
+    }
     return s;
   }).join('');
 }
