@@ -2248,15 +2248,46 @@ function prefillFromEditing() {
   }
 
   if (ordenTipo === 'funeral') {
-    if (document.getElementById('f-fallecido') && p.notas_internas) {
-      // Parse funeral data from notas_internas
-      const notas = p.notas_internas || '';
-      const match_fallecido = notas.match(/Fallecido:\s*([^.]+)/);
-      const match_sala = notas.match(/Sala:\s*([^.]+)/);
-      const match_banda = notas.match(/Banda:\s*([^.]+)/);
-      if (match_fallecido) document.getElementById('f-fallecido').value = match_fallecido[1].trim();
-      if (match_sala && document.getElementById('f-sala')) document.getElementById('f-sala').value = match_sala[1].trim();
-      if (match_banda && document.getElementById('f-banda')) document.getElementById('f-banda').value = match_banda[1].trim();
+    if (p.notas_internas) {
+      // Parse funeral data from notas_internas (separated by " | ")
+      const campos = {};
+      (p.notas_internas || '').split(' | ').forEach(parte => {
+        const idx = parte.indexOf(': ');
+        if (idx > 0) campos[parte.substring(0, idx).trim()] = parte.substring(idx + 2).trim();
+      });
+      if (campos['Fallecido'] && document.getElementById('f-fallecido')) document.getElementById('f-fallecido').value = campos['Fallecido'];
+      if (campos['Sala'] && document.getElementById('f-sala')) document.getElementById('f-sala').value = campos['Sala'];
+      if (campos['Banda'] && document.getElementById('f-banda')) document.getElementById('f-banda').value = campos['Banda'];
+      // Restore funeraria
+      if (campos['Funeraria']) {
+        const funName = campos['Funeraria'];
+        fetch('/funerarias/', {credentials:'include'}).then(r=>r.json()).then(funerarias => {
+          const match = funerarias.find(f => f.nombre === funName);
+          if (match) {
+            funerariaSel = {id: match.id, nombre: match.nombre, zona: match.zona, costo_envio: match.costo_envio, es_domicilio: false};
+          } else {
+            funerariaSel = {id: null, nombre: funName, zona: null, costo_envio: 0, es_domicilio: false};
+          }
+          renderCart(); updateSummary();
+          // Re-render funeraria display in form
+          goWin(3);
+        }).catch(()=>{});
+      }
+      // Restore horario velación
+      if (campos['Velación'] || campos['Velacion']) {
+        const velStr = campos['Velación'] || campos['Velacion'];
+        if (velStr.toLowerCase().includes('ya inicio') || velStr === 'ya_inicio') {
+          velHorario = 'ya_inicio';
+          const btn = document.querySelector('#w3-form .hor-btn');
+          if (btn) { btn.classList.add('active'); }
+        } else {
+          velHorario = 'hora';
+          const btns = document.querySelectorAll('#w3-form .hor-btn');
+          if (btns[1]) btns[1].classList.add('active');
+          const wrap = document.getElementById('vel-hora-wrap');
+          if (wrap) wrap.style.display = '';
+        }
+      }
     }
     if (document.getElementById('f-dedicatoria-fun') && p.dedicatoria) document.getElementById('f-dedicatoria-fun').value = p.dedicatoria;
     if (document.getElementById('f-fecha-fun') && p.fecha_entrega) document.getElementById('f-fecha-fun').value = p.fecha_entrega;
