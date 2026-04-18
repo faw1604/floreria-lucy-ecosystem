@@ -3671,7 +3671,7 @@ async function posEnviarCatalogo() {
   const baseUrl = 'https://www.florerialucy.com/catalogo/';
   let mensaje = '';
   if (_posCatTipo === 'general') mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de Floreria Lucy: ${baseUrl}`;
-  else if (_posCatTipo === 'funeral') mensaje = `🕊️ Aqui te comparto nuestro catalogo de arreglos funerales: ${baseUrl}`;
+  else if (_posCatTipo === 'funeral') mensaje = `🕊️ Aqui te comparto nuestro catalogo de arreglos funerales: ${baseUrl}?seccion=funeral`;
   const btn = document.getElementById('pos-btn-enviar-cat');
   btn.disabled = true; btn.textContent = 'Enviando...'; result.textContent = '';
   try {

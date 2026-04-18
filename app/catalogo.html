@@ -545,11 +545,7 @@ img{-webkit-user-drag:none;user-drag:none}
     <div class="order-step" id="order-step-2">
       <div class="order-title">Tipo de pedido</div>
       <div class="order-sub">¿Cómo quieres recibir tu pedido?</div>
-      <div class="order-tipo-grid">
-        <button class="order-tipo-btn" onclick="selectOrderType('domicilio')">🚚 Envío a domicilio</button>
-        <button class="order-tipo-btn" onclick="selectOrderType('recoger')">🏪 Recoger en tienda</button>
-        <button class="order-tipo-btn" onclick="selectOrderType('funeral')">🕊️ Funeral</button>
-      </div>
+      <div class="order-tipo-grid" id="order-tipo-grid"></div>
       <div id="order-funeral-warn" style="display:none"></div>
       <div class="order-btn-row">
         <button class="order-btn secondary" onclick="orderGoStep(1)">Regresar</button>
@@ -1676,8 +1672,12 @@ async function initClassic() {
   renderCatPills();
   renderFlowerPills();
   renderClassicGrid();
-  // Auto-select temporada tab from URL param ?cat=temporada
-  if (window._autoSelectTemporada) {
+  // Auto-select section from URL param ?seccion= or legacy ?cat=temporada
+  if (window._autoSelectSection) {
+    const s = window._autoSelectSection;
+    window._autoSelectSection = false;
+    if (['general','funeral','regalos','temporada'].includes(s)) setSection(s);
+  } else if (window._autoSelectTemporada) {
     window._autoSelectTemporada = false;
     setSection('temporada');
   }
@@ -2186,6 +2186,7 @@ function showOrderForm() {
 
 function orderGoStep(step) {
   if (step === 3 && !pedidoWeb.tipo) return;
+  if (step === 2) renderOrderTypeButtons();
   if (step === 4) {
     if (!validateStep3()) return;
     renderOrderStep4();
@@ -2194,6 +2195,26 @@ function orderGoStep(step) {
   document.getElementById(`order-step-${step}`).classList.add('active');
   orderStep = step;
   window.scrollTo(0, 0);
+}
+
+function renderOrderTypeButtons() {
+  const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
+  const hasFuneral = cart.some(p => funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
+  let html = '';
+  // Domicilio: solo si NO hay items funeral
+  if (!hasFuneral) {
+    html += '<button class="order-tipo-btn" data-tipo="domicilio" onclick="selectOrderType(\'domicilio\')">🚚 Envío a domicilio</button>';
+  }
+  // Recoger: siempre disponible
+  html += '<button class="order-tipo-btn" data-tipo="recoger" onclick="selectOrderType(\'recoger\')">🏪 Recoger en tienda</button>';
+  // Funeral: solo si hay items funeral
+  if (hasFuneral) {
+    html += '<button class="order-tipo-btn" data-tipo="funeral" onclick="selectOrderType(\'funeral\')">🕊️ Funeral</button>';
+  }
+  document.getElementById('order-tipo-grid').innerHTML = html;
+  // Reset selection
+  pedidoWeb.tipo = null;
+  document.getElementById('order-funeral-warn').style.display = 'none';
 }
 
 function orderBack(step) {
@@ -2230,23 +2251,7 @@ function selectOrderType(tipo) {
   pedidoWeb.tipo = tipo;
   document.querySelectorAll('.order-tipo-btn').forEach(b => b.classList.remove('selected'));
   event.target.closest('.order-tipo-btn').classList.add('selected');
-
-  // Block "domicilio" if cart has funeral/conjuntos fúnebres products
-  if (tipo === 'domicilio') {
-    const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
-    const funeralItems = cart.filter(p => funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
-    if (funeralItems.length > 0) {
-      const warn = document.getElementById('order-funeral-warn');
-      warn.style.display = '';
-      warn.innerHTML = `<div class="order-funeral-warn">
-        ⚠ Los arreglos de funeral y conjuntos fúnebres no se envían a domicilio.<br>
-        Selecciona <strong>Recoger en tienda</strong> o <strong>Funeral</strong>.
-        <br>
-        <button style="background:var(--borde);color:var(--texto);margin-top:8px" onclick="pedidoWeb.tipo=null;document.querySelectorAll('.order-tipo-btn').forEach(b=>b.classList.remove('selected'));document.getElementById('order-funeral-warn').style.display='none'">Entendido</button>
-      </div>`;
-      return;
-    }
-  }
+  document.getElementById('order-funeral-warn').style.display = 'none';
 
   // Funeral validation — hora máxima 6:30 PM
   if (tipo === 'funeral') {
@@ -2264,22 +2269,7 @@ function selectOrderType(tipo) {
       </div>`;
       return;
     }
-    const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
-    const nonFuneral = cart.filter(p => !funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
-    if (nonFuneral.length > 0) {
-      const warn = document.getElementById('order-funeral-warn');
-      warn.style.display = '';
-      warn.innerHTML = `<div class="order-funeral-warn">
-        ⚠ Solo puedes incluir arreglos de funeral en este tipo de pedido.<br>
-        Los siguientes productos serán removidos: <strong>${nonFuneral.map(p=>p.nombre).join(', ')}</strong>
-        <br>
-        <button style="background:var(--verde);color:#fff" onclick="removeFuneralNon();orderGoStep(3)">Remover y continuar</button>
-        <button style="background:var(--borde);color:var(--texto)" onclick="pedidoWeb.tipo=null;document.querySelectorAll('.order-tipo-btn').forEach(b=>b.classList.remove('selected'));document.getElementById('order-funeral-warn').style.display='none'">Cancelar</button>
-      </div>`;
-      return;
-    }
   }
-  document.getElementById('order-funeral-warn').style.display = 'none';
 
   // Disclaimer tiempo de entrega para pedidos funeral
   if (tipo === 'funeral') {
@@ -2305,14 +2295,6 @@ function continuarFuneral() {
   setTimeout(() => { renderStep3Fields(); orderGoStep(3); }, 150);
 }
 
-function removeFuneralNon() {
-  const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
-  cart = cart.filter(p => funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
-  saveCart();
-  document.getElementById('order-funeral-warn').style.display = 'none';
-  renderOrderStep1();
-  renderStep3Fields();
-}
 
 function getChihuahuaNow() {
   // Safari-safe: extraer partes individuales con Intl.DateTimeFormat
@@ -2829,7 +2811,7 @@ function showFunerariaWarning(nombre) {
     else return;
   }
   warn.style.cssText = 'margin-top:8px;padding:10px 14px;background:#fef3c7;border:1px solid #d4a843;border-radius:8px;font-size:13px;line-height:1.5;color:#92400e';
-  warn.innerHTML = 'Detectamos que esta dirección puede corresponder a <strong>' + nombre + '</strong>. Para envíos a funerarias contamos con arreglos especiales con dedicatoria y entrega directa. <a href="#" onclick="goToFuneral();return false" style="color:#193a2c;font-weight:600;text-decoration:underline">Ver arreglos fúnebres →</a>';
+  warn.innerHTML = 'Detectamos que esta dirección puede corresponder a <strong>' + nombre + '</strong>. Para envíos a funerarias contamos con arreglos especiales con dedicatoria y entrega directa. <a href="/catalogo/?seccion=funeral" style="color:#193a2c;font-weight:600;text-decoration:underline">Ver arreglos fúnebres →</a>';
   warn.style.display = '';
 }
 
@@ -2838,15 +2820,6 @@ function hideFunerariaWarning() {
   if (warn) warn.style.display = 'none';
 }
 
-function goToFuneral() {
-  hideFunerariaWarning();
-  pedidoWeb.tipo = 'funeral';
-  pedidoWeb.direccion_entrega = '';
-  document.querySelectorAll('.order-tipo-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.tipo === 'funeral');
-  });
-  renderStep3Fields();
-}
 
 async function fetchCatDirSuggestions(q) {
   const box = document.getElementById('cat-dir-suggestions');
@@ -3457,8 +3430,11 @@ function startFechaEspecial() {
   const params = new URLSearchParams(window.location.search);
   const modo = params.get('modo');
   const catParam = params.get('cat');
-  // Si viene con ?cat=temporada → pre-seleccionar sección temporada después de init
-  if (catParam === 'temporada') {
+  // Si viene con ?seccion= → pre-seleccionar esa sección después de init
+  const seccionParam = params.get('seccion');
+  if (seccionParam) {
+    window._autoSelectSection = seccionParam;
+  } else if (catParam === 'temporada') {
     window._autoSelectTemporada = true;
   }
   // Si viene con ?modo= → usar ese modo. Si no → classic por defecto (quitar landing vieja)

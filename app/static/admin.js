@@ -1037,9 +1037,9 @@ async function enviarCatalogo() {
   if (_catalogoTipo === 'general') {
     mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de Floreria Lucy: ${baseUrl}`;
   } else if (_catalogoTipo === 'funeral') {
-    mensaje = `🕊️ Aqui te comparto nuestro catalogo de arreglos funerales: ${baseUrl}`;
+    mensaje = `🕊️ Aqui te comparto nuestro catalogo de arreglos funerales: ${baseUrl}?seccion=funeral`;
   } else if (_catalogoTipo === 'temporada') {
-    mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de temporada: ${baseUrl}`;
+    mensaje = `Hola! 🌸 Aqui te comparto nuestro catalogo de temporada: ${baseUrl}?seccion=temporada`;
   }
 
   const btn = document.getElementById('btn-enviar-catalogo');
