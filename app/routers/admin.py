@@ -1467,6 +1467,59 @@ async def est_productos(desde: str, hasta: str, panel_session: str | None = Cook
     por_cantidad = [{"nombre":r[0],"categoria":r[1],"cantidad":int(r[2]),"total":r[3]} for r in r2.fetchall()]
     return {"por_valor":por_valor,"por_cantidad":por_cantidad}
 
+
+@router.get("/estadisticas/items-kyte")
+async def est_items_kyte(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    """Top de items vendidos parseando notas_internas de pedidos Kyte importados.
+    Formato esperado en notas: 'Items: 1xRosas, 2xMedallon, ...'"""
+    _auth(panel_session)
+    import re
+    r = await db.execute(text(
+        f"SELECT notas_internas, total FROM pedidos "
+        f"WHERE {_FECHA_VENTA} BETWEEN :d AND :h AND {_VENTAS_WHERE} "
+        f"AND notas_internas LIKE '%Items:%'"
+    ), _dp(desde, hasta))
+    rows = r.fetchall()
+    contador = {}  # nombre -> {qty, n_pedidos}
+    total_pedidos_con_items = 0
+    for notas, total in rows:
+        if not notas:
+            continue
+        # Extraer parte después de "Items:"
+        m = re.search(r'Items:\s*(.+?)(?:\s*\|\s*[A-Z][a-z]+:|$)', notas, re.IGNORECASE)
+        if not m:
+            continue
+        items_str = m.group(1).strip()
+        total_pedidos_con_items += 1
+        for parte in items_str.split(','):
+            parte = parte.strip()
+            if not parte:
+                continue
+            mq = re.match(r'^(\d+)\s*x\s*(.+)$', parte, re.IGNORECASE)
+            if mq:
+                qty = int(mq.group(1))
+                nombre = mq.group(2).strip()
+            else:
+                qty = 1
+                nombre = parte
+            # Normalizar nombre: quitar precios, paréntesis al final
+            nombre = re.sub(r'\s*\([^)]*\)\s*$', '', nombre).strip()
+            nombre = re.sub(r'\s*\$\s*[\d,.]+\s*$', '', nombre).strip()
+            if not nombre or len(nombre) < 3:
+                continue
+            key = nombre.lower()
+            if key not in contador:
+                contador[key] = {"nombre": nombre, "cantidad": 0, "n_pedidos": 0}
+            contador[key]["cantidad"] += qty
+            contador[key]["n_pedidos"] += 1
+    ranking = sorted(contador.values(), key=lambda x: x["cantidad"], reverse=True)
+    return {
+        "total_pedidos_analizados": total_pedidos_con_items,
+        "items_unicos": len(ranking),
+        "ranking": ranking[:50],
+    }
+
+
 @router.get("/estadisticas/clientes-top")
 async def est_clientes(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)
