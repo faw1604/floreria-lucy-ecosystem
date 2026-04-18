@@ -926,6 +926,8 @@ async function loadClaudia() {
     document.getElementById('temp-fecha').value = cfg.temporada_fecha_fuerte || '';
     document.getElementById('temp-dias').value = cfg.temporada_dias_restriccion || '2';
     document.getElementById('temp-funerales').checked = (cfg.temporada_acepta_funerales || 'true') === 'true';
+    document.getElementById('temp-horario-apertura').value = cfg.temporada_horario_apertura || '';
+    document.getElementById('temp-horario-cierre').value = cfg.temporada_horario_cierre || '';
 
 
 
@@ -984,6 +986,8 @@ async function guardarTemporada() {
   const fecha = document.getElementById('temp-fecha').value;
   const dias = document.getElementById('temp-dias').value;
   const funerales = document.getElementById('temp-funerales').checked;
+  const hApertura = document.getElementById('temp-horario-apertura').value;
+  const hCierre = document.getElementById('temp-horario-cierre').value;
 
   const saves = [
     toggleConfig('temporada_nombre', nombre),
@@ -991,6 +995,8 @@ async function guardarTemporada() {
     toggleConfig('temporada_fecha_fuerte', fecha),
     toggleConfig('temporada_dias_restriccion', dias),
     toggleConfig('temporada_acepta_funerales', String(funerales)),
+    toggleConfig('temporada_horario_apertura', hApertura),
+    toggleConfig('temporada_horario_cierre', hCierre),
   ];
   await Promise.all(saves);
 }

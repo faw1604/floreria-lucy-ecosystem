@@ -82,6 +82,8 @@ async def catalogo_config(db: AsyncSession = Depends(get_db)):
         "temporada_dias_restriccion": int(cfg.get("temporada_dias_restriccion", "2")),
         "temporada_acepta_funerales": cfg.get("temporada_acepta_funerales", "true") == "true",
         "temporada_envio_unico": int(cfg.get("temporada_envio_unico", "9900")),
+        "temporada_horario_apertura": cfg.get("temporada_horario_apertura", ""),
+        "temporada_horario_cierre": cfg.get("temporada_horario_cierre", ""),
     }
 
 

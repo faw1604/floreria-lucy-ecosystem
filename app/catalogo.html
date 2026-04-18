@@ -2313,13 +2313,30 @@ function fmtDateLocal(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+// Verifica si una fecha (YYYY-MM-DD) tiene horario especial por fecha fuerte
+function getHorarioEspecialFecha(fecha) {
+  if (!catConfig) return null;
+  const ff = catConfig.temporada_fecha_fuerte;
+  const ap = catConfig.temporada_horario_apertura;
+  const ci = catConfig.temporada_horario_cierre;
+  if (!ff || ff !== fecha || !ap || !ci) return null;
+  const [hA, mA] = ap.split(':').map(Number);
+  const [hC, mC] = ci.split(':').map(Number);
+  return [hA + (mA||0)/60, hC + (mC||0)/60];
+}
+
 function calcMinDate() {
   const now = getChihuahuaNow();
   const day = now.getDay(); // 0=Sun
   const hour = now.getHours() + now.getMinutes() / 60;
-  // Restricciones: Dom todo el día, Lun-Vie después 18h, Sáb después 16:30
+  const hoyStr = fmtDateLocal(now);
+  // Si hoy es la fecha fuerte con horario especial, usar ese horario para decidir si bloquear
+  const especial = getHorarioEspecialFecha(hoyStr);
   let todayBlocked = false;
-  if (day === 0) todayBlocked = true; // Domingo
+  if (especial) {
+    // Bloquear hoy si ya pasó 1h antes del cierre especial
+    todayBlocked = hour >= (especial[1] - 1);
+  } else if (day === 0) todayBlocked = true; // Domingo
   else if (day === 6 && hour >= 16.5) todayBlocked = true; // Sábado 16:30+
   else if (day >= 1 && day <= 5 && hour >= 18) todayBlocked = true; // Lun-Vie 18+
   const min = new Date(now);
@@ -2333,6 +2350,9 @@ function calcMinDate() {
 const HORARIO_TIENDA = {1:[9,19],2:[9,19],3:[9,19],4:[9,19],5:[9,19],6:[10,18],0:[11,15]}; // 0=Sun
 
 function getStoreHours(fecha) {
+  // Horario especial fecha fuerte tiene prioridad
+  const especial = getHorarioEspecialFecha(fecha);
+  if (especial) return especial;
   const d = new Date(fecha + 'T12:00:00');
   const day = d.getDay(); // 0=Sun
   return HORARIO_TIENDA[day] || null;
@@ -2372,9 +2392,17 @@ function renderStep3Fields() {
     const now = getChihuahuaNow();
     const day = now.getDay();
     const hour = now.getHours() + now.getMinutes() / 60;
-    // Cierre: Lun-Vie 19h, Sáb 18h, Dom 15h → límite = cierre - 0.5h
-    const limites = {0: 14.5, 1: 18.5, 2: 18.5, 3: 18.5, 4: 18.5, 5: 18.5, 6: 17.5};
-    if (hour < limites[day]) {
+    const hoyStr = fmtDateLocal(now);
+    const especial = getHorarioEspecialFecha(hoyStr);
+    let limite;
+    if (especial) {
+      limite = especial[1] - 0.5; // Cierre especial - 30 min
+    } else {
+      // Cierre: Lun-Vie 19h, Sáb 18h, Dom 15h → límite = cierre - 0.5h
+      const limites = {0: 14.5, 1: 18.5, 2: 18.5, 3: 18.5, 4: 18.5, 5: 18.5, 6: 17.5};
+      limite = limites[day];
+    }
+    if (hour < limite) {
       minDate = fmtDateLocal(now);
       todayBlocked = false;
     }
