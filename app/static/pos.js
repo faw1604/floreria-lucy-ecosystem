@@ -1280,6 +1280,7 @@ function updatePayStatus() {
   const t = calcTotals();
   const asignado = Object.values(selectedPays).reduce((s, v) => s + v, 0);
   const el = document.getElementById('pay-status');
+  if (!el) return; // Form pago no está renderizado aún (ej. al marcar factura desde win 1)
   const keys = Object.keys(selectedPays);
   if (keys.length === 0) { el.innerHTML = ''; return; }
   // Pago simple: siempre completo (auto-asignado)
@@ -1337,7 +1338,8 @@ let _fiscalCatalogos = null;
 async function ensureFiscalCatalogos() {
   if (_fiscalCatalogos) return _fiscalCatalogos;
   try {
-    const r = await fetch('/api/admin/catalogos-fiscales',{credentials:'include'});
+    // Usar endpoint público (no requiere rol admin, lo usa también el catálogo web)
+    const r = await fetch('/catalogo/catalogos-fiscales');
     if (r.ok) {
       const d = await r.json();
       _fiscalCatalogos = {regimenes: d.regimenes||[], usos: d.usos||[]};
