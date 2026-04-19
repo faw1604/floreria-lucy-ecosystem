@@ -1780,8 +1780,16 @@ function buildMiniTickets(info) {
 function buildInfoFromPOS() {
   const r = lastResult;
   const items = lastCarritoSnap.map(it => ({
-    nombre: it.nombre + (it.variante_nombre ? ` (${it.variante_nombre})` : ''), cantidad: it.cantidad, precio_unitario: it.precio
+    nombre: it.nombre + (it.variante_nombre ? ` (${it.variante_nombre})` : ''),
+    cantidad: it.cantidad,
+    precio_unitario: it.precio,
+    observaciones: it.observaciones || null,
   }));
+  // Bandas extra del POS (se capturan en bandasExtraPOS array)
+  const bandasExtraValidas = (typeof bandasExtraPOS !== 'undefined' ? bandasExtraPOS : []).filter(b => b && b.trim());
+  const bandasExtraStr = bandasExtraValidas.length > 0 ? bandasExtraValidas.join(' | ') : '';
+  const bandasExtraCount = bandasExtraValidas.length;
+  const bandasExtraCosto = bandasExtraCount * 8000;
   const tipo = ordenTipo || 'mostrador';
   return {
     folio: r.folio, fecha: new Date().toISOString(), items, tipo,
@@ -1807,32 +1815,45 @@ function buildInfoFromPOS() {
     sala: document.getElementById('f-sala')?.value || '',
     banda: document.getElementById('f-banda')?.value || '',
     horario_velacion: velHorario === 'hora' ? (document.getElementById('f-vel-hora')?.value || '') : (velHorario || ''),
+    bandas_extra: bandasExtraStr,
+    bandas_extra_costo: bandasExtraCosto,
+    bandas_extra_count: bandasExtraCount,
+    tipo_especial: tipo === 'funeral' ? 'Funeral' : null,
   };
 }
 
 // Build info object from a pedido object (from API)
 function buildInfoFromPedido(p) {
-  // Parse funeral data from notas_internas
-  let funeraria='', fallecido='', sala='', banda='', velacion='';
-  if (p.tipo_especial === 'Funeral' && p.notas_internas) {
+  // Parse notas_internas con todos los campos posibles
+  let funeraria='', fallecido='', sala='', banda='', velacion='', bandasExtra='';
+  if (p.notas_internas) {
     const n = p.notas_internas;
-    // Parsear delimitado por " | " para no capturar campos siguientes
     const mf = n.match(/Funeraria:\s*([^|]+)/i); if (mf) funeraria = mf[1].trim();
     const mfa = n.match(/Fallecido:\s*([^|]+)/i); if (mfa) fallecido = mfa[1].trim();
     const ms = n.match(/Sala:\s*([^|]+)/i); if (ms) sala = ms[1].trim();
-    const mb = n.match(/Banda:\s*([^|]+)/i); if (mb) banda = mb[1].trim();
+    const mb = n.match(/(?:^|[|])\s*Banda:\s*([^|]+)/i); if (mb) banda = mb[1].trim();
     const mv = n.match(/Velaci[oó]n:\s*([^|]+)/i); if (mv) velacion = mv[1].trim();
+    const mbex = n.match(/Bandas extra:\s*([^|]+)/i); if (mbex) bandasExtra = mbex[1].trim();
   }
+  // Costo bandas extra: $80 c/u, contar por separador " | "
+  const bandasExtraCount = bandasExtra ? bandasExtra.split(/\s*\|\s*/).filter(Boolean).length : 0;
+  const bandasExtraCosto = bandasExtraCount * 8000;
   let tipo = 'mostrador';
   if (p.tipo_especial === 'Funeral') tipo = 'funeral';
   else if (p.direccion_entrega) tipo = 'domicilio';
   else if ((p.metodo_entrega||'').startsWith('recoger') || p.hora_exacta || p.tipo_especial === 'Recoger') tipo = 'recoger';
-  // Calcular impuesto como diferencia si no viene explícito
+  // Concatenar variante al nombre en items
+  const items = (p.items || []).map(it => ({
+    ...it,
+    nombre: it.nombre + (it.variante_nombre ? ` (${it.variante_nombre})` : ''),
+  }));
+  // Calcular impuesto como diferencia (restar bandas extra del total para que no las cuente como impuesto)
   const impCalc = (p.total||0) - (p.subtotal||0) - (p.envio||0);
   return {
-    folio: p.folio, fecha: p.fecha_pedido, items: p.items || [], tipo,
+    folio: p.folio, fecha: p.fecha_pedido, items, tipo,
     subtotal: p.subtotal, envio: p.envio, total: p.total,
     impuesto: impCalc > 0 ? impCalc : 0, descuento: 0, comision: 0, cargo_hora: 0,
+    bandas_extra: bandasExtra, bandas_extra_costo: bandasExtraCosto, bandas_extra_count: bandasExtraCount,
     zona_envio: p.zona_entrega || '', forma_pago: p.forma_pago || '', pagos: [],
     cliente_nombre: p.cliente_nombre, cliente_telefono: p.cliente_telefono,
     receptor_nombre: p.receptor_nombre, receptor_telefono: p.receptor_telefono,
@@ -1840,6 +1861,7 @@ function buildInfoFromPedido(p) {
     notas_internas: p.notas_internas, horario_entrega: p.horario_entrega,
     hora_exacta: p.hora_exacta, fecha_entrega: p.fecha_entrega, ruta: p.ruta,
     funeraria, nombre_fallecido: fallecido, sala, banda, horario_velacion: velacion,
+    tipo_especial: p.tipo_especial, metodo_entrega: p.metodo_entrega,
   };
 }
 
@@ -2501,6 +2523,12 @@ function tieneDedicatoriaReal(dedi) {
   return lineas.some(l => !l.startsWith('†'));
 }
 
+// Devuelve la dedicatoria sin las líneas auto-generadas con † (para no duplicar info)
+function limpiarDedicatoriaCruz(dedi) {
+  if (!dedi) return '';
+  return dedi.split('\n').filter(l => !l.trim().startsWith('†')).join('\n').trim();
+}
+
 function obsIcon(p) {
   if (tieneDedicatoriaReal(p.dedicatoria)) {
     return `<button onclick='imprimirDedicatoriaDesdeTransaccion(${JSON.stringify({folio:p.folio,receptor_nombre:p.receptor_nombre||"",cliente_nombre:p.cliente_nombre||"",dedicatoria:p.dedicatoria,fecha_entrega:p.fecha_entrega||"",tipo_especial:p.tipo_especial||"",metodo_entrega:p.metodo_entrega||""}).replace(/'/g,"&#39;")})' title="Imprimir dedicatoria" style="background:none;border:none;cursor:pointer;font-size:16px">💌</button>`;
@@ -3058,9 +3086,11 @@ function buildTicketDigital(info) {
     h += gridItem('Fecha', formatearFecha(info.fecha_entrega));
     h += gridItem('Velacion', info.horario_velacion);
     h += '</div>';
-    if (info.dedicatoria) {
+    // Dedicatoria funeral: limpiar línea † duplicada (ya se muestra el fallecido arriba)
+    const dediFun = limpiarDedicatoriaCruz(info.dedicatoria);
+    if (dediFun) {
       h += secLabel('Dedicatoria');
-      h += `<div style="background:#fffdf7;border-left:3px solid #d4a843;padding:10px 12px;font-style:italic;font-size:12px;border-radius:0 6px 6px 0">"${info.dedicatoria}"</div>`;
+      h += `<div style="background:#fffdf7;border-left:3px solid #d4a843;padding:10px 12px;font-style:italic;font-size:12px;border-radius:0 6px 6px 0">"${dediFun}"</div>`;
     }
   } else if (info.direccion_entrega) {
     h += secLabel('Entrega');
@@ -3091,24 +3121,39 @@ function buildTicketDigital(info) {
 
   // Articulos
   h += secLabel('Articulos');
+  const esFuneralTicket = tipo === 'funeral';
   (info.items||[]).forEach(it => {
     const price = (it.precio_unitario || it.precio || 0) * (it.cantidad || 1);
     h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #f0ede8">
       <span>${it.cantidad||1}x ${it.nombre||''}</span>
       <span style="font-weight:600">${fP(price)}</span>
     </div>`;
+    // Mostrar observaciones (bandas para funeral, notas para resto)
+    if (it.observaciones) {
+      const icono = esFuneralTicket ? '🎀' : '📝';
+      const color = esFuneralTicket ? '#7a5c0a' : '#888';
+      const bg = esFuneralTicket ? '#fef3c7' : 'transparent';
+      const partes = it.observaciones.split(' | ').map(s => s.trim()).filter(Boolean);
+      partes.forEach(parte => {
+        h += `<div style="font-size:11px;color:${color};background:${bg};padding:3px 8px 3px 20px;margin-left:8px;border-radius:4px;margin-top:2px">${icono} ${parte}</div>`;
+      });
+    }
   });
 
   // Totales
   h += secLabel('Totales');
-  h += row2('Subtotal', fP(info.subtotal||0));
+  // Calcular subtotal "limpio" (sin bandas extra) para mostrar bandas extra como línea aparte
+  const bex = info.bandas_extra_costo || 0;
+  const subtotalLimpio = (info.subtotal || 0) - bex;
+  h += row2('Subtotal', fP(subtotalLimpio));
   if (info.envio) h += row2('Envio ' + (info.zona_envio||''), fP(info.envio));
+  if (bex) h += row2(`Bandas extra (${info.bandas_extra_count || Math.round(bex/8000)})`, '+' + fP(bex));
   if (info.impuesto) h += row2('IVA (16%)', fP(info.impuesto));
   if (info.cargo_hora) h += row2('Hora especifica', '+' + fP(info.cargo_hora));
   if (info.comision) h += row2('Comision link (4%)', '+' + fP(info.comision));
   if (info.descuento) h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#d4a843"><span>Descuento</span><span style="font-weight:600">-${fP(info.descuento)}</span></div>`;
   // If we don't have individual breakdowns, show diff
-  if (!info.impuesto && !info.cargo_hora && !info.comision && !info.descuento) {
+  if (!info.impuesto && !info.cargo_hora && !info.comision && !info.descuento && !bex) {
     const diff = (info.total||0) - (info.subtotal||0) - (info.envio||0);
     if (diff > 0) h += row2('Impuestos / Cargos', '+' + fP(diff));
     if (diff < 0) h += `<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#d4a843"><span>Descuento</span><span style="font-weight:600">-${fP(Math.abs(diff))}</span></div>`;
