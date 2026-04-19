@@ -457,7 +457,8 @@ function removeItem(idx) { carrito.splice(idx, 1); renderCart(); }
 function editItemObs(idx) {
   const it = carrito[idx];
   if (!it) return;
-  const esFuneral = ordenTipo === 'funeral';
+  const cat = (it.categoria || '').toLowerCase();
+  const esFuneral = ordenTipo === 'funeral' || cat.includes('funeral') || cat.includes('conjuntos funebres') || cat.includes('conjuntos fúnebres');
   const titulo = esFuneral
     ? 'Banda(s) para "' + it.nombre + '":\n(Si son varias, separa con " | ")\nMáx 36 caracteres por banda'
     : 'Observaciones para "' + it.nombre + '":';
@@ -555,14 +556,17 @@ function renderCart() {
       const discBtn = it.descuento
         ? `<button class="ci-disc-btn" onclick="clearItemDisc(${i})">× Quitar descuento</button>`
         : `<button class="ci-disc-btn" onclick="toggleItemDisc(${i})">Descuento</button>`;
+      // Detectar si es item funeral por categoría (independiente de ordenTipo)
+      const cat = (it.categoria || '').toLowerCase();
+      const esItemFuneral = ordenTipo === 'funeral' || cat.includes('funeral') || cat.includes('conjuntos funebres') || cat.includes('conjuntos fúnebres');
       let obsHtml = '';
       if (it.observaciones) {
-        if (ordenTipo === 'funeral') {
+        if (esItemFuneral) {
           obsHtml = `<div class="ci-obs" style="font-size:11px;color:var(--dorado);background:#fef3c7;padding:4px 8px;border-radius:6px;margin-top:4px;line-height:1.4"><span style="font-weight:600">🎀 </span>${it.observaciones}<button onclick="editItemObs(${i})" style="background:none;border:none;color:var(--verde);cursor:pointer;font-size:11px;text-decoration:underline;margin-left:6px;padding:0">editar</button></div>`;
         } else {
           obsHtml = `<div class="ci-obs" style="font-size:11px;color:var(--texto2);font-style:italic;margin-top:4px">📝 ${it.observaciones}<button onclick="editItemObs(${i})" style="background:none;border:none;color:var(--verde);cursor:pointer;font-size:11px;text-decoration:underline;margin-left:6px;padding:0">editar</button></div>`;
         }
-      } else if (ordenTipo === 'funeral') {
+      } else if (esItemFuneral) {
         obsHtml = `<button onclick="editItemObs(${i})" style="background:none;border:1px dashed var(--borde);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--verde);cursor:pointer;margin-top:4px">+ Agregar banda</button>`;
       }
       return `<div class="ci">
