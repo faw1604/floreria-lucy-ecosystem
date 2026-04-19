@@ -1670,10 +1670,31 @@ function renderFinanzasFiltered() {
   const ticket = totalTrans ? Math.round(totalIngresos / totalTrans) : 0;
   finData.totalIngresos = totalIngresos;
 
-  // Desglose de pago
+  // Desglose de pago — usar pagos_detalle (monto exacto por método) cuando existe,
+  // fallback a forma_pago dividiendo total entre N métodos para evitar doble conteo
   const desglosePago = {};
   filtered.forEach(p => {
-    (p.forma_pago||'').split(', ').forEach(m => { m = m.trim(); if (m) desglosePago[m] = (desglosePago[m]||0) + (p.total||0); });
+    let usado = false;
+    if (p.pagos_detalle) {
+      try {
+        const pags = JSON.parse(p.pagos_detalle);
+        if (Array.isArray(pags) && pags.length) {
+          pags.forEach(d => {
+            const m = (d.nombre||'').trim();
+            const monto = d.monto || 0;
+            if (m && monto) desglosePago[m] = (desglosePago[m]||0) + monto;
+          });
+          usado = true;
+        }
+      } catch(_) {}
+    }
+    if (!usado) {
+      // Fallback: dividir total entre los métodos listados
+      const metodos = (p.forma_pago||'').split(', ').map(m => m.trim()).filter(Boolean);
+      if (metodos.length === 0) return;
+      const porMetodo = Math.round((p.total||0) / metodos.length);
+      metodos.forEach(m => { desglosePago[m] = (desglosePago[m]||0) + porMetodo; });
+    }
   });
 
   // KPIs
