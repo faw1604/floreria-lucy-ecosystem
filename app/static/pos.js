@@ -37,6 +37,7 @@ let selectedPays = {}; // {nombre: monto}
 let lastResult = null;
 let lastCarritoSnap = [];
 let allFunerarias = [];
+let bandasExtraPOS = []; // textos de bandas extra ($80 c/u)
 let editingPedidoId = null; // when editing a pending order
 let posTemporadaConfig = null; // temporada config for fecha fuerte logic
 let contadorPendientes = 0;
@@ -536,8 +537,13 @@ function calcTotals() {
   // Cargo hora específica
   let cargoHora = 0;
   if (selHorario === 'hora_especifica') cargoHora = 8000; // $80 en centavos
-  const total = subtotal + iva - descGlobalAmt + envio + comision + cargoHora;
-  return { subtotal, subFlores, subChoco, iva, ieps, descGlobalAmt, envio, comision, cargoHora, total };
+  // Bandas extra funeral: $80 c/u
+  let bandasExtraCosto = 0;
+  if (ordenTipo === 'funeral' && bandasExtraPOS.length > 0) {
+    bandasExtraCosto = bandasExtraPOS.length * 8000;
+  }
+  const total = subtotal + iva - descGlobalAmt + envio + comision + cargoHora + bandasExtraCosto;
+  return { subtotal, subFlores, subChoco, iva, ieps, descGlobalAmt, envio, comision, cargoHora, bandasExtraCosto, total };
 }
 
 function renderCart() {
@@ -830,7 +836,12 @@ function buildW3Form() {
       </div>` : ''}
       <div class="frow" id="fr-fallecido"><label>Nombre del fallecido *</label><input type="text" id="f-fallecido"><div class="errmsg">Campo obligatorio</div></div>
       <div class="frow"><label>Sala</label><input type="text" id="f-sala"></div>
-      <div class="frow"><label>Texto banda</label><input type="text" id="f-banda"></div>
+      <div class="frow"><label>Bandas extra (+$80 c/u)</label>
+        <div style="font-size:11px;color:var(--texto2);margin-bottom:4px">Las bandas incluidas se agregan en cada arreglo del carrito (botón "🎀 + Agregar banda"). Esta sección es para bandas adicionales con costo.</div>
+        <div id="bandas-extra-list"></div>
+        <button type="button" onclick="addBandaExtraPOS()" style="margin-top:6px;padding:6px 12px;background:none;border:1px dashed var(--borde);border-radius:6px;font-size:12px;color:var(--verde);cursor:pointer;width:100%">+ Agregar banda extra (+$80)</button>
+        <div id="bandas-extra-cost" style="font-size:11px;color:var(--dorado);font-weight:600;margin-top:4px"></div>
+      </div>
       <div class="frow"><label>Dedicatoria</label><textarea id="f-dedicatoria-fun" rows="2" placeholder="Opcional"></textarea></div>
       <div class="frow" id="fr-fecha-fun"><label>Fecha de entrega *</label><input type="date" id="f-fecha-fun" min="${todayStr()}" value="${todayStr()}"><div class="errmsg">Campo obligatorio</div></div>
       <div class="frow"><label>Horario velacion</label>
@@ -872,6 +883,39 @@ function buildW3Form() {
   if (editingPedidoData) prefillFromEditing();
   // Apply horario cutoffs for today
   onPOSFechaChange();
+  // Render bandas extra si hay
+  renderBandasExtraPOS();
+  updateSummary();
+}
+
+function renderBandasExtraPOS() {
+  const list = document.getElementById('bandas-extra-list');
+  const cost = document.getElementById('bandas-extra-cost');
+  if (!list) return;
+  list.innerHTML = bandasExtraPOS.map((texto, i) =>
+    `<div style="display:flex;gap:6px;margin-bottom:4px;align-items:center">
+      <span style="font-size:11px;color:var(--dorado);min-width:18px">#${i+1}</span>
+      <input type="text" maxlength="36" value="${texto.replace(/"/g, '&quot;')}" placeholder="Texto banda extra" oninput="updateBandaExtraPOS(${i}, this.value)" style="flex:1;padding:6px 8px;border:1px solid var(--borde);border-radius:6px;font-size:12px;text-transform:uppercase">
+      <button type="button" onclick="removeBandaExtraPOS(${i})" style="padding:4px 8px;background:#fef5f5;border:1px solid #fca5a5;border-radius:6px;color:#c0392b;cursor:pointer;font-size:11px">✕</button>
+    </div>`
+  ).join('');
+  if (cost) cost.textContent = bandasExtraPOS.length > 0 ? `${bandasExtraPOS.length} banda${bandasExtraPOS.length > 1 ? 's' : ''} extra: +$${bandasExtraPOS.length * 80}` : '';
+}
+
+function addBandaExtraPOS() {
+  bandasExtraPOS.push('');
+  renderBandasExtraPOS();
+  updateSummary();
+}
+
+function removeBandaExtraPOS(idx) {
+  bandasExtraPOS.splice(idx, 1);
+  renderBandasExtraPOS();
+  updateSummary();
+}
+
+function updateBandaExtraPOS(idx, val) {
+  bandasExtraPOS[idx] = (val || '').toUpperCase();
   updateSummary();
 }
 
@@ -1275,6 +1319,7 @@ function updateSummary() {
     if (conFactura && t.subChoco) html += `<div class="ct-line" style="color:var(--texto2)"><span>IEPS 8% chocolates (desglosado)</span><span>$${(t.ieps/100).toLocaleString()}</span></div>`;
     if (t.envio) html += `<div class="ct-line"><span>Envio</span><span>$${(t.envio/100).toLocaleString()}</span></div>`;
     if (t.cargoHora) html += `<div class="ct-line"><span>Hora especifica</span><span>+$${(t.cargoHora/100).toLocaleString()}</span></div>`;
+    if (t.bandasExtraCosto) html += `<div class="ct-line"><span>Bandas extra (${bandasExtraPOS.length})</span><span>+$${(t.bandasExtraCosto/100).toLocaleString()}</span></div>`;
     if (t.descGlobalAmt) html += `<div class="ct-line disc"><span>Descuento</span><span>-$${(t.descGlobalAmt/100).toLocaleString()}</span></div>`;
     if (t.comision) html += `<div class="ct-line"><span>Comision link (4%)</span><span>+$${(t.comision/100).toLocaleString()}</span></div>`;
     html += `<div class="ct-line total"><span>TOTAL</span><span>$${(t.total/100).toLocaleString()}</span></div>`;
@@ -1449,10 +1494,13 @@ function buildPayload(estado) {
     body.funeraria_id = funerariaSel?.id || null;
     body.nombre_fallecido = document.getElementById('f-fallecido')?.value || '';
     body.sala = document.getElementById('f-sala')?.value || '';
-    body.banda = document.getElementById('f-banda')?.value || '';
     body.dedicatoria = document.getElementById('f-dedicatoria-fun')?.value || '';
     body.fecha_entrega = document.getElementById('f-fecha-fun')?.value || todayStr();
     body.horario_velacion = velHorario === 'hora' ? (document.getElementById('f-vel-hora')?.value || '') : (velHorario || '');
+    // Bandas extra (texto separado por |, costo en centavos)
+    const bandasExtraValidas = bandasExtraPOS.filter(b => b && b.trim());
+    body.bandas_extra = bandasExtraValidas.length > 0 ? bandasExtraValidas.join(' | ') : null;
+    body.bandas_extra_costo = bandasExtraValidas.length * 8000;
     // Domicilio particular
     if (funerariaSel && funerariaSel.es_domicilio) {
       body.direccion_entrega = document.getElementById('f-fun-dir')?.value || '';
@@ -1591,6 +1639,7 @@ function resetVenta() {
   selectedPays = {};
   lastResult = null;
   lastCarritoSnap = [];
+  bandasExtraPOS = [];
   editingPedidoId = null;
   editingPedidoData = null;
   renderCart();
@@ -2286,7 +2335,11 @@ function prefillFromEditing() {
       });
       if (campos['Fallecido'] && document.getElementById('f-fallecido')) document.getElementById('f-fallecido').value = campos['Fallecido'];
       if (campos['Sala'] && document.getElementById('f-sala')) document.getElementById('f-sala').value = campos['Sala'];
-      if (campos['Banda'] && document.getElementById('f-banda')) document.getElementById('f-banda').value = campos['Banda'];
+      // Restaurar bandas extra
+      if (campos['Bandas extra']) {
+        bandasExtraPOS = campos['Bandas extra'].split(' | ').map(s => s.trim()).filter(Boolean);
+        renderBandasExtraPOS();
+      }
       // Restore funeraria
       if (campos['Funeraria']) {
         const funName = campos['Funeraria'];

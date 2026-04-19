@@ -633,6 +633,10 @@ async def _crear_pedido_web_inner(request, db):
             notas_partes.append(f"Banda: {data['banda']}")
         if data.get("horario_velacion"):
             notas_partes.append(f"Velación: {data['horario_velacion']}")
+        # Bandas extra (con costo)
+        bandas_extra_str = data.get("bandas_extra")
+        if bandas_extra_str:
+            notas_partes.append(f"Bandas extra: {bandas_extra_str}")
 
     horario = data.get("horario_entrega")
     hora_exacta = None
@@ -698,9 +702,9 @@ async def _crear_pedido_web_inner(request, db):
         notas_internas=" | ".join(notas_partes) if notas_partes else None,
         forma_pago=data.get("forma_pago"),
         pago_confirmado=False,
-        subtotal=subtotal,
+        subtotal=subtotal + (int(data.get("bandas_extra_costo", 0)) if tipo == "funeral" else 0),
         envio=envio,
-        total=subtotal + impuesto + envio,
+        total=subtotal + impuesto + envio + (int(data.get("bandas_extra_costo", 0)) if tipo == "funeral" else 0),
         tipo_especial="Funeral" if tipo == "funeral" else ("Recoger" if tipo == "recoger" else None),
         metodo_entrega="funeral_envio" if tipo == "funeral" else ("recoger" if tipo == "recoger" else "envio"),
         requiere_factura=data.get("requiere_factura", False),

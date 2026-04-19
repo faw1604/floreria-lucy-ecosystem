@@ -378,9 +378,14 @@ async def _pos_crear_pedido_inner(request, db):
             funeral_parts.append(f"Banda: {data['banda']}")
         if data.get("horario_velacion"):
             funeral_parts.append(f"Velacion: {data['horario_velacion']}")
+        if data.get("bandas_extra"):
+            funeral_parts.append(f"Bandas extra: {data['bandas_extra']}")
         if funeral_parts:
             notas = " | ".join(funeral_parts) + (f" | {notas}" if notas else "")
-        # Recalc total with funeral shipping
+        # Bandas extra costo ($80 c/u) — ya dentro de bloque funeral
+        bandas_extra_costo = int(data.get("bandas_extra_costo", 0))
+        subtotal += bandas_extra_costo
+        # Recalc total with funeral shipping + bandas extra
         total = subtotal + impuesto + envio - descuento + comision + cargo_hora
 
     folio = await _generar_folio(db)
@@ -1339,6 +1344,10 @@ async def pos_completar_pedido(
         if fun:
             envio = fun.costo_envio
 
+    # Bandas extra ($80 c/u) — solo funeral
+    bandas_extra_costo = int(data.get("bandas_extra_costo", 0)) if tipo == "funeral" else 0
+    subtotal += bandas_extra_costo
+
     total = subtotal + impuesto + envio - descuento + comision + cargo_hora
 
     # Validate payment if finalizing
@@ -1398,7 +1407,30 @@ async def pos_completar_pedido(
         pedido.dedicatoria = _dedicatoria_funeral(_dedi, data.get("nombre_fallecido")) or pedido.dedicatoria
     else:
         pedido.dedicatoria = _dedi or pedido.dedicatoria
-    pedido.notas_internas = data.get("notas_entrega") or pedido.notas_internas
+    # Construir notas_internas: para funeral, reconstruir con datos completos
+    if tipo == "funeral":
+        funeral_parts = []
+        if data.get("funeraria_id"):
+            fun_obj = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
+            if fun_obj:
+                funeral_parts.append(f"Funeraria: {fun_obj.nombre}")
+        if data.get("nombre_fallecido"):
+            funeral_parts.append(f"Fallecido: {data['nombre_fallecido']}")
+        if data.get("sala"):
+            funeral_parts.append(f"Sala: {data['sala']}")
+        if data.get("banda"):
+            funeral_parts.append(f"Banda: {data['banda']}")
+        if data.get("horario_velacion"):
+            funeral_parts.append(f"Velación: {data['horario_velacion']}")
+        if data.get("bandas_extra"):
+            funeral_parts.append(f"Bandas extra: {data['bandas_extra']}")
+        notas_repart = data.get("notas_entrega") or ""
+        if funeral_parts:
+            pedido.notas_internas = " | ".join(funeral_parts) + (f" | {notas_repart}" if notas_repart else "")
+        elif notas_repart:
+            pedido.notas_internas = notas_repart
+    else:
+        pedido.notas_internas = data.get("notas_entrega") or pedido.notas_internas
     pedido.ruta = data.get("ruta") or pedido.ruta
     if "requiere_factura" in data:
         pedido.requiere_factura = data["requiere_factura"]
