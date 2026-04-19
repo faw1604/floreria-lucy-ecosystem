@@ -2494,8 +2494,15 @@ function pagoIcon(forma) {
   return '';
 }
 
+// Detecta si hay dedicatoria escrita por el cliente (más allá de "† nombre_fallecido" auto)
+function tieneDedicatoriaReal(dedi) {
+  if (!dedi) return false;
+  const lineas = dedi.split('\n').map(l => l.trim()).filter(Boolean);
+  return lineas.some(l => !l.startsWith('†'));
+}
+
 function obsIcon(p) {
-  if (p.dedicatoria) {
+  if (tieneDedicatoriaReal(p.dedicatoria)) {
     return `<button onclick='imprimirDedicatoriaDesdeTransaccion(${JSON.stringify({folio:p.folio,receptor_nombre:p.receptor_nombre||"",cliente_nombre:p.cliente_nombre||"",dedicatoria:p.dedicatoria,fecha_entrega:p.fecha_entrega||"",tipo_especial:p.tipo_especial||"",metodo_entrega:p.metodo_entrega||""}).replace(/'/g,"&#39;")})' title="Imprimir dedicatoria" style="background:none;border:none;cursor:pointer;font-size:16px">💌</button>`;
   }
   if (p.notas_internas) return '<span title="' + esc(p.notas_internas) + '" style="cursor:help">💬</span>';
@@ -3137,7 +3144,7 @@ function verTicket(p) {
   // Buttons
   let btns = '<button onclick="reimprimirDesdeTicket()" style="flex:1;padding:10px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">🖨 Imprimir</button>';
   btns += '<button onclick="copiarTicketImagen(\'ticket-content\',this)" style="flex:1;padding:10px;background:#555;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">📋 Copiar imagen</button>';
-  if (p.dedicatoria && (p.direccion_entrega || p.tipo_especial === 'Funeral')) btns += '<button onclick="imprimirDedicatoria(true)" style="flex:1;padding:10px;background:var(--dorado);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💌 Dedicatoria</button>';
+  if (tieneDedicatoriaReal(p.dedicatoria) && (p.direccion_entrega || p.tipo_especial === 'Funeral')) btns += '<button onclick="imprimirDedicatoria(true)" style="flex:1;padding:10px;background:var(--dorado);color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💌 Dedicatoria</button>';
   if (p.cliente_telefono) btns += '<button onclick="enviarWaDesdeTicket()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">💬 WhatsApp</button>';
   btns += `<button onclick="document.getElementById('modal-ticket').classList.remove('active')" style="flex:1;padding:10px;background:var(--gris);color:var(--texto2);border:none;border-radius:8px;font-weight:600;font-size:12px;cursor:pointer">✕ Cerrar</button>`;
   document.getElementById('ticket-buttons').innerHTML = btns;
