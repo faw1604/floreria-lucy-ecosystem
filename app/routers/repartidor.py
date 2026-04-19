@@ -176,6 +176,7 @@ async def entregas_hoy(
             "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
             "ruta": p.ruta,
             "tipo_especial": p.tipo_especial,
+            "metodo_entrega": p.metodo_entrega,
             "inicio_ruta_at": p.inicio_ruta_at.isoformat() if p.inicio_ruta_at else None,
             "entregado_at": p.entregado_at.isoformat() if p.entregado_at else None,
             "repartidor_id": p.repartidor_id,

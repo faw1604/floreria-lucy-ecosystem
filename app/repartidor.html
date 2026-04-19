@@ -495,12 +495,38 @@ function updateResumen() {
   bp.textContent = pending; bp.style.display = pending > 0 ? 'flex' : 'none';
 }
 
+// ─── Detectar pedido funeral y extraer datos ───
+function getFuneralData(p) {
+  const me = (p.metodo_entrega || '').toLowerCase();
+  const esFuneral = me.startsWith('funeral') || p.tipo_especial === 'Funeral';
+  if (!esFuneral) return null;
+  const data = {esFuneral: true, fallecido: null, funeraria: null, banda: null, velacion: null};
+  // Parsear notas_internas/notas_entrega: "Funeraria: X | Fallecido: Y | ..."
+  const notas = p.notas_internas || p.notas_entrega || '';
+  notas.split(' | ').forEach(parte => {
+    const idx = parte.indexOf(': ');
+    if (idx <= 0) return;
+    const k = parte.substring(0, idx).trim().toLowerCase();
+    const v = parte.substring(idx + 2).trim();
+    if (k === 'fallecido') data.fallecido = v;
+    else if (k === 'funeraria') data.funeraria = v;
+    else if (k === 'banda') data.banda = v;
+    else if (k === 'velación' || k === 'velacion') data.velacion = v;
+  });
+  return data;
+}
+
 // ─── Render card body (shared) ───
 function cardBody(p) {
+  const fun = getFuneralData(p);
+  // Para funeral: nombre principal = fallecido; para otros: destinatario
+  const nombrePrincipal = fun && fun.fallecido
+    ? `<div class="card-name" style="color:#193a2c">🕊️ ${fun.fallecido}</div><div style="font-size:11px;color:var(--texto2);margin-top:-2px;margin-bottom:4px">Para entregar en ${fun.funeraria || 'funeraria'}</div>`
+    : `<div class="card-name">${p.nombre_destinatario||'Sin destinatario'}</div>`;
   return `<div>${horarioBadge(p.horario_entrega)}${zonaBadge(p.zona_envio)}${p.ruta ? `<span class="badge badge-ruta">${p.ruta}</span>` : ''}</div>
     ${p.fecha_entrega ? `<div class="card-detail">📅 ${fmtFecha(p.fecha_entrega)}</div>` : ''}
-    <div class="card-name">${p.nombre_destinatario||'Sin destinatario'}</div>
-    <div class="card-detail">${telLink(p.telefono_destinatario)}</div>
+    ${nombrePrincipal}
+    ${!fun ? `<div class="card-detail">${telLink(p.telefono_destinatario)}</div>` : ''}
     <div class="card-detail">📍 ${p.direccion_entrega||'Sin direccion'}</div>
     <div class="card-detail">${mapsLink(p.direccion_entrega)}</div>
     ${p.dedicatoria ? `<div class="card-dedi">"${p.dedicatoria}"</div>` : ''}
