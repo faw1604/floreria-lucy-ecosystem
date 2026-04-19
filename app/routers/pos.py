@@ -869,6 +869,7 @@ async def pos_pedidos_hoy(
         "en_camino": [EP.EN_CAMINO],
         "entregado": [EP.ENTREGADO],
         "cancelado": [EP.CANCELADO],
+        "intento_fallido": [EP.INTENTO_FALLIDO, "intento_fallido"],
     }
 
     for p in pedidos:

@@ -2457,9 +2457,9 @@ async function loadTransacciones(params) {
   loadResumenVentas();
   try {
     let url = '/pos/pedidos-hoy?filtrar_por=pago_confirmado_at&periodo=' + transFilterPeriodo;
-    // Default: only finalized states
+    // Default: only finalized states (incluye intento_fallido para no perder pedidos en problema)
     if (!params || !params.includes('estado=')) {
-      url += '&estado=pagado,Listo,listo_taller,En producción,en_camino,entregado';
+      url += '&estado=pagado,Listo,listo_taller,En producción,en_camino,entregado,intento_fallido';
     }
     if (params) url += '&' + params;
     if (transFilterPeriodo === 'rango') {
