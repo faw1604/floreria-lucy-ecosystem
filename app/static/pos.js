@@ -1453,6 +1453,14 @@ function buildPayload(estado) {
     variante_nombre: it.variante_nombre || null,
   }));
 
+  // Sumar descuentos por item (el backend solo conoce descuento_total)
+  let descItemsTotal = 0;
+  carrito.forEach(it => {
+    const original = it.precio * it.cantidad;
+    const final = getItemFinalPrice(it);
+    if (final < original) descItemsTotal += (original - final);
+  });
+
   const pagos = Object.entries(selectedPays).map(([nombre, monto]) => ({
     metodo_pago_id: null, nombre, monto
   }));
@@ -1462,7 +1470,7 @@ function buildPayload(estado) {
     cliente_id: clienteSel?.id || null,
     items,
     tipo_impuesto: conFactura ? 'IVA' : 'NA',
-    descuento_total: t.descGlobalAmt,
+    descuento_total: (t.descGlobalAmt || 0) + descItemsTotal,
     cargo_hora_especifica: t.cargoHora || 0,
     pagos,
     estado,
