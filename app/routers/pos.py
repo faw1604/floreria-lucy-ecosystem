@@ -1268,11 +1268,19 @@ async def pos_editar_pedido(
     campos_editables = [
         "receptor_nombre", "receptor_telefono", "direccion_entrega",
         "dedicatoria", "notas_internas", "horario_entrega", "hora_exacta",
-        "fecha_entrega", "metodo_entrega",
+        "fecha_entrega", "metodo_entrega", "estado", "repartidor_id",
     ]
     for campo in campos_editables:
         if campo in data:
-            setattr(pedido, campo, data[campo])
+            val = data[campo]
+            # fecha_entrega viene como string YYYY-MM-DD
+            if campo == "fecha_entrega" and isinstance(val, str) and val:
+                from datetime import date as _date
+                val = _date.fromisoformat(val)
+            setattr(pedido, campo, val)
+    # Si se cambia el estado de "En camino" a algo anterior, limpiar inicio_ruta_at
+    if data.get("estado") in (EP.LISTO, EP.LISTO_TALLER):
+        pedido.inicio_ruta_at = None
     await db.commit()
     return {"ok": True, "folio": pedido.numero}
 
