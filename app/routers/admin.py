@@ -2180,6 +2180,8 @@ async def _saldo_cuenta(db: AsyncSession, cuenta: tuple) -> dict:
     pos_efectivo = 0
     if tipo == 'caja':
         # Pedidos POS pagados en efectivo desde fecha_inicio
+        # Usa pagos_detalle (JSON con monto exacto) para no inflar pagos combinados.
+        # Fallback a 'total' completo si no hay pagos_detalle.
         from datetime import time as time_type
         from app.core.estados import EstadoPedido as _EP
         try:
@@ -2187,12 +2189,34 @@ async def _saldo_cuenta(db: AsyncSession, cuenta: tuple) -> dict:
         except Exception:
             estados_venta = ['pagado', 'En producción', 'listo_taller', 'En camino', 'Entregado']
         f_ini_dt = datetime.combine(f_ini, time_type.min)
-        pos_efectivo = (await db.execute(text(
-            "SELECT COALESCE(SUM(total),0) FROM pedidos "
+        rows_pos = (await db.execute(text(
+            "SELECT total, pagos_detalle, forma_pago FROM pedidos "
             "WHERE pago_confirmado_at >= :fi "
             "AND LOWER(COALESCE(forma_pago,'')) LIKE '%efectivo%' "
             "AND estado = ANY(:estados)"
-        ), {"fi": f_ini_dt, "estados": estados_venta})).scalar() or 0
+        ), {"fi": f_ini_dt, "estados": estados_venta})).fetchall()
+        for row in rows_pos:
+            total_p, pagos_d, forma_p = row[0] or 0, row[1], row[2] or ''
+            monto_efectivo = 0
+            if pagos_d:
+                try:
+                    import json as _json
+                    pags = _json.loads(pagos_d)
+                    if isinstance(pags, list):
+                        for d in pags:
+                            if 'efectivo' in (d.get('nombre') or '').lower():
+                                monto_efectivo += int(d.get('monto') or 0)
+                except (ValueError, TypeError):
+                    monto_efectivo = 0
+            if monto_efectivo == 0:
+                # Fallback: si solo hay 'efectivo' en forma_pago, usar total completo;
+                # si hay múltiples métodos sin detalle, dividir
+                metodos = [m.strip() for m in forma_p.split(',') if m.strip()]
+                if len(metodos) == 1:
+                    monto_efectivo = total_p
+                elif len(metodos) > 1:
+                    monto_efectivo = total_p // len(metodos)
+            pos_efectivo += monto_efectivo
     saldo = (saldo_ini or 0) + int(dep) - int(ret) - int(egr) + int(pos_efectivo) + int(otros_ing)
     return {
         "id": cid, "nombre": nombre, "tipo": tipo,
