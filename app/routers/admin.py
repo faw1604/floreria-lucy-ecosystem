@@ -759,8 +759,14 @@ async def listar_otros_ingresos(
 ):
     _auth(panel_session)
     query = select(OtroIngreso).order_by(OtroIngreso.fecha.desc())
-    if desde: query = query.where(OtroIngreso.fecha >= desde)
-    if hasta: query = query.where(OtroIngreso.fecha <= hasta)
+    # Convertir strings YYYY-MM-DD a date (postgres no autoconvierte)
+    from datetime import date as _date
+    if desde:
+        try: query = query.where(OtroIngreso.fecha >= _date.fromisoformat(desde))
+        except ValueError: pass
+    if hasta:
+        try: query = query.where(OtroIngreso.fecha <= _date.fromisoformat(hasta))
+        except ValueError: pass
     result = await db.execute(query)
     return [
         {"id": o.id, "fecha": str(o.fecha), "concepto": o.concepto,
