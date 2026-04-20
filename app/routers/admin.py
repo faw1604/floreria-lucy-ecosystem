@@ -1038,10 +1038,15 @@ async def marcar_facturado(pedido_id: int, request: Request, panel_session: str 
     return {"ok": True}
 
 # --- Datos fiscales ---
+# Nota: estos endpoints requieren solo sesión válida (no rol admin).
+# El POS los necesita con operadores para capturar/leer datos fiscales en ventas.
+# La URL queda en /api/admin/ por compatibilidad con frontend, pero la verificación
+# es más permisiva.
 
 @router.get("/datos-fiscales/{cliente_id}")
 async def obtener_datos_fiscales(cliente_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
-    _auth(panel_session)
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
     result = await db.execute(select(DatosFiscalesCliente).where(DatosFiscalesCliente.cliente_id == cliente_id))
     df = result.scalar_one_or_none()
     if not df: return {"existe": False}
@@ -1050,7 +1055,8 @@ async def obtener_datos_fiscales(cliente_id: int, panel_session: str | None = Co
 
 @router.post("/datos-fiscales")
 async def guardar_datos_fiscales(request: Request, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
-    _auth(panel_session)
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
     data = await request.json()
     cliente_id = data.get("cliente_id")
     # Upsert
@@ -1067,7 +1073,8 @@ async def guardar_datos_fiscales(request: Request, panel_session: str | None = C
 
 @router.get("/datos-fiscales/pedido/{pedido_id}")
 async def datos_fiscales_pedido(pedido_id: int, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
-    _auth(panel_session)
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
     # Get datos_fiscales_id from pedido
     r = await db.execute(text("SELECT datos_fiscales_id FROM pedidos WHERE id = :id"), {"id": pedido_id})
     row = r.fetchone()
