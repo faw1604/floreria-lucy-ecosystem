@@ -273,12 +273,12 @@ async def catalogo_autocomplete(request: Request, q: str = ""):
 
 @router.post("/direccion/seleccionar")
 @limiter.limit("10/minute")
-async def catalogo_seleccionar(request: Request):
+async def catalogo_seleccionar(request: Request, db: AsyncSession = Depends(get_db)):
     """Obtiene coordenadas de un place_id y asigna zona."""
     data = await request.json()
     place_id = data.get("place_id", "")
     from app.services.geocoding import place_details
-    from app.services.zonas_envio import obtener_zona_envio
+    from app.services.zonas_envio import obtener_zona_envio_db
 
     if place_id:
         result = await place_details(place_id)
@@ -290,7 +290,7 @@ async def catalogo_seleccionar(request: Request):
         return {"error": "No se pudo obtener la ubicación"}
 
     lat, lng = result["lat"], result["lng"]
-    zona = obtener_zona_envio(lat, lng)
+    zona = await obtener_zona_envio_db(db, lat, lng)
     return {
         "lat": lat, "lng": lng,
         "zona_envio": zona["zona"] if zona else None,
@@ -597,16 +597,11 @@ async def _crear_pedido_web_inner(request, db):
     # Domicilio: zona y tarifa del autocomplete
     if tipo == "domicilio":
         zona_entrega_val = data.get("zona_entrega")
-        costo_envio_web = data.get("costo_envio")
-        if zona_entrega_val and costo_envio_web:
-            envio = int(costo_envio_web)
-        elif zona_entrega_val:
-            # Fallback: buscar tarifa del GeoJSON
-            from app.services.zonas_envio import _ZONAS
-            for nombre, tarifa, _ in _ZONAS:
-                if nombre == zona_entrega_val:
-                    envio = tarifa * 100
-                    break
+        # SIEMPRE consultar tarifa actual del backend (respeta overrides admin)
+        # No confiar en costo_envio enviado por el cliente — podría estar manipulado o viejo
+        if zona_entrega_val:
+            from app.services.zonas_envio import tarifa_zona_centavos
+            envio = await tarifa_zona_centavos(db, zona_entrega_val)
     if tipo == "funeral":
         funeraria_id = data.get("funeraria_id")
         if funeraria_id:

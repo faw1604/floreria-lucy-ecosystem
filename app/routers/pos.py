@@ -201,6 +201,7 @@ async def pos_autocomplete(
 async def pos_seleccionar_direccion(
     request: Request,
     panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Obtiene coordenadas de un place_id seleccionado y asigna zona."""
     if not verificar_sesion(panel_session):
@@ -208,7 +209,7 @@ async def pos_seleccionar_direccion(
     data = await request.json()
     place_id = data.get("place_id", "")
     from app.services.geocoding import place_details
-    from app.services.zonas_envio import obtener_zona_envio
+    from app.services.zonas_envio import obtener_zona_envio_db
 
     if place_id:
         result = await place_details(place_id)
@@ -221,7 +222,7 @@ async def pos_seleccionar_direccion(
         return {"error": "No se pudo obtener la ubicación"}
 
     lat, lng = result["lat"], result["lng"]
-    zona = obtener_zona_envio(lat, lng)
+    zona = await obtener_zona_envio_db(db, lat, lng)
     return {
         "lat": lat, "lng": lng,
         "ruta": zona["zona"] if zona else None,
@@ -236,6 +237,7 @@ async def pos_seleccionar_direccion(
 async def pos_geocodificar(
     request: Request,
     panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
 ):
     """Fallback: geocodificar texto libre (sin autocomplete)."""
     if not verificar_sesion(panel_session):
@@ -246,14 +248,14 @@ async def pos_geocodificar(
         return {"error": "Dirección vacía"}
 
     from app.services.geocoding import geocodificar
-    from app.services.zonas_envio import obtener_zona_envio
+    from app.services.zonas_envio import obtener_zona_envio_db
 
     result = await geocodificar(direccion)
     if not result:
         return {"error": "No se pudo geocodificar la dirección"}
 
     lat, lng = result["lat"], result["lng"]
-    zona = obtener_zona_envio(lat, lng)
+    zona = await obtener_zona_envio_db(db, lat, lng)
     return {
         "lat": lat, "lng": lng,
         "ruta": zona["zona"] if zona else None,
@@ -322,16 +324,12 @@ async def _pos_crear_pedido_inner(request, db):
                 sub_flores += monto_item
         impuesto = int(sub_flores * 0.16)
 
-    # Shipping — dynamic tariffs from config
+    # Shipping — dynamic tariffs from config (respeta overrides admin)
     envio = 0
     zona = data.get("zona_envio")
     if tipo == "domicilio" and zona:
-        # Tarifa según mapa unificado de zonas
-        from app.services.zonas_envio import _ZONAS as _zonas_geo
-        for z_nombre, z_tarifa, _ in _zonas_geo:
-            if z_nombre == zona:
-                envio = z_tarifa * 100
-                break
+        from app.services.zonas_envio import tarifa_zona_centavos
+        envio = await tarifa_zona_centavos(db, zona)
 
     # Discounts from frontend
     descuento = data.get("descuento_total", 0)
@@ -1333,12 +1331,8 @@ async def pos_completar_pedido(
     envio = 0
     zona = data.get("zona_envio")
     if tipo == "domicilio" and zona:
-        # Tarifa según mapa unificado de zonas
-        from app.services.zonas_envio import _ZONAS as _zonas_geo
-        for z_nombre, z_tarifa, _ in _zonas_geo:
-            if z_nombre == zona:
-                envio = z_tarifa * 100
-                break
+        from app.services.zonas_envio import tarifa_zona_centavos
+        envio = await tarifa_zona_centavos(db, zona)
     if tipo == "funeral" and data.get("funeraria_id"):
         fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
         if fun:

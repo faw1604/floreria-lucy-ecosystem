@@ -114,3 +114,19 @@ def obtener_zona_envio(lat: float, lng: float) -> dict | None:
             return {"zona": nombre, "tarifa": tarifa}
     logger.info(f"[ZONAS] Point({lng}, {lat}) -> FUERA DE COBERTURA")
     return None
+
+
+async def tarifa_zona_centavos(db, nombre: str) -> int:
+    """Devuelve tarifa en centavos para una zona dada (con override si existe).
+    Retorna 0 si la zona no existe o está inactiva."""
+    overrides = await _cargar_overrides(db)
+    ov = overrides.get(nombre, {})
+    if ov.get("activa") is False:
+        return 0
+    if ov.get("tarifa_centavos") is not None:
+        return ov["tarifa_centavos"]
+    # Buscar en base
+    for n, tarifa_pesos, _ in _ZONAS_BASE:
+        if n == nombre:
+            return tarifa_pesos * 100
+    return 0

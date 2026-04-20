@@ -143,9 +143,10 @@ async def alertas_fechas(
     return {"cumpleanos_proximos": cumpleanos, "aniversarios_proximos": aniversarios}
 
 @router.get("/envio/tarifa")
-async def tarifa_envio(zona: str | None = None):
-    from app.services.zonas_envio import _ZONAS
-    tarifas = {nombre: tarifa * 100 for nombre, tarifa, _ in _ZONAS}
+async def tarifa_envio(zona: str | None = None, db: AsyncSession = Depends(get_db)):
+    from app.services.zonas_envio import listar_zonas_efectivas
+    zonas = await listar_zonas_efectivas(db)
+    tarifas = {z["nombre"]: z["tarifa_centavos"] for z in zonas if z["activa"]}
     if zona and zona in tarifas:
         return {"zona": zona, "tarifa": tarifas[zona], "tarifa_display": f"${tarifas[zona] // 100}"}
     return {"zonas": [{"zona": z, "tarifa": t, "tarifa_display": f"${t // 100}"} for z, t in tarifas.items()]}
