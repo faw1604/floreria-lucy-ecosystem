@@ -2332,9 +2332,23 @@ function editarPendiente(p) {
     if (p.direccion_entrega) dirVerificada = true;
   }
 
-  // Restore factura state
+  // Restore factura state + cargar datos fiscales del pedido
   if (p.requiere_factura) {
     conFactura = true;
+    // Cargar datos fiscales guardados (si existen) para que aparezcan al re-marcar el checkbox
+    fetch(`/api/admin/datos-fiscales/pedido/${p.id}`, {credentials:'include'})
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.existe) {
+          window._datosFiscales = {
+            rfc: d.rfc || '', razon_social: d.razon_social || '',
+            regimen_fiscal: d.regimen_fiscal || '', uso_cfdi: d.uso_cfdi || '',
+            correo_fiscal: d.correo_fiscal || '', codigo_postal: d.codigo_postal || '',
+          };
+          // Refrescar UI si el cart-totals ya está visible (re-renderiza la sección factura con datos)
+          renderCart();
+        }
+      }).catch(()=>{});
   }
 
   // Navigate to ventas > win1
@@ -2403,8 +2417,8 @@ function prefillFromEditing() {
         bandasExtraPOS = campos['Bandas extra'].split(' | ').map(s => s.trim()).filter(Boolean);
         renderBandasExtraPOS();
       }
-      // Restore funeraria
-      if (campos['Funeraria']) {
+      // Restore funeraria — fetch UNA vez, sin reconstruir form (preserva selecciones del usuario)
+      if (campos['Funeraria'] && !funerariaSel) {
         const funName = campos['Funeraria'];
         fetch('/funerarias/', {credentials:'include'}).then(r=>r.json()).then(funerarias => {
           const match = funerarias.find(f => f.nombre === funName);
@@ -2413,9 +2427,13 @@ function prefillFromEditing() {
           } else {
             funerariaSel = {id: null, nombre: funName, zona: null, costo_envio: 0, es_domicilio: false};
           }
-          renderCart(); updateSummary();
-          // Re-render funeraria display in form
-          goWin(3);
+          // Actualizar SOLO el display de funeraria (no reconstruir form, mantiene selecciones)
+          const funBox = document.getElementById('w3-fun-box');
+          if (funBox) {
+            const zonaTxt = funerariaSel.zona ? funerariaSel.zona + ' — $' + (funerariaSel.costo_envio/100) : '';
+            funBox.innerHTML = `<div class="client-sel"><div class="cname">${funerariaSel.nombre}</div><div class="cphone">${zonaTxt}</div><button class="cbtn" onclick="abrirBuscarFuneraria()">Cambiar</button></div>`;
+          }
+          updateSummary();
         }).catch(()=>{});
       }
       // Restore horario velación
