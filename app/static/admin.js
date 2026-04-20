@@ -1003,6 +1003,105 @@ async function guardarTemporada() {
 
 
 
+// ═══ FUNERARIAS (CRUD admin) ═══
+async function loadFunerariasAdmin() {
+  try {
+    const r = await fetch(API+'/funerarias/', {credentials:'include'});
+    if (!r.ok) return;
+    const funs = await r.json();
+    const tbody = document.getElementById('funerarias-tbody');
+    if (!tbody) return;
+    if (!funs.length) { tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;text-align:center">Sin funerarias</td></tr>'; return; }
+    tbody.innerHTML = funs.map(f => `<tr style="border-bottom:1px solid var(--borde)">
+      <td style="padding:8px 4px;font-weight:600">${esc(f.nombre)}</td>
+      <td style="padding:8px 4px;color:var(--texto2);font-size:12px">${esc(f.direccion||'—')}</td>
+      <td style="padding:8px 4px"><span style="background:${zonaColor(f.zona)};padding:2px 8px;border-radius:4px;color:#fff;font-size:11px">${esc(f.zona||'')}</span></td>
+      <td style="padding:8px 4px;font-weight:600">$${(f.costo_envio||0)/100}</td>
+      <td style="padding:8px 4px">
+        <button class="btn-sm" onclick='editarFuneraria(${JSON.stringify(f).replace(/'/g,"&#39;")})'>Editar</button>
+        <button class="btn-sm" style="background:#f5e0e0;color:#c0392b" onclick="eliminarFuneraria(${f.id},'${esc(f.nombre)}')">Eliminar</button>
+      </td>
+    </tr>`).join('');
+  } catch(e) { console.error('loadFunerariasAdmin:', e); }
+}
+
+function zonaColor(zona) {
+  const z = (zona||'').toLowerCase();
+  if (z.includes('morada')) return '#8B5CF6';
+  if (z.includes('azul')) return '#3B82F6';
+  if (z.includes('verde')) return '#10B981';
+  return '#6B7280';
+}
+
+function abrirNuevaFuneraria() {
+  abrirModalFuneraria(null);
+}
+
+function editarFuneraria(f) {
+  abrirModalFuneraria(f);
+}
+
+function abrirModalFuneraria(f) {
+  const isNew = !f;
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+  div.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:20px;max-width:500px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15)">
+      <h3 style="margin:0 0 14px;font-size:16px;color:#193a2c">${isNew ? 'Nueva funeraria' : 'Editar: '+esc(f.nombre)}</h3>
+      <div class="field" style="margin-bottom:10px">
+        <label>Nombre *</label>
+        <input id="fun-mod-nombre" value="${isNew?'':esc(f.nombre)}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px">
+      </div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Dirección</label>
+        <input id="fun-mod-direccion" value="${isNew||!f.direccion?'':esc(f.direccion)}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="field">
+          <label>Zona</label>
+          <input id="fun-mod-zona" value="${isNew?'Morada':esc(f.zona||'')}" placeholder="Ej: Morada, PONIENTE 1" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px">
+        </div>
+        <div class="field">
+          <label>Costo envío (pesos)</label>
+          <input id="fun-mod-costo" type="number" value="${isNew?99:(f.costo_envio||0)/100}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="this.closest('div[style*=position]').remove()" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer">Cancelar</button>
+        <button onclick="guardarFuneraria(${isNew?'null':f.id},this)" style="flex:1;padding:10px;border:none;border-radius:8px;background:#193a2c;color:#fff;cursor:pointer;font-weight:600">Guardar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+}
+
+async function guardarFuneraria(id, btn) {
+  const nombre = document.getElementById('fun-mod-nombre').value.trim();
+  const direccion = document.getElementById('fun-mod-direccion').value.trim();
+  const zona = document.getElementById('fun-mod-zona').value.trim();
+  const costo_pesos = parseInt(document.getElementById('fun-mod-costo').value, 10);
+  if (!nombre) { alert('Nombre obligatorio'); return; }
+  if (isNaN(costo_pesos) || costo_pesos < 0) { alert('Costo inválido'); return; }
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const body = JSON.stringify({nombre, direccion: direccion||null, zona, costo_envio: costo_pesos*100});
+  const url = id ? API+`/funerarias/${id}` : API+'/funerarias/';
+  const method = id ? 'PUT' : 'POST';
+  try {
+    const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, credentials:'include', body});
+    if (!r.ok) { alert('Error al guardar'); btn.disabled=false; btn.textContent='Guardar'; return; }
+    btn.closest('div[style*="position"]').remove();
+    loadFunerariasAdmin();
+  } catch(e) { alert('Error: '+e.message); btn.disabled=false; btn.textContent='Guardar'; }
+}
+
+async function eliminarFuneraria(id, nombre) {
+  if (!confirm(`¿Eliminar "${nombre}"?\nNo se puede deshacer.`)) return;
+  const r = await fetch(API+`/funerarias/${id}`, {method:'DELETE', credentials:'include'});
+  if (!r.ok) { alert('Error al eliminar'); return; }
+  loadFunerariasAdmin();
+}
+
+
 // ═══ TURNOS DE ENTREGA ═══
 async function loadTurnos() {
   try {
@@ -3245,6 +3344,7 @@ async function cambiarPassUsuario(id) {
 async function loadConfig() {
   loadZonasAdmin();
   loadTurnos();
+  loadFunerariasAdmin();
   try {
     const r = await fetch(API + '/configuracion/', {credentials:'include'});
     const data = await r.json();

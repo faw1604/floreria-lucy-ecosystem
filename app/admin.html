@@ -437,6 +437,7 @@
       <button class="sub-tab" onclick="cfgSubTab('cfg-whatsapp')">WhatsApp</button>
       <button class="sub-tab" onclick="cfgSubTab('cfg-zonas')">Zonas Envío</button>
       <button class="sub-tab" onclick="cfgSubTab('cfg-horarios')">Horarios</button>
+      <button class="sub-tab" onclick="cfgSubTab('cfg-funerarias')">Funerarias</button>
     </div>
     <div class="sub-content" id="cfg-negocio-content"></div>
     <div class="sub-content" id="cfg-banco-content" style="display:none"></div>
@@ -484,6 +485,26 @@
           turnos activos aunque sea tarde (ej. último minuto para noche). Lo que NO se puede es
           aceptar pedidos para un turno que esté DESACTIVADO aquí.
         </div>
+      </div>
+    </div>
+    <div class="sub-content" id="cfg-funerarias-content" style="display:none">
+      <div class="config-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:13px;color:var(--texto2)">
+            Funerarias registradas. Edita zona, costo de envío y dirección.
+          </div>
+          <button class="btn-primary" onclick="abrirNuevaFuneraria()" style="padding:6px 14px;font-size:12px">+ Nueva</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="border-bottom:2px solid var(--borde);text-align:left">
+            <th style="padding:8px 4px">Nombre</th>
+            <th style="padding:8px 4px">Dirección</th>
+            <th style="padding:8px 4px">Zona</th>
+            <th style="padding:8px 4px">Costo envío</th>
+            <th style="padding:8px 4px">Acciones</th>
+          </tr></thead>
+          <tbody id="funerarias-tbody"><tr><td colspan="5" style="padding:12px;text-align:center;color:var(--texto2)">Cargando...</td></tr></tbody>
+        </table>
       </div>
     </div>
     <div class="sub-content" id="cfg-zonas-content" style="display:none">

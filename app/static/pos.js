@@ -824,7 +824,13 @@ function buildW3Form() {
         <div class="errmsg">Selecciona una funeraria</div>
       </div>
       ${funerariaSel && funerariaSel.es_domicilio ? `
-      <div class="frow" id="fr-fun-dir"><label>Dirección de entrega *</label><input type="text" id="f-fun-dir" placeholder="Calle, número, colonia"><div class="errmsg">Campo obligatorio</div></div>
+      <div class="frow" id="fr-fun-dir"><label>Dirección de entrega *</label>
+        <div style="position:relative">
+          <input type="text" id="f-fun-dir" placeholder="Escribe la calle..." autocomplete="off" oninput="onFunDirInput()" style="width:100%">
+          <div id="fun-dir-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--borde);border-top:none;border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:200px;overflow-y:auto"></div>
+        </div>
+        <div class="errmsg">Campo obligatorio</div>
+      </div>
       <div class="frow"><label>Referencias</label><input type="text" id="f-fun-ref" placeholder="Entre calles, color de casa..."></div>
       <div class="frow" id="fr-fun-zona"><label>Zona de envío *</label>
         <select id="f-fun-zona" onchange="onFunZonaChange()" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
@@ -990,6 +996,48 @@ function onDirInput() {
   const q = (document.getElementById('f-dir').value || '').trim();
   if (q.length < 3) { document.getElementById('dir-suggestions').style.display = 'none'; return; }
   _dirDebounce = setTimeout(() => fetchDirSuggestions(q), 300);
+}
+
+// Autocomplete para funeral domicilio particular
+let _funDirDebounce = null;
+function onFunDirInput() {
+  clearTimeout(_funDirDebounce);
+  const q = (document.getElementById('f-fun-dir').value || '').trim();
+  const box = document.getElementById('fun-dir-suggestions');
+  if (q.length < 3) { if (box) box.style.display = 'none'; return; }
+  _funDirDebounce = setTimeout(() => fetchFunDirSuggestions(q), 300);
+}
+
+async function fetchFunDirSuggestions(q) {
+  const box = document.getElementById('fun-dir-suggestions');
+  if (!box) return;
+  try {
+    const r = await fetch(`/pos/direccion/autocomplete?q=${encodeURIComponent(q)}`, {credentials:'include'});
+    const data = await r.json();
+    if (!data.suggestions || !data.suggestions.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.suggestions.map(s =>
+      `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0" onmousedown="selectFunDirSuggestion('${s.place_id}','${s.description.replace(/'/g, "\\'")}')" onmouseenter="this.style.background='#f5f5f5'" onmouseleave="this.style.background=''">${s.description}</div>`
+    ).join('');
+    box.style.display = '';
+  } catch(e) { box.style.display = 'none'; }
+}
+
+async function selectFunDirSuggestion(placeId, description) {
+  document.getElementById('f-fun-dir').value = description;
+  document.getElementById('fun-dir-suggestions').style.display = 'none';
+  // Geocodificar para auto-seleccionar zona
+  try {
+    const r = await fetch('/pos/direccion/seleccionar', {
+      method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+      body: JSON.stringify({place_id: placeId, direccion: description})
+    });
+    const data = await r.json();
+    if (data.zona_envio) {
+      const sel = document.getElementById('f-fun-zona');
+      if (sel) sel.value = data.zona_envio;
+      onFunZonaChange();
+    }
+  } catch(e) {}
 }
 
 async function fetchDirSuggestions(q) {

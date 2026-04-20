@@ -51,3 +51,45 @@ async def crear_funeraria(
     await db.commit()
     await db.refresh(funeraria)
     return {"id": funeraria.id, "nombre": funeraria.nombre}
+
+
+@router.put("/{funeraria_id}")
+async def editar_funeraria(
+    funeraria_id: int,
+    request: dict,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    f = (await db.execute(select(Funeraria).where(Funeraria.id == funeraria_id))).scalar_one_or_none()
+    if not f:
+        raise HTTPException(status_code=404, detail="Funeraria no encontrada")
+    if "nombre" in request and request["nombre"]:
+        f.nombre = request["nombre"]
+    if "direccion" in request:
+        f.direccion = request["direccion"]
+    if "zona" in request:
+        f.zona = request["zona"]
+    if "costo_envio" in request:
+        f.costo_envio = int(request["costo_envio"])
+    if "aliases" in request:
+        f.aliases = json.dumps(request["aliases"], ensure_ascii=False)
+    await db.commit()
+    return {"ok": True, "id": f.id}
+
+
+@router.delete("/{funeraria_id}")
+async def eliminar_funeraria(
+    funeraria_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    f = (await db.execute(select(Funeraria).where(Funeraria.id == funeraria_id))).scalar_one_or_none()
+    if not f:
+        raise HTTPException(status_code=404, detail="Funeraria no encontrada")
+    await db.delete(f)
+    await db.commit()
+    return {"ok": True}

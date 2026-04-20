@@ -2899,7 +2899,56 @@ async function selectCatDirSuggestion(placeId, description) {
 document.addEventListener('click', (e) => {
   const box = document.getElementById('cat-dir-suggestions');
   if (box && !box.contains(e.target) && e.target.id !== 'of-direccion') box.style.display = 'none';
+  const funBox = document.getElementById('of-funeral-dir-suggestions');
+  if (funBox && !funBox.contains(e.target) && e.target.id !== 'of-funeral-direccion') funBox.style.display = 'none';
 });
+
+// Autocomplete para funeral domicilio particular
+let _funeralDirDebounce = null;
+function onFuneralDirInput() {
+  clearTimeout(_funeralDirDebounce);
+  const inp = document.getElementById('of-funeral-direccion');
+  pedidoWeb.funeral_direccion = inp.value;
+  const q = (inp.value || '').trim();
+  const box = document.getElementById('of-funeral-dir-suggestions');
+  if (q.length < 3) { if (box) box.style.display = 'none'; return; }
+  _funeralDirDebounce = setTimeout(() => fetchFuneralDirSuggestions(q), 300);
+}
+
+async function fetchFuneralDirSuggestions(q) {
+  const box = document.getElementById('of-funeral-dir-suggestions');
+  if (!box) return;
+  try {
+    const r = await fetch(`${API}/catalogo/direccion/autocomplete?q=${encodeURIComponent(q)}`);
+    const data = await r.json();
+    if (!data.suggestions || !data.suggestions.length) { box.style.display = 'none'; return; }
+    box.innerHTML = data.suggestions.map(s =>
+      `<div style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f0f0" onmousedown="selectFuneralDirSuggestion('${s.place_id}','${s.description.replace(/'/g, "\\'")}')" onmouseenter="this.style.background='var(--crema)'" onmouseleave="this.style.background=''">${s.description}</div>`
+    ).join('');
+    box.style.display = '';
+  } catch(e) { box.style.display = 'none'; }
+}
+
+async function selectFuneralDirSuggestion(placeId, description) {
+  document.getElementById('of-funeral-direccion').value = description;
+  pedidoWeb.funeral_direccion = description;
+  document.getElementById('of-funeral-dir-suggestions').style.display = 'none';
+  // Geocodificar para auto-seleccionar zona
+  try {
+    const r = await fetch(`${API}/catalogo/direccion/seleccionar`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({place_id: placeId, direccion: description})
+    });
+    const data = await r.json();
+    if (data.zona_envio) {
+      const sel = document.getElementById('of-funeral-zona');
+      if (sel) {
+        sel.value = data.zona_envio;
+        if (typeof updateFuneralDomicilioCost === 'function') updateFuneralDomicilioCost(data.zona_envio);
+      }
+    }
+  } catch(e) {}
+}
 
 let extraBandaCount = 0;
 
@@ -3057,7 +3106,10 @@ function selectFunerariaDomicilio() {
     addrDiv.innerHTML =
       '<div class="order-field" style="margin-top:12px">' +
         '<label>Dirección de entrega <span class="required">*</span></label>' +
-        '<input type="text" id="of-funeral-direccion" placeholder="Calle, número, colonia" oninput="pedidoWeb.funeral_direccion=this.value">' +
+        '<div style="position:relative">' +
+          '<input type="text" id="of-funeral-direccion" placeholder="Escribe la calle..." autocomplete="off" oninput="onFuneralDirInput()">' +
+          '<div id="of-funeral-dir-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--borde);border-top:none;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:220px;overflow-y:auto"></div>' +
+        '</div>' +
       '</div>' +
       '<div class="order-field">' +
         '<label>Referencias</label>' +
