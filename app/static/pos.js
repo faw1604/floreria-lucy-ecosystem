@@ -1533,6 +1533,7 @@ function buildPayload(estado) {
 
   if (ordenTipo === 'funeral') {
     body.funeraria_id = funerariaSel?.id || null;
+    body.funeraria_nombre = funerariaSel?.nombre || null;
     body.nombre_fallecido = document.getElementById('f-fallecido')?.value || '';
     body.sala = document.getElementById('f-sala')?.value || '';
     body.dedicatoria = document.getElementById('f-dedicatoria-fun')?.value || '';
@@ -1542,11 +1543,13 @@ function buildPayload(estado) {
     const bandasExtraValidas = bandasExtraPOS.filter(b => b && b.trim());
     body.bandas_extra = bandasExtraValidas.length > 0 ? bandasExtraValidas.join(' | ') : null;
     body.bandas_extra_costo = bandasExtraValidas.length * 8000;
-    // Domicilio particular
+    // Domicilio particular: usar misma estructura que catálogo web (Sprint 2.2)
+    body.funeral_domicilio = !!(funerariaSel && funerariaSel.es_domicilio);
     if (funerariaSel && funerariaSel.es_domicilio) {
-      body.direccion_entrega = document.getElementById('f-fun-dir')?.value || '';
-      body.notas_entrega = document.getElementById('f-fun-ref')?.value || '';
-      body.zona_envio = document.getElementById('f-fun-zona')?.value || null;
+      body.funeral_direccion = document.getElementById('f-fun-dir')?.value || '';
+      body.funeral_referencias = document.getElementById('f-fun-ref')?.value || '';
+      body.funeral_domicilio_zona = document.getElementById('f-fun-zona')?.value || null;
+      // costo se calcula en backend desde tarifa_zona_centavos
     }
   }
 

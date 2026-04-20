@@ -359,15 +359,33 @@ async def _pos_crear_pedido_inner(request, db):
             raise HTTPException(status_code=400, detail=f"Falta asignar ${(total - suma_pagos) / 100:.0f}")
 
     # Build notas for funeral
+    # Sprint 2.2: estructura unificada con catalogo.py — soporta funeral_domicilio + funeral_direccion
     notas = data.get("notas_entrega", "")
     if tipo == "funeral":
         funeral_parts = []
-        if data.get("funeraria_id"):
+        funeraria_nombre_disp = None
+        funeral_es_domicilio = bool(data.get("funeral_domicilio"))
+        if data.get("funeraria_id") and not funeral_es_domicilio:
             fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
             if fun:
-                funeral_parts.append(f"Funeraria: {fun.nombre}")
+                funeraria_nombre_disp = fun.nombre
                 zona = fun.zona
                 envio = fun.costo_envio
+        elif funeral_es_domicilio:
+            # Domicilio particular: calcular envío desde la zona seleccionada
+            zona_dom = data.get("funeral_domicilio_zona")
+            if zona_dom:
+                from app.services.zonas_envio import tarifa_zona_centavos
+                envio = await tarifa_zona_centavos(db, zona_dom)
+                zona = zona_dom
+            funeraria_nombre_disp = "Domicilio particular"
+        if funeraria_nombre_disp:
+            funeral_parts.append(f"Funeraria: {funeraria_nombre_disp}")
+        # Direccion para domicilio particular
+        if funeral_es_domicilio and data.get("funeral_direccion"):
+            funeral_parts.append(f"Direccion: {data['funeral_direccion']}")
+            if data.get("funeral_referencias"):
+                funeral_parts.append(f"Ref: {data['funeral_referencias']}")
         if data.get("nombre_fallecido"):
             funeral_parts.append(f"Fallecido: {data['nombre_fallecido']}")
         if data.get("sala"):
@@ -402,7 +420,8 @@ async def _pos_crear_pedido_inner(request, db):
         _metodo = ME.MOSTRADOR
     elif tipo == "recoger":
         _metodo = ME.RECOGER
-    elif es_funeral and (data.get("direccion_entrega") or data.get("funeraria_id")):
+    elif es_funeral and (data.get("direccion_entrega") or data.get("funeraria_id") or data.get("funeral_domicilio")):
+        # Funeral con funeraria registrada O domicilio particular → envío
         _metodo = ME.FUNERAL_ENVIO
     elif es_funeral:
         _metodo = ME.FUNERAL_RECOGER
@@ -435,7 +454,10 @@ async def _pos_crear_pedido_inner(request, db):
     _dir_entrega = data.get("direccion_entrega")
     if es_funeral:
         _receptor = data.get("nombre_fallecido") or _receptor
-        if not _dir_entrega and data.get("funeraria_id"):
+        # Domicilio particular: usar funeral_direccion (Sprint 2.2 estructura unificada)
+        if data.get("funeral_domicilio") and data.get("funeral_direccion"):
+            _dir_entrega = data["funeral_direccion"]
+        elif not _dir_entrega and data.get("funeraria_id"):
             fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
             if fun:
                 _dir_entrega = f"{fun.nombre}" + (f" — {fun.direccion}" if fun.direccion else "")
@@ -1333,10 +1355,15 @@ async def pos_completar_pedido(
     if tipo == "domicilio" and zona:
         from app.services.zonas_envio import tarifa_zona_centavos
         envio = await tarifa_zona_centavos(db, zona)
-    if tipo == "funeral" and data.get("funeraria_id"):
-        fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
-        if fun:
-            envio = fun.costo_envio
+    if tipo == "funeral":
+        # Sprint 2.2: estructura unificada
+        if data.get("funeral_domicilio") and data.get("funeral_domicilio_zona"):
+            from app.services.zonas_envio import tarifa_zona_centavos
+            envio = await tarifa_zona_centavos(db, data["funeral_domicilio_zona"])
+        elif data.get("funeraria_id"):
+            fun = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
+            if fun:
+                envio = fun.costo_envio
 
     # Bandas extra ($80 c/u) — solo funeral
     bandas_extra_costo = int(data.get("bandas_extra_costo", 0)) if tipo == "funeral" else 0
@@ -1357,9 +1384,9 @@ async def pos_completar_pedido(
     elif tipo == "recoger":
         _metodo = ME.RECOGER
     elif tipo == "funeral":
-        # Funeral con funeraria_id o direccion_entrega → envío a funeraria/domicilio
+        # Funeral con funeraria_id, direccion_entrega o funeral_domicilio → envío
         # Funeral sin nada de eso → cliente pasa a recoger
-        if data.get("funeraria_id") or data.get("direccion_entrega"):
+        if data.get("funeraria_id") or data.get("direccion_entrega") or data.get("funeral_domicilio"):
             _metodo = ME.FUNERAL_ENVIO
         else:
             _metodo = ME.FUNERAL_RECOGER
@@ -1393,7 +1420,11 @@ async def pos_completar_pedido(
     pedido.pagos_detalle = json.dumps([{"nombre": p.get("nombre", ""), "monto": p.get("monto", 0)} for p in pagos]) if pagos else pedido.pagos_detalle
     pedido.customer_id = data.get("cliente_id") or pedido.customer_id
     pedido.tipo_especial = "Funeral" if tipo == "funeral" else None
-    pedido.direccion_entrega = data.get("direccion_entrega") or pedido.direccion_entrega
+    # Sprint 2.2: para funeral domicilio particular usar funeral_direccion
+    if tipo == "funeral" and data.get("funeral_domicilio") and data.get("funeral_direccion"):
+        pedido.direccion_entrega = data["funeral_direccion"]
+    else:
+        pedido.direccion_entrega = data.get("direccion_entrega") or pedido.direccion_entrega
     pedido.receptor_nombre = data.get("nombre_destinatario") or pedido.receptor_nombre
     pedido.receptor_telefono = data.get("telefono_destinatario") or pedido.receptor_telefono
     _dedi = data.get("dedicatoria")
@@ -1402,9 +1433,16 @@ async def pos_completar_pedido(
     else:
         pedido.dedicatoria = _dedi or pedido.dedicatoria
     # Construir notas_internas: para funeral, reconstruir con datos completos
+    # Sprint 2.2: estructura unificada (funeral_domicilio + funeral_direccion)
     if tipo == "funeral":
         funeral_parts = []
-        if data.get("funeraria_id"):
+        if data.get("funeral_domicilio"):
+            funeral_parts.append("Funeraria: Domicilio particular")
+            if data.get("funeral_direccion"):
+                funeral_parts.append(f"Direccion: {data['funeral_direccion']}")
+            if data.get("funeral_referencias"):
+                funeral_parts.append(f"Ref: {data['funeral_referencias']}")
+        elif data.get("funeraria_id"):
             fun_obj = (await db.execute(select(Funeraria).where(Funeraria.id == data["funeraria_id"]))).scalar_one_or_none()
             if fun_obj:
                 funeral_parts.append(f"Funeraria: {fun_obj.nombre}")
@@ -1441,7 +1479,11 @@ async def pos_completar_pedido(
     if fecha_str:
         pedido.fecha_entrega = date_type.fromisoformat(fecha_str)
 
-    zona_entrega = data.get("zona_envio") or zona
+    # Sprint 2.2: para funeral domicilio particular usar funeral_domicilio_zona
+    if tipo == "funeral" and data.get("funeral_domicilio") and data.get("funeral_domicilio_zona"):
+        zona_entrega = data["funeral_domicilio_zona"]
+    else:
+        zona_entrega = data.get("zona_envio") or zona
     if zona_entrega:
         pedido.zona_entrega = zona_entrega
 
