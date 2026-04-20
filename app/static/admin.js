@@ -1003,6 +1003,37 @@ async function guardarTemporada() {
 
 
 
+// ═══ TURNOS DE ENTREGA ═══
+async function loadTurnos() {
+  try {
+    const r = await fetch(API+'/catalogo/turnos-activos');
+    if (!r.ok) return;
+    const t = await r.json();
+    const m = document.getElementById('turno-manana-toggle');
+    const tar = document.getElementById('turno-tarde-toggle');
+    const n = document.getElementById('turno-noche-toggle');
+    const rec = document.getElementById('turno-recoger-toggle');
+    if (m) m.checked = t.manana;
+    if (tar) tar.checked = t.tarde;
+    if (n) n.checked = t.noche;
+    if (rec) rec.checked = t.recoger;
+  } catch(e) { console.error('loadTurnos:', e); }
+}
+
+async function guardarTurnos() {
+  const m = document.getElementById('turno-manana-toggle').checked;
+  const tar = document.getElementById('turno-tarde-toggle').checked;
+  const n = document.getElementById('turno-noche-toggle').checked;
+  const rec = document.getElementById('turno-recoger-toggle').checked;
+  await Promise.all([
+    toggleConfig('turno_manana_activo', String(m)),
+    toggleConfig('turno_tarde_activo', String(tar)),
+    toggleConfig('turno_noche_activo', String(n)),
+    toggleConfig('turno_recoger_activo', String(rec)),
+  ]);
+}
+
+
 // ═══ ZONAS DE ENVÍO ═══
 async function loadZonasAdmin() {
   try {
@@ -3213,6 +3244,7 @@ async function cambiarPassUsuario(id) {
 // ══════ CONFIGURACIONES ══════
 async function loadConfig() {
   loadZonasAdmin();
+  loadTurnos();
   try {
     const r = await fetch(API + '/configuracion/', {credentials:'include'});
     const data = await r.json();

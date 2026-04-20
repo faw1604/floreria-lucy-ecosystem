@@ -222,6 +222,22 @@ function onPOSFechaChange() {
     btn.style.opacity = '';
     btn.style.cursor = '';
     btn.style.pointerEvents = '';
+    btn.title = '';
+  });
+  // Turnos desactivados por admin: ocultar/deshabilitar SIEMPRE (no solo hoy)
+  const turnosOff = window._turnosInactivosPOS || {};
+  horBtns.querySelectorAll('.hor-btn').forEach(btn => {
+    const m = btn.getAttribute('onclick') && btn.getAttribute('onclick').match(/'([^']+)'\)/);
+    if (!m) return;
+    const val = m[1];
+    if (turnosOff[val] === true) {
+      btn.style.opacity = '0.4';
+      btn.style.cursor = 'not-allowed';
+      btn.style.pointerEvents = 'none';
+      btn.title = 'Turno temporalmente desactivado en admin';
+      btn.classList.remove('active');
+      if (selHorario === val) selHorario = null;
+    }
   });
   if (isTodayPOS) {
     const hr = nowPOS.getHours() + nowPOS.getMinutes() / 60;
@@ -263,6 +279,20 @@ async function fetchProds() {
     renderProds();
   } catch(e) { console.error('Error fetching products', e); }
 }
+
+// Carga turnos activos al iniciar POS (se ejecuta abajo)
+window._turnosInactivosPOS = {};
+(async () => {
+  try {
+    const r = await fetch('/catalogo/turnos-activos');
+    if (r.ok) {
+      const t = await r.json();
+      window._turnosInactivosPOS = {
+        manana: !t.manana, tarde: !t.tarde, noche: !t.noche, recoger: !t.recoger,
+      };
+    }
+  } catch(e) {}
+})();
 
 async function fetchCategorias() {
   try {

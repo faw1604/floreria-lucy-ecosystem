@@ -436,11 +436,56 @@
       <button class="sub-tab" onclick="cfgSubTab('cfg-ticket')">Ticket / POS</button>
       <button class="sub-tab" onclick="cfgSubTab('cfg-whatsapp')">WhatsApp</button>
       <button class="sub-tab" onclick="cfgSubTab('cfg-zonas')">Zonas Envío</button>
+      <button class="sub-tab" onclick="cfgSubTab('cfg-horarios')">Horarios</button>
     </div>
     <div class="sub-content" id="cfg-negocio-content"></div>
     <div class="sub-content" id="cfg-banco-content" style="display:none"></div>
     <div class="sub-content" id="cfg-ticket-content" style="display:none"></div>
     <div class="sub-content" id="cfg-whatsapp-content" style="display:none"></div>
+    <div class="sub-content" id="cfg-horarios-content" style="display:none">
+      <div class="config-card">
+        <div style="font-size:13px;color:var(--texto2);margin-bottom:16px">
+          Activa o desactiva turnos de entrega temporalmente sin tocar código.
+          Útil si te quedaste sin repartidores, evento especial, o vacaciones.
+          Web y POS los respetan automáticamente.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="toggle-row">
+            <div>
+              <label>🌅 Mañana (9:00 - 14:00)</label>
+              <div style="font-size:11px;color:var(--texto2)">Aceptar pedidos para entrega en la mañana</div>
+            </div>
+            <input type="checkbox" id="turno-manana-toggle" checked onchange="guardarTurnos()">
+          </div>
+          <div class="toggle-row">
+            <div>
+              <label>☀️ Tarde (14:00 - 18:00)</label>
+              <div style="font-size:11px;color:var(--texto2)">Aceptar pedidos para entrega en la tarde</div>
+            </div>
+            <input type="checkbox" id="turno-tarde-toggle" checked onchange="guardarTurnos()">
+          </div>
+          <div class="toggle-row">
+            <div>
+              <label>🌙 Noche (18:00 - 21:00)</label>
+              <div style="font-size:11px;color:var(--texto2)">Aceptar pedidos para entrega en la noche</div>
+            </div>
+            <input type="checkbox" id="turno-noche-toggle" checked onchange="guardarTurnos()">
+          </div>
+          <div class="toggle-row">
+            <div>
+              <label>🏪 Recoger en tienda</label>
+              <div style="font-size:11px;color:var(--texto2)">Aceptar pedidos para recoger en la tienda</div>
+            </div>
+            <input type="checkbox" id="turno-recoger-toggle" checked onchange="guardarTurnos()">
+          </div>
+        </div>
+        <div style="font-size:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;border-left:3px solid var(--dorado);margin-top:16px">
+          <strong>Nota:</strong> Desde POS, Fer puede seguir aceptando pedidos a discreción para
+          turnos activos aunque sea tarde (ej. último minuto para noche). Lo que NO se puede es
+          aceptar pedidos para un turno que esté DESACTIVADO aquí.
+        </div>
+      </div>
+    </div>
     <div class="sub-content" id="cfg-zonas-content" style="display:none">
       <div class="config-card">
         <div style="font-size:13px;color:var(--texto2);margin-bottom:12px">

@@ -2200,13 +2200,16 @@ function orderGoStep(step) {
 function renderOrderTypeButtons() {
   const funeralCats = ['funeral', 'conjuntos funebres', 'conjuntos fúnebres'];
   const hasFuneral = cart.some(p => funeralCats.some(f => p.categoria.toLowerCase().includes(f)));
+  const recogerInactivo = window._turnosInactivos?.recoger === true;
   let html = '';
   // Domicilio: solo si NO hay items funeral
   if (!hasFuneral) {
     html += '<button class="order-tipo-btn" data-tipo="domicilio" onclick="selectOrderType(\'domicilio\')">🚚 Envío a domicilio</button>';
   }
-  // Recoger: siempre disponible
-  html += '<button class="order-tipo-btn" data-tipo="recoger" onclick="selectOrderType(\'recoger\')">🏪 Recoger en tienda</button>';
+  // Recoger: oculto si admin lo desactivó
+  if (!recogerInactivo) {
+    html += '<button class="order-tipo-btn" data-tipo="recoger" onclick="selectOrderType(\'recoger\')">🏪 Recoger en tienda</button>';
+  }
   // Funeral: solo si hay items funeral
   if (hasFuneral) {
     html += '<button class="order-tipo-btn" data-tipo="funeral" onclick="selectOrderType(\'funeral\')">🕊️ Funeral</button>';
@@ -2734,20 +2737,23 @@ async function onFechaChange() {
   }
   if (disclaimerEl) disclaimerEl.style.display = 'none';
 
-  // Domicilio: disable past horarios if today
+  // Domicilio: disable past horarios if today + turnos desactivados por admin
   if (horarioGrid) {
     const btns = horarioGrid.querySelectorAll('.order-horario-btn');
     // Cutoff hours: manana=11, tarde=16, noche=18:50, turno1=12, turno2=17:30
     const cutoffs = {manana: 11, tarde: 16, noche: 18 + 50/60, turno1: 12, turno2: 17.5};
+    const turnosOff = window._turnosInactivos || {};
     let allDisabled = true;
     btns.forEach(btn => {
       const h = btn.dataset.h;
       if (!h || h === 'hora_especifica') return;
       const cutoff = cutoffs[h];
-      const shouldDisable = isToday && currentHour >= cutoff;
+      const inactivoAdmin = turnosOff[h] === true;
+      const shouldDisable = (isToday && currentHour >= cutoff) || inactivoAdmin;
       btn.disabled = shouldDisable;
       btn.style.opacity = shouldDisable ? '0.4' : '';
       btn.style.cursor = shouldDisable ? 'not-allowed' : '';
+      btn.title = inactivoAdmin ? 'Turno temporalmente no disponible' : '';
       btn.classList.toggle('selected', pedidoWeb.horario_entrega === h && !shouldDisable);
       if (shouldDisable && pedidoWeb.horario_entrega === h) pedidoWeb.horario_entrega = null;
       if (!shouldDisable) allDisabled = false;
@@ -3403,6 +3409,19 @@ updateCartFab();
 
 // Load catalog config from BD
 let catConfig = null;
+window._turnosInactivos = {};
+// Cargar turnos activos en paralelo (no bloqueante)
+(async () => {
+  try {
+    const tr = await fetch(`${API}/catalogo/turnos-activos`);
+    if (tr.ok) {
+      const t = await tr.json();
+      window._turnosInactivos = {
+        manana: !t.manana, tarde: !t.tarde, noche: !t.noche, recoger: !t.recoger,
+      };
+    }
+  } catch(e) {}
+})();
 const catConfigReady = (async function loadCatConfig() {
   try {
     const r = await fetch(`${API}/catalogo/config`);

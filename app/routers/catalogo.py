@@ -224,6 +224,26 @@ async def zonas_envio_publico(db: AsyncSession = Depends(get_db)):
     return [z for z in zonas if z["activa"]]
 
 
+@router.get("/turnos-activos")
+async def turnos_activos_publico(db: AsyncSession = Depends(get_db)):
+    """Devuelve qué turnos de entrega están activos (admin puede desactivar
+    temporalmente: 'hoy ya no acepto noche', vacaciones, etc.).
+    Usado por Web y POS para ocultar opciones de horario apagadas."""
+    from sqlalchemy import text as txt
+    r = await db.execute(txt(
+        "SELECT clave, valor FROM configuracion_negocio "
+        "WHERE clave IN ('turno_manana_activo','turno_tarde_activo',"
+        "'turno_noche_activo','turno_recoger_activo')"
+    ))
+    cfg = {row[0]: row[1] for row in r.fetchall()}
+    return {
+        "manana": cfg.get("turno_manana_activo", "true") == "true",
+        "tarde": cfg.get("turno_tarde_activo", "true") == "true",
+        "noche": cfg.get("turno_noche_activo", "true") == "true",
+        "recoger": cfg.get("turno_recoger_activo", "true") == "true",
+    }
+
+
 @router.get("/catalogos-fiscales")
 async def catalogos_fiscales_publico(db: AsyncSession = Depends(get_db)):
     """Catálogos de régimen fiscal y uso CFDI para formulario web."""

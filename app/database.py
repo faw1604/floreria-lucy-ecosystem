@@ -199,6 +199,10 @@ async def inicializar_db():
             ("temporada_dias_restriccion", "2", "Días antes de fecha fuerte para restringir catálogo"),
             ("temporada_acepta_funerales", "true", "Aceptar pedidos funerales en temporada alta"),
             ("temporada_envio_unico", "9900", "Precio envío único temporada alta en centavos"),
+            ("turno_manana_activo", "true", "Aceptar pedidos para entrega en mañana (9-2pm)"),
+            ("turno_tarde_activo", "true", "Aceptar pedidos para entrega en tarde (2-6pm)"),
+            ("turno_noche_activo", "true", "Aceptar pedidos para entrega en noche (6-9pm)"),
+            ("turno_recoger_activo", "true", "Aceptar pedidos para recoger en tienda"),
         ]
         for clave, valor, desc in _seeds:
             try:
