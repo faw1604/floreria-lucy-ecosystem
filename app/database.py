@@ -84,6 +84,22 @@ async def inicializar_db():
             pass
 
 
+    # 3a. Tabla zonas_envio_override (admin puede ajustar tarifa/activar/desactivar)
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS zonas_envio_override (
+                    nombre VARCHAR(50) PRIMARY KEY,
+                    tarifa_centavos INTEGER,
+                    activa BOOLEAN DEFAULT true,
+                    actualizado_en TIMESTAMP DEFAULT NOW()
+                )
+            """))
+            _log.info("Tabla zonas_envio_override: OK")
+        except Exception as e:
+            _log.error(f"Tabla zonas_envio_override ERROR: {e}")
+
     # 3. Crear tabla reservas en conexión separada
     async with engine.begin() as conn:
         from sqlalchemy import text

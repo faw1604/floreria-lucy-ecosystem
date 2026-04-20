@@ -773,28 +773,12 @@ function buildW3Form() {
       </div>
     </div>`;
 
-    // Zona de envio y ruta
+    // Zona de envio y ruta — opciones se cargan dinámicamente desde /catalogo/zonas-envio
     html += `<div class="fbox"><h4>Zona de envio y ruta</h4>
       <div id="zona-auto" style="margin-bottom:8px"></div>
       <div class="frow"><label>Zona y tarifa</label>
         <select id="f-zona" onchange="onZonaChange()">
-          <option value="">Seleccionar...</option>
-          <option value="Zona Central" data-tarifa="7900">Zona Central — $79</option>
-          <option value="NORESTE 1" data-tarifa="9900">NORESTE 1 — $99</option>
-          <option value="NOROESTE 1" data-tarifa="9900">NOROESTE 1 — $99</option>
-          <option value="PONIENTE 1" data-tarifa="9900">PONIENTE 1 — $99</option>
-          <option value="SUR 1" data-tarifa="9900">SUR 1 — $99</option>
-          <option value="NORESTE 2" data-tarifa="13900">NORESTE 2 — $139</option>
-          <option value="NOROESTE 2" data-tarifa="13900">NOROESTE 2 — $139</option>
-          <option value="PONIENTE 2" data-tarifa="13900">PONIENTE 2 — $139</option>
-          <option value="SUR 2" data-tarifa="13900">SUR 2 — $139</option>
-          <option value="ORIENTE 1" data-tarifa="14900">ORIENTE 1 — $149</option>
-          <option value="PONIENTE 3" data-tarifa="15900">PONIENTE 3 — $159</option>
-          <option value="SUR 3" data-tarifa="15900">SUR 3 — $159</option>
-          <option value="SURESTE 1" data-tarifa="18900">SURESTE 1 — $189</option>
-          <option value="NORTE" data-tarifa="19900">NORTE — $199</option>
-          <option value="ORIENTE 2" data-tarifa="19900">ORIENTE 2 — $199</option>
-          <option value="SURESTE 2" data-tarifa="19900">SURESTE 2 — $199</option>
+          <option value="">Cargando zonas...</option>
         </select>
       </div>
     </div>`;
@@ -814,23 +798,7 @@ function buildW3Form() {
       <div class="frow"><label>Referencias</label><input type="text" id="f-fun-ref" placeholder="Entre calles, color de casa..."></div>
       <div class="frow" id="fr-fun-zona"><label>Zona de envío *</label>
         <select id="f-fun-zona" onchange="onFunZonaChange()" style="width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:6px;font-size:13px">
-          <option value="">Selecciona zona</option>
-          <option value="Zona Central" data-tarifa="7900">Zona Central — $79</option>
-          <option value="NORESTE 1" data-tarifa="9900">NORESTE 1 — $99</option>
-          <option value="NOROESTE 1" data-tarifa="9900">NOROESTE 1 — $99</option>
-          <option value="PONIENTE 1" data-tarifa="9900">PONIENTE 1 — $99</option>
-          <option value="SUR 1" data-tarifa="9900">SUR 1 — $99</option>
-          <option value="NORESTE 2" data-tarifa="13900">NORESTE 2 — $139</option>
-          <option value="NOROESTE 2" data-tarifa="13900">NOROESTE 2 — $139</option>
-          <option value="PONIENTE 2" data-tarifa="13900">PONIENTE 2 — $139</option>
-          <option value="SUR 2" data-tarifa="13900">SUR 2 — $139</option>
-          <option value="ORIENTE 1" data-tarifa="14900">ORIENTE 1 — $149</option>
-          <option value="PONIENTE 3" data-tarifa="15900">PONIENTE 3 — $159</option>
-          <option value="SUR 3" data-tarifa="15900">SUR 3 — $159</option>
-          <option value="SURESTE 1" data-tarifa="18900">SURESTE 1 — $189</option>
-          <option value="NORTE" data-tarifa="19900">NORTE — $199</option>
-          <option value="ORIENTE 2" data-tarifa="19900">ORIENTE 2 — $199</option>
-          <option value="SURESTE 2" data-tarifa="19900">SURESTE 2 — $199</option>
+          <option value="">Cargando zonas...</option>
         </select>
         <div class="errmsg">Selecciona zona</div>
       </div>` : ''}
@@ -885,7 +853,40 @@ function buildW3Form() {
   onPOSFechaChange();
   // Render bandas extra si hay
   renderBandasExtraPOS();
+  populateZonasPOS();
   updateSummary();
+}
+
+// Cache de zonas (1 sola vez por carga de página)
+let _zonasCachePOS = null;
+
+async function loadZonasPOS() {
+  if (_zonasCachePOS) return _zonasCachePOS;
+  try {
+    const r = await fetch('/catalogo/zonas-envio');
+    if (r.ok) _zonasCachePOS = await r.json();
+    else _zonasCachePOS = [];
+  } catch(e) { _zonasCachePOS = []; }
+  return _zonasCachePOS;
+}
+
+async function populateZonasPOS() {
+  const zonas = await loadZonasPOS();
+  const opts = '<option value="">Seleccionar...</option>' + zonas.map(z =>
+    `<option value="${z.nombre}" data-tarifa="${z.tarifa_centavos}">${z.nombre} — $${z.tarifa_pesos}</option>`
+  ).join('');
+  const sel1 = document.getElementById('f-zona');
+  if (sel1) {
+    const cur = sel1.value;
+    sel1.innerHTML = opts;
+    if (cur) sel1.value = cur;
+  }
+  const sel2 = document.getElementById('f-fun-zona');
+  if (sel2) {
+    const cur = sel2.value;
+    sel2.innerHTML = opts;
+    if (cur) sel2.value = cur;
+  }
 }
 
 function renderBandasExtraPOS() {

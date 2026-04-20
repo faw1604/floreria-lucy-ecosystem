@@ -1003,6 +1003,64 @@ async function guardarTemporada() {
 
 
 
+// ═══ ZONAS DE ENVÍO ═══
+async function loadZonasAdmin() {
+  try {
+    const r = await fetch(API+'/api/admin/zonas-envio',{credentials:'include'});
+    if (!r.ok) return;
+    const zonas = await r.json();
+    const tbody = document.getElementById('zonas-tbody');
+    if (!tbody) return;
+    if (!zonas.length) { tbody.innerHTML = '<tr><td colspan="5" style="padding:12px;text-align:center">Sin zonas</td></tr>'; return; }
+    tbody.innerHTML = zonas.map(z => {
+      const overrideado = z.tarifa_pesos !== z.tarifa_base_pesos;
+      const tarifaCelda = overrideado
+        ? `<span style="text-decoration:line-through;color:var(--texto2)">$${z.tarifa_base_pesos}</span> <strong style="color:var(--dorado)">$${z.tarifa_pesos}</strong>`
+        : `$${z.tarifa_pesos}`;
+      const inactivaTag = z.activa ? '' : ' <span style="background:var(--rojo);color:#fff;padding:1px 6px;border-radius:4px;font-size:10px">INACTIVA</span>';
+      return `<tr style="border-bottom:1px solid var(--borde)">
+        <td style="padding:8px 4px;font-weight:600">${esc(z.nombre)}${inactivaTag}</td>
+        <td style="padding:8px 4px;color:var(--texto2)">$${z.tarifa_base_pesos}</td>
+        <td style="padding:8px 4px">${tarifaCelda}</td>
+        <td style="padding:8px 4px"><input type="checkbox" ${z.activa?'checked':''} onchange="toggleZonaActiva('${esc(z.nombre)}', this.checked, ${z.tarifa_pesos})"></td>
+        <td style="padding:8px 4px;display:flex;gap:6px">
+          <button class="btn-sm" onclick="editarTarifaZona('${esc(z.nombre)}', ${z.tarifa_pesos})">Editar tarifa</button>
+          ${overrideado ? `<button class="btn-sm" style="background:#f5e0e0;color:#c0392b" onclick="resetearZona('${esc(z.nombre)}')">Resetear</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { console.error('loadZonasAdmin:', e); }
+}
+
+async function editarTarifaZona(nombre, tarifaActual) {
+  const nuevo = prompt(`Nueva tarifa para "${nombre}" (en pesos):\nActual: $${tarifaActual}`, tarifaActual);
+  if (nuevo === null) return;
+  const valor = parseInt(nuevo, 10);
+  if (isNaN(valor) || valor < 0) { alert('Tarifa inválida'); return; }
+  await fetch(API+`/api/admin/zonas-envio/${encodeURIComponent(nombre)}`, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({tarifa_pesos: valor, activa: true}),
+  });
+  loadZonasAdmin();
+}
+
+async function toggleZonaActiva(nombre, activa, tarifaActual) {
+  await fetch(API+`/api/admin/zonas-envio/${encodeURIComponent(nombre)}`, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({tarifa_pesos: tarifaActual, activa}),
+  });
+  loadZonasAdmin();
+}
+
+async function resetearZona(nombre) {
+  if (!confirm(`¿Resetear "${nombre}" a tarifa base del GeoJSON?`)) return;
+  await fetch(API+`/api/admin/zonas-envio/${encodeURIComponent(nombre)}`, {
+    method:'DELETE', credentials:'include',
+  });
+  loadZonasAdmin();
+}
+
+
 async function toggleConfig(clave, valor) {
   await fetch(API + '/configuracion/' + clave, {
     method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
@@ -3154,6 +3212,7 @@ async function cambiarPassUsuario(id) {
 
 // ══════ CONFIGURACIONES ══════
 async function loadConfig() {
+  loadZonasAdmin();
   try {
     const r = await fetch(API + '/configuracion/', {credentials:'include'});
     const data = await r.json();

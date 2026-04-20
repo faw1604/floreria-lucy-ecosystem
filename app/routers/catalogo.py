@@ -215,6 +215,15 @@ async def catalogo_producto_detalle(producto_id: int, db: AsyncSession = Depends
     }
 
 
+@router.get("/zonas-envio")
+async def zonas_envio_publico(db: AsyncSession = Depends(get_db)):
+    """Lista zonas de envío con tarifa efectiva (override admin o base GeoJSON).
+    Usado por POS para popular dropdown de zonas. Solo devuelve zonas activas."""
+    from app.services.zonas_envio import listar_zonas_efectivas
+    zonas = await listar_zonas_efectivas(db)
+    return [z for z in zonas if z["activa"]]
+
+
 @router.get("/catalogos-fiscales")
 async def catalogos_fiscales_publico(db: AsyncSession = Depends(get_db)):
     """Catálogos de régimen fiscal y uso CFDI para formulario web."""

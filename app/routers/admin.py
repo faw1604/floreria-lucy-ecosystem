@@ -1089,6 +1089,60 @@ async def datos_fiscales_pedido(pedido_id: int, panel_session: str | None = Cook
 # Usar /catalogo/catalogos-fiscales (público, sin requerir rol admin).
 
 
+# ══════ ZONAS DE ENVÍO (admin puede ajustar tarifa o desactivar) ══════
+
+@router.get("/zonas-envio")
+async def admin_listar_zonas(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
+    _auth(panel_session)
+    from app.services.zonas_envio import listar_zonas_efectivas
+    return await listar_zonas_efectivas(db)
+
+
+@router.put("/zonas-envio/{nombre}")
+async def admin_actualizar_zona(
+    nombre: str,
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Actualiza tarifa y/o estado activo de una zona. Pasa null para resetear a base GeoJSON."""
+    _auth(panel_session)
+    data = await request.json()
+    tarifa_pesos = data.get("tarifa_pesos")  # número o null para resetear a base
+    activa = data.get("activa", True)
+    tarifa_centavos = int(tarifa_pesos) * 100 if tarifa_pesos is not None else None
+    # Validar que existe en GeoJSON
+    from app.services.zonas_envio import _ZONAS_BASE, invalidar_cache_overrides
+    nombres_validos = {z[0] for z in _ZONAS_BASE}
+    if nombre not in nombres_validos:
+        raise HTTPException(status_code=404, detail=f"Zona '{nombre}' no existe en GeoJSON")
+    # Upsert
+    await db.execute(text(
+        "INSERT INTO zonas_envio_override (nombre, tarifa_centavos, activa, actualizado_en) "
+        "VALUES (:n, :t, :a, NOW()) "
+        "ON CONFLICT (nombre) DO UPDATE SET tarifa_centavos = EXCLUDED.tarifa_centavos, "
+        "activa = EXCLUDED.activa, actualizado_en = NOW()"
+    ), {"n": nombre, "t": tarifa_centavos, "a": activa})
+    await db.commit()
+    invalidar_cache_overrides()
+    return {"ok": True, "nombre": nombre, "tarifa_centavos": tarifa_centavos, "activa": activa}
+
+
+@router.delete("/zonas-envio/{nombre}")
+async def admin_resetear_zona(
+    nombre: str,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Elimina el override y vuelve a usar tarifa base del GeoJSON."""
+    _auth(panel_session)
+    from app.services.zonas_envio import invalidar_cache_overrides
+    await db.execute(text("DELETE FROM zonas_envio_override WHERE nombre = :n"), {"n": nombre})
+    await db.commit()
+    invalidar_cache_overrides()
+    return {"ok": True, "nombre": nombre}
+
+
 # ══════ CUENTAS TRANSFERENCIA ══════
 
 @router.get("/cuentas-transferencia")

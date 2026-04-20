@@ -198,7 +198,24 @@
       </div>
     </div>
 
-    <!-- Zonas de Envío: tarifas definidas en zonas_unificadas.geojson (16 zonas) -->
+    <!-- ═══ ZONAS DE ENVÍO ═══ -->
+    <div class="config-card" style="margin-bottom:20px">
+      <h3 style="margin:0 0 16px;font-size:16px">Zonas de Envío</h3>
+      <div style="font-size:12px;color:var(--texto2);margin-bottom:12px">
+        Polígonos definidos en <code>zonas_unificadas.geojson</code>. Aquí puedes ajustar tarifa o desactivar
+        sin tocar código. El tachado muestra el precio base; el negrita el efectivo.
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px" id="zonas-tabla">
+        <thead><tr style="border-bottom:2px solid var(--borde);text-align:left">
+          <th style="padding:8px 4px">Zona</th>
+          <th style="padding:8px 4px">Tarifa base</th>
+          <th style="padding:8px 4px">Tarifa actual</th>
+          <th style="padding:8px 4px">Activa</th>
+          <th style="padding:8px 4px">Acciones</th>
+        </tr></thead>
+        <tbody id="zonas-tbody"><tr><td colspan="5" style="padding:12px;text-align:center;color:var(--texto2)">Cargando...</td></tr></tbody>
+      </table>
+    </div>
 
     <!-- ═══ ENVIAR CATÁLOGO ═══ -->
     <div class="config-card" style="margin-bottom:20px">
