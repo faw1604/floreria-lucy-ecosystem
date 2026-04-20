@@ -1078,13 +1078,8 @@ async def datos_fiscales_pedido(pedido_id: int, panel_session: str | None = Cook
     return {"existe":True,"rfc":df.rfc,"razon_social":df.razon_social,"regimen_fiscal":df.regimen_fiscal,
             "uso_cfdi":df.uso_cfdi,"correo_fiscal":df.correo_fiscal,"codigo_postal":df.codigo_postal}
 
-@router.get("/catalogos-fiscales")
-async def catalogos_fiscales(panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
-    _auth(panel_session)
-    regs = await db.execute(text("SELECT codigo, nombre FROM regimenes_fiscales ORDER BY codigo"))
-    usos = await db.execute(text("SELECT codigo, nombre FROM usos_cfdi ORDER BY codigo"))
-    return {"regimenes": [{"codigo":r[0],"nombre":r[1]} for r in regs.fetchall()],
-            "usos": [{"codigo":r[0],"nombre":r[1]} for r in usos.fetchall()]}
+# Endpoint /catalogos-fiscales eliminado (era duplicado).
+# Usar /catalogo/catalogos-fiscales (público, sin requerir rol admin).
 
 
 # ══════ CUENTAS TRANSFERENCIA ══════
