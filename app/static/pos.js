@@ -4035,7 +4035,7 @@ function posRenderRow(c) {
   const msg = (c.ultimo_mensaje||'').replace(/</g,'&lt;').substring(0,80);
   const time = c.timestamp ? new Date(c.timestamp).toLocaleDateString('es-MX',{day:'2-digit',month:'short',timeZone:'America/Chihuahua'})+' '+new Date(c.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Chihuahua'}) : '';
   const wait = esEspera && c.estado_desde ? `<div class="pos-cl-wait">⏱ ${posTiempoEspera(c.estado_desde)}</div>` : '';
-  const esArchivado = _posArchivedChats.includes(c.telefono);
+  const esArchivado = c.archivado_humano === true || _posArchivedChats.includes(c.telefono);
   const btnAcc = esEspera
     ? `<button onclick="posLiberar('${c.telefono}')">Devolver a Claudia</button>`
     : `<button onclick="posIntervenir('${c.telefono}')">Intervenir</button>`;
