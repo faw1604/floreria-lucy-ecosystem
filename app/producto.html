@@ -93,7 +93,7 @@ function render(p) {
       Agregar al carrito
     </button>` : ''}
     <a class="btn-catalogo" id="btn-cart-link" href="/catalogo/?openCart=1" style="display:none;background:var(--dorado);color:var(--verde-oscuro);padding:12px;border-radius:12px;font-weight:600;margin-top:10px">🛒 Ver carrito (<span id="btn-cart-count">0</span>)</a>
-    <a class="btn-catalogo" href="/catalogo/">Ver catalogo completo →</a>
+    <a class="btn-catalogo" href="#" onclick="volverCatalogo();return false">← Volver al catálogo</a>
   `;
   window._prod = p;
   refreshCartLink();
@@ -199,6 +199,20 @@ function agregarAlCarrito() {
 
 function showError(msg) {
   document.getElementById('main').innerHTML = `<div class="error-screen"><div class="icon">😕</div><h2>${msg}</h2><a class="btn-catalogo" href="/catalogo/">Ver catálogo completo →</a></div>`;
+}
+
+function volverCatalogo() {
+  // Si vienen del mismo dominio (catalogo) volver atrás; si no, ir al catálogo
+  const ref = document.referrer;
+  let mismoOrigin = false;
+  try {
+    if (ref) mismoOrigin = new URL(ref).origin === window.location.origin;
+  } catch(e) {}
+  if (mismoOrigin && history.length > 1) {
+    history.back();
+  } else {
+    window.location.href = '/catalogo/';
+  }
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }

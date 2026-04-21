@@ -194,6 +194,26 @@ async def catalogo_producto_detalle(producto_id: int, db: AsyncSession = Depends
     p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+    # Cargar variantes activas
+    vres = await db.execute(
+        select(ProductoVariante)
+        .where(ProductoVariante.producto_id == producto_id, ProductoVariante.activo == True)
+        .order_by(ProductoVariante.tipo, ProductoVariante.id)
+    )
+    variantes = [
+        {
+            "id": v.id,
+            "tipo": v.tipo,
+            "nombre": v.nombre,
+            "codigo": v.codigo,
+            "imagen_url": v.imagen_url,
+            "precio": v.precio,
+            "precio_descuento": v.precio_descuento,
+            "stock_activo": v.stock_activo,
+            "stock": v.stock,
+        }
+        for v in vres.scalars().all()
+    ]
     return {
         "id": p.id,
         "codigo": p.codigo,
@@ -212,6 +232,7 @@ async def catalogo_producto_detalle(producto_id: int, db: AsyncSession = Depends
         "medida_ancho": float(p.medida_ancho) if p.medida_ancho else None,
         "sin_stock": p.stock_activo and p.stock <= 0,
         "destacado": p.destacado,
+        "variantes": variantes,
     }
 
 
