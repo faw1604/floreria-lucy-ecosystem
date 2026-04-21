@@ -610,8 +610,10 @@ function abrirMaps() {
   if (!pedidos.length) { alert('Sin direcciones'); return; }
   const dirs = pedidos.map(p => encodeURIComponent(p.direccion_entrega + ', Chihuahua, México'));
   const last = dirs.pop();
+  // NO usar optimize:true — la app móvil lo interpreta como dirección literal
+  // El orden es el de selección del repartidor (puede ordenar manual antes)
   let url = `https://www.google.com/maps/dir/?api=1&destination=${last}`;
-  if (dirs.length) url += `&waypoints=optimize:true|${dirs.join('|')}`;
+  if (dirs.length) url += `&waypoints=${dirs.join('|')}`;
   window.open(url, '_blank');
 }
 
