@@ -69,13 +69,19 @@ async def config_para_claudia(
         raise HTTPException(status_code=401, detail="API key inválida")
     cfg = await obtener_config_dict(db)
     temporada_modo = cfg.get("temporada_modo", "regular")
+    msg_regular = cfg.get("claudia_mensaje_bienvenida", "").strip()
+    msg_alta = cfg.get("claudia_mensaje_bienvenida_alta", "").strip()
+    # Si temporada alta y hay mensaje específico, usarlo. Si no, el regular.
+    mensaje_efectivo = msg_alta if (temporada_modo == "alta" and msg_alta) else msg_regular
     return {
         "claudia_activa": cfg.get("claudia_activa", "true") == "true",
         "abierto": cfg.get("claudia_abierto", "true") == "true",
         "temporada_alta": temporada_modo == "alta",
         "temporada_fecha_fuerte": cfg.get("temporada_fecha_fuerte", ""),
         "temporada_dias_restriccion": cfg.get("temporada_dias_restriccion", "2"),
-        "mensaje_bienvenida": cfg.get("claudia_mensaje_bienvenida", "").strip(),
+        "mensaje_bienvenida": mensaje_efectivo,
+        "mensaje_bienvenida_regular": msg_regular,
+        "mensaje_bienvenida_alta": msg_alta,
     }
 
 

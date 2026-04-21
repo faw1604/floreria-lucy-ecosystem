@@ -910,6 +910,8 @@ async function loadClaudia() {
     document.getElementById('claudia-toggle').checked = cfg.claudia_activa === 'true';
     document.getElementById('claudia-abierto').checked = (cfg.claudia_abierto || 'true') === 'true';
     document.getElementById('claudia-msg').value = cfg.claudia_mensaje_bienvenida || '';
+    const msgAlta = document.getElementById('claudia-msg-alta');
+    if (msgAlta) msgAlta.value = cfg.claudia_mensaje_bienvenida_alta || '';
 
     // Temporada mode
     const modo = cfg.temporada_modo || 'regular';

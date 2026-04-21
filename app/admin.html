@@ -120,8 +120,14 @@
         <input type="checkbox" id="claudia-abierto" onchange="toggleConfig('claudia_abierto', this.checked)">
       </div>
       <div class="config-field" style="margin-top:12px">
-        <label>Mensaje de bienvenida</label>
-        <textarea id="claudia-msg" rows="3" onchange="saveConfigField('claudia_mensaje_bienvenida', this.value)"></textarea>
+        <label>Mensaje de bienvenida (regular)</label>
+        <textarea id="claudia-msg" rows="3" onchange="saveConfigField('claudia_mensaje_bienvenida', this.value)" placeholder="Ej: Hola, te saluda Claudia..."></textarea>
+        <div style="font-size:10px;color:var(--texto2);margin-top:2px">Se envía cuando un cliente nuevo escribe (modo regular)</div>
+      </div>
+      <div class="config-field" style="margin-top:12px;padding:10px;background:rgba(212,168,67,0.08);border-left:3px solid var(--dorado);border-radius:6px">
+        <label>Mensaje de bienvenida (temporada alta)</label>
+        <textarea id="claudia-msg-alta" rows="3" onchange="saveConfigField('claudia_mensaje_bienvenida_alta', this.value)" placeholder="Ej: Hola, ¡feliz mes de las Madres! Aquí nuestro catálogo especial..."></textarea>
+        <div style="font-size:10px;color:var(--texto2);margin-top:2px">Se envía automáticamente cuando temporada_modo='alta'. Si está vacío, usa el regular.</div>
       </div>
     </div>
 
