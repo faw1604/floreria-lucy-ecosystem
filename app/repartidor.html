@@ -609,6 +609,11 @@ async function abrirMaps() {
   let pedidos = allPedidos.filter(p => ids.includes(p.id) && p.direccion_entrega);
   if (!pedidos.length) { alert('Sin direcciones'); return; }
 
+  // IMPORTANTE: abrir ventana INMEDIATAMENTE (dentro del user gesture)
+  // Navegadores móviles bloquean window.open después de await.
+  // Abrimos vacía primero y le asignamos URL al final.
+  const ventana = window.open('about:blank', '_blank');
+
   // Si hay 2+ paradas, intentar optimizar con Google Routes API
   if (pedidos.length >= 2) {
     try {
@@ -623,7 +628,6 @@ async function abrirMaps() {
       if (r.ok) {
         const data = await r.json();
         if (data.orden && data.orden.length === pedidos.length) {
-          // Reordenar pedidos según orden óptimo
           const map = new Map(pedidos.map(p => [p.id, p]));
           pedidos = data.orden.map(id => map.get(id)).filter(Boolean);
         }
@@ -635,7 +639,14 @@ async function abrirMaps() {
   const last = dirs.pop();
   let url = `https://www.google.com/maps/dir/?api=1&destination=${last}`;
   if (dirs.length) url += `&waypoints=${dirs.join('|')}`;
-  window.open(url, '_blank');
+
+  // Asignar URL a la ventana abierta. Si el navegador bloqueó window.open (ventana=null),
+  // fallback a location.href en misma pestaña.
+  if (ventana) {
+    ventana.location.href = url;
+  } else {
+    window.location.href = url;
+  }
 }
 
 // ─── Iniciar ruta ───
