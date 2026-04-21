@@ -1402,6 +1402,50 @@ async def corte_pdf(
         ]))
         elements.append(t_egr_mp)
 
+    # ═════ BALANCE DE CUENTAS ═════
+    # Saldo actual de Caja y Caja Chica (snapshot del momento de generación)
+    try:
+        cuentas_q = await db.execute(text(
+            "SELECT id, nombre, tipo, saldo_inicial, fecha_inicio, fondo_base "
+            "FROM cuentas_financieras WHERE activo = true ORDER BY id"
+        ))
+        cuentas_rows = cuentas_q.fetchall()
+    except Exception:
+        cuentas_rows = []
+
+    if cuentas_rows:
+        elements.append(Spacer(1, 0.5*cm))
+        elements.append(Paragraph('BALANCE DE CUENTAS', h2_style))
+        data_bal = [['Cuenta', 'Tipo', 'Fondo base', 'Saldo actual']]
+        total_balance = 0
+        for c in cuentas_rows:
+            info = await _saldo_cuenta(db, c)
+            saldo = info.get('saldo_actual', 0)
+            total_balance += saldo
+            data_bal.append([
+                info['nombre'], info['tipo'].replace('_', ' ').title(),
+                fmt(info.get('fondo_base', 0)), fmt(saldo)
+            ])
+        data_bal.append(['', '', 'TOTAL', fmt(total_balance)])
+        t_bal = Table(data_bal, colWidths=[1.8*inch, 1.3*inch, 1.3*inch, 1.3*inch])
+        bal_color = verde if total_balance >= 0 else colors.HexColor('#ef4444')
+        t_bal.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), verde), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('ALIGN', (-2,0), (-1,-1), 'RIGHT'),
+            ('BACKGROUND', (0,-1), (-1,-1), gris), ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,-1), (-1,-1), 10), ('TEXTCOLOR', (-1,-1), (-1,-1), bal_color),
+            ('LINEABOVE', (0,-1), (-1,-1), 2, verde),
+        ]))
+        elements.append(t_bal)
+        elements.append(Spacer(1, 0.2*cm))
+        elements.append(Paragraph(
+            '<i>Saldo al momento de generar este corte. Incluye: saldo inicial + '
+            'depósitos/movimientos manuales + ingresos efectivo POS (cuentas tipo caja) + '
+            'otros ingresos por método — egresos asignados.</i>',
+            ParagraphStyle('BalNote', parent=small, fontSize=7, textColor=colors.grey)
+        ))
+
     # Footer
     ahora = datetime.now(TZ)
     elements.append(Spacer(1, 0.5*cm))
