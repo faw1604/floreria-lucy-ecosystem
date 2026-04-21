@@ -480,7 +480,7 @@ async function abrirModalProducto(prod) {
     <!-- VARIANTES -->
     <div style="border:1px solid var(--borde);border-radius:10px;padding:14px;margin:14px 0">
       <div style="font-size:13px;font-weight:600;margin-bottom:10px">Variantes</div>
-      ${['color','tamaño','estilo'].map(tipo => {
+      ${['color','tamaño','estilo','sabor','presentación'].map(tipo => {
         const vars = editingVariantes.filter(v => v.tipo === tipo);
         const hasVars = vars.length > 0;
         return `<div style="border-bottom:1px solid var(--borde);padding:8px 0">
@@ -495,7 +495,7 @@ async function abrirModalProducto(prod) {
         </div>`;
       }).join('')}
     </div>
-    <button class="btn-primary" onclick="guardarProducto(${prod?.id||'null'})" style="width:100%;margin-top:12px">Guardar producto</button>
+    <button class="btn-primary" id="btn-guardar-prod" onclick="guardarProducto(${prod?.id||'null'})" style="width:100%;margin-top:12px">Guardar producto</button>
   `;
   onCatChange();
   document.getElementById('modal-producto').classList.add('active');
@@ -674,6 +674,10 @@ async function generarDescIA(mejorar) {
 }
 
 async function guardarProducto(id) {
+  const btnSave = document.getElementById('btn-guardar-prod');
+  if (btnSave?.disabled) return; // anti double-click
+  if (btnSave) { btnSave.disabled = true; btnSave.textContent = 'Guardando...'; }
+  try {
   const body = {
     nombre: document.getElementById('pf-nombre').value.trim(),
     descripcion: document.getElementById('pf-desc').value.trim() || null,
@@ -704,6 +708,10 @@ async function guardarProducto(id) {
   cerrarModal('modal-producto');
   showToast('Producto guardado ✓');
   loadProductos();
+  } catch(e) {
+    alert('Error al guardar: ' + (e?.message || e));
+    if (btnSave) { btnSave.disabled = false; btnSave.textContent = 'Guardar producto'; }
+  }
 }
 
 async function saveAllVariantes(prodId) {
@@ -740,7 +748,14 @@ async function saveAllVariantes(prodId) {
       await fetch(API + '/api/admin/variantes/' + varId, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(data)});
       existingIds.add(parseInt(varId));
     } else {
-      await fetch(API + '/api/admin/variantes/' + prodId, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(data)});
+      const cr = await fetch(API + '/api/admin/variantes/' + prodId, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(data)});
+      try {
+        const created = await cr.json();
+        if (created?.id) {
+          row.dataset.varId = created.id; // marca la fila para que un re-save no duplique
+          existingIds.add(created.id);
+        }
+      } catch(e) {}
     }
   }
   // Delete removed variantes
