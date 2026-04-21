@@ -329,3 +329,63 @@ async def asignar_repartidor(
     pedido.repartidor_id = repartidor_id
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/optimizar-ruta")
+async def optimizar_ruta(
+    request: Request,
+    panel_session: str | None = Cookie(default=None),
+):
+    """Optimiza el orden de visitas usando Google Routes API.
+    Recibe lista de pedidos {id, direccion} y devuelve el orden óptimo.
+    Origen: Florería Lucy (C. Sabino 610, Las Granjas, Chihuahua)."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    data = await request.json()
+    pedidos = data.get("pedidos", [])
+    if not pedidos or len(pedidos) < 2:
+        # Con 1 entrega o menos no hay nada que optimizar
+        return {"orden": [p.get("id") for p in pedidos]}
+
+    google_key = os.getenv("GOOGLE_GEOCODING_KEY", "")
+    if not google_key:
+        # Sin API key, devolver orden original
+        return {"orden": [p.get("id") for p in pedidos], "warning": "Sin API key"}
+
+    import httpx
+    origen = "C. Sabino 610, Las Granjas, Chihuahua, México"
+    # Google Routes API: usa intermediates para waypoints, optimizeWaypointOrder=true
+    payload = {
+        "origin": {"address": origen},
+        "destination": {"address": pedidos[-1].get("direccion", "") + ", Chihuahua, México"},
+        "intermediates": [{"address": p.get("direccion", "") + ", Chihuahua, México"} for p in pedidos[:-1]],
+        "travelMode": "DRIVE",
+        "optimizeWaypointOrder": True,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": google_key,
+        "X-Goog-FieldMask": "routes.optimizedIntermediateWaypointIndex",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(
+                "https://routes.googleapis.com/directions/v2:computeRoutes",
+                json=payload, headers=headers,
+            )
+            if r.status_code != 200:
+                return {"orden": [p.get("id") for p in pedidos], "warning": f"Routes API: {r.status_code}"}
+            result = r.json()
+            routes = result.get("routes", [])
+            if not routes:
+                return {"orden": [p.get("id") for p in pedidos], "warning": "Sin rutas"}
+            # optimizedIntermediateWaypointIndex devuelve el orden óptimo de intermediates
+            # Ej: [2, 0, 1] significa: del array intermediates, ir 2 → 0 → 1, luego destination
+            opt_order = routes[0].get("optimizedIntermediateWaypointIndex", [])
+            if not opt_order:
+                return {"orden": [p.get("id") for p in pedidos]}
+            # Reconstruir orden: intermedios reordenados + último (destination)
+            orden_ids = [pedidos[i].get("id") for i in opt_order] + [pedidos[-1].get("id")]
+            return {"orden": orden_ids, "optimizado": True}
+    except Exception as e:
+        return {"orden": [p.get("id") for p in pedidos], "warning": str(e)}

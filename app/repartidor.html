@@ -604,14 +604,35 @@ function updateBottomBar() {
 }
 
 // ─── Maps ───
-function abrirMaps() {
+async function abrirMaps() {
   const ids = selected.size > 0 ? [...selected] : allPedidos.filter(p => p.estado === 'En camino').map(p => p.id);
-  const pedidos = allPedidos.filter(p => ids.includes(p.id) && p.direccion_entrega);
+  let pedidos = allPedidos.filter(p => ids.includes(p.id) && p.direccion_entrega);
   if (!pedidos.length) { alert('Sin direcciones'); return; }
+
+  // Si hay 2+ paradas, intentar optimizar con Google Routes API
+  if (pedidos.length >= 2) {
+    try {
+      const r = await fetch('/repartidor/optimizar-ruta', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({
+          pedidos: pedidos.map(p => ({id: p.id, direccion: p.direccion_entrega}))
+        })
+      });
+      if (r.ok) {
+        const data = await r.json();
+        if (data.orden && data.orden.length === pedidos.length) {
+          // Reordenar pedidos según orden óptimo
+          const map = new Map(pedidos.map(p => [p.id, p]));
+          pedidos = data.orden.map(id => map.get(id)).filter(Boolean);
+        }
+      }
+    } catch(e) { console.warn('No se pudo optimizar ruta:', e); }
+  }
+
   const dirs = pedidos.map(p => encodeURIComponent(p.direccion_entrega + ', Chihuahua, México'));
   const last = dirs.pop();
-  // NO usar optimize:true — la app móvil lo interpreta como dirección literal
-  // El orden es el de selección del repartidor (puede ordenar manual antes)
   let url = `https://www.google.com/maps/dir/?api=1&destination=${last}`;
   if (dirs.length) url += `&waypoints=${dirs.join('|')}`;
   window.open(url, '_blank');
