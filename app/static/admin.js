@@ -1290,7 +1290,10 @@ function renderClaudiaChats() {
   _clChatsData.forEach(c => {
     if (search && !c.telefono.includes(search)) return;
     const ts = c.timestamp ? new Date(c.timestamp).getTime() : 0;
-    if (c.estado === 'esperando_humano') {
+    // Prioridad: campo BD archivado_humano > estado esperando > +24h auto-archivo
+    if (c.archivado_humano === true) {
+      archivados.push(c);
+    } else if (c.estado === 'esperando_humano') {
       espera.push(c);
     } else if (now - ts > h24) {
       archivados.push(c);

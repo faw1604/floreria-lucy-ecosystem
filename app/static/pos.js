@@ -3983,14 +3983,24 @@ async function posLoadChats() {
   } catch(e) {}
 }
 
-// Chats archivados manualmente
+// Chats archivados — ahora via BD (campo archivado_humano en agentkit)
+// Fallback a localStorage si el backend aún no tiene el campo (transición)
 const _posArchivedChats = JSON.parse(localStorage.getItem('fl_archived_chats') || '[]');
-function posArchivarChat(tel) {
+async function posArchivarChat(tel) {
+  try {
+    const r = await fetch('/api/claudia/archivar', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({telefono: tel})});
+    if (r.ok) { posLoadChats(); return; }
+  } catch(e) {}
+  // Fallback local si agentkit aún no tiene endpoint
   if (!_posArchivedChats.includes(tel)) _posArchivedChats.push(tel);
   localStorage.setItem('fl_archived_chats', JSON.stringify(_posArchivedChats));
   posRenderChats();
 }
-function posDesarchivarChat(tel) {
+async function posDesarchivarChat(tel) {
+  try {
+    const r = await fetch('/api/claudia/desarchivar', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({telefono: tel})});
+    if (r.ok) { posLoadChats(); return; }
+  } catch(e) {}
   const i = _posArchivedChats.indexOf(tel);
   if (i >= 0) _posArchivedChats.splice(i, 1);
   localStorage.setItem('fl_archived_chats', JSON.stringify(_posArchivedChats));
@@ -4004,7 +4014,8 @@ function posRenderChats() {
   _posClData.forEach(c => {
     if (search && !c.telefono.includes(search)) return;
     const ts = c.timestamp ? new Date(c.timestamp).getTime() : 0;
-    if (_posArchivedChats.includes(c.telefono)) archivados.push(c);
+    // Prioridad: campo BD (archivado_humano) > localStorage legacy > estado natural
+    if (c.archivado_humano === true || _posArchivedChats.includes(c.telefono)) archivados.push(c);
     else if (c.estado==='esperando_humano') espera.push(c);
     else if (now-ts>h24) archivados.push(c);
     else activos.push(c);

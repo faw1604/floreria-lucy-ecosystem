@@ -97,6 +97,21 @@ async def claudia_liberar(request: Request, panel_session: str | None = Cookie(d
     return await _proxy_post(f"{AGENTKIT_URL}/liberar-chat", await request.json())
 
 
+@router.post("/archivar")
+async def claudia_archivar(request: Request, panel_session: str | None = Cookie(default=None)):
+    """Marca un chat como archivado_humano=true en agentkit.
+    Body: {telefono: '52..'}"""
+    _auth(panel_session)
+    return await _proxy_post(f"{AGENTKIT_URL}/archivar-chat", await request.json())
+
+
+@router.post("/desarchivar")
+async def claudia_desarchivar(request: Request, panel_session: str | None = Cookie(default=None)):
+    """Quita el flag archivado_humano."""
+    _auth(panel_session)
+    return await _proxy_post(f"{AGENTKIT_URL}/desarchivar-chat", await request.json())
+
+
 @router.get("/historial/{telefono}")
 async def claudia_historial(telefono: str, limite: int = 50, panel_session: str | None = Cookie(default=None)):
     _auth(panel_session)
