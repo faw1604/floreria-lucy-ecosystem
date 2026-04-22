@@ -513,7 +513,7 @@ function renderVarianteRow(v) {
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Código</label><input class="vr-codigo" value="${esc(v.codigo||'')}" style="font-size:12px;padding:6px 8px"></div>
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Precio</label><input type="number" class="vr-precio" value="${v.precio ? (v.precio/100).toFixed(2) : ''}" step="0.01" style="font-size:12px;padding:6px 8px"></div>
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Precio oferta</label><input type="number" class="vr-precio-desc" value="${v.precio_descuento ? (v.precio_descuento/100).toFixed(2) : ''}" step="0.01" style="font-size:12px;padding:6px 8px"></div>
-      <div class="field" style="margin-bottom:6px"><label style="font-size:11px;display:flex;align-items:center;gap:4px">Controlar stock <input type="checkbox" class="vr-stock-activo" ${v.stock_activo ? 'checked' : ''} onchange="this.closest('.var-row').querySelector('.vr-stock-wrap').style.display=this.checked?'':'none'"></label></div>
+      <div class="field" style="margin-bottom:6px"><label style="font-size:11px;display:flex;align-items:center;gap:4px">Controlar stock <input type="checkbox" class="vr-stock-activo" ${v.stock_activo ? 'checked' : ''} onchange="toggleStockVariante(this)"></label></div>
       <div class="field vr-stock-wrap" style="margin-bottom:6px;${v.stock_activo ? '' : 'display:none'}"><label style="font-size:11px">Stock</label><input type="number" class="vr-stock" value="${v.stock||0}" min="0" style="font-size:12px;padding:6px 8px"></div>
       <div class="field" style="margin-bottom:0;grid-column:1/-1"><label style="font-size:11px">Foto</label>
         <div style="display:flex;align-items:center;gap:8px">
@@ -527,6 +527,14 @@ function renderVarianteRow(v) {
       </div>
     </div>
   </div>`;
+}
+
+function toggleStockVariante(cb) {
+  const row = cb.closest('.var-row');
+  if (!row) return;
+  const wrap = row.querySelector('.vr-stock-wrap');
+  if (!wrap) return;
+  wrap.style.display = cb.checked ? '' : 'none';
 }
 
 async function subirImagenVariante(input) {
