@@ -1661,10 +1661,14 @@ function matchesSection(p, section) {
   return !isFuneral && !isRegalos;
 }
 
+function _stripAcc(s) {
+  // Quita acentos: "Medallón" → "Medallon" (NFD descompone, regex elimina diacríticos)
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 function matchesSearch(p, query) {
   if (!query) return true;
-  const q = query.toLowerCase();
-  return p.nombre.toLowerCase().includes(q) || p.categoria.toLowerCase().includes(q);
+  const q = _stripAcc(query.toLowerCase());
+  return _stripAcc(p.nombre.toLowerCase()).includes(q) || _stripAcc(p.categoria.toLowerCase()).includes(q);
 }
 
 async function initClassic() {
