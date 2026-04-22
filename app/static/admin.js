@@ -767,6 +767,18 @@ async function guardarProducto(id) {
 async function saveAllVariantes(prodId) {
   // Collect all variante rows from DOM
   const rows = document.querySelectorAll('.var-row');
+  // Validar: ningún tipo+nombre duplicado
+  const seen = new Set();
+  for (const row of rows) {
+    const tipo = row.dataset.tipo;
+    const nombre = row.querySelector('.vr-nombre')?.value?.trim();
+    if (!nombre) continue;
+    const key = (tipo||'') + '|' + nombre.toLowerCase();
+    if (seen.has(key)) {
+      throw new Error(`Variante duplicada: "${nombre}" (${tipo}). Cada variante debe tener un nombre único dentro de su tipo.`);
+    }
+    seen.add(key);
+  }
   const existingIds = new Set();
   for (const row of rows) {
     const varId = row.dataset.varId;
