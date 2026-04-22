@@ -163,10 +163,11 @@ img{-webkit-user-drag:none;user-drag:none}
 
 /* Search */
 .search-bar{position:relative;margin-bottom:14px}
-.search-bar input{width:100%;padding:14px 18px 14px 46px;border:2px solid var(--borde);border-radius:14px;font-size:15px;font-family:'Inter',sans-serif;background:var(--blanco);color:var(--texto);outline:none;transition:border-color .2s,box-shadow .2s}
-.search-bar input:focus{border-color:var(--dorado);box-shadow:0 0 0 3px rgba(212,168,67,.15)}
-.search-bar input::placeholder{color:#b0a898}
-.search-bar svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--texto2);transition:color .2s}
+.search-bar input{width:100%;padding:14px 18px 14px 50px;border:2px solid var(--dorado);border-radius:14px;font-size:15px;font-family:'Inter',sans-serif;background:var(--crema);color:var(--texto);outline:none;transition:border-color .2s,box-shadow .2s,background .2s;box-shadow:0 2px 8px rgba(212,168,67,.12)}
+.search-bar input:focus{border-color:var(--verde);background:var(--blanco);box-shadow:0 0 0 3px rgba(212,168,67,.25),0 4px 12px rgba(212,168,67,.18)}
+.search-bar input::placeholder{color:#8a7c5a;font-style:italic}
+.search-bar svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:22px;height:22px;color:var(--dorado);transition:color .2s}
+.search-bar input:focus + svg,.search-bar:focus-within svg{color:var(--verde)}
 .search-bar:focus-within svg{color:var(--dorado)}
 
 /* Filters */
@@ -1677,6 +1678,7 @@ async function initClassic() {
     document.getElementById('classic-grid').innerHTML = '<div class="empty-msg" style="grid-column:1/-1"><div class="icon">🌷</div>Catalogo actualizandose, regresa pronto</div>';
     return;
   }
+  startPlaceholderRotation();
   renderSectionTabs();
   renderCatPills();
   renderFlowerPills();
@@ -1761,7 +1763,39 @@ function renderFlowerPills() {
 function setSection(s) { sectionFilter = s; catFilter = null; flowerFilter = null; renderSectionTabs(); renderCatPills(); renderFlowerPills(); renderClassicGrid(); }
 function setCat(c) { catFilter = c; renderCatPills(); renderClassicGrid(); }
 function setFlower(f) { flowerFilter = f; renderFlowerPills(); renderClassicGrid(); }
-function onSearch() { searchQuery = document.getElementById('search-input').value; renderClassicGrid(); }
+function onSearch() {
+  searchQuery = document.getElementById('search-input').value;
+  // Si el usuario empezó a escribir, parar la rotación de placeholder
+  if (searchQuery && _placeholderInterval) {
+    clearInterval(_placeholderInterval);
+    _placeholderInterval = null;
+  }
+  renderClassicGrid();
+}
+
+// Placeholder rotativo en buscador (sugiere al cliente qué puede buscar)
+let _placeholderInterval = null;
+const _placeholderHints = [
+  'Busca rosas...',
+  'Busca peluches...',
+  'Busca medallón...',
+  'Busca chocolate...',
+  'Busca girasoles...',
+  'Busca tulipanes...',
+  'Busca corona...',
+];
+function startPlaceholderRotation() {
+  const input = document.getElementById('search-input');
+  if (!input || _placeholderInterval) return;
+  let i = 0;
+  input.placeholder = _placeholderHints[0];
+  _placeholderInterval = setInterval(() => {
+    // Si el input tiene foco o texto, no rotar
+    if (document.activeElement === input || input.value) return;
+    i = (i + 1) % _placeholderHints.length;
+    input.placeholder = _placeholderHints[i];
+  }, 2500);
+}
 function filterCombos() { sectionFilter = 'general'; catFilter = '_combos'; flowerFilter = null; renderSectionTabs(); renderCatPills(); renderFlowerPills(); renderClassicGrid(); }
 function showCombosFromSwipe() {
   // Saltar la promo card y seguir deslizando
