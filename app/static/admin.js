@@ -767,17 +767,28 @@ async function guardarProducto(id) {
 async function saveAllVariantes(prodId) {
   // Collect all variante rows from DOM
   const rows = document.querySelectorAll('.var-row');
-  // Validar: ningún tipo+nombre duplicado
-  const seen = new Set();
+  // Validar: ningún tipo+nombre duplicado. Resaltar las filas conflictivas.
+  const seenRows = new Map(); // key → primera row
+  const dupRows = [];
   for (const row of rows) {
+    row.style.outline = ''; // limpiar resaltado previo
     const tipo = row.dataset.tipo;
     const nombre = row.querySelector('.vr-nombre')?.value?.trim();
     if (!nombre) continue;
     const key = (tipo||'') + '|' + nombre.toLowerCase();
-    if (seen.has(key)) {
-      throw new Error(`Variante duplicada: "${nombre}" (${tipo}). Cada variante debe tener un nombre único dentro de su tipo.`);
+    if (seenRows.has(key)) {
+      dupRows.push(seenRows.get(key));
+      dupRows.push(row);
+    } else {
+      seenRows.set(key, row);
     }
-    seen.add(key);
+  }
+  if (dupRows.length > 0) {
+    dupRows.forEach(r => { r.style.outline = '2px solid var(--rojo)'; r.style.outlineOffset = '2px'; });
+    dupRows[0].scrollIntoView({behavior:'smooth', block:'center'});
+    const nombre = dupRows[0].querySelector('.vr-nombre')?.value?.trim();
+    const tipo = dupRows[0].dataset.tipo;
+    throw new Error(`Variante duplicada: "${nombre}" (${tipo}). Hay ${dupRows.length} filas con el mismo nombre marcadas en rojo. Borra las de más con la ❌ y vuelve a guardar.`);
   }
   const existingIds = new Set();
   for (const row of rows) {
