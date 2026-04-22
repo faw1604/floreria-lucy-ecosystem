@@ -490,7 +490,7 @@ async function abrirModalProducto(prod) {
           </div>
           <div id="var-${tipo}-list" style="${hasVars ? '' : 'display:none'};margin-top:8px">
             ${vars.map(v => renderVarianteRow(v)).join('')}
-            <button class="btn-sm" onclick="addVarianteRow('${tipo}')" style="margin-top:6px">+ Agregar ${tipo}</button>
+            <button class="btn-sm add-var-btn" onclick="addVarianteRow('${tipo}')" style="margin-top:6px">+ Agregar ${tipo}</button>
           </div>
         </div>`;
       }).join('')}
@@ -573,7 +573,10 @@ async function subirImagenVariante(input) {
 function addVarianteRow(tipo) {
   const list = document.getElementById('var-' + tipo + '-list');
   const codigo = document.getElementById('pf-sku')?.value || '';
-  const btn = list.querySelector('button');
+  // BUG FIX: usar selector específico — antes 'button' encontraba la ❌ de la
+  // primera fila (DFS), causando que las nuevas filas quedaran ANIDADAS dentro
+  // de la primera. Ahora usamos la clase del botón "+ Agregar" directamente.
+  const btn = list.querySelector('.add-var-btn');
   const row = document.createElement('div');
   row.innerHTML = renderVarianteRow({tipo, nombre:'', codigo: codigo ? codigo + '-' : '', precio:0, stock:0});
   btn.before(row.firstElementChild);
