@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from datetime import datetime
 import os, logging, httpx, json
 from app.core.limiter import limiter
@@ -124,20 +124,19 @@ async def catalogo_productos(
     )
 
     if temporada_activa and not categoria:
-        # Only show temporada category + funeral categories (if accepted)
+        # Mostrar: categoría temporada + categorías de regalos + funeral (si está activo)
         temp_cat = cfg.get("temporada_categoria", "")
         acepta_funerales = cfg.get("temporada_acepta_funerales", "true") == "true"
+        # Categorías tipo "regalo" (deben coincidir con REGALOS_CATS de catalogo.html)
+        regalos_cats_lower = ["chocolates gourmet", "peluches", "globos", "dulces y regalos", "extras", "regalos"]
+        allowed_lower = [temp_cat.lower()] + regalos_cats_lower
         if acepta_funerales:
-            # Get funeral category names
             from app.models.productos import Categoria
             funeral_cats_result = await db.execute(
                 select(Categoria.nombre).where(Categoria.tipo == "funeral")
             )
-            funeral_names = [r[0] for r in funeral_cats_result.fetchall()]
-            allowed_cats = [temp_cat] + funeral_names
-            query = query.where(Producto.categoria.in_(allowed_cats))
-        else:
-            query = query.where(Producto.categoria == temp_cat)
+            allowed_lower += [r[0].lower() for r in funeral_cats_result.fetchall()]
+        query = query.where(func.lower(Producto.categoria).in_(allowed_lower))
     elif categoria:
         query = query.where(Producto.categoria == categoria)
 
@@ -709,9 +708,10 @@ async def _crear_pedido_web_inner(request, db):
 
     # --- Restricción de categorías en fecha fuerte ---
     if es_fecha_fuerte and tipo != "funeral":
+        # Categorías regalos (deben coincidir con REGALOS_CATS de catalogo.html y listado)
         cats_permitidas = [
             (cfg.get("temporada_categoria") or "").lower(),
-            "dulces y regalos",
+            "chocolates gourmet", "peluches", "globos", "dulces y regalos", "extras", "regalos",
         ]
         if cfg.get("temporada_acepta_funerales", "true") == "true":
             cats_permitidas.extend(FUNERAL_CATS)
