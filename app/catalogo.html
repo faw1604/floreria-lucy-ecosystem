@@ -2463,24 +2463,25 @@ function renderStep3Fields() {
   }
   const timeSelect = `<select id="of-hora-especifica" style="display:none"><option value="">Cargando horas...</option></select>`;
 
-  // Disclaimer importante para evitar que el cliente confunda sus datos con los del destinatario
+  // Disclaimer + section header solo cuando hay destinatario distinto del cliente (no aplica a 'recoger')
+  const muestraDisclaimer = tipo !== 'recoger';
   let html = `
-    <div style="background:#fef3c7;border-left:4px solid #d4a843;padding:12px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;line-height:1.5;color:#7a5c0a">
+    ${muestraDisclaimer ? `<div style="background:#fef3c7;border-left:4px solid #d4a843;padding:12px 14px;border-radius:8px;margin-bottom:14px;font-size:13px;line-height:1.5;color:#7a5c0a">
       ⚠️ <strong>Importante:</strong> Primero van <strong>TUS</strong> datos (cliente que paga).
       Después los datos de la <strong>persona que RECIBIRÁ</strong> el pedido.
     </div>
-    <div style="font-size:12px;font-weight:700;color:var(--verde);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">💳 Tus datos (cliente que paga)</div>
+    <div style="font-size:12px;font-weight:700;color:var(--verde);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">💳 Tus datos (cliente que paga)</div>` : ''}
     <div style="display:flex;gap:8px">
-      <div class="order-field" style="flex:1"><label>Tu nombre <span class="required">*</span></label><input type="text" id="of-nombre" value="${pedidoWeb.cliente_nombre_first||''}" placeholder="Tu nombre(s)"></div>
-      <div class="order-field" style="flex:1"><label>Tu apellido <span class="required">*</span></label><input type="text" id="of-apellido" value="${pedidoWeb.cliente_nombre_last||''}" placeholder="Tu apellido(s)"></div>
+      <div class="order-field" style="flex:1"><label>${muestraDisclaimer ? 'Tu nombre' : 'Nombre'} <span class="required">*</span></label><input type="text" id="of-nombre" value="${pedidoWeb.cliente_nombre_first||''}" placeholder="${muestraDisclaimer ? 'Tu nombre(s)' : 'Nombre(s)'}"></div>
+      <div class="order-field" style="flex:1"><label>${muestraDisclaimer ? 'Tu apellido' : 'Apellido'} <span class="required">*</span></label><input type="text" id="of-apellido" value="${pedidoWeb.cliente_nombre_last||''}" placeholder="${muestraDisclaimer ? 'Tu apellido(s)' : 'Apellido(s)'}"></div>
     </div>
-    <div class="order-field"><label>Tu teléfono <span class="required">*</span> <span style="font-size:11px;color:var(--texto2);font-weight:400">(te llegarán datos de pago aquí)</span></label>
+    <div class="order-field"><label>${muestraDisclaimer ? 'Tu teléfono' : 'Teléfono'} <span class="required">*</span> <span style="font-size:11px;color:var(--texto2);font-weight:400">(te llegarán datos de pago aquí)</span></label>
       <div class="order-phone-row">
         ${countrySelectHtml('of-pais', pedidoWeb.pais_cliente)}
         <input type="tel" id="of-telefono" value="${pedidoWeb.cliente_telefono||''}" placeholder="10 dígitos" maxlength="15">
       </div>
     </div>
-    <div class="order-field"><label>Tu correo electrónico</label><input type="email" id="of-email" value="${pedidoWeb.cliente_email||''}" placeholder="tu@email.com"></div>`;
+    <div class="order-field"><label>${muestraDisclaimer ? 'Tu correo electrónico' : 'Correo electrónico'}</label><input type="email" id="of-email" value="${pedidoWeb.cliente_email||''}" placeholder="tu@email.com"></div>`;
 
   if (tipo === 'domicilio') {
     html += `
