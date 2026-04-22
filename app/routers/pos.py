@@ -228,7 +228,7 @@ async def pos_seleccionar_direccion(
     zona = await obtener_zona_envio_db(db, lat, lng)
     return {
         "lat": lat, "lng": lng,
-        "ruta": zona["zona"] if zona else None,
+        "ruta": None,
         "zona_envio": zona["zona"] if zona else None,
         "tarifa_envio": zona["tarifa"] * 100 if zona else None,
         "fuera_de_cobertura": zona is None,
@@ -261,7 +261,7 @@ async def pos_geocodificar(
     zona = await obtener_zona_envio_db(db, lat, lng)
     return {
         "lat": lat, "lng": lng,
-        "ruta": zona["zona"] if zona else None,
+        "ruta": None,
         "zona_envio": zona["zona"] if zona else None,
         "tarifa_envio": zona["tarifa"] * 100 if zona else None,
         "fuera_de_cobertura": zona is None,
@@ -1425,14 +1425,16 @@ async def pos_completar_pedido(
     # Sprint 2.2: para funeral domicilio particular usar funeral_direccion
     if tipo == "funeral" and data.get("funeral_domicilio") and data.get("funeral_direccion"):
         pedido.direccion_entrega = data["funeral_direccion"]
-    else:
-        pedido.direccion_entrega = data.get("direccion_entrega") or pedido.direccion_entrega
-    pedido.receptor_nombre = data.get("nombre_destinatario") or pedido.receptor_nombre
-    pedido.receptor_telefono = data.get("telefono_destinatario") or pedido.receptor_telefono
+    elif "direccion_entrega" in data:
+        pedido.direccion_entrega = data["direccion_entrega"] or pedido.direccion_entrega
+    if "nombre_destinatario" in data:
+        pedido.receptor_nombre = data["nombre_destinatario"] or pedido.receptor_nombre
+    if "telefono_destinatario" in data:
+        pedido.receptor_telefono = data["telefono_destinatario"] or pedido.receptor_telefono
     _dedi = data.get("dedicatoria")
     if pedido.tipo_especial == "Funeral":
         pedido.dedicatoria = _dedicatoria_funeral(_dedi, data.get("nombre_fallecido")) or pedido.dedicatoria
-    else:
+    elif "dedicatoria" in data:
         pedido.dedicatoria = _dedi or pedido.dedicatoria
     # Construir notas_internas: para funeral, reconstruir con datos completos
     # Sprint 2.2: estructura unificada (funeral_domicilio + funeral_direccion)
@@ -1464,8 +1466,10 @@ async def pos_completar_pedido(
         elif notas_repart:
             pedido.notas_internas = notas_repart
     else:
-        pedido.notas_internas = data.get("notas_entrega") or pedido.notas_internas
-    pedido.ruta = data.get("ruta") or pedido.ruta
+        if "notas_entrega" in data:
+            pedido.notas_internas = data["notas_entrega"] or pedido.notas_internas
+    if "ruta" in data:
+        pedido.ruta = data["ruta"] or pedido.ruta
     if "requiere_factura" in data:
         pedido.requiere_factura = data["requiere_factura"]
 

@@ -937,13 +937,13 @@ async function populateZonasPOS() {
   ).join('');
   const sel1 = document.getElementById('f-zona');
   if (sel1) {
-    const cur = sel1.value;
+    const cur = sel1.value || (editingPedidoData ? editingPedidoData.zona_entrega : '');
     sel1.innerHTML = opts;
     if (cur) sel1.value = cur;
   }
   const sel2 = document.getElementById('f-fun-zona');
   if (sel2) {
-    const cur = sel2.value;
+    const cur = sel2.value || (editingPedidoData ? editingPedidoData.zona_entrega : '');
     sel2.innerHTML = opts;
     if (cur) sel2.value = cur;
   }
@@ -2402,7 +2402,7 @@ function editarPendiente(p) {
     if (p.horario_entrega) selHorario = p.horario_entrega;
     else if (p.hora_exacta) { selHorario = 'hora_especifica'; horaEspecifica = p.hora_exacta; }
     if (p.zona_entrega) {
-      geoData = { zona_envio: p.zona_entrega, tarifa_envio: null, ruta: p.ruta };
+      geoData = { zona_envio: p.zona_entrega, tarifa_envio: p.envio || null, ruta: p.ruta };
     }
     if (p.direccion_entrega) dirVerificada = true;
   }
