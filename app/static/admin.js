@@ -297,7 +297,7 @@ async function loadProductos(append) {
 
 let _lastProdHash = '';
 function renderProdTable() {
-  const hash = JSON.stringify(prodAllData.map(p => p.id + '|' + p.activo + '|' + p.visible_catalogo + '|' + p.precio));
+  const hash = JSON.stringify(prodAllData.map(p => p.id + '|' + p.activo + '|' + p.visible_catalogo + '|' + p.precio + '|' + p.stock + '|' + p.stock_activo));
   if (hash === _lastProdHash) return;
   _lastProdHash = hash;
   const tbody = document.getElementById('prod-tbody');
@@ -320,6 +320,39 @@ function renderProdTable() {
     observeProdSentinel();
   }
 }
+
+// ─── Polling stock admin Productos (cada 30s) ───
+// Refresca todos los productos ya cargados (preserva scroll). Solo si está en sección Productos y no hay modal.
+async function pollProdStock() {
+  if (document.hidden) return;
+  const sec = document.getElementById('sec-productos');
+  if (!sec || !sec.classList.contains('active')) return;
+  const modalAbierto = document.querySelector('.modal.active');
+  if (modalAbierto) return;
+  if (document.activeElement && document.activeElement.id === 'prod-search') return;
+  if (prodLoading || prodAllData.length === 0) return;
+  try {
+    // Reconstruir URL con offset=0 y limit=cantidad ya cargada (refresca todo lo visible)
+    const status = document.getElementById('prod-status-filter')?.value || '';
+    const cat = document.getElementById('prod-cat-filter')?.value || '';
+    const q = (document.getElementById('prod-search')?.value || '').trim();
+    const stock = document.getElementById('prod-stock-filter')?.value || '';
+    const catVisible = status === '1' ? 'true' : status === '0' ? 'false' : '';
+    let url = API + '/productos/?activo=true&offset=0&limit=' + prodAllData.length;
+    if (catVisible) url += '&visible_catalogo=' + catVisible;
+    if (cat) url += '&categoria=' + encodeURIComponent(cat);
+    if (q) url += '&buscar=' + encodeURIComponent(q);
+    if (stock) url += '&stock_filter=' + stock;
+    const r = await fetch(url, {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    if (Array.isArray(data) && data.length > 0) {
+      prodAllData = data;
+      renderProdTable();
+    }
+  } catch(e) {}
+}
+setInterval(pollProdStock, 30000);
 
 let prodObserver = null;
 function observeProdSentinel() {

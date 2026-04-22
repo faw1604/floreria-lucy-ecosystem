@@ -299,12 +299,35 @@ async function fetchCategorias() {
     const r = await fetch('/pos/productos/categorias');
     categorias = await r.json();
     const sel = document.getElementById('cat-filter');
+    const prev = sel.value;
     sel.innerHTML = '<option value="">Todas</option>';
     categorias.forEach(c => {
       sel.innerHTML += `<option value="${c.categoria}">${c.categoria} (${c.count})</option>`;
     });
+    if (prev) sel.value = prev;
   } catch(e) { console.error(e); }
 }
+
+// ─── Polling stock POS (cada 15s) ───
+// Refresca lista de productos + dropdown categorías para sincronizar stock entre POS/admin/taller
+function _shouldPollPOSStock() {
+  if (document.hidden) return false;
+  // No interrumpir si el usuario está escribiendo en el buscador
+  const ae = document.activeElement;
+  if (ae && ae.id === 'cat-search') return false;
+  // Solo si la sección Ventas está activa
+  const sv = document.getElementById('sec-ventas');
+  if (!sv || !sv.classList.contains('active')) return false;
+  // Solo si está en window 1 (catálogo visible)
+  const w1 = document.getElementById('win1');
+  if (!w1 || !w1.classList.contains('active')) return false;
+  return true;
+}
+async function pollStockPOS() {
+  if (!_shouldPollPOSStock()) return;
+  try { await fetchProds(); await fetchCategorias(); } catch(e) {}
+}
+setInterval(pollStockPOS, 15000);
 
 function renderProds() {
   const c = document.getElementById('prod-container');
