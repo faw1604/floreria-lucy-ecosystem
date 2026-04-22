@@ -1836,18 +1836,17 @@ function renderClassicGrid() {
   }
   // Handle special filters
   let filtered;
-  if (catFilter === '_temporada' && catConfig && catConfig.temporada_categoria) {
-    filtered = allProducts.filter(p => {
-      if (p.categoria !== catConfig.temporada_categoria) return false;
-      if (!matchesSearch(p, searchQuery)) return false;
-      return true;
-    });
+  // Si el usuario está buscando, ignorar los filtros de sección/cat/flor
+  // y buscar en TODO el catálogo. Más natural: 'busco girasoles' → encuentra
+  // girasoles aunque estés parado en 'Funeral'.
+  if (searchQuery) {
+    filtered = allProducts.filter(p => matchesSearch(p, searchQuery));
+  } else if (catFilter === '_temporada' && catConfig && catConfig.temporada_categoria) {
+    filtered = allProducts.filter(p => p.categoria === catConfig.temporada_categoria);
   } else if (catFilter === '_combos') {
     filtered = allProducts.filter(p => {
       const cat = p.categoria.toLowerCase();
-      if (!(cat.includes('flores + detalle') || cat.includes('flores y chocolates'))) return false;
-      if (!matchesSearch(p, searchQuery)) return false;
-      return true;
+      return cat.includes('flores + detalle') || cat.includes('flores y chocolates');
     });
   } else {
     const pills = SECTION_PILLS[sectionFilter] || [];
@@ -1856,7 +1855,6 @@ function renderClassicGrid() {
       if (!matchesSection(p, sectionFilter)) return false;
       if (!matchesCatPill(p, activePill)) return false;
       if (!matchesFlower(p, flowerFilter)) return false;
-      if (!matchesSearch(p, searchQuery)) return false;
       return true;
     });
   }
