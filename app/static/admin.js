@@ -301,7 +301,7 @@ function renderProdTable() {
   if (hash === _lastProdHash) return;
   _lastProdHash = hash;
   const tbody = document.getElementById('prod-tbody');
-  if (!prodAllData.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--texto2);padding:40px">Sin productos</td></tr>'; return; }
+  if (!prodAllData.length) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--texto2);padding:40px">Sin productos</td></tr>'; return; }
   tbody.innerHTML = prodAllData.map(p => `<tr>
     <td><input type="checkbox" class="prod-check" data-id="${p.id}"></td>
     <td>${p.imagen_url ? '<img src="'+esc(p.imagen_url)+'" class="thumb">' : '—'}</td>
@@ -309,13 +309,14 @@ function renderProdTable() {
     <td style="color:var(--texto2)">${esc(p.codigo||'—')}</td>
     <td>${esc(p.categoria)}</td>
     <td style="font-weight:600">${p.precio_descuento ? '<span style="text-decoration:line-through;color:#999;font-weight:400">'+fmt$(p.precio)+'</span> '+fmt$(p.precio_descuento) : fmt$(p.precio)}</td>
+    <td style="text-align:center">${p.stock_activo ? (p.stock <= 0 ? '<span style="color:var(--rojo);font-weight:700">'+p.stock+'</span>' : '<span style="font-weight:600">'+p.stock+'</span>') : '<span style="color:#999">—</span>'}</td>
     <td>${p.activo ? '<span style="color:var(--verde)">Si</span>' : '<span style="color:var(--rojo)">No</span>'}</td>
     <td><input type="checkbox" ${p.visible_catalogo !== false ? 'checked' : ''} onchange="toggleWebProdQuick(${p.id}, this.checked)" title="Mostrar en catalogo"></td>
     <td id="var-badge-${p.id}"></td>
     <td style="white-space:nowrap"><button class="btn-sm" onclick="editarProducto(${p.id})">Editar</button> <button class="btn-sm" style="color:var(--rojo);border-color:var(--rojo)" onclick="eliminarProducto(${p.id},'${esc(p.nombre)}')">Eliminar</button></td>
   </tr>`).join('');
   if (prodHasMore) {
-    tbody.innerHTML += '<tr id="prod-sentinel"><td colspan="10" style="text-align:center;padding:12px;color:var(--texto2);font-size:12px">Cargando más...</td></tr>';
+    tbody.innerHTML += '<tr id="prod-sentinel"><td colspan="11" style="text-align:center;padding:12px;color:var(--texto2);font-size:12px">Cargando más...</td></tr>';
     observeProdSentinel();
   }
 }
