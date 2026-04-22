@@ -114,10 +114,17 @@ async def actualizar_configuracion(
     )
     config = result.scalar_one_or_none()
     if not config:
-        raise HTTPException(status_code=404, detail="Configuración no encontrada")
-    config.valor = request.get("valor", config.valor)
-    if "descripcion" in request:
-        config.descripcion = request["descripcion"]
+        # UPSERT: crear si no existe (claves de configuración nuevas como temporada_nombre)
+        config = ConfiguracionNegocio(
+            clave=clave,
+            valor=request.get("valor", ""),
+            descripcion=request.get("descripcion"),
+        )
+        db.add(config)
+    else:
+        config.valor = request.get("valor", config.valor)
+        if "descripcion" in request:
+            config.descripcion = request["descripcion"]
     await db.commit()
     return {"ok": True, "clave": config.clave, "valor": config.valor}
 

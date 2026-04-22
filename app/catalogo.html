@@ -1076,7 +1076,8 @@ function showSeasonScreen(nombre, categoria) {
   seasonCategory = categoria;
   document.getElementById('season-icon').textContent = '🌺';
   document.getElementById('season-title').textContent = `¿Tu pedido es para ${nombre}?`;
-  document.getElementById('season-sub').textContent = 'Tenemos arreglos especiales para esta temporada';
+  const subLabel = (nombre && nombre !== 'la Temporada') ? `Tenemos arreglos especiales de ${nombre}` : 'Tenemos arreglos especiales para esta temporada';
+  document.getElementById('season-sub').textContent = subLabel;
   document.getElementById('season-yes-btn').onclick = async () => {
     document.getElementById('season-screen').style.display = 'none';
     dynFilterCategory = seasonCategory;
