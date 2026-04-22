@@ -517,10 +517,12 @@ async def _pos_crear_pedido_inner(request, db):
             if pid:
                 prod_r = await db.execute(select(Producto).where(Producto.id == pid))
                 prod = prod_r.scalar_one_or_none()
-                if prod and prod.stock_activo and prod.stock > 0:
+                if prod and prod.stock_activo:
                     # Si se vendió por gramos, descontar gramos. Si no, unidades.
+                    # Stock puede ir a NEGATIVO para detectar discrepancias entre
+                    # inventario físico y sistema (Fer pidió este comportamiento).
                     cantidad_descontar = it.get("gramos") or it["cantidad"]
-                    prod.stock = max(0, prod.stock - cantidad_descontar)
+                    prod.stock = prod.stock - cantidad_descontar
 
     # Save datos fiscales if factura
     _dfd = data.get("datos_fiscales")
@@ -1224,10 +1226,11 @@ async def _pos_finalizar_inner(pedido_id, request, db):
     for item in items_r.scalars().all():
         if item.producto_id:
             prod = (await db.execute(select(Producto).where(Producto.id == item.producto_id))).scalar_one_or_none()
-            if prod and prod.stock_activo and prod.stock > 0:
+            if prod and prod.stock_activo:
                 # Si el item se vendió por gramos, descontar gramos. Si no, unidades.
+                # Stock puede ir a NEGATIVO (Fer pidió este comportamiento).
                 cantidad_descontar = item.gramos or item.cantidad
-                prod.stock = max(0, prod.stock - cantidad_descontar)
+                prod.stock = prod.stock - cantidad_descontar
 
     await db.commit()
 

@@ -327,7 +327,10 @@ function renderProds() {
       const pr = p.precio_descuento || p.precio;
       const stockVal = p.stock != null ? p.stock : (p.disponible_hoy === false ? 0 : null);
       let stockHtml = '';
-      if (stockVal === 0 || p.disponible_hoy === false) {
+      if (stockVal != null && stockVal < 0) {
+        // Stock negativo (Fer pidió permitir vender en negativo para detectar discrepancias)
+        stockHtml = `<div class="plstock" style="color:var(--rojo);font-weight:700">${stockVal}</div>`;
+      } else if (stockVal === 0 || p.disponible_hoy === false) {
         stockHtml = '<div class="plstock" style="color:var(--rojo);font-weight:600">Sin stock</div>';
       } else if (stockVal != null && stockVal <= 3) {
         stockHtml = `<div class="plstock" style="color:#e65100;font-weight:600">${stockVal}</div>`;
@@ -336,14 +339,14 @@ function renderProds() {
       } else {
         stockHtml = '<div class="plstock" style="color:var(--texto2)">—</div>';
       }
-      const btnDisabled = (stockVal === 0 || p.disponible_hoy === false);
-      return `<div class="pcard-list${nostock}" onclick="${btnDisabled ? '' : `addToCart(${p.id})`}">
+      // Permitir vender aunque no haya stock (warning lo da addToCart)
+      return `<div class="pcard-list${nostock}" onclick="addToCart(${p.id})">
         ${p.imagen_url ? `<img src="${p.imagen_url}" alt="">` : `<div style="width:48px;height:48px;background:#f0ede8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">☕</div>`}
         <div class="plname">${p.nombre}</div>
         <div class="plcode">${p.codigo||''}</div>
         <div class="plprice">$${(pr/100).toLocaleString()}</div>
         ${stockHtml}
-        <button class="plbtn"${btnDisabled ? ' disabled style="opacity:.4;cursor:not-allowed"' : ''}>+</button>
+        <button class="plbtn">+</button>
       </div>`;
     }).join('');
   }
@@ -352,6 +355,14 @@ function renderProds() {
 // ═══════════════════════════════════════════
 // CART
 // ═══════════════════════════════════════════
+function _posToast(msg, color) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);background:${color||'#193a2c'};color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);font-family:Inter,sans-serif`;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
 function addToCart(prodId, selectedVariante) {
   const p = productos.find(x => x.id === prodId);
   if (!p) return;
@@ -361,6 +372,13 @@ function addToCart(prodId, selectedVariante) {
   if (p.variantes && p.variantes.length > 0 && !selectedVariante) {
     abrirModalVariantes(p);
     return;
+  }
+  // Aviso de stock insuficiente (no bloquea: se permite vender en negativo
+  // para detectar discrepancias con inventario físico)
+  if (selectedVariante && selectedVariante.stock_activo && (selectedVariante.stock || 0) <= 0) {
+    _posToast(`⚠️ Stock insuficiente: "${selectedVariante.nombre}" (${selectedVariante.stock || 0})`, '#f97316');
+  } else if (!selectedVariante && p.stock_activo && (p.stock || 0) <= 0) {
+    _posToast(`⚠️ Stock insuficiente: "${p.nombre}" (${p.stock || 0})`, '#f97316');
   }
   const varId = selectedVariante ? selectedVariante.id : null;
   const existing = carrito.find(x => x.producto_id === prodId && !x.es_custom && !x.gramos && (x.variante_id || null) === varId);

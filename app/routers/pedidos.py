@@ -641,10 +641,11 @@ async def confirmar_pago(
     for item in items_r.scalars().all():
         if item.producto_id:
             prod = (await db.execute(select(Producto).where(Producto.id == item.producto_id))).scalar_one_or_none()
-            if prod and prod.stock_activo and prod.stock > 0:
+            if prod and prod.stock_activo:
                 # Si el item se vendió por gramos, descontar gramos. Si no, unidades.
+                # Stock puede ir a NEGATIVO (Fer pidió este comportamiento).
                 cantidad_descontar = item.gramos or item.cantidad
-                prod.stock = max(0, prod.stock - cantidad_descontar)
+                prod.stock = prod.stock - cantidad_descontar
 
     await db.commit()
 
