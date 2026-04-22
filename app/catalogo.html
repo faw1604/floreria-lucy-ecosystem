@@ -2649,8 +2649,12 @@ async function onFechaChange() {
     }
     const opts = buildRecogerOpts(fecha);
     let minHour = 0;
+    const especialFF = getHorarioEspecialFecha(fecha);
     if (isToday) {
       minHour = currentHour + 1.5;
+    } else if (especialFF) {
+      // Fecha fuerte exacta con horario especial: respetar apertura configurada en admin
+      minHour = especialFF[0];
     } else {
       // Mañana: mínimo 11:30 (tiempo de elaboración)
       // Pasado mañana o después: mínimo 9:30
@@ -2730,55 +2734,6 @@ async function onFechaChange() {
   const horarioGrid = document.getElementById('of-horario-grid');
   const disclaimerEl = document.getElementById('of-fecha-fuerte-disclaimer');
   const fechaFuerteBlockEl = document.getElementById('of-fecha-fuerte-block');
-  if (esFechaFuerteExacta(fecha) && pedidoWeb.tipo === 'domicilio' && horarioGrid) {
-    const nowChih = getChihuahuaNow();
-    const horaChih = nowChih.getHours() + nowChih.getMinutes() / 60;
-    if (fechaFuerteBlockEl) fechaFuerteBlockEl.remove();
-    if (horaChih >= 17.75) {
-      // After 17:45 — domicilio blocked completely
-      horarioGrid.innerHTML = '';
-      const _espBtn = document.getElementById('of-hora-esp-btn');
-      const _horaSelect = document.getElementById('of-hora-especifica');
-      const _hintEl = document.getElementById('of-hora-hint');
-      if (_espBtn) _espBtn.style.display = 'none';
-      if (_horaSelect) _horaSelect.style.display = 'none';
-      if (_hintEl) _hintEl.style.display = 'none';
-      if (disclaimerEl) disclaimerEl.style.display = 'none';
-      const blockDiv = document.createElement('div');
-      blockDiv.id = 'of-fecha-fuerte-block';
-      blockDiv.style.cssText = 'background:#fef2f2;color:#991b1b;padding:16px;border-radius:12px;margin:10px 0;text-align:center;font-size:14px;line-height:1.5';
-      blockDiv.innerHTML = 'Las entregas a domicilio para el ' + (catConfig.temporada_fecha_fuerte || '') + ' ya no están disponibles.<br>Puedes recoger en tienda (C. Sabino 610, Las Granjas) o comunicarte al <a href="tel:6144143787" style="color:#991b1b;font-weight:600">(614) 414 3787</a> 🌸';
-      horarioGrid.parentElement.appendChild(blockDiv);
-      pedidoWeb.horario_entrega = null;
-      return;
-    }
-    // Before 17:45 — only Turno 2 for domicilio
-    horarioGrid.innerHTML =
-      '<button type="button" class="order-horario-btn" data-h="turno1" disabled style="opacity:0.4;cursor:not-allowed" title="No disponible para domicilio">Turno 1 (8:00 a 15:00) — No disponible</button>' +
-      '<button type="button" class="order-horario-btn" data-h="turno2" onclick="selectHorario(\'turno2\')">Turno 2 (15:00 a 21:00)</button>';
-    const _espBtn2 = document.getElementById('of-hora-esp-btn');
-    const _horaSelect2 = document.getElementById('of-hora-especifica');
-    const _hintEl2 = document.getElementById('of-hora-hint');
-    if (_espBtn2) _espBtn2.style.display = 'none';
-    if (_horaSelect2) _horaSelect2.style.display = 'none';
-    if (_hintEl2) _hintEl2.style.display = 'none';
-    if (disclaimerEl) { disclaimerEl.style.display = ''; disclaimerEl.textContent = 'El Turno 1 no está disponible para entregas a domicilio en esta fecha'; }
-    else {
-      const disc = document.createElement('div');
-      disc.id = 'of-fecha-fuerte-disclaimer';
-      disc.style.cssText = 'background:#fff3cd;color:#856404;padding:10px 14px;border-radius:10px;margin-top:8px;font-size:13px;text-align:center';
-      disc.textContent = 'El Turno 1 no está disponible para entregas a domicilio en esta fecha';
-      horarioGrid.parentElement.appendChild(disc);
-    }
-    if (pedidoWeb.horario_entrega && pedidoWeb.horario_entrega !== 'turno2') {
-      pedidoWeb.horario_entrega = null;
-    }
-    horarioGrid.querySelectorAll('.order-horario-btn').forEach(b => {
-      b.classList.toggle('selected', pedidoWeb.horario_entrega === b.dataset.h);
-    });
-    return;
-  }
-
   // --- FECHA FUERTE: turnos de temporada ---
   // Clean up block message if switching away from exact fecha fuerte
   if (fechaFuerteBlockEl) fechaFuerteBlockEl.remove();
