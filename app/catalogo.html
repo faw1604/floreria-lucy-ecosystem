@@ -797,18 +797,16 @@ function updateCartFab() {
 }
 
 function addToCart(product, selectedVariante) {
+  if (product.sin_stock) return;
   // Si tiene variantes y no se eligió una, mostrar selector
   if (product.variantes && product.variantes.length > 0 && !selectedVariante) {
     showVariantSelector(product);
     return;
   }
-  // Aviso de stock insuficiente (no bloquea: se permite vender en negativo
-  // para detectar discrepancias con inventario físico)
-  let _aviso = null;
+  // En web SÍ se bloquea cuando la variante no tiene stock
   if (selectedVariante && selectedVariante.stock_activo && (selectedVariante.stock || 0) <= 0) {
-    _aviso = `⚠️ "${selectedVariante.nombre}" sin stock — se agregó igual`;
-  } else if (!selectedVariante && product.sin_stock) {
-    _aviso = '⚠️ Sin stock — se agregó igual';
+    alert(`"${selectedVariante.nombre}" está agotado`);
+    return;
   }
   const varId = selectedVariante ? selectedVariante.id : null;
   const existing = cart.find(p => p.id === product.id && (p.variante_id || null) === varId);
@@ -827,14 +825,13 @@ function addToCart(product, selectedVariante) {
     cart.push(item);
   }
   saveCart();
-  showCartToast(_aviso);
+  showCartToast();
 }
 
-function showCartToast(mensaje) {
+function showCartToast() {
   const toast = document.createElement('div');
-  toast.textContent = mensaje || '\u2713 Agregado al carrito';
-  const bg = mensaje ? '#f97316' : '#193a2c';
-  toast.style.cssText = `position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:${bg};color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:all .3s ease;font-family:Inter,sans-serif`;
+  toast.textContent = '\u2713 Agregado al carrito';
+  toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#193a2c;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:all .3s ease;font-family:Inter,sans-serif';
   document.body.appendChild(toast);
   requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(20px)'; setTimeout(() => toast.remove(), 300); }, 1800);

@@ -187,6 +187,10 @@ function showToastInline(msg) {
 function agregarAlCarrito() {
   const p = window._prod;
   if (!p) return;
+  if (p.sin_stock) {
+    showToastInline('Producto agotado');
+    return;
+  }
   const tieneVar = p.variantes && p.variantes.length > 0;
   if (tieneVar && !_selVar) {
     showToastInline('Selecciona una opción primero');
@@ -194,14 +198,11 @@ function agregarAlCarrito() {
     if (wrap) { wrap.style.transition='background .3s'; wrap.style.background='#fef3c7'; setTimeout(()=>{wrap.style.background='';}, 600); wrap.scrollIntoView({behavior:'smooth',block:'center'}); }
     return;
   }
-  // Detectar stock insuficiente para mostrar aviso después (no bloquea: el
-  // sistema permite vender en negativo para detectar discrepancias con
-  // inventario físico).
-  let _avisoStock = null;
+  // En web SÍ se bloquea cuando no hay stock (a diferencia del POS, donde
+  // se permite vender en negativo). El cliente web no puede esperar.
   if (_selVar && _selVar.stock_activo && (_selVar.stock || 0) <= 0) {
-    _avisoStock = `⚠️ "${_selVar.nombre}" sin stock — se agregó igual`;
-  } else if (!tieneVar && p.sin_stock) {
-    _avisoStock = '⚠️ Sin stock — se agregó igual';
+    showToastInline(`"${_selVar.nombre}" agotado`);
+    return;
   }
   // Escribir directo al carrito de sessionStorage (mismo storage que usa catalogo.html)
   const cart = JSON.parse(sessionStorage.getItem('lucy_cart') || '[]');
@@ -233,7 +234,7 @@ function agregarAlCarrito() {
     cart.push(item);
   }
   sessionStorage.setItem('lucy_cart', JSON.stringify(cart));
-  showToastInline(_avisoStock || '✓ Agregado al carrito');
+  showToastInline('✓ Agregado al carrito');
   refreshCartLink();
 }
 
