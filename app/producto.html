@@ -137,6 +137,30 @@ function elegirVariante(vid) {
     const disp = document.getElementById('prod-price-display');
     if (disp) disp.textContent = '$' + (v.precio/100).toLocaleString();
   }
+  // actualizar imagen si la variante tiene foto propia
+  swapMainImage(v.imagen_url || p.imagen_url);
+}
+
+function swapMainImage(url) {
+  if (!url) return;
+  // Caso 1: galería con scroll horizontal — reemplazar la primera imagen
+  const galleryFirst = document.querySelector('.prod-gallery-scroll img');
+  if (galleryFirst) {
+    galleryFirst.src = url;
+    galleryFirst.classList.remove('img-tall');
+    galleryFirst.onload = function() { autoFitImg(this); };
+    // scroll al inicio para mostrar la nueva imagen
+    const scroll = document.querySelector('.prod-gallery-scroll');
+    if (scroll) scroll.scrollTo({left: 0, behavior: 'smooth'});
+    return;
+  }
+  // Caso 2: imagen única — reemplazar el src
+  const single = document.querySelector('img.prod-img');
+  if (single) {
+    single.src = url;
+    single.classList.remove('img-tall');
+    single.onload = function() { autoFitImg(this); };
+  }
 }
 
 function refreshCartLink() {
