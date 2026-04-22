@@ -325,19 +325,25 @@ function renderProds() {
     c.innerHTML = productos.map(p => {
       const nostock = p.disponible_hoy === false ? ' sinstock' : '';
       const pr = p.precio_descuento || p.precio;
-      const stockVal = p.stock != null ? p.stock : (p.disponible_hoy === false ? 0 : null);
-      let stockHtml = '';
-      if (stockVal != null && stockVal < 0) {
-        // Stock negativo (Fer pidió permitir vender en negativo para detectar discrepancias)
-        stockHtml = `<div class="plstock" style="color:var(--rojo);font-weight:700">${stockVal}</div>`;
-      } else if (stockVal === 0 || p.disponible_hoy === false) {
-        stockHtml = '<div class="plstock" style="color:var(--rojo);font-weight:600">Sin stock</div>';
-      } else if (stockVal != null && stockVal <= 3) {
-        stockHtml = `<div class="plstock" style="color:#e65100;font-weight:600">${stockVal}</div>`;
-      } else if (stockVal != null) {
-        stockHtml = `<div class="plstock" style="color:var(--texto2)">${stockVal}</div>`;
-      } else {
-        stockHtml = '<div class="plstock" style="color:var(--texto2)">—</div>';
+      // Solo mostrar contador de stock si stock_activo = true. Si no controla
+      // stock, mostrar '—' (no se sabe / no aplica). Esto evita confusión
+      // de productos que aparecían como "Sin stock" sin estar habilitados.
+      let stockHtml = '<div class="plstock" style="color:var(--texto2)">—</div>';
+      if (p.stock_activo) {
+        const stockVal = p.stock || 0;
+        if (stockVal < 0) {
+          // Stock negativo (Fer pidió permitir vender en negativo para detectar discrepancias)
+          stockHtml = `<div class="plstock" style="color:var(--rojo);font-weight:700">${stockVal}</div>`;
+        } else if (stockVal === 0) {
+          stockHtml = '<div class="plstock" style="color:var(--rojo);font-weight:600">Sin stock</div>';
+        } else if (stockVal <= 3) {
+          stockHtml = `<div class="plstock" style="color:#e65100;font-weight:600">${stockVal}</div>`;
+        } else {
+          stockHtml = `<div class="plstock" style="color:var(--texto2)">${stockVal}</div>`;
+        }
+      } else if (p.disponible_hoy === false) {
+        // Producto deshabilitado manualmente (toggle "Disponible hoy")
+        stockHtml = '<div class="plstock" style="color:var(--rojo);font-weight:600">No disponible</div>';
       }
       // Permitir vender aunque no haya stock (warning lo da addToCart)
       return `<div class="pcard-list${nostock}" onclick="addToCart(${p.id})">
