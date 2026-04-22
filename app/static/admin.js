@@ -515,9 +515,51 @@ function renderVarianteRow(v) {
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px">Precio oferta</label><input type="number" class="vr-precio-desc" value="${v.precio_descuento ? (v.precio_descuento/100).toFixed(2) : ''}" step="0.01" style="font-size:12px;padding:6px 8px"></div>
       <div class="field" style="margin-bottom:6px"><label style="font-size:11px;display:flex;align-items:center;gap:4px">Controlar stock <input type="checkbox" class="vr-stock-activo" ${v.stock_activo ? 'checked' : ''} onchange="this.closest('.var-row').querySelector('.vr-stock-wrap').style.display=this.checked?'':'none'"></label></div>
       <div class="field vr-stock-wrap" style="margin-bottom:6px;${v.stock_activo ? '' : 'display:none'}"><label style="font-size:11px">Stock</label><input type="number" class="vr-stock" value="${v.stock||0}" min="0" style="font-size:12px;padding:6px 8px"></div>
-      <div class="field" style="margin-bottom:0;grid-column:1/-1"><label style="font-size:11px">Foto</label><input type="file" class="vr-img-file" accept="image/*" style="font-size:11px"><input type="hidden" class="vr-img" value="${esc(v.imagen_url||'')}"></div>
+      <div class="field" style="margin-bottom:0;grid-column:1/-1"><label style="font-size:11px">Foto</label>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="vr-img-preview" style="width:48px;height:48px;border-radius:6px;background:var(--borde);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--texto2)">${v.imagen_url ? `<img src="${esc(v.imagen_url)}" style="width:100%;height:100%;object-fit:cover">` : '📷'}</div>
+          <div style="flex:1">
+            <input type="file" class="vr-img-file" accept="image/*" style="font-size:11px" onchange="subirImagenVariante(this)">
+            <div class="vr-img-status" style="font-size:10px;color:var(--texto2);margin-top:2px"></div>
+          </div>
+          <input type="hidden" class="vr-img" value="${esc(v.imagen_url||'')}">
+        </div>
+      </div>
     </div>
   </div>`;
+}
+
+async function subirImagenVariante(input) {
+  const row = input.closest('.var-row');
+  const status = row.querySelector('.vr-img-status');
+  const preview = row.querySelector('.vr-img-preview');
+  const hidden = row.querySelector('.vr-img');
+  if (!input.files?.length) return;
+  const file = input.files[0];
+  if (file.size > 10 * 1024 * 1024) {
+    status.textContent = '⚠️ Archivo muy grande (>10MB)';
+    status.style.color = 'var(--rojo)';
+    input.value = '';
+    return;
+  }
+  status.textContent = 'Subiendo...';
+  status.style.color = 'var(--texto2)';
+  try {
+    const fd = new FormData();
+    fd.append('imagen', file);
+    const r = await fetch(API + '/productos/subir-imagen', {method:'POST', body:fd, credentials:'include'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (!d.url) throw new Error('Sin URL en respuesta');
+    hidden.value = d.url;
+    preview.innerHTML = `<img src="${d.url}" style="width:100%;height:100%;object-fit:cover">`;
+    status.textContent = '✓ Subida';
+    status.style.color = 'var(--verde)';
+  } catch(e) {
+    status.textContent = '❌ Error: ' + (e?.message || e);
+    status.style.color = 'var(--rojo)';
+    input.value = '';
+  }
 }
 
 function addVarianteRow(tipo) {
@@ -734,16 +776,8 @@ async function saveAllVariantes(prodId) {
       imagen_url: row.querySelector('.vr-img')?.value || null,
       activo: true,
     };
-    // Upload image if file selected
-    const fileInput = row.querySelector('.vr-img-file');
-    if (fileInput?.files?.length) {
-      const fd = new FormData(); fd.append('imagen', fileInput.files[0]);
-      try {
-        const ur = await fetch(API + '/productos/subir-imagen', {method:'POST', body:fd, credentials:'include'});
-        const ud = await ur.json();
-        if (ud.url) data.imagen_url = ud.url;
-      } catch(e) {}
-    }
+    // La imagen ya se subió al seleccionar el archivo (subirImagenVariante);
+    // .vr-img (hidden) ya tiene la URL final.
     if (varId && varId !== '') {
       await fetch(API + '/api/admin/variantes/' + varId, {method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(data)});
       existingIds.add(parseInt(varId));
