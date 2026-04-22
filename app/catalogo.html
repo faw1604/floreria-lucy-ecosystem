@@ -3258,6 +3258,17 @@ function validateStep3() {
   if (!pedidoWeb.cliente_nombre_last) { alert('Apellido(s) es obligatorio'); return false; }
   if (!pedidoWeb.cliente_telefono || pedidoWeb.cliente_telefono.length < 10) { alert('Teléfono es obligatorio (10 dígitos)'); return false; }
   if (!pedidoWeb.fecha_entrega) { alert('Fecha de entrega es obligatoria'); return false; }
+  // Validar que la fecha no sea pasada (algunos pickers de iOS permiten seleccionar
+  // fechas antes del min). Comparamos contra el atributo min del input directamente.
+  {
+    const fInput = document.getElementById('of-fecha');
+    const minF = fInput && fInput.min;
+    if (minF && pedidoWeb.fecha_entrega < minF) {
+      alert('La fecha seleccionada ya pasó. Por favor elige una fecha válida.');
+      try { fInput.focus(); fInput.scrollIntoView({behavior:'smooth',block:'center'}); } catch(e) {}
+      return false;
+    }
+  }
   if (tipo === 'domicilio') {
     if (!pedidoWeb.nombre_destinatario) { alert('Nombre de quien recibe es obligatorio'); return false; }
     if (!pedidoWeb.telefono_destinatario || pedidoWeb.telefono_destinatario.length < 10) { alert('Teléfono de quien recibe es obligatorio'); return false; }
