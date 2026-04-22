@@ -1708,9 +1708,14 @@ async function initClassic() {
 }
 
 function renderSectionTabs() {
-  const tabs = ['general', 'funeral', 'regalos', 'temporada'];
-  const tempLabel = (catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria) ? catConfig.temporada_categoria : 'Temporada';
+  // Solo mostrar 'Temporada' si admin activó modo alta con categoría definida
+  const temporadaActiva = !!(catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria);
+  const tabs = ['general', 'funeral', 'regalos'];
+  if (temporadaActiva) tabs.push('temporada');
+  const tempLabel = temporadaActiva ? catConfig.temporada_categoria : 'Temporada';
   const labels = {'general': 'General', 'funeral': 'Funeral', 'regalos': 'Regalos', 'temporada': tempLabel};
+  // Si el usuario estaba en 'temporada' y se desactivó, regresarlo a 'general'
+  if (sectionFilter === 'temporada' && !temporadaActiva) sectionFilter = 'general';
   document.getElementById('section-tabs').innerHTML = tabs.map(t =>
     `<button class="filter-tab ${sectionFilter === t ? 'active' : ''}" onclick="setSection('${t}')">${labels[t]}</button>`
   ).join('');
