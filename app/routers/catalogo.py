@@ -530,6 +530,12 @@ async def _crear_pedido_web_inner(request, db):
     except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Formato de fecha inválido")
 
+    # Bloquear fechas pasadas (defensa contra picker iOS o frontend desactualizado)
+    from app.core.utils import hoy as hoy_chihuahua
+    hoy_date = hoy_chihuahua()
+    if fecha_entrega < hoy_date:
+        raise HTTPException(status_code=400, detail="La fecha de entrega ya pasó. Selecciona una fecha válida.")
+
     # Validar tipo domicilio
     if tipo == "domicilio":
         if not data.get("nombre_destinatario"):

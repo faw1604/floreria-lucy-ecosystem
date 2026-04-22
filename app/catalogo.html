@@ -2577,7 +2577,8 @@ function renderStep3Fields() {
         <div style="flex:1"><label style="font-size:11px;color:var(--texto2)">Termina</label><select id="of-vel-termina" onchange="onVelacionChange()"><option value="">No sé</option>${timeOpts.map(t => `<option value="${t}">Hoy ${t}</option>`).join('')}${timeOpts.map(t => `<option value="Día siguiente ${t}">Día sig. ${t}</option>`).join('')}</select></div>
       </div>
       <div id="of-vel-disclaimer" style="display:none;background:#fef3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 12px;font-size:12px;color:#856404;line-height:1.4">⚠️ Si no conoces el horario, tu pedido podría no llegar a tiempo. Te recomendamos confirmar con la funeraria antes de ordenar.</div>
-    </div>`;
+    </div>
+    <div id="of-funeral-resumen" style="margin-top:14px;padding:14px;background:rgba(45,90,61,0.06);border:1px solid var(--borde);border-radius:10px;font-size:13px"></div>`;
   }
 
   document.getElementById('order-form-fields').innerHTML = html;
@@ -2586,7 +2587,7 @@ function renderStep3Fields() {
     setTimeout(() => onFechaChange(), 50);
   }
   // Load funerarias dropdown (also preload for domicilio address detection)
-  if (tipo === 'funeral') { loadAllFunerarias().then(() => filterFunerarias()); renderBandas(); }
+  if (tipo === 'funeral') { loadAllFunerarias().then(() => filterFunerarias()); renderBandas(); updateFuneralResumen(); }
   else if (tipo === 'domicilio') { loadAllFunerarias(); }
 }
 
@@ -3072,6 +3073,8 @@ function updateExtraBandaCost() {
   if (hint) {
     hint.textContent = extras > 0 ? extras + ' banda' + (extras > 1 ? 's' : '') + ' extra' + (extras > 1 ? 's' : '') + ': +$' + (extras * 80) : '';
   }
+  pedidoWeb.bandas_extra_costo = extras * 8000;  // centavos
+  if (typeof updateFuneralResumen === 'function') updateFuneralResumen();
 }
 
 function collectBandas() {
@@ -3128,9 +3131,12 @@ function selectFuneraria(id, nombre, direccion) {
   if (addrDiv) addrDiv.style.display = 'none';
   pedidoWeb.funeraria_id = id;
   pedidoWeb.funeraria_nombre = nombre;
+  pedidoWeb.funeral_domicilio_costo = 0;
+  pedidoWeb.funeral_domicilio_zona = null;
   document.getElementById('of-funeraria').value = nombre;
   document.getElementById('of-funeraria-dropdown').style.display = 'none';
   document.getElementById('of-funeraria-results').innerHTML = `<span style="color:var(--verde)">✓ ${nombre}${direccion ? ' — '+direccion : ''}</span>`;
+  updateFuneralResumen();
 }
 
 function selectFunerariaDomicilio() {
@@ -3140,6 +3146,7 @@ function selectFunerariaDomicilio() {
   document.getElementById('of-funeraria').value = 'Funeral en domicilio particular';
   document.getElementById('of-funeraria-dropdown').style.display = 'none';
   document.getElementById('of-funeraria-results').innerHTML = '<span style="color:var(--verde)">✓ Domicilio particular — ingresa la dirección abajo</span>';
+  updateFuneralResumen();
 
   let addrDiv = document.getElementById('of-funeral-domicilio-fields');
   if (!addrDiv) {
@@ -3191,6 +3198,45 @@ function updateFuneralDomicilioCost(zona) {
   const tarifa = opt && opt.dataset.tarifa ? parseInt(opt.dataset.tarifa) : 0;
   pedidoWeb.funeral_domicilio_costo = tarifa;
   pedidoWeb.funeral_domicilio_zona = zona;
+  updateFuneralResumen();
+}
+
+// Resumen de subtotal+envío+total en el form funeral (para que el cliente vea
+// el costo de envío ANTES de llegar a la pantalla de confirmación)
+function updateFuneralResumen() {
+  const box = document.getElementById('of-funeral-resumen');
+  if (!box) return;
+  let sub = 0;
+  cart.forEach(p => {
+    const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
+    sub += precio;
+  });
+  const bandasExtra = pedidoWeb.bandas_extra_costo || 0;
+  let envio = 0;
+  let envioLbl = '';
+  if (pedidoWeb.funeral_domicilio && pedidoWeb.funeral_domicilio_costo) {
+    envio = pedidoWeb.funeral_domicilio_costo;
+    envioLbl = pedidoWeb.funeral_domicilio_zona ? ` (${pedidoWeb.funeral_domicilio_zona})` : ' (Domicilio)';
+  } else if (pedidoWeb.funeraria_nombre && allFunerarias) {
+    const f = allFunerarias.find(x => x.nombre === pedidoWeb.funeraria_nombre);
+    if (f && f.costo_envio) {
+      envio = f.costo_envio;
+      envioLbl = ` (${pedidoWeb.funeraria_nombre})`;
+    }
+  }
+  const total = sub + bandasExtra + envio;
+  let html = `<div style="font-weight:600;color:var(--verde);margin-bottom:6px">Resumen estimado</div>`;
+  html += `<div style="display:flex;justify-content:space-between;color:var(--texto2)"><span>Subtotal</span><span>$${(sub/100).toLocaleString()}</span></div>`;
+  if (bandasExtra > 0) html += `<div style="display:flex;justify-content:space-between;color:var(--dorado)"><span>Bandas extra</span><span>+$${(bandasExtra/100).toLocaleString()}</span></div>`;
+  if (envio > 0) {
+    html += `<div style="display:flex;justify-content:space-between;color:var(--texto2)"><span>Envío${envioLbl}</span><span>$${(envio/100).toLocaleString()}</span></div>`;
+  } else if (pedidoWeb.funeraria_nombre || pedidoWeb.funeral_domicilio) {
+    html += `<div style="display:flex;justify-content:space-between;color:#999;font-size:12px;font-style:italic"><span>Envío</span><span>Por confirmar</span></div>`;
+  } else {
+    html += `<div style="color:#999;font-size:12px;font-style:italic;margin-top:4px">Selecciona la funeraria o dirección para calcular el envío</div>`;
+  }
+  html += `<div style="display:flex;justify-content:space-between;font-weight:700;font-size:15px;color:var(--verde);margin-top:8px;padding-top:8px;border-top:1px solid var(--borde)"><span>Total estimado</span><span>$${(total/100).toLocaleString()}</span></div>`;
+  box.innerHTML = html;
 }
 
 // Close dropdown when clicking outside
@@ -3407,6 +3453,15 @@ async function toggleFactura() {
 }
 
 async function submitOrder() {
+  // Re-validar fecha pasada en submit (defensa: usuario pudo retroceder a step 3 y modificar)
+  {
+    const now = getChihuahuaNow();
+    const hoy = fmtDateLocal(now);
+    if (pedidoWeb.fecha_entrega && pedidoWeb.fecha_entrega < hoy) {
+      alert('La fecha seleccionada ya pasó. Por favor regresa y elige una fecha válida.');
+      return;
+    }
+  }
   // Validar checkbox de confirmación funeral
   if (pedidoWeb.tipo === 'funeral') {
     const funCheck = document.getElementById('of-funeral-confirm');
