@@ -99,12 +99,22 @@ function setView(v) {
 }
 
 // ─── Temporada config + fecha fuerte ───
-(async function loadTemporadaConfig() {
+async function loadTemporadaConfigPOS() {
   try {
     const r = await fetch('/pos/temporada-config');
-    if (r.ok) posTemporadaConfig = await r.json();
+    if (r.ok) {
+      posTemporadaConfig = await r.json();
+      // Re-evaluar pills de horario por si el usuario ya tenía una fecha seleccionada
+      // (fix race condition: config carga async, fecha pudo cambiar antes)
+      if (typeof onPOSFechaChange === 'function' && document.getElementById('f-fecha')) {
+        try { onPOSFechaChange(); } catch(e) {}
+      }
+    }
   } catch(e) {}
-})();
+}
+loadTemporadaConfigPOS();
+// Refresh cada 60s para captar cambios desde admin sin requerir reload
+setInterval(() => { if (!document.hidden) loadTemporadaConfigPOS(); }, 60000);
 
 function esFechaFuertePOS(fechaStr) {
   if (!posTemporadaConfig || posTemporadaConfig.modo !== 'alta') return false;
