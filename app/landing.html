@@ -841,17 +841,20 @@ function mostrarPopupTemporada(cfg) {
   const subLabel = tempNombre ? `Tenemos arreglos especiales de ${tempNombre}` : 'Tenemos arreglos especiales de temporada';
   const btnLabel = tempNombre ? `Si, ver catalogo de ${tempNombre}` : 'Si, ver catalogo de temporada';
   overlay.innerHTML = `
-    <div style="background:#faf8f5;border-radius:20px;padding:40px 32px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="position:relative;background:#faf8f5;border-radius:20px;padding:40px 32px;max-width:400px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <button id="temp-popup-close" aria-label="Cerrar" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:24px;color:#666;cursor:pointer;line-height:1;padding:4px 8px">&times;</button>
       <div style="font-size:48px;margin-bottom:16px">🌸</div>
       <h2 style="font-family:'Playfair Display',serif;font-size:24px;color:#193a2c;margin:0 0 12px">¿Tu pedido es para ${tituloLabel}?</h2>
       <p style="font-family:'Inter',sans-serif;font-size:14px;color:#666;margin:0 0 28px">${subLabel}</p>
       <div style="display:flex;flex-direction:column;gap:12px">
         <a href="/catalogo/?modo=classic&cat=temporada" style="display:block;padding:14px 24px;background:#193a2c;color:#faf8f5;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;text-decoration:none;transition:background .15s">${btnLabel}</a>
-        <a href="/catalogo/?modo=classic" style="display:block;padding:14px 24px;background:transparent;color:#193a2c;border:2px solid #193a2c;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;text-decoration:none;transition:all .15s">No, ver catalogo completo</a>
+        <button id="temp-popup-no" style="display:block;padding:14px 24px;background:transparent;color:#193a2c;border:2px solid #193a2c;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:all .15s">No, ver página</button>
       </div>
     </div>
   `;
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('#temp-popup-close').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#temp-popup-no').addEventListener('click', () => overlay.remove());
   document.body.appendChild(overlay);
 }
 
