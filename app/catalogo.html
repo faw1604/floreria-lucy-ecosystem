@@ -803,6 +803,11 @@ function addToCart(product, selectedVariante) {
     showVariantSelector(product);
     return;
   }
+  // Validar stock de la variante
+  if (selectedVariante && selectedVariante.stock_activo && (selectedVariante.stock || 0) <= 0) {
+    alert(`"${selectedVariante.nombre}" está agotado`);
+    return;
+  }
   const varId = selectedVariante ? selectedVariante.id : null;
   const existing = cart.find(p => p.id === product.id && (p.variante_id || null) === varId);
   if (existing) {

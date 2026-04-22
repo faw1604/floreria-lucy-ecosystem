@@ -187,11 +187,20 @@ function showToastInline(msg) {
 function agregarAlCarrito() {
   const p = window._prod;
   if (!p) return;
+  if (p.sin_stock) {
+    showToastInline('Producto agotado');
+    return;
+  }
   const tieneVar = p.variantes && p.variantes.length > 0;
   if (tieneVar && !_selVar) {
     showToastInline('Selecciona una opción primero');
     const wrap = document.getElementById('prod-variantes');
     if (wrap) { wrap.style.transition='background .3s'; wrap.style.background='#fef3c7'; setTimeout(()=>{wrap.style.background='';}, 600); wrap.scrollIntoView({behavior:'smooth',block:'center'}); }
+    return;
+  }
+  // Validar stock de la variante
+  if (_selVar && _selVar.stock_activo && (_selVar.stock || 0) <= 0) {
+    showToastInline(`"${_selVar.nombre}" agotado`);
     return;
   }
   // Escribir directo al carrito de sessionStorage (mismo storage que usa catalogo.html)
@@ -201,18 +210,25 @@ function agregarAlCarrito() {
   if (existing) {
     existing.qty = (existing.qty || 1) + 1;
   } else {
+    // Calcular precio efectivo (variante puede sobreescribir el base)
+    let precioEf = p.precio;
+    let precioDescEf = p.precio_descuento;
+    if (_selVar && _selVar.precio && _selVar.precio > 0) {
+      precioEf = _selVar.precio;
+      precioDescEf = (_selVar.precio_descuento && _selVar.precio_descuento > 0) ? _selVar.precio_descuento : null;
+    }
     const item = {
-      id: p.id, nombre: p.nombre, precio: p.precio, precio_descuento: p.precio_descuento,
+      id: p.id, nombre: p.nombre,
+      precio: precioEf, precio_descuento: precioDescEf,
+      // Display strings — el carrito de catalogo.html los espera ya formateados
+      precio_display: '$' + Math.round(precioEf/100).toLocaleString(),
+      precio_descuento_display: precioDescEf ? '$' + Math.round(precioDescEf/100).toLocaleString() : null,
       imagen_url: p.imagen_url, categoria: p.categoria, qty: 1,
       variantes: p.variantes || null,
     };
     if (_selVar) {
       item.variante_id = _selVar.id;
       item.variante_nombre = _selVar.nombre;
-      if (_selVar.precio && _selVar.precio > 0) {
-        item.precio = _selVar.precio;
-        item.precio_descuento = null;
-      }
     }
     cart.push(item);
   }
