@@ -91,6 +91,8 @@ async def pos_productos(
         for v in vars_r.scalars().all():
             variantes_map.setdefault(v.producto_id, []).append({
                 "id": v.id, "tipo": v.tipo, "nombre": v.nombre, "precio": v.precio,
+                "stock_activo": v.stock_activo, "stock": v.stock,
+                "imagen_url": v.imagen_url,
             })
 
     return [{
@@ -98,6 +100,7 @@ async def pos_productos(
         "precio": p.precio, "precio_descuento": p.precio_descuento,
         "imagen_url": p.imagen_url, "disponible_hoy": p.disponible_hoy,
         "vender_por_fraccion": p.vender_por_fraccion,
+        "stock_activo": p.stock_activo, "stock": p.stock,
         "variantes": variantes_map.get(p.id, []),
     } for p in prods]
 
@@ -299,13 +302,9 @@ async def _pos_crear_pedido_inner(request, db):
             if prod and prod.categoria.lower() != "funeral":
                 raise HTTPException(status_code=400, detail=f"Producto '{prod.nombre}' no es de categoría funeral")
 
-    # Validar stock
-    for item in items:
-        pid = item.get("producto_id")
-        if pid and not item.get("es_personalizado"):
-            prod = (await db.execute(select(Producto).where(Producto.id == pid))).scalar_one_or_none()
-            if prod and prod.stock_activo and prod.stock < item.get("cantidad", 1):
-                raise HTTPException(status_code=400, detail=f"'{prod.nombre}' no tiene stock suficiente (disponible: {prod.stock})")
+    # NO validar stock — Fer pidió permitir vender en negativo desde POS
+    # para detectar discrepancias con inventario físico. El stock se decrementa
+    # más adelante (puede quedar en negativo) y el frontend muestra warning.
 
     # Calculate subtotal
     subtotal = sum(it["precio_unitario"] * it["cantidad"] for it in items)
