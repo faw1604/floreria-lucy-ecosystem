@@ -172,15 +172,16 @@ img{-webkit-user-drag:none;user-drag:none}
 
 /* Filters */
 .filter-section{margin-bottom:10px;position:sticky;top:56px;z-index:90;background:var(--crema);padding-top:8px;padding-bottom:4px}
-.filter-tabs{display:flex;gap:0;background:var(--blanco);border-radius:10px;border:1px solid var(--borde);overflow:hidden;margin-bottom:10px}
-.filter-tab{flex:1;padding:10px 8px;border:none;background:none;font-size:13px;font-weight:500;color:var(--texto2);cursor:pointer;font-family:'Inter',sans-serif;text-align:center;transition:all .15s}
-.filter-tab.active{background:var(--verde);color:var(--blanco)}
+.filter-tabs{display:flex;gap:0;background:var(--blanco);border-radius:12px;border:2px solid var(--dorado);overflow:hidden;margin-bottom:10px;box-shadow:0 2px 8px rgba(212,168,67,.12)}
+.filter-tab{flex:1;padding:12px 8px;border:none;background:none;font-size:13px;font-weight:600;color:var(--verde);cursor:pointer;font-family:'Inter',sans-serif;text-align:center;transition:all .15s;letter-spacing:.3px}
+.filter-tab:not(.active):hover{background:rgba(212,168,67,.1)}
+.filter-tab.active{background:var(--verde);color:var(--blanco);box-shadow:inset 0 -3px 0 var(--dorado)}
 .filter-pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .filter-pills::-webkit-scrollbar{display:none}
 .filter-pills:hover{cursor:grab}
-.filter-pill{white-space:nowrap;padding:7px 14px;border-radius:20px;border:1px solid var(--borde);background:var(--blanco);font-size:12px;font-weight:500;color:var(--texto2);cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;flex-shrink:0}
-.filter-pill.active{background:var(--verde);color:var(--blanco);border-color:var(--verde)}
-.filter-pill:hover{border-color:var(--verde-c)}
+.filter-pill{white-space:nowrap;padding:8px 16px;border-radius:20px;border:1.5px solid var(--dorado);background:var(--blanco);font-size:12px;font-weight:600;color:var(--verde);cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;flex-shrink:0}
+.filter-pill.active{background:var(--verde);color:var(--blanco);border-color:var(--verde);box-shadow:0 2px 6px rgba(25,58,44,.25)}
+.filter-pill:hover:not(.active){background:rgba(212,168,67,.12);border-color:var(--verde)}
 
 /* Grid */
 .classic-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
