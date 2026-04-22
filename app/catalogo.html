@@ -1700,12 +1700,44 @@ async function initClassic() {
     sessionStorage.setItem('lucy_classic_banner_shown', '1');
     const fechaFuerte = catConfig.temporada_fecha_fuerte || '';
     const tempCat = catConfig.temporada_categoria || 'Temporada';
+    const dias = parseInt(catConfig.temporada_dias_restriccion || '2');
+    const fechasLabel = buildFechasRestriccionLabel(fechaFuerte, dias);
+    const aceptaFun = catConfig.temporada_acepta_funerales !== false && catConfig.temporada_acepta_funerales !== 'false';
+    const seccionesLabel = aceptaFun
+      ? `las secciones "<b>${tempCat}</b>", <b>Regalos</b> y <b>Funeral</b>`
+      : `las secciones "<b>${tempCat}</b>" y <b>Regalos</b>`;
     const banner = document.createElement('div');
     banner.id = 'temp-classic-banner';
     banner.style.cssText = 'position:fixed;top:56px;left:0;right:0;z-index:160;background:#193a2c;color:#faf8f5;padding:12px 40px 12px 16px;font-family:Inter,sans-serif;font-size:13px;text-align:center;line-height:1.4;animation:fadeUp .3s ease-out';
-    banner.innerHTML = `Recuerda que para las fechas del <b>${fechaFuerte}</b> solo estara disponible la seccion "<b>${tempCat}</b>" <button onclick="this.parentElement.remove()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#faf8f5;font-size:20px;cursor:pointer;line-height:1">&times;</button>`;
+    banner.innerHTML = `Recuerda que para las fechas del <b>${fechasLabel}</b> solo estarán disponibles ${seccionesLabel} <button onclick="this.parentElement.remove()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#faf8f5;font-size:20px;cursor:pointer;line-height:1">&times;</button>`;
     document.body.appendChild(banner);
   }
+}
+
+// Construye string legible de fechas de restricción.
+// Ej (fecha=2026-05-10, dias=2) → "9 y 10 de mayo"
+// Ej (fecha=2026-05-10, dias=3) → "8, 9 y 10 de mayo"
+// Ej (fecha=2026-05-01, dias=2) → "30 de abril, 1 de mayo"
+function buildFechasRestriccionLabel(fechaFuerte, dias) {
+  if (!fechaFuerte || dias < 1) return fechaFuerte || '';
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const ff = new Date(fechaFuerte + 'T12:00:00');
+  if (isNaN(ff.getTime())) return fechaFuerte;
+  const fechas = [];
+  for (let i = dias - 1; i >= 0; i--) {
+    const d = new Date(ff);
+    d.setDate(ff.getDate() - i);
+    fechas.push({ dia: d.getDate(), mes: d.getMonth() });
+  }
+  const mesUnico = fechas.every(f => f.mes === fechas[0].mes);
+  if (mesUnico) {
+    const mes = meses[fechas[0].mes];
+    if (fechas.length === 1) return `${fechas[0].dia} de ${mes}`;
+    if (fechas.length === 2) return `${fechas[0].dia} y ${fechas[1].dia} de ${mes}`;
+    const ult = fechas.pop();
+    return `${fechas.map(f=>f.dia).join(', ')} y ${ult.dia} de ${mes}`;
+  }
+  return fechas.map(f => `${f.dia} de ${meses[f.mes]}`).join(', ');
 }
 
 function renderSectionTabs() {
