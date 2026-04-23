@@ -8,6 +8,7 @@ from app.models.pedidos import Pedido
 from app.routers.auth import verificar_sesion
 from app.core import mp_client
 import logging
+import os
 
 router = APIRouter()
 log = logging.getLogger("floreria.pagos")
@@ -248,3 +249,93 @@ async def pago_pendiente(token: str | None = None):
         mensaje="Tu pago está siendo procesado. Te notificaremos por WhatsApp en cuanto se confirme.",
         tracking_token=token,
     ))
+
+
+@router.post("/mp/webhook")
+async def mp_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """Recibe notificaciones de MercadoPago cuando cambia el estado de un pago.
+
+    MP manda body como:
+      {"id": "webhook_id", "action": "payment.created|payment.updated",
+       "data": {"id": "payment_id"}, ...}
+
+    Flujo:
+    1. Valida firma HMAC si MP_WEBHOOK_SECRET está configurado
+    2. Si es evento de pago, obtiene detalle del pago vía API MP
+    3. Si status=approved → marca el pedido como PAGADO (idempotente)
+    4. Siempre responde 200 (MP reintenta si recibe no-200)
+    """
+    # Leer body crudo (necesario para validar firma)
+    payload_raw = await request.body()
+    try:
+        import json as _json
+        payload = _json.loads(payload_raw) if payload_raw else {}
+    except Exception:
+        log.warning("MP webhook: body inválido")
+        return {"ok": True}  # 200 para no causar retries de MP
+
+    # Extraer identificadores para firma
+    signature = request.headers.get("x-signature")
+    request_id = request.headers.get("x-request-id")
+    data_id = (payload.get("data") or {}).get("id") or request.query_params.get("data.id")
+
+    # Validar firma (si no está configurado secret, skip con warning)
+    if not os.getenv("MP_WEBHOOK_SECRET"):
+        log.warning("MP webhook recibido sin MP_WEBHOOK_SECRET configurado — saltando validación firma")
+    elif not mp_client.verificar_firma_webhook(payload_raw, signature, request_id, str(data_id) if data_id else None):
+        log.warning(f"MP webhook con firma inválida (id={data_id}, req={request_id})")
+        return {"ok": True}  # Responder 200 pero ignorar
+
+    # Solo procesamos eventos tipo payment
+    topic = payload.get("type") or payload.get("topic") or ""
+    action = payload.get("action") or ""
+    is_payment = topic == "payment" or action.startswith("payment.")
+    if not is_payment or not data_id:
+        log.info(f"MP webhook ignorado (topic={topic}, action={action}, data_id={data_id})")
+        return {"ok": True}
+
+    # Obtener detalles del pago
+    try:
+        pago = await mp_client.obtener_pago(str(data_id))
+    except Exception as e:
+        log.error(f"MP webhook: error obteniendo pago {data_id}: {e}")
+        return {"ok": True}
+
+    status = pago.get("status")
+    external_ref = pago.get("external_reference")  # nuestro pedido.numero
+    log.info(f"MP webhook: pago {data_id} status={status} ref={external_ref}")
+
+    if status != "approved" or not external_ref:
+        # Solo procesamos pagos aprobados con referencia a un pedido
+        return {"ok": True}
+
+    # Buscar pedido por numero (external_reference)
+    result = await db.execute(select(Pedido).where(Pedido.numero == external_ref))
+    pedido = result.scalar_one_or_none()
+    if not pedido:
+        log.warning(f"MP webhook: pedido {external_ref} no encontrado")
+        return {"ok": True}
+
+    # Idempotencia: si ya está marcado como pagado, no hacer nada
+    if pedido.pago_confirmado:
+        log.info(f"MP webhook: pedido {external_ref} ya estaba pagado, skip")
+        return {"ok": True}
+
+    # Marcar como pagado
+    from app.core.estados import EstadoPedido as EP
+    from app.core.utils import ahora
+    pedido.pago_confirmado = True
+    pedido.pago_confirmado_at = ahora()
+    pedido.pago_confirmado_por = "MercadoPago"
+    # Solo cambiar estado si aún no ha pasado de pendiente_pago (el taller pudo haber avanzado)
+    if pedido.estado in [EP.PENDIENTE_PAGO, EP.ESPERANDO_VALIDACION, EP.COMPROBANTE_RECIBIDO]:
+        pedido.estado = EP.PAGADO
+    await db.commit()
+    log.info(f"MP webhook: pedido {external_ref} marcado como PAGADO (payment_id={data_id})")
+    return {"ok": True}
+
+
+@router.get("/mp/webhook")
+async def mp_webhook_get():
+    """MP a veces hace GET para verificar que el endpoint existe (health check)."""
+    return {"ok": True}

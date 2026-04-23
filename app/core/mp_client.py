@@ -6,6 +6,8 @@ Lee credenciales de env vars:
 - MP_WEBHOOK_SECRET: opcional, para validar firma del webhook (se setea en panel MP)
 """
 import os
+import hmac
+import hashlib
 import httpx
 from typing import Any
 
@@ -90,3 +92,36 @@ async def obtener_pago(payment_id: str) -> dict[str, Any]:
         )
         r.raise_for_status()
         return r.json()
+
+
+def verificar_firma_webhook(payload_raw: bytes, signature_header: str | None,
+                             request_id: str | None, data_id: str | None) -> bool:
+    """Verifica la firma HMAC de un webhook de MP.
+
+    Formato del header `x-signature`: "ts=TIMESTAMP,v1=HASH_HEX"
+    Plantilla del hash: "id:{data_id};request-id:{request_id};ts:{ts};"
+    Hash: HMAC-SHA256(secret, template) en hex
+
+    Si MP_WEBHOOK_SECRET no está configurado, devuelve True (sin validación).
+    En producción el secret DEBE configurarse para seguridad.
+    """
+    secret = os.getenv("MP_WEBHOOK_SECRET", "").strip()
+    if not secret:
+        # Sin secret configurado — skip validación (se registra warning desde el caller)
+        return True
+    if not signature_header:
+        return False
+    # Parse header "ts=123,v1=abcdef"
+    parts = {}
+    for p in signature_header.split(","):
+        if "=" in p:
+            k, v = p.strip().split("=", 1)
+            parts[k.strip()] = v.strip()
+    ts = parts.get("ts")
+    v1 = parts.get("v1")
+    if not ts or not v1:
+        return False
+    # Construir plantilla y calcular hash
+    template = f"id:{data_id or ''};request-id:{request_id or ''};ts:{ts};"
+    expected = hmac.new(secret.encode(), template.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, v1)
