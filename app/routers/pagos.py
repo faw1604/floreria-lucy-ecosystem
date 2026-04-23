@@ -108,14 +108,16 @@ def _base_url(request: Request) -> str:
     return f"{proto}://{host}"
 
 
-@router.post("/mp/preference/{pedido_id}")
+@router.post("/mp/preference/{pedido_ref}")
 async def crear_mp_preference(
-    pedido_id: int,
+    pedido_ref: str,
     request: Request,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Crea una preference de MercadoPago para un pedido (Checkout Pro).
+
+    Acepta tanto el ID numérico como el folio (ej. 12 o FL-2026-5158).
 
     Solo accesible con sesión autenticada (operador POS o admin). El cliente
     final NO llama este endpoint — recibe el link ya generado por WhatsApp
@@ -124,8 +126,14 @@ async def crear_mp_preference(
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
 
-    result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
-    pedido = result.scalar_one_or_none()
+    # Resolver pedido por id numérico o por numero (folio)
+    pedido = None
+    if pedido_ref.isdigit():
+        result = await db.execute(select(Pedido).where(Pedido.id == int(pedido_ref)))
+        pedido = result.scalar_one_or_none()
+    if not pedido:
+        result = await db.execute(select(Pedido).where(Pedido.numero == pedido_ref))
+        pedido = result.scalar_one_or_none()
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
