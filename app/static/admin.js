@@ -1014,33 +1014,43 @@ async function importarProductos(input) {
   input.value = '';
 }
 
-// ══════ CLAUDIA + TEMPORADA ══════
+// ══════ CLAUDIA ══════
 async function loadClaudia() {
   try {
-    // Load config
     const r = await fetch(API + '/configuracion/', {credentials:'include'});
     const data = await r.json();
     const cfg = {};
     data.forEach(c => cfg[c.clave] = c.valor);
 
-    // Bot controls
-    document.getElementById('claudia-toggle').checked = cfg.claudia_activa === 'true';
-    document.getElementById('claudia-abierto').checked = (cfg.claudia_abierto || 'true') === 'true';
-    document.getElementById('claudia-msg').value = cfg.claudia_mensaje_bienvenida || '';
+    // Bot controls (solo lo que pertenece a Claudia)
+    const t = document.getElementById('claudia-toggle'); if (t) t.checked = cfg.claudia_activa === 'true';
+    const ab = document.getElementById('claudia-abierto'); if (ab) ab.checked = (cfg.claudia_abierto || 'true') === 'true';
+    const m = document.getElementById('claudia-msg'); if (m) m.value = cfg.claudia_mensaje_bienvenida || '';
     const msgAlta = document.getElementById('claudia-msg-alta');
     if (msgAlta) msgAlta.value = cfg.claudia_mensaje_bienvenida_alta || '';
+  } catch(e) { console.error('loadClaudia error:', e); }
+  loadClaudiaChats();
+}
 
-    // Temporada mode
+// ══════ MODO TEMPORADA (en Config) ══════
+async function loadModoTemporada() {
+  try {
+    const r = await fetch(API + '/configuracion/', {credentials:'include'});
+    const data = await r.json();
+    const cfg = {};
+    data.forEach(c => cfg[c.clave] = c.valor);
+
     const modo = cfg.temporada_modo || 'regular';
     const isAlta = modo === 'alta';
-    document.getElementById('temp-toggle-master').checked = isAlta;
+    const tm = document.getElementById('temp-toggle-master');
+    if (!tm) return; // Sub-tab no renderizado aún
+    tm.checked = isAlta;
     actualizarModoUI(isAlta);
 
-    // Show/hide temporada catalog button
+    // Show/hide temporada catalog button (en otra sección)
     const btnTemp = document.getElementById('btn-catalogo-temporada');
     if (btnTemp) btnTemp.style.display = isAlta ? '' : 'none';
 
-    // Alta config fields
     document.getElementById('temp-nombre').value = cfg.temporada_nombre || '';
     document.getElementById('temp-fecha').value = cfg.temporada_fecha_fuerte || '';
     document.getElementById('temp-dias').value = cfg.temporada_dias_restriccion || '2';
@@ -1048,14 +1058,8 @@ async function loadClaudia() {
     document.getElementById('temp-horario-apertura').value = cfg.temporada_horario_apertura || '';
     document.getElementById('temp-horario-cierre').value = cfg.temporada_horario_cierre || '';
 
-
-
-    // Load categories for dropdown
     await cargarCategoriasTemporada(cfg.temporada_categoria || '');
-  } catch(e) { console.error('loadClaudia error:', e); }
-
-  // Load chats
-  loadClaudiaChats();
+  } catch(e) { console.error('loadModoTemporada error:', e); }
 }
 
 async function cargarCategoriasTemporada(selectedCat) {
@@ -1091,11 +1095,12 @@ function actualizarModoUI(isAlta) {
   const altaConfig = document.getElementById('temporada-alta-config');
   const zonasNote = document.getElementById('zonas-temporada-note');
 
-  badge.textContent = isAlta ? 'TEMPORADA ALTA' : 'TEMPORADA REGULAR';
-  badge.style.background = isAlta ? 'rgba(212,168,67,0.15)' : 'rgba(45,90,61,0.1)';
-  badge.style.color = isAlta ? 'var(--dorado)' : 'var(--verde)';
-
-  altaConfig.style.display = isAlta ? '' : 'none';
+  if (badge) {
+    badge.textContent = isAlta ? 'TEMPORADA ALTA' : 'TEMPORADA REGULAR';
+    badge.style.background = isAlta ? 'rgba(212,168,67,0.15)' : 'rgba(45,90,61,0.1)';
+    badge.style.color = isAlta ? 'var(--dorado)' : 'var(--verde)';
+  }
+  if (altaConfig) altaConfig.style.display = isAlta ? '' : 'none';
   if (zonasNote) zonasNote.style.display = isAlta ? '' : 'none';
 }
 
@@ -3467,6 +3472,7 @@ async function loadConfig() {
   loadZonasAdmin();
   loadTurnos();
   loadFunerariasAdmin();
+  loadModoTemporada();
   try {
     const r = await fetch(API + '/configuracion/', {credentials:'include'});
     const data = await r.json();

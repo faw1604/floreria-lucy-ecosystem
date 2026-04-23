@@ -568,7 +568,7 @@ img{-webkit-user-drag:none;user-drag:none}
     <div class="order-step" id="order-step-4">
       <div class="order-title">Confirmar pedido</div>
       <div id="order-review"></div>
-      <div style="font-size:12px;color:var(--texto2);text-align:center;margin:12px 0">El costo de envío se confirmará junto con tu pedido</div>
+      <div id="order-envio-disclaimer" style="font-size:12px;color:var(--texto2);text-align:center;margin:12px 0">El costo de envío se confirmará junto con tu pedido</div>
       <label style="display:flex;align-items:center;gap:8px;justify-content:center;margin:14px 0;font-size:14px;cursor:pointer">
         <input type="checkbox" id="of-factura" onchange="toggleFactura()" style="width:18px;height:18px;accent-color:var(--verde)">
         Requiero factura
@@ -3341,9 +3341,14 @@ function renderOrderStep4() {
   if (tipo === 'domicilio' && pedidoWeb.geo_data && pedidoWeb.geo_data.tarifa_envio) {
     envio = pedidoWeb.geo_data.tarifa_envio;
   }
-  // Envío funeral domicilio
+  // Envío funeral domicilio particular
   if (tipo === 'funeral' && pedidoWeb.funeral_domicilio && pedidoWeb.funeral_domicilio_costo) {
     envio = pedidoWeb.funeral_domicilio_costo;
+  }
+  // Envío funeral funeraria preset (costo configurado en BD)
+  if (tipo === 'funeral' && !pedidoWeb.funeral_domicilio && pedidoWeb.funeraria_nombre && allFunerarias) {
+    const f = allFunerarias.find(x => x.nombre === pedidoWeb.funeraria_nombre);
+    if (f && f.costo_envio) envio = f.costo_envio;
   }
   let totalFinal = sub + envio;
   if (appliedDiscount) {
@@ -3377,6 +3382,15 @@ function renderOrderStep4() {
     if (pedidoWeb.bandas_extra_costo > 0) html += `<div style="font-size:12px;color:var(--dorado);margin-top:2px">Bandas extra: +$${(pedidoWeb.bandas_extra_costo/100).toLocaleString()}</div>`;
   }
   document.getElementById('order-review').innerHTML = html;
+  // Ocultar disclaimer "se confirmará junto con tu pedido" si ya conocemos el envío
+  const envioDisc = document.getElementById('order-envio-disclaimer');
+  if (envioDisc) {
+    if (tipo === 'recoger' || envio > 0) {
+      envioDisc.style.display = 'none';
+    } else {
+      envioDisc.style.display = '';
+    }
+  }
   // Reset factura checkbox
   const fc = document.getElementById('of-factura');
   if (fc) fc.checked = false;
