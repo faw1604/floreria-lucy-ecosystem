@@ -567,19 +567,36 @@ function renderPendientes() {
     </div>`;
   });
 
-  // Listos (seleccionables)
-  if (listos.length && enCamino.length) {
-    html += '<div style="font-size:12px;font-weight:600;color:var(--texto2);margin:16px 0 8px;text-transform:uppercase">Listos para ruta</div>';
-  }
+  // Listos — comportamiento depende de si ya está en ruta o no
   const filteredListos = applyFilters(listos);
-  filteredListos.forEach(p => {
-    const checked = selected.has(p.id) ? 'checked' : '';
-    html += `<div class="card ${zonaClass(p.zona_envio)}" data-id="${p.id}">
-      <input type="checkbox" class="card-check" ${checked} onchange="toggleSel(${p.id},this.checked)">
-      <div class="card-folio">${p.folio}</div>
-      ${cardBody(p)}
-    </div>`;
-  });
+  const enRuta = enCamino.length > 0;
+
+  if (enRuta && listos.length) {
+    // En ruta: los listos son INFORMATIVOS (esperando en floristería, no se pueden seleccionar)
+    // Se limpia el set 'selected' para evitar que queden marcados de una sesión previa
+    if (selected.size > 0) selected.clear();
+    html += `<div style="font-size:12px;font-weight:600;color:var(--texto2);margin:20px 0 8px;text-transform:uppercase;display:flex;align-items:center;gap:6px">
+      <span>⏳ Esperándote en la floristería</span>
+      <span style="background:var(--dorado);color:#fff;padding:2px 8px;border-radius:10px;font-size:11px">${listos.length}</span>
+    </div>
+    <div style="font-size:12px;color:var(--texto2);margin-bottom:10px;font-style:italic">Los verás seleccionables al terminar tu ruta actual</div>`;
+    filteredListos.forEach(p => {
+      html += `<div class="card ${zonaClass(p.zona_envio)}" data-id="${p.id}" style="opacity:0.55;background:#f5f5f5;pointer-events:none">
+        <div class="card-folio">${p.folio}</div>
+        ${cardBody(p)}
+      </div>`;
+    });
+  } else if (listos.length) {
+    // Sin ruta activa: seleccionables normales
+    filteredListos.forEach(p => {
+      const checked = selected.has(p.id) ? 'checked' : '';
+      html += `<div class="card ${zonaClass(p.zona_envio)}" data-id="${p.id}">
+        <input type="checkbox" class="card-check" ${checked} onchange="toggleSel(${p.id},this.checked)">
+        <div class="card-folio">${p.folio}</div>
+        ${cardBody(p)}
+      </div>`;
+    });
+  }
 
   el.innerHTML = html;
   updateBottomBar();
@@ -594,7 +611,13 @@ function updateBottomBar() {
   const n = selected.size;
   const btn = document.getElementById('btn-ruta');
   const enCamino = allPedidos.filter(p => p.estado === 'En camino').length;
-  btn.disabled = n === 0 && enCamino === 0;
+  // Si está en ruta activa, no se puede iniciar otra (físicamente no tiene los productos nuevos)
+  if (enCamino > 0) {
+    btn.disabled = true;
+    btn.textContent = `🚚 ENTREGANDO RUTA (${enCamino} parada${enCamino>1?'s':''})`;
+    return;
+  }
+  btn.disabled = n === 0;
   if (n > 0) {
     const est = n * 17; // ~17 min per stop
     btn.textContent = `🚚 INICIAR RUTA (${n}) · ~${est}min`;
