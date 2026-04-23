@@ -3492,13 +3492,16 @@ async function aprobarEnviarTicket(id) {
 function mostrarSelectorFormaPago(pedidoId) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+  // Helper para deselect todas las opciones (DRY)
+  const _resetFp = `['fp-sel-trans','fp-sel-oxxo','fp-sel-link'].forEach(id=>{const el=document.getElementById(id); if(el){el.style.borderColor='#e5e0d8';el.style.background='#fff';}})`;
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15)">
+    <div style="background:#fff;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.15)">
       <h3 style="margin:0 0 4px;font-size:16px;color:#193a2c">Método de pago</h3>
       <p style="margin:0 0 16px;font-size:13px;color:#5a5a5a">Este pedido no tiene método de pago. Selecciona uno para continuar.</p>
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button id="fp-sel-trans" style="flex:1;padding:14px;border:2px solid #e5e0d8;border-radius:12px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-align:center" onclick="this.style.borderColor='#193a2c';this.style.background='#e8f5ec';document.getElementById('fp-sel-oxxo').style.borderColor='#e5e0d8';document.getElementById('fp-sel-oxxo').style.background='#fff';document.getElementById('fp-sel-value').value='Transferencia'">Transferencia</button>
-        <button id="fp-sel-oxxo" style="flex:1;padding:14px;border:2px solid #e5e0d8;border-radius:12px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-align:center" onclick="this.style.borderColor='#193a2c';this.style.background='#e8f5ec';document.getElementById('fp-sel-trans').style.borderColor='#e5e0d8';document.getElementById('fp-sel-trans').style.background='#fff';document.getElementById('fp-sel-value').value='OXXO'">OXXO</button>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+        <button id="fp-sel-trans" style="padding:12px;border:2px solid #e5e0d8;border-radius:12px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-align:left" onclick="${_resetFp};this.style.borderColor='#193a2c';this.style.background='#e8f5ec';document.getElementById('fp-sel-value').value='Transferencia'">🏦 Transferencia / SPEI</button>
+        <button id="fp-sel-oxxo" style="padding:12px;border:2px solid #e5e0d8;border-radius:12px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-align:left" onclick="${_resetFp};this.style.borderColor='#193a2c';this.style.background='#e8f5ec';document.getElementById('fp-sel-value').value='OXXO'">🏪 Depósito en OXXO</button>
+        <button id="fp-sel-link" style="padding:12px;border:2px solid #e5e0d8;border-radius:12px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;font-size:13px;font-weight:600;text-align:left" onclick="${_resetFp};this.style.borderColor='#193a2c';this.style.background='#e8f5ec';document.getElementById('fp-sel-value').value='Link de pago'">💳 Link de pago (tarjeta)</button>
       </div>
       <input type="hidden" id="fp-sel-value" value="">
       <div style="display:flex;gap:8px">

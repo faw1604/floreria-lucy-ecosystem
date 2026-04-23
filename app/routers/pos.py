@@ -1014,6 +1014,7 @@ async def pos_actualizar_forma_pago(
 @router.post("/pedido/{pedido_id}/aprobar-enviar-ticket")
 async def pos_aprobar_enviar_ticket(
     pedido_id: int,
+    request: Request,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1077,7 +1078,43 @@ async def pos_aprobar_enviar_ticket(
         if oxxo_nombre:
             datos_pago_msg += f"Nombre: {oxxo_nombre}\n"
         datos_pago_msg += f"Tarjeta: {oxxo_tarjeta}\n\n"
-    # Link de pago u otro método → solo resumen, sin datos de pago
+    elif pedido.forma_pago == "Link de pago":
+        # Generar link de pago MercadoPago (Checkout Pro)
+        from app.core import mp_client
+        proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+        base = f"{proto}://{host}"
+        is_localhost = "localhost" in base or "127.0.0.1" in base
+        tracking = pedido.tracking_token or ""
+        success_url = failure_url = pending_url = webhook_url = None
+        if not is_localhost:
+            success_url = f"{base}/pagos/exito?token={tracking}" if tracking else f"{base}/pagos/exito"
+            failure_url = f"{base}/pagos/fallido?token={tracking}" if tracking else f"{base}/pagos/fallido"
+            pending_url = f"{base}/pagos/pendiente?token={tracking}" if tracking else f"{base}/pagos/pendiente"
+            webhook_url = f"{base}/pagos/mp/webhook"
+        try:
+            pref = await mp_client.crear_preference(
+                pedido_folio=pedido.numero,
+                total_centavos=int(pedido.total or 0),
+                descripcion=f"Pedido {pedido.numero} - Florería Lucy",
+                success_url=success_url,
+                failure_url=failure_url,
+                pending_url=pending_url,
+                notification_url=webhook_url,
+            )
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=f"MercadoPago no configurado: {e}")
+        except Exception as e:
+            logger.error(f"[ENVIAR TICKET] Error generando link MP para pedido {pedido.numero}: {e}")
+            raise HTTPException(status_code=502, detail=f"Error generando link de pago: {e}")
+        link = pref.get("sandbox_init_point") if mp_client._is_sandbox() else pref.get("init_point")
+        if not link:
+            raise HTTPException(status_code=502, detail="MercadoPago no devolvió link de pago")
+        datos_pago_msg = "*💳 PAGA CON TARJETA*\n\n"
+        datos_pago_msg += f"Tu link de pago seguro:\n{link}\n\n"
+        datos_pago_msg += "Aceptamos tarjetas nacionales e internacionales.\n"
+        datos_pago_msg += "El pedido se confirmará automáticamente al procesarse el pago.\n\n"
+    # Otro método (sin forma_pago, etc) → solo resumen, sin datos de pago
 
     # 5. Obtener mensaje base de configuración
     cfg_r = await db.execute(select(ConfiguracionNegocio))
