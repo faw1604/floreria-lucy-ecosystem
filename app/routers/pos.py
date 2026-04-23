@@ -334,17 +334,10 @@ async def _pos_crear_pedido_inner(request, db):
     descuento = data.get("descuento_total", 0)
     cliente_id = data.get("cliente_id")
 
-    # Link de pago commission
+    # Comisión link de pago: deshabilitada (Fer absorberá costo subiendo precios 4% global).
+    # Campo se mantiene en respuesta para compat con renders viejos de tickets.
     comision = 0
     pagos = data.get("pagos", [])
-    for pago in pagos:
-        nombre_pago = (pago.get("nombre") or "").lower()
-        if pago.get("metodo_pago_id"):
-            mp = (await db.execute(select(MetodoPago).where(MetodoPago.id == pago["metodo_pago_id"]))).scalar_one_or_none()
-            if mp and "link" in (mp.tipo or "").lower():
-                comision = int(pago["monto"] * 0.04)
-        elif "link" in nombre_pago:
-            comision = int(pago["monto"] * 0.04)
 
     # Cargo hora especifica
     cargo_hora = data.get("cargo_hora_especifica", 0)
@@ -1383,10 +1376,8 @@ async def pos_completar_pedido(
         impuesto = int(sub_flores * 0.16)
     descuento = data.get("descuento_total", 0)
     cargo_hora = data.get("cargo_hora_especifica", 0)
+    # Comisión link de pago: deshabilitada (ver pos_finalizar_pedido)
     comision = 0
-    for pago in pagos:
-        if "link" in (pago.get("nombre") or "").lower():
-            comision = int(pago["monto"] * 0.04)
 
     tipo = data.get("tipo", "mostrador")
     envio = 0

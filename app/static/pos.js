@@ -576,8 +576,8 @@ function calcTotals() {
   }
   if (ordenTipo === 'funeral' && funerariaSel) envio = funerariaSel.costo_envio;
   // Link pago commission
+  // Comisión link de pago: deshabilitada (Fer absorbe el 4% subiendo precios global)
   let comision = 0;
-  if (selectedPays['Link de pago']) comision = Math.round((selectedPays['Link de pago'] || 0) * 0.04);
   // Cargo hora específica
   let cargoHora = 0;
   if (selHorario === 'hora_especifica') cargoHora = 8000; // $80 en centavos
@@ -1280,7 +1280,6 @@ function renderPayInputs() {
   if (esPagoSimple) {
     // Pago simple: no mostrar input de monto
     const name = keys[0];
-    const comNote = name === 'Link de pago' ? `<div style="font-size:10px;color:var(--dorado);margin-top:4px">+4% comision</div>` : '';
     if (name === 'Efectivo') {
       // Efectivo solo: mostrar Recibido pre-llenado con total
       const totalPesos = (t.total / 100).toFixed(2);
@@ -1291,18 +1290,14 @@ function renderPayInputs() {
           <span id="vuelto-cambio" style="min-width:90px;font-weight:600;color:#2e7d32">Cambio: $0</span>
         </div>
       </div>`;
-    } else {
-      html += comNote;
     }
   } else {
     // Pago combinado: mostrar input de monto para cada método
     html += keys.map(name => {
-      const comNote = name === 'Link de pago' ? `<div style="font-size:10px;color:var(--dorado);margin-top:2px">+4% comision</div>` : '';
       const displayVal = selectedPays[name] ? (selectedPays[name] / 100) : '';
       return `<div class="pay-input">
         <label>${name}</label>
         <input type="number" placeholder="$0" step="any" value="${displayVal}" onchange="updatePayAmt('${name}',this.value)">
-        ${comNote}
       </div>`;
     }).join('');
     // Si tiene efectivo en combinado, mostrar Recibido debajo
