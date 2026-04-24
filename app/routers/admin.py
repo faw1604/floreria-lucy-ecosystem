@@ -2078,20 +2078,50 @@ async def admin_cambiar_estado(
 @router.get("/stock-historial")
 async def stock_historial(
     categoria: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    """Historial de stock con filtro opcional por rango de FECHA DE ENTREGA.
+
+    'vendidos' cuenta cantidad de items en pedidos cuya fecha_entrega está
+    en el rango. Sin rango = todo el historial (comportamiento legacy).
+
+    Útil para temporadas: filtrar por 10-may → ver cuántos items vendidos
+    SOLO para entregar ese día, sin que cuenten ventas pasadas.
+    """
     _auth(panel_session)
-    filtro_cat = "AND p.categoria = :cat" if categoria else ""
-    params = {"cat": categoria} if categoria else {}
+    filtros = []
+    params = {}
+    if categoria:
+        filtros.append("p.categoria = :cat")
+        params["cat"] = categoria
+    if fecha_desde:
+        filtros.append("ped.fecha_entrega >= :fd")
+        params["fd"] = fecha_desde
+    if fecha_hasta:
+        filtros.append("ped.fecha_entrega <= :fh")
+        params["fh"] = fecha_hasta
+    join_filtros = (" AND " + " AND ".join(filtros)) if filtros else ""
+    filtro_cat_where = "AND p.categoria = :cat" if categoria else ""
+
+    # NOTA: filtros van en el ON del LEFT JOIN para que productos sin ventas
+    # en el rango aparezcan con vendidos=0 (no se omitan del listado).
+    join_extra = ""
+    if fecha_desde:
+        join_extra += " AND ped.fecha_entrega >= :fd"
+    if fecha_hasta:
+        join_extra += " AND ped.fecha_entrega <= :fh"
+
     result = await db.execute(text(f"""
         SELECT p.id, p.nombre, p.categoria, p.imagen_url, p.stock,
                COALESCE(SUM(ip.cantidad), 0) as vendidos
         FROM productos p
         LEFT JOIN items_pedido ip ON ip.producto_id = p.id
         LEFT JOIN pedidos ped ON ped.id = ip.pedido_id
-          AND {_VENTAS_WHERE}
-        WHERE p.stock_activo = true {filtro_cat}
+          AND {_VENTAS_WHERE} {join_extra}
+        WHERE p.stock_activo = true {filtro_cat_where}
         GROUP BY p.id, p.nombre, p.categoria, p.imagen_url, p.stock
         ORDER BY p.categoria, p.nombre
     """), params)

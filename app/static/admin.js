@@ -947,28 +947,132 @@ async function exportarProductos() {
   } catch(e) { alert('Error al exportar'); }
 }
 
-async function abrirHistorialStock(catFiltro) {
-  const url = catFiltro
-    ? API + '/api/admin/stock-historial?categoria=' + encodeURIComponent(catFiltro)
-    : API + '/api/admin/stock-historial';
+// Estado del filtro del historial de stock (persiste entre re-aperturas del modal)
+let _stockHistFiltro = { cat: undefined, rango: 'todo', desde: null, hasta: null };
+
+// Helper: calcula desde/hasta según el rango seleccionado
+function _calcStockRange(rango) {
+  const today = new Date();
+  const fmt = d => d.toISOString().slice(0, 10);
+  if (rango === 'todo') return { desde: null, hasta: null };
+  if (rango === 'hoy') return { desde: fmt(today), hasta: fmt(today) };
+  if (rango === '7d') {
+    const d = new Date(today); d.setDate(d.getDate() - 6);
+    return { desde: fmt(d), hasta: fmt(today) };
+  }
+  if (rango === '30d') {
+    const d = new Date(today); d.setDate(d.getDate() - 29);
+    return { desde: fmt(d), hasta: fmt(today) };
+  }
+  if (rango === 'fecha_fuerte') {
+    // Lee la fecha fuerte de temporada desde window._tempFechaFuerte (cargada al abrir modal)
+    const ff = window._tempFechaFuerte;
+    return ff ? { desde: ff, hasta: ff } : { desde: null, hasta: null };
+  }
+  if (rango === 'temporada_full') {
+    // Días de restricción + fecha fuerte
+    const ff = window._tempFechaFuerte;
+    const dias = parseInt(window._tempDiasRestriccion || '2');
+    if (!ff) return { desde: null, hasta: null };
+    const fechaFuerte = new Date(ff + 'T12:00:00');
+    const inicio = new Date(fechaFuerte); inicio.setDate(inicio.getDate() - (dias - 1));
+    return { desde: fmt(inicio), hasta: fmt(fechaFuerte) };
+  }
+  if (rango === 'custom') {
+    return { desde: _stockHistFiltro.desde, hasta: _stockHistFiltro.hasta };
+  }
+  return { desde: null, hasta: null };
+}
+
+async function abrirHistorialStock(catFiltro, rangoOverride) {
+  // Cargar config temporada (una vez por sesión)
+  if (window._tempFechaFuerte === undefined) {
+    try {
+      const cR = await fetch(API + '/configuracion/', {credentials:'include'});
+      if (cR.ok) {
+        const cd = await cR.json();
+        const cfg = {};
+        cd.forEach(c => cfg[c.clave] = c.valor);
+        window._tempFechaFuerte = cfg.temporada_fecha_fuerte || null;
+        window._tempDiasRestriccion = cfg.temporada_dias_restriccion || '2';
+      }
+    } catch(e) { window._tempFechaFuerte = null; }
+  }
+
+  // Merge estado
+  if (catFiltro !== undefined) _stockHistFiltro.cat = catFiltro || undefined;
+  if (rangoOverride !== undefined) _stockHistFiltro.rango = rangoOverride || 'todo';
+  const { desde, hasta } = _calcStockRange(_stockHistFiltro.rango);
+
+  // Construir URL
+  const qs = new URLSearchParams();
+  if (_stockHistFiltro.cat) qs.set('categoria', _stockHistFiltro.cat);
+  if (desde) qs.set('fecha_desde', desde);
+  if (hasta) qs.set('fecha_hasta', hasta);
+  const url = API + '/api/admin/stock-historial' + (qs.toString() ? '?' + qs.toString() : '');
+
   try {
     const r = await fetch(url, {credentials:'include'});
     if (!r.ok) { alert('Error al cargar historial'); return; }
     const data = await r.json();
-    // Extract unique categories for filter
     const cats = [...new Set(data.map(d => d.categoria).filter(Boolean))].sort();
-    let html = '<div style="margin-bottom:12px"><select id="stock-hist-cat" onchange="abrirHistorialStock(this.value||undefined)" style="padding:6px 10px;border:1px solid #ccc;border-radius:8px">';
+
+    // Etiqueta del rango activo
+    const rangoLabel = {
+      'todo': 'Todo el historial',
+      'hoy': 'Hoy',
+      '7d': 'Últimos 7 días',
+      '30d': 'Últimos 30 días',
+      'fecha_fuerte': window._tempFechaFuerte ? `Solo fecha fuerte (${window._tempFechaFuerte})` : 'Fecha fuerte (no configurada)',
+      'temporada_full': 'Temporada completa (días de restricción)',
+      'custom': desde && hasta ? `${desde} → ${hasta}` : 'Personalizado',
+    }[_stockHistFiltro.rango] || 'Todo';
+
+    let html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center">';
+    // Filtro categoría
+    html += '<select id="stock-hist-cat" onchange="abrirHistorialStock(this.value)" style="padding:6px 10px;border:1px solid #ccc;border-radius:8px">';
     html += '<option value="">Todas las categorías</option>';
     cats.forEach(c => {
-      html += `<option value="${c}" ${c===catFiltro?'selected':''}>${c}</option>`;
+      html += `<option value="${esc(c)}" ${c===_stockHistFiltro.cat?'selected':''}>${esc(c)}</option>`;
     });
-    html += '</select></div>';
+    html += '</select>';
+    // Filtro rango
+    html += '<select onchange="abrirHistorialStock(undefined, this.value)" style="padding:6px 10px;border:1px solid #ccc;border-radius:8px">';
+    [
+      ['todo', 'Todo el historial'],
+      ['hoy', 'Hoy'],
+      ['7d', 'Últimos 7 días'],
+      ['30d', 'Últimos 30 días'],
+      ['fecha_fuerte', 'Solo fecha fuerte de temporada'],
+      ['temporada_full', 'Temporada completa (días de restricción)'],
+      ['custom', 'Personalizado…'],
+    ].forEach(([v, l]) => {
+      html += `<option value="${v}" ${_stockHistFiltro.rango===v?'selected':''}>${l}</option>`;
+    });
+    html += '</select>';
+    // Inputs custom (solo si rango=custom)
+    if (_stockHistFiltro.rango === 'custom') {
+      html += `<input type="date" value="${desde||''}" onchange="_stockHistFiltro.desde=this.value;abrirHistorialStock()" style="padding:5px 8px;border:1px solid #ccc;border-radius:8px">`;
+      html += `<input type="date" value="${hasta||''}" onchange="_stockHistFiltro.hasta=this.value;abrirHistorialStock()" style="padding:5px 8px;border:1px solid #ccc;border-radius:8px">`;
+    }
+    html += `<span style="margin-left:auto;font-size:12px;color:#666">📅 ${rangoLabel}</span>`;
+    html += '</div>';
+
+    // Hint contextual cuando hay filtro de fecha
+    if (desde || hasta) {
+      const hint = _stockHistFiltro.rango === 'fecha_fuerte' || _stockHistFiltro.rango === 'temporada_full'
+        ? '"Vendidos" cuenta solo items para entrega en este rango. "Stock + vendidos" = stock con el que arrancaste.'
+        : '"Vendidos" cuenta solo items para entrega en este rango.';
+      html += `<div style="font-size:11px;color:#888;margin-bottom:10px;padding:6px 10px;background:rgba(212,168,67,0.08);border-left:3px solid var(--dorado);border-radius:4px">💡 ${hint}</div>`;
+    }
+
     if (data.length === 0) {
       html += '<p style="color:#888">No hay productos con stock activo.</p>';
     } else {
       let totalActual = 0, totalVendidos = 0, totalInicial = 0;
       html += '<div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr>';
-      html += '<th>Producto</th><th>Categoría</th><th style="text-align:right">Stock actual</th><th style="text-align:right">Vendidos</th><th style="text-align:right">Stock inicial est.</th>';
+      const colInicial = (desde || hasta) ? 'Stock + vendidos' : 'Stock inicial est.';
+      html += `<th>Producto</th><th>Categoría</th><th style="text-align:right">Stock actual</th><th style="text-align:right">Vendidos</th><th style="text-align:right">${colInicial}</th>`;
       html += '</tr></thead><tbody>';
       data.forEach(p => {
         totalActual += p.stock_actual;
@@ -976,8 +1080,8 @@ async function abrirHistorialStock(catFiltro) {
         totalInicial += p.stock_inicial_estimado;
         const img = p.imagen_url ? `<img src="${p.imagen_url}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:6px">` : '';
         html += `<tr>`;
-        html += `<td>${img}${p.nombre}</td>`;
-        html += `<td>${p.categoria || '—'}</td>`;
+        html += `<td>${img}${esc(p.nombre)}</td>`;
+        html += `<td>${esc(p.categoria || '—')}</td>`;
         html += `<td style="text-align:right;font-weight:600">${p.stock_actual}</td>`;
         html += `<td style="text-align:right;color:#2d5a3d;font-weight:600">${p.vendidos}</td>`;
         html += `<td style="text-align:right;color:#888">${p.stock_inicial_estimado}</td>`;
