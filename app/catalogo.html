@@ -3250,7 +3250,8 @@ function updateFuneralResumen() {
   let sub = 0;
   cart.forEach(p => {
     const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
-    sub += precio;
+    const qty = p.qty || 1;
+    sub += precio * qty;
   });
   const bandasExtra = pedidoWeb.bandas_extra_costo || 0;
   let envio = 0;
@@ -3374,8 +3375,12 @@ function renderOrderStep4() {
   let html = `<div style="font-size:14px;font-weight:600;margin-bottom:8px">Productos:</div>`;
   cart.forEach(p => {
     const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
-    sub += precio;
-    html += `<div style="font-size:13px;color:var(--texto2);margin-bottom:4px">• ${p.nombre} — $${(precio/100).toLocaleString()}</div>`;
+    const qty = p.qty || 1;
+    sub += precio * qty;
+    const lineaTotal = precio * qty;
+    const qtyLbl = qty > 1 ? `${qty}× ` : '';
+    const detalle = qty > 1 ? ` <span style="color:#999;font-size:12px">($${(precio/100).toLocaleString()} c/u)</span>` : '';
+    html += `<div style="font-size:13px;color:var(--texto2);margin-bottom:4px">• ${qtyLbl}${p.nombre} — $${(lineaTotal/100).toLocaleString()}${detalle}</div>`;
   });
   // Envío domicilio
   let envio = 0;
@@ -3500,9 +3505,11 @@ async function toggleFactura() {
     const CHOCO_CATS = ['chocolates gourmet'];
     cart.forEach(p => {
       const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
-      sub += precio;
-      if (CHOCO_CATS.some(c => (p.categoria||'').toLowerCase().includes(c))) subChoco += precio;
-      else subFlores += precio;
+      const qty = p.qty || 1;
+      const linea = precio * qty;
+      sub += linea;
+      if (CHOCO_CATS.some(c => (p.categoria||'').toLowerCase().includes(c))) subChoco += linea;
+      else subFlores += linea;
     });
     if (appliedDiscount) {
       if (appliedDiscount.tipo === 'porcentaje') { const d = Math.round(sub * appliedDiscount.valor / 100); sub -= d; subFlores = Math.max(0, subFlores - d); }
