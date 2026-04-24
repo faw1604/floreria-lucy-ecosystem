@@ -1011,11 +1011,23 @@ async function abrirHistorialStock(catFiltro, rangoOverride) {
   if (hasta) qs.set('fecha_hasta', hasta);
   const url = API + '/api/admin/stock-historial' + (qs.toString() ? '?' + qs.toString() : '');
 
+  // Cargar lista completa de categorías (independiente del filtro actual) — una vez por sesión
+  if (!window._stockHistAllCats) {
+    try {
+      const allR = await fetch(API + '/api/admin/stock-historial', {credentials:'include'});
+      if (allR.ok) {
+        const allData = await allR.json();
+        window._stockHistAllCats = [...new Set(allData.map(d => d.categoria).filter(Boolean))].sort();
+      } else { window._stockHistAllCats = []; }
+    } catch(e) { window._stockHistAllCats = []; }
+  }
+
   try {
     const r = await fetch(url, {credentials:'include'});
     if (!r.ok) { alert('Error al cargar historial'); return; }
     const data = await r.json();
-    const cats = [...new Set(data.map(d => d.categoria).filter(Boolean))].sort();
+    // Categorías mostradas en dropdown: lista global cacheada (no se vacía con filtro)
+    const cats = window._stockHistAllCats || [];
 
     // Etiqueta del rango activo
     const rangoLabel = {

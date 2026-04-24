@@ -2092,18 +2092,22 @@ async def stock_historial(
     SOLO para entregar ese día, sin que cuenten ventas pasadas.
     """
     _auth(panel_session)
-    filtros = []
+    from datetime import date as _date_type
     params = {}
     if categoria:
-        filtros.append("p.categoria = :cat")
         params["cat"] = categoria
+    # asyncpg espera date object, no str. Convertir 'YYYY-MM-DD' → date.
     if fecha_desde:
-        filtros.append("ped.fecha_entrega >= :fd")
-        params["fd"] = fecha_desde
+        try:
+            params["fd"] = _date_type.fromisoformat(fecha_desde)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="fecha_desde inválida (YYYY-MM-DD)")
     if fecha_hasta:
-        filtros.append("ped.fecha_entrega <= :fh")
-        params["fh"] = fecha_hasta
-    join_filtros = (" AND " + " AND ".join(filtros)) if filtros else ""
+        try:
+            params["fh"] = _date_type.fromisoformat(fecha_hasta)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="fecha_hasta inválida (YYYY-MM-DD)")
+
     filtro_cat_where = "AND p.categoria = :cat" if categoria else ""
 
     # NOTA: filtros van en el ON del LEFT JOIN para que productos sin ventas
