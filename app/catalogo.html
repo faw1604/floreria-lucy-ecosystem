@@ -839,9 +839,28 @@ function addToCart(product, selectedVariante) {
   showCartToast();
 }
 
-function showCartToast() {
+// Helper para cross-sell del carrito: ignora variantes (los chocolates/extras
+// suelen ser productos simples), agrega directo aunque tenga variantes definidas,
+// y refresca el carrito inmediatamente.
+function addCrossSell(productId) {
+  const prod = allProducts.find(x => x.id === productId);
+  if (!prod) return;
+  // Skip selector de variantes — agregar directo (cross-sell debe ser 1-click)
+  if (prod.sin_stock) { showCartToast('Sin stock'); return; }
+  const existing = cart.find(p => p.id === prod.id && !p.variante_id);
+  if (existing) {
+    existing.qty = (existing.qty || 1) + 1;
+  } else {
+    cart.push({...prod, qty: 1});
+  }
+  saveCart();
+  renderCart();
+  showCartToast();
+}
+
+function showCartToast(customMsg) {
   const toast = document.createElement('div');
-  toast.textContent = '\u2713 Agregado al carrito';
+  toast.textContent = customMsg || '\u2713 Agregado al carrito';
   toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#193a2c;color:#fff;padding:10px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:all .3s ease;font-family:Inter,sans-serif';
   document.body.appendChild(toast);
   requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
@@ -1456,7 +1475,7 @@ function renderCart() {
             <div style="font-size:14px;font-weight:600;color:var(--verde);margin-bottom:10px">Complementa tu pedido</div>
             <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
               ${suggestions.map(p => `
-                <div style="flex-shrink:0;width:120px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;overflow:hidden;cursor:pointer" onclick="addToCart(allProducts.find(x=>x.id===${p.id}));renderCart()">
+                <div style="flex-shrink:0;width:120px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;overflow:hidden;cursor:pointer" onclick="addCrossSell(${p.id})">
                   <img src="${p.imagen_url}" style="width:100%;height:90px;object-fit:cover" loading="lazy">
                   <div style="padding:8px">
                     <div style="font-size:11px;font-weight:500;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
