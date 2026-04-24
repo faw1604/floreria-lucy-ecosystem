@@ -572,6 +572,19 @@ img{-webkit-user-drag:none;user-drag:none}
     <!-- STEP 4: Confirmation -->
     <div class="order-step" id="order-step-4">
       <div class="order-title">Confirmar pedido</div>
+
+      <!-- Confirmación destacada de teléfono — anti-error -->
+      <div id="of-tel-confirm-box" style="background:#fff8e6;border:2px solid var(--dorado);border-radius:12px;padding:16px;margin:12px 0 18px;text-align:center">
+        <div style="font-size:11px;font-weight:600;color:var(--texto2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📱 Recibirás los datos de pago y actualizaciones en:</div>
+        <div id="of-tel-display" style="font-size:22px;font-weight:700;color:var(--verde);letter-spacing:1px;margin:6px 0;font-family:'Inter',sans-serif"></div>
+        <div style="font-size:13px;color:var(--texto2);margin-bottom:10px">¿Es <strong>TU</strong> número de WhatsApp?</div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button type="button" id="of-tel-yes" onclick="confirmTelOk()" style="padding:8px 18px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">✓ Sí, es correcto</button>
+          <button type="button" onclick="orderGoStep(3);setTimeout(()=>document.getElementById('of-telefono')?.focus(),100)" style="padding:8px 18px;background:#fff;color:var(--verde);border:2px solid var(--verde);border-radius:8px;font-weight:600;cursor:pointer;font-size:13px">✗ No, corregir</button>
+        </div>
+        <div style="font-size:11px;color:var(--texto2);margin-top:8px;font-style:italic">Si pones el número del destinatario, los datos de pago llegan a la persona equivocada</div>
+      </div>
+
       <div id="order-review"></div>
       <div id="order-envio-disclaimer" style="font-size:12px;color:var(--texto2);text-align:center;margin:12px 0">El costo de envío se confirmará junto con tu pedido</div>
       <label style="display:flex;align-items:center;gap:8px;justify-content:center;margin:14px 0;font-size:14px;cursor:pointer">
@@ -3433,6 +3446,43 @@ function renderOrderStep4() {
   // Reset selector de método de pago
   pedidoWeb.forma_pago = null;
   document.querySelectorAll('.pago-option').forEach(el => el.classList.remove('selected'));
+
+  // Reset confirmación teléfono + pintar número formateado
+  pedidoWeb._telConfirmado = false;
+  const telBox = document.getElementById('of-tel-confirm-box');
+  const telDisp = document.getElementById('of-tel-display');
+  const telYesBtn = document.getElementById('of-tel-yes');
+  if (telBox && telDisp) {
+    const telRaw = (pedidoWeb.cliente_telefono || '').replace(/\D/g, '');
+    const pais = pedidoWeb.pais_cliente || '+52';
+    // Formato visual: +52 614 207 0297
+    const tel10 = telRaw.slice(-10);
+    const fmt = tel10.length === 10
+      ? `${pais} ${tel10.slice(0,3)} ${tel10.slice(3,6)} ${tel10.slice(6)}`
+      : `${pais} ${telRaw}`;
+    telDisp.textContent = fmt;
+    telBox.style.display = '';
+    telBox.style.background = '#fff8e6';
+    telBox.style.borderColor = 'var(--dorado)';
+    if (telYesBtn) {
+      telYesBtn.textContent = '✓ Sí, es correcto';
+      telYesBtn.style.background = 'var(--verde)';
+    }
+  }
+}
+
+function confirmTelOk() {
+  pedidoWeb._telConfirmado = true;
+  const telBox = document.getElementById('of-tel-confirm-box');
+  const telYesBtn = document.getElementById('of-tel-yes');
+  if (telBox) {
+    telBox.style.background = '#e8f5ec';
+    telBox.style.borderColor = 'var(--verde)';
+  }
+  if (telYesBtn) {
+    telYesBtn.textContent = '✓ Confirmado';
+    telYesBtn.style.background = 'var(--verde-medio)';
+  }
 }
 
 function selectPago(valor) {
@@ -3521,12 +3571,17 @@ async function submitOrder() {
     if (opts) { opts.style.animation='none'; void opts.offsetWidth; opts.style.animation='shake .4s'; opts.scrollIntoView({behavior:'smooth',block:'center'}); }
     return;
   }
-  // Confirmación de teléfono del cliente (anti-error: que no pongan tel del destinatario)
-  {
-    const telMostrar = pedidoWeb.telefono_completo || pedidoWeb.cliente_telefono || '';
-    const telFmt = telMostrar.replace(/^521?/, '').replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
-    const ok = confirm(`📱 Enviaremos los datos de pago al teléfono:\n\n${telFmt}\n\n¿Es TU teléfono (cliente que paga)?\n\nSi es del destinatario, cancela y corrígelo en el campo "Tu teléfono".`);
-    if (!ok) return;
+  // Confirmación de teléfono (cuadro destacado en step 4 — anti-error: que no pongan tel del destinatario)
+  if (!pedidoWeb._telConfirmado) {
+    const telBox = document.getElementById('of-tel-confirm-box');
+    if (telBox) {
+      telBox.style.background = '#fef2f2';
+      telBox.style.borderColor = '#ef4444';
+      telBox.scrollIntoView({behavior:'smooth', block:'center'});
+      telBox.style.animation = 'none'; void telBox.offsetWidth; telBox.style.animation = 'shake .4s';
+    }
+    alert('Por favor confirma que el teléfono de WhatsApp es correcto antes de continuar.');
+    return;
   }
   const btn = document.getElementById('order-confirm-btn');
   btn.disabled = true;
