@@ -269,9 +269,34 @@ let currentNoEntregaId = null;
 let currentTab = 'pendientes';
 let rutaStartTime = null;
 let temporadaAlta = false;
+let temporadaFechaFuerte = '';   // ej. '2026-05-10'
+let temporadaDiasRestriccion = 2;
 let filtroHorario = 'todos';
 let filtroZona = 'todas';
 let filtroFecha = 'hoy';
+
+// Determina si la fecha que el repartidor está viendo cae en el rango de
+// días de restricción (cuando aplican turnos en lugar de mañana/tarde/noche).
+function esFechaEnRestriccion() {
+  if (!temporadaAlta || !temporadaFechaFuerte) return false;
+  // Calcular fecha YYYY-MM-DD que está viendo
+  let fechaStr;
+  if (filtroFecha === 'hoy') {
+    const d = new Date();
+    fechaStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  } else if (filtroFecha === 'ayer') {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    fechaStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  } else {
+    fechaStr = filtroFecha;  // YYYY-MM-DD custom
+  }
+  // ¿Está en el rango [fechaFuerte - dias+1, fechaFuerte]?
+  const ff = new Date(temporadaFechaFuerte + 'T12:00:00');
+  const sel = new Date(fechaStr + 'T12:00:00');
+  if (isNaN(ff.getTime()) || isNaN(sel.getTime())) return false;
+  const diffDias = Math.round((ff - sel) / 86400000);
+  return diffDias >= 0 && diffDias < temporadaDiasRestriccion;
+}
 
 function setFechaRepartidor(val) {
   // Update buttons
@@ -305,10 +330,16 @@ function setFechaRepartidor(val) {
 function renderFilters() {
   const mk = (v, l) => `<span class="fbtn ${filtroHorario===v?'active':''}" onclick="setFiltroHorario('${v}')">${l}</span>`;
   let horarios = '';
-  if (temporadaAlta) {
+  // Mostrar turnos solo si la fecha seleccionada cae en días de restricción
+  // (no solo porque temporada alta esté activa). Días normales = mañana/tarde/noche.
+  if (esFechaEnRestriccion()) {
     horarios = mk('todos','Todos') + mk('turno1','Turno 1 (8-3)') + mk('turno2','Turno 2 (3-8)');
+    // Si tenía un filtro normal seleccionado, resetear (no aplica)
+    if (['manana','tarde','noche'].includes(filtroHorario)) filtroHorario = 'todos';
   } else {
     horarios = mk('todos','Todos') + mk('manana','Manana (9-2)') + mk('tarde','Tarde (2-6)') + mk('noche','Noche (6-9)');
+    // Si tenía turno seleccionado, resetear
+    if (['turno1','turno2'].includes(filtroHorario)) filtroHorario = 'todos';
   }
   const mz = (v, l) => `<span class="fbtn ${filtroZona===v?'active':''}" onclick="setFiltroZona('${v}')">${l}</span>`;
   const zonas = mz('todas','Todas') + mz('Zona Central','Central') + mz('Norte','Norte') + mz('Noreste','Noreste') + mz('Noroeste','Noroeste') + mz('Poniente','Poniente') + mz('Sur','Sur') + mz('Oriente','Oriente') + mz('Sureste','Sureste');
@@ -335,14 +366,13 @@ function applyFilters(list) {
       // Funeral siempre visible sin importar filtro de horario
       if (p.tipo_especial === 'Funeral') return true;
       const h = (p.horario_entrega||'').toLowerCase();
-      if (temporadaAlta) {
-        if (filtroHorario === 'turno1') return h.includes('mañana') || h.includes('manana') || h.includes('turno 1');
-        if (filtroHorario === 'turno2') return h.includes('tarde') || h.includes('noche') || h.includes('turno 2');
-      } else {
-        if (filtroHorario === 'manana') return h.includes('mañana') || h.includes('manana');
-        if (filtroHorario === 'tarde') return h.includes('tarde');
-        if (filtroHorario === 'noche') return h.includes('noche');
-      }
+      // Turnos (solo en días de restricción)
+      if (filtroHorario === 'turno1') return h.includes('mañana') || h.includes('manana') || h.includes('turno 1') || h === 'turno1';
+      if (filtroHorario === 'turno2') return h.includes('tarde') || h.includes('noche') || h.includes('turno 2') || h === 'turno2';
+      // Filtros normales (días no-restrictivos)
+      if (filtroHorario === 'manana') return h.includes('mañana') || h.includes('manana');
+      if (filtroHorario === 'tarde') return h.includes('tarde');
+      if (filtroHorario === 'noche') return h.includes('noche');
       return true;
     });
   }
@@ -360,7 +390,12 @@ function applyFilters(list) {
 async function loadTemporada() {
   try {
     const r = await fetch('/repartidor/config-temporada', {credentials:'include'});
-    if (r.ok) { const d = await r.json(); temporadaAlta = d.temporada_alta; }
+    if (r.ok) {
+      const d = await r.json();
+      temporadaAlta = d.temporada_alta || d.temporada_modo === 'alta';
+      temporadaFechaFuerte = d.temporada_fecha_fuerte || '';
+      temporadaDiasRestriccion = parseInt(d.temporada_dias_restriccion || '2');
+    }
   } catch(e) {}
 }
 

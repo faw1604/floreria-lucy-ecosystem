@@ -56,14 +56,22 @@ async def config_temporada(
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Devuelve si la temporada alta está activa."""
+    """Devuelve config de temporada alta + fecha fuerte + días restricción.
+
+    El frontend usa fecha_fuerte y dias_restriccion para decidir si mostrar
+    filtros de turnos (Turno 1/2) o filtros normales (mañana/tarde/noche)
+    según la fecha que el repartidor está visualizando.
+    """
     if not verificar_sesion(panel_session):
         raise HTTPException(status_code=401, detail="No autenticado")
-    result = await db.execute(
-        select(ConfiguracionNegocio).where(ConfiguracionNegocio.clave == "claudia_temporada_alta")
-    )
-    cfg = result.scalar_one_or_none()
-    return {"temporada_alta": cfg.valor == "true" if cfg else False}
+    result = await db.execute(select(ConfiguracionNegocio))
+    cfg_map = {c.clave: c.valor for c in result.scalars().all()}
+    return {
+        "temporada_alta": cfg_map.get("claudia_temporada_alta", "false") == "true",
+        "temporada_modo": cfg_map.get("temporada_modo", "regular"),
+        "temporada_fecha_fuerte": cfg_map.get("temporada_fecha_fuerte", ""),
+        "temporada_dias_restriccion": int(cfg_map.get("temporada_dias_restriccion", "2")),
+    }
 
 
 @router.get("/entregas-hoy")
