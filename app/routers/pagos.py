@@ -205,7 +205,7 @@ def _render_pago_page(icon: str, titulo: str, mensaje: str, tracking_token: str 
                       btn_label: str = "Volver al catálogo", btn_url: str = "/catalogo/") -> str:
     track_link = ""
     if tracking_token:
-        track_link = f'<a href="/seguimiento/{tracking_token}" class="btn">📦 Ver mi pedido</a>'
+        track_link = f'<a href="/catalogo/seguimiento.html?token={tracking_token}" class="btn">📦 Ver mi pedido</a>'
     return f"""<!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
