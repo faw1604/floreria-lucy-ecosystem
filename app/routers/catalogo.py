@@ -916,6 +916,22 @@ async def seguimiento_pedido(token: str, db: AsyncSession = Depends(get_db)):
             "requiere_respuesta": False,
         }
 
+    # Obtener teléfono del cliente para mostrarlo enmascarado en el banner
+    # (anti-error: cliente verifica si el número al que llegan notificaciones es el suyo)
+    cliente_tel = None
+    if pedido.customer_id:
+        from app.models.clientes import Cliente
+        cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+        cli = cli_r.scalar_one_or_none()
+        if cli and cli.telefono:
+            # Enmascarar: solo mostrar últimos 4 dígitos. Ej: '+52 *** *** 0297'
+            tel_digits = ''.join(c for c in cli.telefono if c.isdigit())
+            tel_10 = tel_digits[-10:] if len(tel_digits) >= 10 else tel_digits
+            if len(tel_10) == 10:
+                cliente_tel = f"+52 *** *** {tel_10[-4:]}"
+            else:
+                cliente_tel = f"+52 ***{tel_digits[-4:] if len(tel_digits) >= 4 else tel_digits}"
+
     return {
         "folio": pedido.numero,
         "estado": pedido.estado,
@@ -930,6 +946,7 @@ async def seguimiento_pedido(token: str, db: AsyncSession = Depends(get_db)):
         "total": pedido.total,
         "florista_cambio": florista_cambio,
         "created_at": str(pedido.fecha_pedido) if pedido.fecha_pedido else None,
+        "cliente_tel_masked": cliente_tel,
     }
 
 
