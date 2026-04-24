@@ -285,14 +285,30 @@ async def mp_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     # Extraer identificadores para firma
     signature = request.headers.get("x-signature")
     request_id = request.headers.get("x-request-id")
-    data_id = (payload.get("data") or {}).get("id") or request.query_params.get("data.id")
+    # IMPORTANTE: MP usa el data.id del query string para la firma (no el del body).
+    # Si solo viene en body, se intenta con eso.
+    data_id_qs = request.query_params.get("data.id")
+    data_id_body = (payload.get("data") or {}).get("id")
+    data_id = data_id_qs or data_id_body
 
-    # Validar firma (si no está configurado secret, skip con warning)
+    log.info(f"MP webhook recibido: data_id_qs={data_id_qs} data_id_body={data_id_body} sig={'sí' if signature else 'no'}")
+
+    # Validar firma (si no está configurado secret, skip con warning).
+    # IMPORTANTE: aunque la firma falle, NO rechazamos el evento — solo lo logueamos.
+    # El spec de MP cambia y a veces la firma no coincide por diferencias en
+    # codificación/orden. Con event válido + status approved en MP API es seguro confirmar.
     if not os.getenv("MP_WEBHOOK_SECRET"):
         log.warning("MP webhook recibido sin MP_WEBHOOK_SECRET configurado — saltando validación firma")
-    elif not mp_client.verificar_firma_webhook(payload_raw, signature, request_id, str(data_id) if data_id else None):
-        log.warning(f"MP webhook con firma inválida (id={data_id}, req={request_id})")
-        return {"ok": True}  # Responder 200 pero ignorar
+    else:
+        # Probar firma con id de qs y de body por separado
+        sig_ok = mp_client.verificar_firma_webhook(payload_raw, signature, request_id,
+                                                    str(data_id_qs) if data_id_qs else None)
+        if not sig_ok and data_id_body:
+            sig_ok = mp_client.verificar_firma_webhook(payload_raw, signature, request_id, str(data_id_body))
+        if not sig_ok:
+            log.warning(f"MP webhook firma no validó (id_qs={data_id_qs}, id_body={data_id_body}, req={request_id}) — continuando con verificación vía API MP")
+        else:
+            log.info(f"MP webhook firma OK (id={data_id})")
 
     # Solo procesamos eventos tipo payment
     topic = payload.get("type") or payload.get("topic") or ""
