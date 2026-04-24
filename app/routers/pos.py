@@ -1264,6 +1264,7 @@ async def _pos_finalizar_inner(pedido_id, request, db):
     await db.commit()
 
     # WhatsApp al cliente: pago confirmado (web y POS)
+    # Mandar en background para no bloquear la respuesta del POS (Whapi puede tardar 10-20s).
     if pedido.tracking_token and pedido.customer_id:
         try:
             cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
@@ -1271,11 +1272,17 @@ async def _pos_finalizar_inner(pedido_id, request, db):
             if cliente and cliente.telefono:
                 tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
                 from app.routers.catalogo import _enviar_whatsapp
-                await _enviar_whatsapp(cliente.telefono,
+                _tel_wa = cliente.telefono
+                _msg_wa = (
                     f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
                     f"Tu pago para el pedido {pedido.numero} fue confirmado! Tu arreglo sera elaborado pronto.\n\n"
                     f"Sigue el estatus aqui:\n{tracking_url}"
                 )
+                import asyncio
+                async def _send_wa():
+                    try: await _enviar_whatsapp(_tel_wa, _msg_wa)
+                    except Exception: pass
+                asyncio.create_task(_send_wa())
         except Exception:
             pass
 

@@ -2555,13 +2555,29 @@ async function fpConfirm() {
     document.getElementById('fp-err').style.display = '';
     return;
   }
+  // Anti double-click: deshabilitar botón mientras se procesa
+  const btn = event && event.target ? event.target : document.querySelector('#modal-fin-pend button[onclick="fpConfirm()"]');
+  if (btn) {
+    if (btn.dataset.processing === '1') return; // ya está procesando
+    btn.dataset.processing = '1';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'wait';
+    btn.textContent = 'Procesando...';
+  }
   const pagos = Object.entries(finPendPays).map(([nombre, monto]) => ({nombre, monto}));
   try {
     const r = await fetch(`/pos/pedido/${finPendId}/finalizar`, {
       method: 'PATCH', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({pagos})
     });
-    if (!r.ok) { const err = await r.json(); alert(err.detail || 'Error'); return; }
+    if (!r.ok) {
+      const err = await r.json();
+      alert(err.detail || 'Error');
+      // Reactivar botón para reintentar
+      if (btn) { btn.dataset.processing = ''; btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = 'Finalizar'; }
+      return;
+    }
     const result = await r.json();
     document.getElementById('modal-fin-pend').remove();
 
@@ -2593,7 +2609,10 @@ async function fpConfirm() {
     renderPendTable(pendAllData);
     contadorPendientes--;
     renderBadge();
-  } catch(e) { alert('Error de red'); }
+  } catch(e) {
+    alert('Error de red');
+    if (btn) { btn.dataset.processing = ''; btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = 'Finalizar'; }
+  }
 }
 
 // ═══════════════════════════════════════════
