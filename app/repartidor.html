@@ -600,6 +600,9 @@ function renderPendientes() {
 
   el.innerHTML = html;
   updateBottomBar();
+  // Restaurar fotos pendientes después del re-render (anti-bug: polling 45s
+  // reescribía el DOM y la foto en el <input file> se perdía).
+  if (typeof restaurarFotosPendientes === 'function') restaurarFotosPendientes();
 }
 
 function toggleSel(id, checked) {
@@ -696,26 +699,95 @@ async function iniciarRuta() {
 }
 
 // ─── Foto + entregar ───
+// Fotos pendientes de confirmar (sobreviven re-renders del polling).
+// Sin esto, el polling cada 45s reescribía el <input file> y la foto se perdía,
+// dejando el botón "Confirmar" sin responder.
+window._fotosPendientes = window._fotosPendientes || {};
+
 function onFoto(id, input) {
   if (!input.files.length) return;
-  const url = URL.createObjectURL(input.files[0]);
-  document.getElementById('preview-' + id).innerHTML = `<div class="foto-preview"><img src="${url}"><button class="abtn abtn-confirm" onclick="confirmarEntrega(${id})">Confirmar ✓</button></div>`;
-  document.getElementById('actions-' + id).style.display = 'none';
+  const file = input.files[0];
+  // Persistir en variable global — sobrevive a renderPendientes()
+  window._fotosPendientes[id] = file;
+  const url = URL.createObjectURL(file);
+  const preview = document.getElementById('preview-' + id);
+  if (preview) {
+    preview.innerHTML = `<div class="foto-preview"><img src="${url}"><div style="display:flex;gap:6px;margin-top:6px"><button class="abtn abtn-confirm" onclick="confirmarEntrega(${id})">Confirmar ✓</button><button class="abtn" onclick="cancelarFoto(${id})" style="background:#fff;border:1px solid #ccc;color:#666;flex:0 0 auto;padding:0 14px">Cambiar</button></div></div>`;
+  }
+  const actions = document.getElementById('actions-' + id);
+  if (actions) actions.style.display = 'none';
+}
+
+function cancelarFoto(id) {
+  delete window._fotosPendientes[id];
+  const preview = document.getElementById('preview-' + id);
+  if (preview) preview.innerHTML = '';
+  const actions = document.getElementById('actions-' + id);
+  if (actions) actions.style.display = '';
+  // Limpiar input file
+  const input = document.getElementById('foto-' + id);
+  if (input) input.value = '';
+}
+
+// Al re-renderizar (loadEntregas → renderPendientes), restaurar el preview de fotos
+// pendientes. Llamado desde renderPendientes después de pintar el HTML.
+function restaurarFotosPendientes() {
+  Object.keys(window._fotosPendientes).forEach(id => {
+    const file = window._fotosPendientes[id];
+    if (!file) return;
+    const preview = document.getElementById('preview-' + id);
+    if (!preview) return;  // El pedido ya no está en pantalla (entregado)
+    const url = URL.createObjectURL(file);
+    preview.innerHTML = `<div class="foto-preview"><img src="${url}"><div style="display:flex;gap:6px;margin-top:6px"><button class="abtn abtn-confirm" onclick="confirmarEntrega(${id})">Confirmar ✓</button><button class="abtn" onclick="cancelarFoto(${id})" style="background:#fff;border:1px solid #ccc;color:#666;flex:0 0 auto;padding:0 14px">Cambiar</button></div></div>`;
+    const actions = document.getElementById('actions-' + id);
+    if (actions) actions.style.display = 'none';
+  });
 }
 
 async function confirmarEntrega(id) {
-  const input = document.getElementById('foto-' + id);
-  if (!input.files.length) return;
+  // Leer foto de la variable global (no del input, que pudo ser re-creado por polling)
+  const file = window._fotosPendientes[id];
+  if (!file) {
+    // Fallback: intentar leer del input por si acaso
+    const input = document.getElementById('foto-' + id);
+    if (input && input.files.length) {
+      window._fotosPendientes[id] = input.files[0];
+      return confirmarEntrega(id);
+    }
+    const errEl = document.getElementById('err-' + id);
+    if (errEl) {
+      errEl.textContent = 'No hay foto cargada. Toma la foto de nuevo.';
+      errEl.style.display = '';
+    }
+    const actions = document.getElementById('actions-' + id);
+    if (actions) actions.style.display = '';
+    return;
+  }
   const preview = document.getElementById('preview-' + id);
-  preview.innerHTML = '<div style="text-align:center;padding:12px"><span class="spinner"></span> Subiendo foto...</div>';
+  if (preview) preview.innerHTML = '<div style="text-align:center;padding:12px"><span class="spinner"></span> Subiendo foto...</div>';
   const fd = new FormData();
-  fd.append('foto', input.files[0]);
+  fd.append('foto', file);
   try {
     const r = await fetch(`/repartidor/entregar/${id}`, {method:'POST', credentials:'include', body: fd});
-    if (!r.ok) { const d = await r.json().catch(()=>({})); document.getElementById('err-'+id).textContent = d.detail||'Error al subir'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; return; }
+    if (!r.ok) {
+      const d = await r.json().catch(()=>({}));
+      const errEl = document.getElementById('err-' + id);
+      if (errEl) { errEl.textContent = d.detail || 'Error al subir'; errEl.style.display = ''; }
+      // Restaurar preview con la foto para que pueda reintentar (no perder)
+      restaurarFotosPendientes();
+      return;
+    }
+    // Éxito: limpiar foto pendiente
+    delete window._fotosPendientes[id];
     await loadEntregas();
     checkCierreRuta();
-  } catch(e) { document.getElementById('err-'+id).textContent = 'Error de conexion. Intenta de nuevo.'; document.getElementById('err-'+id).style.display = ''; preview.innerHTML = ''; document.getElementById('actions-'+id).style.display = ''; alert('No se pudo subir la foto. Verifica tu conexion e intenta de nuevo.'); }
+  } catch(e) {
+    const errEl = document.getElementById('err-' + id);
+    if (errEl) { errEl.textContent = 'Error de conexion. Intenta de nuevo.'; errEl.style.display = ''; }
+    // No borrar la foto pendiente — el repartidor puede reintentar
+    restaurarFotosPendientes();
+    alert('No se pudo subir la foto. Verifica tu conexion e intenta de nuevo. Tu foto sigue cargada, solo presiona Confirmar otra vez.');
+  }
 }
 
 // ─── No entrega ───
