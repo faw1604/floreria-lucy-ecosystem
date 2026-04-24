@@ -136,12 +136,50 @@ tailwind.config = {
       </li>
       <li class="flex items-start gap-3">
         <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">Devoluciones a tarjeta:</span> se realizan al mismo metodo de pago original a traves de Mercado Pago. El reflejo en el estado de cuenta puede tardar de 5 a 15 dias habiles segun el banco emisor. Las comisiones de procesamiento no son reembolsables.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
         <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">No se aceptan cambios de fecha</span> cuando el arreglo floral ya ha sido elaborado.</p>
       </li>
     </ul>
   </div>
 
-  <!-- Card 2: Entregas -->
+  <!-- Card 2: Metodos de pago -->
+  <div class="reveal bg-white rounded-2xl shadow-lg shadow-verde/5 p-8 sm:p-10" style="transition-delay:.15s">
+    <div class="flex items-start gap-4 mb-6">
+      <div class="w-12 h-12 bg-verde/[.07] rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-6 h-6 text-verde" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/>
+        </svg>
+      </div>
+      <h2 class="font-serif text-xl sm:text-2xl font-bold text-verde pt-1.5">Metodos de pago</h2>
+    </div>
+    <ul class="space-y-4">
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Aceptamos <span class="font-semibold text-verde">transferencia electronica (SPEI)</span>, <span class="font-semibold text-verde">deposito en OXXO</span> y <span class="font-semibold text-verde">tarjeta de credito o debito</span> (nacional o internacional).</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Los <span class="font-semibold text-verde">pagos con tarjeta son procesados por Mercado Pago Mexico</span>. Floreria Lucy no almacena ni tiene acceso a los datos de tu tarjeta: toda la informacion se transmite directamente a Mercado Pago bajo estandares PCI-DSS.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Al pagar con tarjeta aceptas tambien los <a href="https://www.mercadopago.com.mx/ayuda/terminos-y-politicas_299" target="_blank" rel="noopener" class="text-verde-medio font-medium underline underline-offset-2 hover:text-dorado transition-colors">terminos y condiciones de Mercado Pago</a>.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">El <span class="font-semibold text-verde">link de pago se envia por WhatsApp</span> una vez que tu pedido ha sido revisado y aprobado por nuestro equipo. El pedido entra a produccion solo despues de confirmado el pago.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700"><span class="font-semibold text-verde">No cobramos cargos adicionales</span> al cliente por el uso de tarjeta. El precio que ves es el precio que pagas.</p>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Card 3: Entregas -->
   <div class="reveal bg-white rounded-2xl shadow-lg shadow-verde/5 p-8 sm:p-10" style="transition-delay:.2s">
     <div class="flex items-start gap-4 mb-6">
       <div class="w-12 h-12 bg-verde/[.07] rounded-xl flex items-center justify-center flex-shrink-0">
@@ -171,7 +209,7 @@ tailwind.config = {
     </ul>
   </div>
 
-  <!-- Card 3: Aviso de privacidad -->
+  <!-- Card 4: Aviso de privacidad -->
   <div class="reveal bg-white rounded-2xl shadow-lg shadow-verde/5 p-8 sm:p-10" style="transition-delay:.3s">
     <div class="flex items-start gap-4 mb-6">
       <div class="w-12 h-12 bg-verde/[.07] rounded-xl flex items-center justify-center flex-shrink-0">
@@ -188,7 +226,11 @@ tailwind.config = {
       </li>
       <li class="flex items-start gap-3">
         <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
-        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Tu informacion <span class="font-semibold text-verde">no se comparte con terceros</span> bajo ninguna circunstancia.</p>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Tu informacion <span class="font-semibold text-verde">no se comparte con terceros</span>, salvo lo estrictamente necesario para procesar tu pago (Mercado Pago, en caso de elegir tarjeta) o para coordinar tu entrega.</p>
+      </li>
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
+        <p class="text-sm sm:text-base leading-relaxed text-gray-700">Los <span class="font-semibold text-verde">datos de tarjeta</span> son procesados directamente por Mercado Pago bajo su propia <a href="https://www.mercadopago.com.mx/privacidad" target="_blank" rel="noopener" class="text-verde-medio font-medium underline underline-offset-2 hover:text-dorado transition-colors">politica de privacidad</a>. No los recibimos ni los almacenamos.</p>
       </li>
       <li class="flex items-start gap-3">
         <span class="w-2 h-2 bg-dorado rounded-full mt-2 flex-shrink-0 opacity-70"></span>
