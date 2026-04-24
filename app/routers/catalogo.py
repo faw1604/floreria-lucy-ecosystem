@@ -504,10 +504,10 @@ async def _crear_pedido_web_inner(request, db):
     if not items:
         raise HTTPException(status_code=400, detail="Debes agregar al menos un producto")
 
-    # Validar método de pago (solo Transferencia y OXXO desde web)
+    # Validar método de pago (web acepta Transferencia, OXXO y Link de pago/MP)
     forma_pago = data.get("forma_pago")
-    if forma_pago not in ("Transferencia", "OXXO"):
-        raise HTTPException(status_code=400, detail="Método de pago inválido. Selecciona Transferencia o OXXO.")
+    if forma_pago not in ("Transferencia", "OXXO", "Link de pago"):
+        raise HTTPException(status_code=400, detail="Método de pago inválido. Selecciona Transferencia, OXXO o Tarjeta.")
 
     # Validar campos obligatorios
     nombre_cliente = (data.get("cliente_nombre") or "").strip()
