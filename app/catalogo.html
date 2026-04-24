@@ -231,6 +231,11 @@ img{-webkit-user-drag:none;user-drag:none}
 .season-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--verde);margin-bottom:8px}
 .season-sub{font-size:14px;color:var(--texto2);margin-bottom:32px;line-height:1.5}
 .season-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:280px}
+/* Override landing-btn dentro de season-screen — fondo es crema, no verde */
+.season-screen .landing-btn.primary{background:var(--verde);color:var(--blanco);border:2px solid var(--verde)}
+.season-screen .landing-btn.primary:hover{background:var(--verde-medio);border-color:var(--verde-medio)}
+.season-screen .landing-btn.secondary{background:transparent;color:var(--verde);border:2px solid var(--verde)}
+.season-screen .landing-btn.secondary:hover{background:rgba(25,58,44,.08)}
 
 /* ====== OCCASION SCREEN ====== */
 .occasion-screen{position:fixed;inset:0;z-index:170;background:var(--crema);overflow-y:auto;padding:60px 20px 40px;display:none}
@@ -1085,13 +1090,13 @@ function showSeasonScreen(nombre, categoria) {
   document.getElementById('season-yes-btn').onclick = async () => {
     document.getElementById('season-screen').style.display = 'none';
     dynFilterCategory = seasonCategory;
-    if (!occasionChecked) {
-      occasionChecked = true;
-      if (!allProducts.length) await loadProducts();
-      showOccasionScreen();
-    } else {
-      initDynamic();
-    }
+    // Cuando el usuario eligió temporada, NO preguntar ocasión: el filtro de
+    // categoría ya es suficiente y mostrar otro selector confunde.
+    occasionChecked = true;
+    selectedOccasion = null;
+    dynOccasionFuneral = false;
+    if (!allProducts.length) await loadProducts();
+    initDynamic();
   };
   document.getElementById('season-screen').style.display = 'flex';
 }
@@ -1430,7 +1435,7 @@ function renderCart() {
           <button onclick="event.stopPropagation();changeQty(${idx},1)" style="width:26px;height:26px;border:1px solid var(--borde);border-radius:6px;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
         </div>
       </div>
-      <button class="cart-item-remove" onclick="removeFromCart(${idx})">&times;</button>
+      <button class="cart-item-remove" onclick="event.stopPropagation();removeFromCart(${idx})">&times;</button>
     </div>`;
   }).join('');
   initCartSwipe();
