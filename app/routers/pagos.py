@@ -347,3 +347,89 @@ async def mp_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 async def mp_webhook_get():
     """MP a veces hace GET para verificar que el endpoint existe (health check)."""
     return {"ok": True}
+
+
+@router.post("/mp/reconciliar/{pedido_ref}")
+async def mp_reconciliar_pedido(
+    pedido_ref: str,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Recuperar manualmente un pedido cuyo webhook MP no llegó.
+
+    Consulta MP por external_reference (folio del pedido), busca el pago
+    aprobado más reciente, y aplica la misma lógica que el webhook.
+
+    Útil cuando:
+    - MP falló al llamar el webhook
+    - La firma rechazó el webhook
+    - Operador quiere confirmar manualmente que un pago llegó
+    """
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+
+    # Resolver pedido por id numérico o por numero (folio)
+    pedido = None
+    if pedido_ref.isdigit():
+        result = await db.execute(select(Pedido).where(Pedido.id == int(pedido_ref)))
+        pedido = result.scalar_one_or_none()
+    if not pedido:
+        result = await db.execute(select(Pedido).where(Pedido.numero == pedido_ref))
+        pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Consultar MP: search payments by external_reference
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(
+                f"{mp_client.MP_BASE}/v1/payments/search",
+                headers={"Authorization": f"Bearer {mp_client._access_token()}"},
+                params={"external_reference": pedido.numero, "sort": "date_created", "criteria": "desc"},
+            )
+            if r.status_code >= 400:
+                raise HTTPException(status_code=502, detail=f"MP search error: {r.text}")
+            data = r.json()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=f"MercadoPago no configurado: {e}")
+    except Exception as e:
+        log.error(f"MP reconciliar: error consultando pagos para {pedido.numero}: {e}")
+        raise HTTPException(status_code=502, detail=f"Error consultando MercadoPago: {e}")
+
+    pagos = data.get("results") or []
+    if not pagos:
+        return {"ok": False, "encontrado": False, "mensaje": f"Sin pagos registrados en MP para {pedido.numero}"}
+
+    # Buscar primer pago aprobado
+    pago_aprobado = next((p for p in pagos if p.get("status") == "approved"), None)
+    if not pago_aprobado:
+        statuses = [p.get("status") for p in pagos]
+        return {
+            "ok": False,
+            "encontrado": True,
+            "aprobado": False,
+            "mensaje": f"Pagos encontrados pero ninguno aprobado. Estados: {statuses}",
+        }
+
+    # Idempotencia
+    if pedido.pago_confirmado:
+        return {"ok": True, "ya_estaba_pagado": True, "payment_id": pago_aprobado.get("id")}
+
+    # Marcar como pagado (misma lógica que webhook)
+    from app.core.estados import EstadoPedido as EP
+    from app.core.utils import ahora
+    pedido.pago_confirmado = True
+    pedido.pago_confirmado_at = ahora()
+    pedido.pago_confirmado_por = "MercadoPago (reconciliado)"
+    if pedido.estado in [EP.PENDIENTE_PAGO, EP.ESPERANDO_VALIDACION, EP.COMPROBANTE_RECIBIDO]:
+        pedido.estado = EP.PAGADO
+    await db.commit()
+    log.info(f"MP reconciliar: pedido {pedido.numero} marcado PAGADO (payment_id={pago_aprobado.get('id')})")
+    return {
+        "ok": True,
+        "marcado_pagado": True,
+        "payment_id": pago_aprobado.get("id"),
+        "monto": pago_aprobado.get("transaction_amount"),
+        "fecha": pago_aprobado.get("date_approved"),
+    }
