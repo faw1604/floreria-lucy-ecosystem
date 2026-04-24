@@ -88,8 +88,12 @@ app.add_middleware(
 async def security_middleware(request: Request, call_next):
     if settings.ENVIRONMENT == "production":
         host = request.headers.get("host", "")
-        # Bloquear acceso directo a railway.app
-        if "railway.app" in host:
+        path = request.url.path
+        # Bloquear acceso directo a railway.app, EXCEPTO:
+        # - Webhooks de servicios externos (MP, etc.) que necesitan URL pública estable
+        #   y no pueden usar florerialucy.com porque su DNS está proxied por Canva.
+        webhook_paths = ("/pagos/mp/webhook",)
+        if "railway.app" in host and not path.startswith(webhook_paths):
             return JSONResponse(status_code=403, content={"detail": "Acceso no permitido"})
     response = await call_next(request)
     # 1. Clickjacking — no permitir iframe en sitios ajenos
