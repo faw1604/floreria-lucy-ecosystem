@@ -581,17 +581,21 @@ img{-webkit-user-drag:none;user-drag:none}
 
       <!-- Selector de método de pago -->
       <div style="margin:18px 0 8px;font-size:14px;font-weight:600;color:var(--verde);text-align:center">¿Cómo prefieres pagar?</div>
-      <div id="of-pago-options" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-        <div class="pago-option" data-value="Transferencia" onclick="selectPago('Transferencia')" style="padding:14px 12px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:var(--blanco)">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--verde);margin-bottom:6px"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>
-          <div style="font-size:13px;font-weight:600;color:var(--texto)">SPEI / Transferencia</div>
+      <div id="of-pago-options" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+        <div class="pago-option" data-value="Transferencia" onclick="selectPago('Transferencia')" style="padding:12px 8px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:var(--blanco)">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--verde);margin-bottom:4px"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v3"/><path d="M12 14v3"/><path d="M16 14v3"/></svg>
+          <div style="font-size:12px;font-weight:600;color:var(--texto);line-height:1.2">SPEI /<br>Transferencia</div>
         </div>
-        <div class="pago-option" data-value="OXXO" onclick="selectPago('OXXO')" style="padding:14px 12px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:var(--blanco)">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--verde);margin-bottom:6px"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21V12h6v9"/><path d="M3 21h18"/></svg>
-          <div style="font-size:13px;font-weight:600;color:var(--texto)">Depósito en OXXO</div>
+        <div class="pago-option" data-value="OXXO" onclick="selectPago('OXXO')" style="padding:12px 8px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:var(--blanco)">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--verde);margin-bottom:4px"><path d="M3 21V7l9-4 9 4v14"/><path d="M9 21V12h6v9"/><path d="M3 21h18"/></svg>
+          <div style="font-size:12px;font-weight:600;color:var(--texto);line-height:1.2">Depósito<br>en OXXO</div>
+        </div>
+        <div class="pago-option" data-value="Link de pago" onclick="selectPago('Link de pago')" style="padding:12px 8px;border:2px solid var(--borde);border-radius:12px;cursor:pointer;text-align:center;transition:all .15s;background:var(--blanco)">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--verde);margin-bottom:4px"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+          <div style="font-size:12px;font-weight:600;color:var(--texto);line-height:1.2">Tarjeta<br>(crédito/débito)</div>
         </div>
       </div>
-      <div style="font-size:11px;color:var(--texto2);text-align:center;margin-bottom:12px;line-height:1.4">Te enviaremos los datos de pago por WhatsApp tras confirmar</div>
+      <div style="font-size:11px;color:var(--texto2);text-align:center;margin-bottom:12px;line-height:1.4">Te enviaremos los datos de pago o link de cobro por WhatsApp tras confirmar tu pedido</div>
 
       <div class="order-btn-row">
         <button class="order-btn secondary" onclick="orderGoStep(3)">Regresar</button>
