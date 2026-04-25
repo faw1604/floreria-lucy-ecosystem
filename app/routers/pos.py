@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Cookie, Request
+from fastapi import APIRouter, Depends, HTTPException, Cookie, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime, timedelta
@@ -1212,6 +1212,7 @@ async def pos_aprobar_enviar_ticket(
 async def pos_finalizar_pedido(
     pedido_id: int,
     request: Request,
+    background_tasks: BackgroundTasks,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1219,14 +1220,14 @@ async def pos_finalizar_pedido(
         raise HTTPException(status_code=401, detail="No autenticado")
     import traceback as _tb
     try:
-        return await _pos_finalizar_inner(pedido_id, request, db)
+        return await _pos_finalizar_inner(pedido_id, request, db, background_tasks)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"[POS FINALIZAR] Error: {e}\n{_tb.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def _pos_finalizar_inner(pedido_id, request, db):
+async def _pos_finalizar_inner(pedido_id, request, db, background_tasks=None):
     result = await db.execute(select(Pedido).where(Pedido.id == pedido_id))
     pedido = result.scalar_one_or_none()
     if not pedido:
@@ -1264,7 +1265,9 @@ async def _pos_finalizar_inner(pedido_id, request, db):
     await db.commit()
 
     # WhatsApp al cliente: pago confirmado (web y POS)
-    # Mandar en background para no bloquear la respuesta del POS (Whapi puede tardar 10-20s).
+    # Usar BackgroundTasks de FastAPI: garantiza ejecución después del response,
+    # sin bloquear (Whapi puede tardar 10-20s). asyncio.create_task tenía riesgo
+    # de garbage-collection antes de completarse — bug detectado 25-abr.
     if pedido.tracking_token and pedido.customer_id:
         try:
             cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
@@ -1278,15 +1281,67 @@ async def _pos_finalizar_inner(pedido_id, request, db):
                     f"Tu pago para el pedido {pedido.numero} fue confirmado! Tu arreglo sera elaborado pronto.\n\n"
                     f"Sigue el estatus aqui:\n{tracking_url}"
                 )
-                import asyncio
-                async def _send_wa():
-                    try: await _enviar_whatsapp(_tel_wa, _msg_wa)
-                    except Exception: pass
-                asyncio.create_task(_send_wa())
-        except Exception:
-            pass
+                async def _send_wa(tel, msg, folio):
+                    try:
+                        await _enviar_whatsapp(tel, msg)
+                        logger.info(f"[POS FINALIZAR] WhatsApp pago confirmado enviado a {tel} para {folio}")
+                    except Exception as wa_err:
+                        logger.error(f"[POS FINALIZAR] Error enviando WhatsApp para {folio}: {wa_err}")
+                if background_tasks is not None:
+                    background_tasks.add_task(_send_wa, _tel_wa, _msg_wa, pedido.numero)
+                else:
+                    # Fallback: ejecutar inline (si por alguna razón no se pasó background_tasks)
+                    await _send_wa(_tel_wa, _msg_wa, pedido.numero)
+        except Exception as e:
+            logger.error(f"[POS FINALIZAR] Error preparando WhatsApp: {e}")
 
     return {"ok": True, "folio": pedido.numero, "estado": pedido.estado}
+
+
+@router.post("/pedido/{pedido_ref}/reenviar-confirmacion-pago")
+async def pos_reenviar_confirmacion_pago(
+    pedido_ref: str,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reenvía manualmente el WhatsApp de 'Pago confirmado' al cliente.
+
+    Útil si el WhatsApp automático falló al finalizar el pedido (red caída,
+    Whapi rate-limited, bug, etc.). Acepta id numérico o folio (FL-2026-XXXX).
+    """
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    pedido = None
+    if pedido_ref.isdigit():
+        result = await db.execute(select(Pedido).where(Pedido.id == int(pedido_ref)))
+        pedido = result.scalar_one_or_none()
+    if not pedido:
+        result = await db.execute(select(Pedido).where(Pedido.numero == pedido_ref))
+        pedido = result.scalar_one_or_none()
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+    if not pedido.customer_id:
+        raise HTTPException(status_code=400, detail="Pedido sin cliente asociado")
+
+    cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+    cliente = cliente_result.scalar_one_or_none()
+    if not cliente or not cliente.telefono:
+        raise HTTPException(status_code=400, detail="Cliente sin teléfono registrado")
+
+    tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}" if pedido.tracking_token else None
+    msg = f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+    msg += f"Tu pago para el pedido {pedido.numero} fue confirmado! Tu arreglo sera elaborado pronto."
+    if tracking_url:
+        msg += f"\n\nSigue el estatus aqui:\n{tracking_url}"
+
+    from app.routers.catalogo import _enviar_whatsapp
+    try:
+        await _enviar_whatsapp(cliente.telefono, msg)
+        logger.info(f"[POS REENVIAR] WhatsApp pago confirmado reenviado a {cliente.telefono} para {pedido.numero}")
+        return {"ok": True, "mensaje": f"WhatsApp enviado a {cliente.telefono}", "folio": pedido.numero}
+    except Exception as e:
+        logger.error(f"[POS REENVIAR] Error: {e}")
+        raise HTTPException(status_code=502, detail=f"Error enviando WhatsApp: {e}")
 
 
 @router.patch("/pedido/{pedido_id}/editar-fecha")
