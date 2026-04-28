@@ -2555,8 +2555,15 @@ function renderStep3Fields() {
     <div class="order-field"><label>${muestraDisclaimer ? 'Tu teléfono' : 'Teléfono'} <span class="required">*</span> <span style="font-size:11px;color:var(--texto2);font-weight:400">(te llegarán datos de pago aquí)</span></label>
       <div class="order-phone-row">
         ${countrySelectHtml('of-pais', pedidoWeb.pais_cliente)}
-        <input type="tel" id="of-telefono" value="${pedidoWeb.cliente_telefono||''}" placeholder="10 dígitos" maxlength="15">
+        <input type="tel" id="of-telefono" value="${pedidoWeb.cliente_telefono||''}" placeholder="10 dígitos" maxlength="15" oninput="onTelClienteInput()" onpaste="event.preventDefault();alert('Por seguridad, escribe tu número manualmente para evitar errores.')">
       </div>
+    </div>
+    <div class="order-field"><label>Confirma tu teléfono <span class="required">*</span></label>
+      <div class="order-phone-row">
+        <div style="display:flex;align-items:center;justify-content:center;padding:0 12px;color:var(--texto2);font-size:13px;background:#f5f5f5;border:1px solid var(--borde);border-radius:8px">${pedidoWeb.pais_cliente || '+52'}</div>
+        <input type="tel" id="of-telefono-confirm" value="${pedidoWeb.cliente_telefono_confirm||''}" placeholder="Escríbelo de nuevo" maxlength="15" oninput="onTelClienteInput()" onpaste="event.preventDefault();alert('Por seguridad, escribe tu número manualmente para evitar errores.')">
+      </div>
+      <div id="of-tel-match-hint" style="margin-top:6px;font-size:12px"></div>
     </div>
     <div class="order-field"><label>${muestraDisclaimer ? 'Tu correo electrónico' : 'Correo electrónico'}</label><input type="email" id="of-email" value="${pedidoWeb.cliente_email||''}" placeholder="tu@email.com"></div>`;
 
@@ -3291,12 +3298,28 @@ document.addEventListener('click', (e) => {
   if (dd && input && !dd.contains(e.target) && e.target !== input) dd.style.display = 'none';
 });
 
+function onTelClienteInput() {
+  const a = (document.getElementById('of-telefono')?.value || '').replace(/\D/g, '');
+  const b = (document.getElementById('of-telefono-confirm')?.value || '').replace(/\D/g, '');
+  const hint = document.getElementById('of-tel-match-hint');
+  if (!hint) return;
+  if (!a || !b) { hint.innerHTML = ''; return; }
+  if (a === b) {
+    hint.innerHTML = '<span style="color:#166534;font-weight:600">✓ Los números coinciden</span>';
+  } else if (b.length < a.length) {
+    hint.innerHTML = '<span style="color:var(--texto2)">Sigue escribiendo…</span>';
+  } else {
+    hint.innerHTML = '<span style="color:#dc2626;font-weight:600">✗ Los números no coinciden — revisa</span>';
+  }
+}
+
 function saveStep3Data() {
   const tipo = pedidoWeb.tipo;
   pedidoWeb.cliente_nombre_first = (document.getElementById('of-nombre')?.value || '').trim();
   pedidoWeb.cliente_nombre_last = (document.getElementById('of-apellido')?.value || '').trim();
   pedidoWeb.cliente_nombre = (pedidoWeb.cliente_nombre_first + ' ' + pedidoWeb.cliente_nombre_last).trim();
   pedidoWeb.cliente_telefono = (document.getElementById('of-telefono')?.value || '').trim();
+  pedidoWeb.cliente_telefono_confirm = (document.getElementById('of-telefono-confirm')?.value || '').trim();
   pedidoWeb.pais_cliente = document.getElementById('of-pais')?.value || '+52';
   pedidoWeb.telefono_completo = pedidoWeb.pais_cliente.replace('+','') + pedidoWeb.cliente_telefono;
   pedidoWeb.cliente_email = (document.getElementById('of-email')?.value || '').trim();
@@ -3339,6 +3362,15 @@ function validateStep3() {
   if (!pedidoWeb.cliente_nombre_first || pedidoWeb.cliente_nombre_first.length < 3) { alert('Nombre(s) es obligatorio (mínimo 3 caracteres)'); return false; }
   if (!pedidoWeb.cliente_nombre_last) { alert('Apellido(s) es obligatorio'); return false; }
   if (!pedidoWeb.cliente_telefono || pedidoWeb.cliente_telefono.length < 10) { alert('Teléfono es obligatorio (10 dígitos)'); return false; }
+  {
+    const a = (pedidoWeb.cliente_telefono || '').replace(/\D/g, '');
+    const b = (pedidoWeb.cliente_telefono_confirm || '').replace(/\D/g, '');
+    if (a !== b) {
+      alert('Los números de teléfono no coinciden. Por favor revisa que ambos sean iguales.\n\nEs el número al que te llegarán los datos de pago.');
+      try { document.getElementById('of-telefono-confirm')?.focus(); } catch(e) {}
+      return false;
+    }
+  }
   if (!pedidoWeb.fecha_entrega) { alert('Fecha de entrega es obligatoria'); return false; }
   // Validar que la fecha no sea pasada (algunos pickers de iOS permiten seleccionar
   // fechas antes del min). Comparamos contra el atributo min del input directamente.
