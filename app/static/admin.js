@@ -948,7 +948,8 @@ async function exportarProductos() {
 }
 
 // Estado del filtro del historial de stock (persiste entre re-aperturas del modal)
-let _stockHistFiltro = { cat: undefined, rango: 'todo', desde: null, hasta: null };
+// modo: 'entrega' = por fecha_entrega (qué hay que entregar) | 'venta' = por pago_confirmado_at (qué se cobró)
+let _stockHistFiltro = { cat: undefined, rango: 'todo', desde: null, hasta: null, modo: 'entrega' };
 
 // Helper: calcula desde/hasta según el rango seleccionado
 function _calcStockRange(rango) {
@@ -984,6 +985,11 @@ function _calcStockRange(rango) {
   return { desde: null, hasta: null };
 }
 
+function setStockHistModo(modo) {
+  _stockHistFiltro.modo = (modo === 'venta') ? 'venta' : 'entrega';
+  abrirHistorialStock();
+}
+
 async function abrirHistorialStock(catFiltro, rangoOverride) {
   // Cargar config temporada (una vez por sesión)
   if (window._tempFechaFuerte === undefined) {
@@ -1009,6 +1015,7 @@ async function abrirHistorialStock(catFiltro, rangoOverride) {
   if (_stockHistFiltro.cat) qs.set('categoria', _stockHistFiltro.cat);
   if (desde) qs.set('fecha_desde', desde);
   if (hasta) qs.set('fecha_hasta', hasta);
+  if (_stockHistFiltro.modo === 'venta') qs.set('modo', 'venta');
   const url = API + '/api/admin/stock-historial' + (qs.toString() ? '?' + qs.toString() : '');
 
   // Cargar lista completa de categorías (independiente del filtro actual) — una vez por sesión
@@ -1040,7 +1047,16 @@ async function abrirHistorialStock(catFiltro, rangoOverride) {
       'custom': desde && hasta ? `${desde} → ${hasta}` : 'Personalizado',
     }[_stockHistFiltro.rango] || 'Todo';
 
+    const modoActivo = _stockHistFiltro.modo === 'venta' ? 'venta' : 'entrega';
     let html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center">';
+    // Toggle modo (Por entrega / Por venta)
+    const btnBase = 'padding:6px 12px;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit';
+    const btnActivo = 'background:var(--verde-oscuro,#193a2c);color:#fff;border-color:var(--verde-oscuro,#193a2c)';
+    const btnInactivo = 'background:#fff;color:#333';
+    html += '<div style="display:inline-flex;border-radius:8px;overflow:hidden">';
+    html += `<button onclick="setStockHistModo('entrega')" style="${btnBase};${modoActivo==='entrega'?btnActivo:btnInactivo};border-radius:8px 0 0 8px" title="Productos cuya fecha de ENTREGA está en el rango">📦 Por entrega</button>`;
+    html += `<button onclick="setStockHistModo('venta')" style="${btnBase};${modoActivo==='venta'?btnActivo:btnInactivo};border-radius:0 8px 8px 0;border-left:none" title="Productos cuyo PAGO se confirmó en el rango (igual que POS Transacciones)">💰 Por venta</button>`;
+    html += '</div>';
     // Filtro categoría
     html += '<select id="stock-hist-cat" onchange="abrirHistorialStock(this.value)" style="padding:6px 10px;border:1px solid #ccc;border-radius:8px">';
     html += '<option value="">Todas las categorías</option>';
@@ -1072,9 +1088,11 @@ async function abrirHistorialStock(catFiltro, rangoOverride) {
 
     // Hint contextual cuando hay filtro de fecha
     if (desde || hasta) {
+      const labelCol = modoActivo === 'venta' ? 'Vendidos' : 'A entregar';
+      const criterio = modoActivo === 'venta' ? 'pago confirmado' : 'fecha de entrega';
       const hint = _stockHistFiltro.rango === 'fecha_fuerte' || _stockHistFiltro.rango === 'temporada_full'
-        ? '"Vendidos" cuenta solo items para entrega en este rango. "Stock + vendidos" = stock con el que arrancaste.'
-        : '"Vendidos" cuenta solo items para entrega en este rango.';
+        ? `"${labelCol}" cuenta items con ${criterio} en este rango. "Stock + ${labelCol.toLowerCase()}" = stock con el que arrancaste.`
+        : `"${labelCol}" cuenta items con ${criterio} en este rango.`;
       html += `<div style="font-size:11px;color:#888;margin-bottom:10px;padding:6px 10px;background:rgba(212,168,67,0.08);border-left:3px solid var(--dorado);border-radius:4px">💡 ${hint}</div>`;
     }
 
@@ -1083,8 +1101,9 @@ async function abrirHistorialStock(catFiltro, rangoOverride) {
     } else {
       let totalActual = 0, totalVendidos = 0, totalInicial = 0;
       html += '<div style="overflow-x:auto"><table class="data-table" style="width:100%"><thead><tr>';
-      const colInicial = (desde || hasta) ? 'Stock + vendidos' : 'Stock inicial est.';
-      html += `<th>Producto</th><th>Categoría</th><th style="text-align:right">Stock actual</th><th style="text-align:right">Vendidos</th><th style="text-align:right">${colInicial}</th>`;
+      const labelVendidos = modoActivo === 'venta' ? 'Vendidos' : 'A entregar';
+      const colInicial = (desde || hasta) ? `Stock + ${labelVendidos.toLowerCase()}` : 'Stock inicial est.';
+      html += `<th>Producto</th><th>Categoría</th><th style="text-align:right">Stock actual</th><th style="text-align:right">${labelVendidos}</th><th style="text-align:right">${colInicial}</th>`;
       html += '</tr></thead><tbody>';
       data.forEach(p => {
         totalActual += p.stock_actual;

@@ -2080,19 +2080,23 @@ async def stock_historial(
     categoria: str | None = None,
     fecha_desde: str | None = None,
     fecha_hasta: str | None = None,
+    modo: str = "entrega",
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Historial de stock con filtro opcional por rango de FECHA DE ENTREGA.
+    """Historial de stock con filtro opcional por rango de fecha.
 
-    'vendidos' cuenta cantidad de items en pedidos cuya fecha_entrega está
-    en el rango. Sin rango = todo el historial (comportamiento legacy).
+    modo='entrega' (default): filtra por fecha_entrega. Útil para saber
+        qué hay que tener listo en el taller para entregar en el rango.
+    modo='venta': filtra por pago_confirmado_at::date. Útil para saber
+        qué se cobró en el rango (coincide con POS Transacciones).
 
-    Útil para temporadas: filtrar por 10-may → ver cuántos items vendidos
-    SOLO para entregar ese día, sin que cuenten ventas pasadas.
+    Sin rango = todo el historial.
     """
     _auth(panel_session)
     from datetime import date as _date_type
+    if modo not in ("entrega", "venta"):
+        modo = "entrega"
     params = {}
     if categoria:
         params["cat"] = categoria
@@ -2112,11 +2116,12 @@ async def stock_historial(
 
     # NOTA: filtros van en el ON del LEFT JOIN para que productos sin ventas
     # en el rango aparezcan con vendidos=0 (no se omitan del listado).
+    fecha_col = "ped.pago_confirmado_at::date" if modo == "venta" else "ped.fecha_entrega"
     join_extra = ""
     if fecha_desde:
-        join_extra += " AND ped.fecha_entrega >= :fd"
+        join_extra += f" AND {fecha_col} >= :fd"
     if fecha_hasta:
-        join_extra += " AND ped.fecha_entrega <= :fh"
+        join_extra += f" AND {fecha_col} <= :fh"
 
     result = await db.execute(text(f"""
         SELECT p.id, p.nombre, p.categoria, p.imagen_url, p.stock,
