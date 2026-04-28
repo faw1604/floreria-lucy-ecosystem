@@ -916,21 +916,24 @@ async def seguimiento_pedido(token: str, db: AsyncSession = Depends(get_db)):
             "requiere_respuesta": False,
         }
 
-    # Obtener teléfono del cliente para mostrarlo enmascarado en el banner
-    # (anti-error: cliente verifica si el número al que llegan notificaciones es el suyo)
+    # Obtener teléfono del cliente para mostrarlo en el banner de validación
+    # (anti-error: cliente verifica si el número al que llegan notificaciones es el suyo).
+    # Solo se muestra si el pedido NO ha sido pagado todavía: si ya pagó, se da por hecho
+    # que recibió correctamente los datos de pago por WhatsApp.
     cliente_tel = None
-    if pedido.customer_id:
+    if pedido.customer_id and not pedido.pago_confirmado:
         from app.models.clientes import Cliente
         cli_r = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
         cli = cli_r.scalar_one_or_none()
         if cli and cli.telefono:
-            # Enmascarar: solo mostrar últimos 4 dígitos. Ej: '+52 *** *** 0297'
+            # Mostrar número completo formateado para que cliente pueda validar dígito por dígito.
+            # Ej: '+52 614 207 0297' (sin enmascarar — el cliente ya está autenticado por el token).
             tel_digits = ''.join(c for c in cli.telefono if c.isdigit())
             tel_10 = tel_digits[-10:] if len(tel_digits) >= 10 else tel_digits
             if len(tel_10) == 10:
-                cliente_tel = f"+52 *** *** {tel_10[-4:]}"
+                cliente_tel = f"+52 {tel_10[0:3]} {tel_10[3:6]} {tel_10[6:10]}"
             else:
-                cliente_tel = f"+52 ***{tel_digits[-4:] if len(tel_digits) >= 4 else tel_digits}"
+                cliente_tel = f"+52 {tel_digits}"
 
     return {
         "folio": pedido.numero,
