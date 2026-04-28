@@ -2576,6 +2576,9 @@ function renderStep3Fields() {
         <div id="cat-dir-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--borde);border-top:none;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:220px;overflow-y:auto"></div>
       </div>
       <div id="cat-geo-badge" style="margin-top:6px"></div>
+      <div style="font-size:12px;color:#6b6b6b;margin-top:6px;line-height:1.4;padding:8px 10px;background:rgba(212,168,67,0.08);border-left:3px solid var(--dorado);border-radius:4px">
+        💡 <strong>Selecciona tu dirección de la lista</strong> para calcular el envío. Si el nombre de la colonia se ve distinto al que conoces es normal — Google a veces usa nombres oficiales. Lo importante es la <strong>calle y número</strong>.
+      </div>
     </div>
     <div class="order-field"><label>Dedicatoria</label><textarea id="of-dedicatoria" placeholder="Mensaje para la tarjeta...">${pedidoWeb.dedicatoria||''}</textarea></div>
     <div class="order-field"><label>Notas para el repartidor</label><input type="text" id="of-notas" value="${pedidoWeb.notas_entrega||''}" placeholder="Ej: Portón negro, tocar timbre"></div>
@@ -2973,7 +2976,7 @@ async function selectCatDirSuggestion(placeId, description) {
       pedidoWeb.dir_verified = true;
       pedidoWeb.geo_data = data;
       document.getElementById('cat-geo-badge').innerHTML =
-        `<span style="display:inline-block;background:#e8f5ec;color:#166534;padding:4px 12px;border-radius:8px;font-size:13px;font-weight:600">\u2713 ${data.zona_envio} — $${(data.tarifa_envio||0)/100}</span>`;
+        `<span style="display:inline-flex;align-items:center;gap:6px;background:#e8f5ec;color:#166534;padding:6px 14px;border-radius:8px;font-size:14px;font-weight:600;box-shadow:0 1px 3px rgba(22,101,52,.15)">\u2713 Dirección confirmada · ${data.zona_envio} · Envío $${(data.tarifa_envio||0)/100}</span>`;
     }
   } catch(e) {
     document.getElementById('cat-geo-badge').innerHTML = '<span style="font-size:12px;color:#dc2626">Error de conexión</span>';
@@ -3352,6 +3355,14 @@ function validateStep3() {
     if (!pedidoWeb.nombre_destinatario) { alert('Nombre de quien recibe es obligatorio'); return false; }
     if (!pedidoWeb.telefono_destinatario || pedidoWeb.telefono_destinatario.length < 10) { alert('Teléfono de quien recibe es obligatorio'); return false; }
     if (!pedidoWeb.direccion_entrega) { alert('Dirección de entrega es obligatoria'); return false; }
+    if (!pedidoWeb.dir_verified || !pedidoWeb.geo_data) {
+      alert('Por favor selecciona tu dirección de la lista de sugerencias para calcular el envío.\n\nEscribe la calle y número, espera las opciones y haz click en una.\n\nSi tu dirección no aparece, contáctanos por WhatsApp.');
+      try {
+        const dInput = document.getElementById('of-direccion');
+        if (dInput) { dInput.focus(); dInput.scrollIntoView({behavior:'smooth',block:'center'}); }
+      } catch(e) {}
+      return false;
+    }
     if (!pedidoWeb.horario_entrega) { alert('Selecciona un horario de entrega'); return false; }
     if (pedidoWeb.horario_entrega === 'hora_especifica' && !pedidoWeb.hora_especifica) { alert('Selecciona la hora específica'); return false; }
   }
