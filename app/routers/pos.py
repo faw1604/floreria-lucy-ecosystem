@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Cookie, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date as date_type
 import httpx
 from app.core.limiter import limiter
 import os, json
@@ -38,17 +38,28 @@ async def _generar_folio(db: AsyncSession) -> str:
 
 async def _todos_productos_terminados(items: list, db: AsyncSession) -> bool:
     """Verifica si TODOS los items son de categorías que no requieren elaboración.
-    Categorías terminadas: temporada_categoria (config) y 'Dulces Y Regalos'.
-    Productos personalizados siempre requieren elaboración."""
+    - 'Dulces Y Regalos': siempre productos preempacados (bypass siempre).
+    - temporada_categoria: SOLO bypass si estamos dentro de la ventana de fecha fuerte
+      (mismos días de restricción que catalogo.py). Fuera de la ventana, los arreglos de
+      temporada SÍ requieren elaboración del florista.
+    - Productos personalizados siempre requieren elaboración."""
     if not items:
         return False
-    # Obtener categoría de temporada desde config
     cfg_result = await db.execute(select(ConfiguracionNegocio))
     cfg_map = {c.clave: c.valor for c in cfg_result.scalars().all()}
-    temporada_cat = cfg_map.get("temporada_categoria", "")
     categorias_terminadas = {"Dulces Y Regalos"}
-    if temporada_cat:
-        categorias_terminadas.add(temporada_cat)
+    # Solo agregar temporada_categoria si estamos en ventana de fecha fuerte
+    if (cfg_map.get("temporada_modo") == "alta"
+            and cfg_map.get("temporada_categoria")
+            and cfg_map.get("temporada_fecha_fuerte")):
+        try:
+            fecha_fuerte = date_type.fromisoformat(cfg_map["temporada_fecha_fuerte"])
+            dias_restr = int(cfg_map.get("temporada_dias_restriccion", "2"))
+            diff = (fecha_fuerte - hoy()).days
+            if 0 <= diff < dias_restr:
+                categorias_terminadas.add(cfg_map["temporada_categoria"])
+        except Exception:
+            pass
     for item in items:
         if item.get("es_personalizado") or item.get("es_custom"):
             return False
