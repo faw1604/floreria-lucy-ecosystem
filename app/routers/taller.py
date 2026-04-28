@@ -402,7 +402,10 @@ async def proximos(
     manana = hoy() + timedelta(days=1)
     result = await db.execute(
         select(Pedido)
-        .where(Pedido.fecha_entrega > manana)
+        .where(
+            Pedido.fecha_entrega > manana,
+            Pedido.estado.notin_(EP.FINALIZADOS),
+        )
         .order_by(Pedido.fecha_entrega, Pedido.horario_entrega)
     )
     pedidos = result.scalars().all()
