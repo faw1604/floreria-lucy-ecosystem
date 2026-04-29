@@ -2448,8 +2448,10 @@ async function abrirGastosRecurrentes() {
     const r = await fetch(API+'/api/admin/gastos-recurrentes', {credentials:'include'});
     const data = await r.json();
     // Check paid status por frecuencia (rodante desde hoy)
+    // Hasta = hoy + 1 día por si zona horaria deja la fecha del egreso adelantada.
     const hoyD = new Date(); hoyD.setHours(0,0,0,0);
-    const hastaRec = hoyD.toISOString().split('T')[0];
+    const mananaD = new Date(hoyD.getTime() + 24*3600*1000);
+    const hastaRec = mananaD.toISOString().split('T')[0];
     const desdeRec = new Date(hoyD.getTime() - 35*24*3600*1000).toISOString().split('T')[0];
     const er = await fetch(API+'/api/admin/egresos?desde='+desdeRec+'&hasta='+hastaRec, {credentials:'include'});
     const egs = await er.json();
