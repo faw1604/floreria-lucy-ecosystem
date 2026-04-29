@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Cookie, Request
+from fastapi import APIRouter, Depends, HTTPException, Cookie, Request, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.models.pagos import MetodoPago
 from app.models.pedidos import Pedido
+from app.models.clientes import Cliente
 from app.routers.auth import verificar_sesion
 from app.core import mp_client
 import logging
@@ -260,7 +261,7 @@ async def pago_pendiente(token: str | None = None):
 
 
 @router.post("/mp/webhook")
-async def mp_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+async def mp_webhook(request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """Recibe notificaciones de MercadoPago cuando cambia el estado de un pago.
 
     MP manda body como:
@@ -356,6 +357,34 @@ async def mp_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         pedido.estado = EP.PAGADO
     await db.commit()
     log.info(f"MP webhook: pedido {external_ref} marcado como PAGADO (payment_id={data_id})")
+
+    # Enviar WhatsApp de confirmación de pago al cliente.
+    # Mismo patrón que pos_finalizar_pedido (pos.py:1278): usa BackgroundTasks
+    # para no bloquear la respuesta y porque MP reintenta si tarda demasiado.
+    if pedido.tracking_token and pedido.customer_id:
+        try:
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                from app.routers.catalogo import _enviar_whatsapp
+                _tel_wa = cliente.telefono
+                _nombre_wa = cliente.nombre.split()[0] if cliente.nombre else "amig@"
+                _msg_wa = (
+                    f"Hola {_nombre_wa} 🌸\n\n"
+                    f"Tu pago para el pedido {pedido.numero} fue confirmado! Tu arreglo sera elaborado pronto.\n\n"
+                    f"Sigue el estatus aqui:\n{tracking_url}"
+                )
+                async def _send_wa(tel, msg, folio):
+                    try:
+                        await _enviar_whatsapp(tel, msg)
+                        log.info(f"[MP WEBHOOK] WhatsApp pago confirmado enviado a {tel} para {folio}")
+                    except Exception as wa_err:
+                        log.error(f"[MP WEBHOOK] Error enviando WhatsApp para {folio}: {wa_err}")
+                background_tasks.add_task(_send_wa, _tel_wa, _msg_wa, pedido.numero)
+        except Exception as e:
+            log.error(f"[MP WEBHOOK] Error preparando WhatsApp para {external_ref}: {e}")
+
     return {"ok": True}
 
 
@@ -368,6 +397,7 @@ async def mp_webhook_get():
 @router.post("/mp/reconciliar/{pedido_ref}")
 async def mp_reconciliar_pedido(
     pedido_ref: str,
+    background_tasks: BackgroundTasks,
     panel_session: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -442,6 +472,32 @@ async def mp_reconciliar_pedido(
         pedido.estado = EP.PAGADO
     await db.commit()
     log.info(f"MP reconciliar: pedido {pedido.numero} marcado PAGADO (payment_id={pago_aprobado.get('id')})")
+
+    # Enviar WhatsApp de confirmación al cliente (mismo patrón que webhook).
+    if pedido.tracking_token and pedido.customer_id:
+        try:
+            cliente_result = await db.execute(select(Cliente).where(Cliente.id == pedido.customer_id))
+            cliente = cliente_result.scalar_one_or_none()
+            if cliente and cliente.telefono:
+                tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                from app.routers.catalogo import _enviar_whatsapp
+                _tel_wa = cliente.telefono
+                _nombre_wa = cliente.nombre.split()[0] if cliente.nombre else "amig@"
+                _msg_wa = (
+                    f"Hola {_nombre_wa} 🌸\n\n"
+                    f"Tu pago para el pedido {pedido.numero} fue confirmado! Tu arreglo sera elaborado pronto.\n\n"
+                    f"Sigue el estatus aqui:\n{tracking_url}"
+                )
+                async def _send_wa(tel, msg, folio):
+                    try:
+                        await _enviar_whatsapp(tel, msg)
+                        log.info(f"[MP RECONCILIAR] WhatsApp pago confirmado enviado a {tel} para {folio}")
+                    except Exception as wa_err:
+                        log.error(f"[MP RECONCILIAR] Error enviando WhatsApp para {folio}: {wa_err}")
+                background_tasks.add_task(_send_wa, _tel_wa, _msg_wa, pedido.numero)
+        except Exception as e:
+            log.error(f"[MP RECONCILIAR] Error preparando WhatsApp para {pedido.numero}: {e}")
+
     return {
         "ok": True,
         "marcado_pagado": True,
