@@ -1173,7 +1173,9 @@ async def productos_temporada(
     # Check temporada_modo == alta
     r_cfg = await db.execute(
         select(ConfiguracionNegocio).where(
-            ConfiguracionNegocio.clave.in_(["temporada_modo", "temporada_categoria"])
+            ConfiguracionNegocio.clave.in_([
+                "temporada_modo", "temporada_categoria", "temporada_fecha_fuerte",
+            ])
         )
     )
     cfg = {c.clave: c.valor for c in r_cfg.scalars().all()}
@@ -1181,6 +1183,14 @@ async def productos_temporada(
         return {"temporada_activa": False, "productos": []}
 
     categoria = cfg["temporada_categoria"]
+    fecha_fuerte_str = cfg.get("temporada_fecha_fuerte")
+    fecha_fuerte = None
+    if fecha_fuerte_str:
+        try:
+            fecha_fuerte = date_type.fromisoformat(fecha_fuerte_str)
+        except ValueError:
+            fecha_fuerte = None
+
     result = await db.execute(
         select(Producto).where(
             Producto.categoria == categoria,
@@ -1188,9 +1198,32 @@ async def productos_temporada(
         ).order_by(Producto.nombre)
     )
     productos = result.scalars().all()
+
+    # Calcular agendados por producto: items en pedidos confirmados con
+    # fecha_entrega = fecha_fuerte. Estados que cuentan: pagado, En produccion,
+    # listo_taller. Excluir esperando_validacion / pendiente_pago / comprobante_recibido
+    # (pueden cancelarse) y finalizados/cancelados.
+    agendados_map: dict[int, int] = {}
+    if fecha_fuerte and productos:
+        prod_ids = [p.id for p in productos]
+        estados_confirmados = [EP.PAGADO, EP.EN_PRODUCCION, EP.LISTO_TALLER]
+        r_ag = await db.execute(
+            select(ItemPedido.producto_id, func.coalesce(func.sum(ItemPedido.cantidad), 0))
+            .join(Pedido, Pedido.id == ItemPedido.pedido_id)
+            .where(
+                ItemPedido.producto_id.in_(prod_ids),
+                Pedido.fecha_entrega == fecha_fuerte,
+                Pedido.estado.in_(estados_confirmados),
+            )
+            .group_by(ItemPedido.producto_id)
+        )
+        for pid, total in r_ag.all():
+            agendados_map[pid] = int(total or 0)
+
     return {
         "temporada_activa": True,
         "categoria": categoria,
+        "fecha_fuerte": fecha_fuerte_str,
         "productos": [
             {
                 "id": p.id,
@@ -1200,6 +1233,8 @@ async def productos_temporada(
                 "stock": p.stock,
                 "stock_activo": p.stock_activo,
                 "precio": p.precio,
+                "agendados": agendados_map.get(p.id, 0),
+                "por_armar": max(0, agendados_map.get(p.id, 0) - p.stock),
             }
             for p in productos
         ],
