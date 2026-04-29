@@ -100,6 +100,22 @@ async def inicializar_db():
         except Exception as e:
             _log.error(f"Tabla zonas_envio_override ERROR: {e}")
 
+    # 3b. Tabla taller_temporada_listo (florista marca producto completado para fecha fuerte)
+    async with engine.begin() as conn:
+        from sqlalchemy import text
+        try:
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS taller_temporada_listo (
+                    producto_id INTEGER NOT NULL,
+                    fecha_objetivo DATE NOT NULL,
+                    listo_at TIMESTAMP DEFAULT NOW(),
+                    PRIMARY KEY (producto_id, fecha_objetivo)
+                )
+            """))
+            _log.info("Tabla taller_temporada_listo: OK")
+        except Exception as e:
+            _log.error(f"Tabla taller_temporada_listo ERROR: {e}")
+
     # 3. Crear tabla reservas en conexión separada
     async with engine.begin() as conn:
         from sqlalchemy import text

@@ -1204,6 +1204,7 @@ async def productos_temporada(
     # listo_taller. Excluir esperando_validacion / pendiente_pago / comprobante_recibido
     # (pueden cancelarse) y finalizados/cancelados.
     agendados_map: dict[int, int] = {}
+    listos_set: set[int] = set()
     if fecha_fuerte and productos:
         prod_ids = [p.id for p in productos]
         estados_confirmados = [EP.PAGADO, EP.EN_PRODUCCION, EP.LISTO_TALLER]
@@ -1220,6 +1221,14 @@ async def productos_temporada(
         for pid, total in r_ag.all():
             agendados_map[pid] = int(total or 0)
 
+        # Productos marcados como listos (terminada la producción) para esta fecha
+        from sqlalchemy import text as _text
+        r_listos = await db.execute(
+            _text("SELECT producto_id FROM taller_temporada_listo WHERE fecha_objetivo = :f"),
+            {"f": fecha_fuerte},
+        )
+        listos_set = {row[0] for row in r_listos.all()}
+
     return {
         "temporada_activa": True,
         "categoria": categoria,
@@ -1235,10 +1244,56 @@ async def productos_temporada(
                 "precio": p.precio,
                 "agendados": agendados_map.get(p.id, 0),
                 "por_armar": max(0, agendados_map.get(p.id, 0) - p.stock),
+                "listo": p.id in listos_set,
             }
             for p in productos
         ],
     }
+
+
+@router.post("/productos-temporada/{producto_id}/toggle-listo")
+async def toggle_listo_temporada(
+    producto_id: int,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Marca o desmarca un producto como completado para la fecha fuerte de temporada."""
+    _auth(panel_session)
+    # Obtener fecha fuerte
+    r_cfg = await db.execute(
+        select(ConfiguracionNegocio).where(
+            ConfiguracionNegocio.clave == "temporada_fecha_fuerte"
+        )
+    )
+    cfg = r_cfg.scalar_one_or_none()
+    if not cfg or not cfg.valor:
+        raise HTTPException(status_code=400, detail="No hay fecha fuerte configurada")
+    try:
+        fecha_fuerte = date_type.fromisoformat(cfg.valor)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Fecha fuerte inválida")
+
+    from sqlalchemy import text as _text
+    # Si ya existe, eliminar (toggle off). Si no, insertar (toggle on).
+    r_existe = await db.execute(
+        _text("SELECT 1 FROM taller_temporada_listo WHERE producto_id = :p AND fecha_objetivo = :f"),
+        {"p": producto_id, "f": fecha_fuerte},
+    )
+    existe = r_existe.scalar_one_or_none()
+    if existe:
+        await db.execute(
+            _text("DELETE FROM taller_temporada_listo WHERE producto_id = :p AND fecha_objetivo = :f"),
+            {"p": producto_id, "f": fecha_fuerte},
+        )
+        await db.commit()
+        return {"ok": True, "listo": False}
+    else:
+        await db.execute(
+            _text("INSERT INTO taller_temporada_listo (producto_id, fecha_objetivo) VALUES (:p, :f)"),
+            {"p": producto_id, "f": fecha_fuerte},
+        )
+        await db.commit()
+        return {"ok": True, "listo": True}
 
 
 @router.post("/productos-temporada/{producto_id}/agregar-stock")

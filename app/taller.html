@@ -1870,8 +1870,8 @@ async function loadTemporada() {
 function renderTemporada(data) {
   const productos = data.productos || [];
   const el = document.getElementById('temporada-body');
-  // Badge: total piezas por armar (suma global)
-  const totalPorArmar = productos.reduce((acc, p) => acc + (p.por_armar || 0), 0);
+  // Badge: total piezas por armar (excluye los marcados como terminados)
+  const totalPorArmar = productos.reduce((acc, p) => acc + (p.listo ? 0 : (p.por_armar || 0)), 0);
   setBadge('badge-temporada', totalPorArmar);
 
   if (!productos.length) {
@@ -1881,7 +1881,7 @@ function renderTemporada(data) {
 
   // Resumen + fecha objetivo
   const fechaFuerte = data.fecha_fuerte || '—';
-  const cubiertos = productos.filter(p => (p.por_armar || 0) === 0).length;
+  const cubiertos = productos.filter(p => p.listo || (p.por_armar || 0) === 0).length;
   let html = `<div style="margin-bottom:14px;padding:12px 14px;background:var(--crema);border-radius:10px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:14px">
     <span><strong>📅 Fecha objetivo:</strong> ${esc(fechaFuerte)}</span>
     <span><strong>🎯 Total por armar:</strong> <span style="color:${totalPorArmar>0?'#dc2626':'#166534'};font-weight:700">${totalPorArmar}</span></span>
@@ -1893,30 +1893,40 @@ function renderTemporada(data) {
     const porArmar = p.por_armar || 0;
     const agendados = p.agendados || 0;
     const stock = p.stock || 0;
-    const cubierto = porArmar === 0 && agendados > 0;
     const sinAgenda = agendados === 0;
     const sobrante = stock > agendados ? (stock - agendados) : 0;
+    const marcadoListo = !!p.listo;
 
     // Color de la tarjeta según estado
     let borderColor = 'var(--borde)';
     let badgeBg = '#f3f4f6';
     let badgeColor = '#6b7280';
     let badgeText = '—';
-    if (porArmar > 0) {
+    if (marcadoListo) {
+      borderColor = '#22c55e';
+      badgeBg = '#dcfce7';
+      badgeColor = '#14532d';
+      badgeText = '✓ Terminado';
+    } else if (porArmar > 0) {
       borderColor = '#f97316';
       badgeBg = '#fff7ed';
       badgeColor = '#c2410c';
       badgeText = `${porArmar} por armar`;
-    } else if (cubierto) {
+    } else if (!sinAgenda) {
       borderColor = '#22c55e';
       badgeBg = '#f0fdf4';
       badgeColor = '#166534';
       badgeText = '✓ Cubierto';
-    } else if (sinAgenda) {
+    } else {
       badgeText = 'Sin pedidos';
     }
 
-    html += `<div class="temp-card" style="border:2px solid ${borderColor}">
+    const btnLabel = marcadoListo ? '↩ Reabrir' : '✓ Marcar terminado';
+    const btnStyle = marcadoListo
+      ? 'background:#fff;color:#6b7280;border:1px solid #d1d5db'
+      : 'background:#22c55e;color:#fff;border:none';
+
+    html += `<div class="temp-card" style="border:2px solid ${borderColor}${marcadoListo ? ';opacity:.85' : ''}">
       ${p.imagen_url ? `<img class="temp-img" src="${p.imagen_url}" alt="${esc(p.nombre)}" onerror="this.style.display='none'">` : '<div class="temp-img" style="display:flex;align-items:center;justify-content:center;font-size:48px;color:var(--texto2)">🌸</div>'}
       <div class="temp-body">
         <div class="temp-nombre">${esc(p.nombre)}</div>
@@ -1925,13 +1935,33 @@ function renderTemporada(data) {
         <div style="font-size:12px;color:var(--texto2);line-height:1.6;margin-top:6px">
           <div>📦 Agendados: <strong style="color:var(--texto)">${agendados}</strong></div>
           <div>🪟 Listos: <strong style="color:var(--texto)">${stock}</strong></div>
-          ${sobrante > 0 ? `<div style="color:#166534;font-size:11px;margin-top:2px">+${sobrante} extra disponible(s)</div>` : ''}
+          ${sobrante > 0 && agendados > 0 ? `<div style="color:#166534;font-size:11px;margin-top:2px">+${sobrante} extra disponible(s)</div>` : ''}
         </div>
+      </div>
+      <div class="temp-actions">
+        <button onclick="toggleListoTemporada(${p.id})" style="${btnStyle};padding:8px 14px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;width:100%">${btnLabel}</button>
       </div>
     </div>`;
   });
   html += '</div>';
   el.innerHTML = html;
+}
+
+async function toggleListoTemporada(productoId) {
+  try {
+    const r = await fetch(`${TALLER_API}/productos-temporada/${productoId}/toggle-listo`, {
+      method: 'POST', credentials: 'include',
+    });
+    if (!r.ok) {
+      let msg = 'Error al actualizar';
+      try { const e = await r.json(); if (e.detail) msg = e.detail; } catch(_) {}
+      alert(msg);
+      return;
+    }
+    loadTemporada();
+  } catch(e) {
+    alert('Error de conexión');
+  }
 }
 
 function abrirTempStock(id, nombre, stockActual) {
