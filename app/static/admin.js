@@ -362,6 +362,14 @@ async function pollProdStock() {
 }
 setInterval(pollProdStock, 30000);
 
+// Sincronización en vivo entre tabs del mismo navegador (BroadcastChannel).
+// Cuando OTRA tab anuncia cambio de stock, refrescamos sin esperar el polling.
+if (typeof onStockChanged === 'function') {
+  onStockChanged(() => {
+    try { pollProdStock(); } catch(e) {}
+  });
+}
+
 let prodObserver = null;
 function observeProdSentinel() {
   if (prodObserver) prodObserver.disconnect();
@@ -803,6 +811,10 @@ async function guardarProducto(id) {
   cerrarModal('modal-producto');
   showToast('Producto guardado ✓');
   loadProductos();
+  // Stock pudo haber cambiado → avisar a otras tabs.
+  if (typeof broadcastStockChanged === 'function') {
+    try { broadcastStockChanged({source: 'admin', motivo: 'ajuste', productoId: prodId}); } catch(e) {}
+  }
   } catch(e) {
     alert('Error al guardar: ' + (e?.message || e));
     if (btnSave) { btnSave.disabled = false; btnSave.textContent = 'Guardar producto'; }

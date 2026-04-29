@@ -2045,5 +2045,25 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('focus', () => { loadBadges(); });
 </script>
+<script src="/static/stock-sync.js"></script>
+<script>
+// Refrescar pestañas que muestran stock al recibir broadcast.
+if (typeof onStockChanged === 'function') {
+  onStockChanged(() => {
+    try {
+      // Si está en pestaña Temporada, recarga
+      const tabTemp = document.getElementById('tab-temporada');
+      if (tabTemp && tabTemp.classList && tabTemp.classList.contains('active')) {
+        if (typeof loadTemporada === 'function') loadTemporada();
+      }
+      // Inventario taller (si existe la función)
+      const tabInv = document.getElementById('tab-inventario');
+      if (tabInv && tabInv.classList && tabInv.classList.contains('active')) {
+        if (typeof loadInventario === 'function') loadInventario();
+      }
+    } catch(e) {}
+  });
+}
+</script>
 </body>
 </html>

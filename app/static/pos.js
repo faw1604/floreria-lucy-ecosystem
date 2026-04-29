@@ -296,6 +296,16 @@ async function pollStockPOS() {
 }
 setInterval(pollStockPOS, 15000);
 
+// Sincronización en vivo entre tabs del mismo navegador (BroadcastChannel).
+// Cuando OTRA tab (admin, catálogo, taller) anuncia cambio de stock, refrescamos
+// inmediatamente sin esperar el siguiente polling.
+if (typeof onStockChanged === 'function') {
+  onStockChanged(async () => {
+    if (!_shouldPollPOSStock()) return;
+    try { await fetchProds(); await fetchCategorias(); } catch(e) {}
+  });
+}
+
 function renderProds() {
   const c = document.getElementById('prod-container');
   if (vistaActual === 'grid') {
@@ -1662,6 +1672,10 @@ async function submitPedido(estado) {
     }
     // Refresh all tabs immediately after order creation
     setTimeout(() => updateBadgePend(), 500);
+    // Si la venta se cerró pagada, el stock cambió → avisar a otras tabs.
+    if (estado === 'pagado' && typeof broadcastStockChanged === 'function') {
+      try { broadcastStockChanged({source: 'pos', motivo: 'venta'}); } catch(e) {}
+    }
     mostrarModalCreado(result);
   } catch(e) {
     console.error('POS submitPedido error:', e);
@@ -2609,6 +2623,10 @@ async function fpConfirm() {
     renderPendTable(pendAllData);
     contadorPendientes--;
     renderBadge();
+    // Stock cambió al finalizar el pago → avisar a otras tabs.
+    if (typeof broadcastStockChanged === 'function') {
+      try { broadcastStockChanged({source: 'pos', motivo: 'venta'}); } catch(e) {}
+    }
   } catch(e) {
     alert('Error de red');
     if (btn) { btn.dataset.processing = ''; btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; btn.textContent = 'Finalizar'; }

@@ -3894,5 +3894,14 @@ document.addEventListener('contextmenu', e => {
   if (e.target.tagName === 'IMG') e.preventDefault();
 });
 </script>
+<script src="/static/stock-sync.js"></script>
+<script>
+// Refrescar listado al recibir broadcast de stock cambiado.
+if (typeof onStockChanged === 'function') {
+  onStockChanged(() => {
+    try { if (typeof loadProducts === 'function') loadProducts(); } catch(e) {}
+  });
+}
+</script>
 </body>
 </html>
