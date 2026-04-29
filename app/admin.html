@@ -374,11 +374,38 @@
       <button class="sub-tab" onclick="cfgSubTab('cfg-horarios')">Horarios</button>
       <button class="sub-tab" onclick="cfgSubTab('cfg-temporada')">Temporada</button>
       <button class="sub-tab" onclick="cfgSubTab('cfg-funerarias')">Funerarias</button>
+      <button class="sub-tab" onclick="cfgSubTab('cfg-taller')">Taller</button>
     </div>
     <div class="sub-content" id="cfg-negocio-content"></div>
     <div class="sub-content" id="cfg-banco-content" style="display:none"></div>
     <div class="sub-content" id="cfg-ticket-content" style="display:none"></div>
     <div class="sub-content" id="cfg-whatsapp-content" style="display:none"></div>
+    <div class="sub-content" id="cfg-taller-content" style="display:none">
+      <div class="config-card">
+        <h3 style="margin:0 0 12px;font-size:16px">🔔 Notificaciones del taller</h3>
+        <div style="font-size:12px;color:var(--texto2);margin-bottom:18px;line-height:1.5">
+          Sonido pulsante (cada ~9 seg) cuando llega un pedido nuevo a la pestaña Nuevos.
+          Se silencia al hacer click en la tarjeta del pedido.
+        </div>
+        <div class="config-field" style="margin-bottom:16px">
+          <label style="display:block;font-weight:600;margin-bottom:6px">Volumen del sonido</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="range" id="taller-vol-slider" min="0" max="100" step="5" value="50" style="flex:1" oninput="document.getElementById('taller-vol-num').textContent=this.value+'%'">
+            <span id="taller-vol-num" style="min-width:50px;font-weight:600;font-family:monospace">50%</span>
+            <button class="btn-sm" onclick="testTallerSonido()" style="padding:6px 12px">▶ Probar</button>
+            <button class="btn-primary" onclick="guardarTallerVolumen()" style="padding:6px 14px">Guardar</button>
+          </div>
+          <div style="font-size:11px;color:var(--texto2);margin-top:4px">0% = silencio total · 100% = volumen máximo</div>
+        </div>
+        <div class="toggle-row" style="border-top:1px solid var(--borde);padding-top:14px;margin-top:14px">
+          <div>
+            <label style="font-weight:600">Solo en horario de tienda</label>
+            <div style="font-size:11px;color:var(--texto2)">Si está activo, el sonido se silencia automáticamente fuera del horario configurado en la pestaña Horarios.</div>
+          </div>
+          <input type="checkbox" id="taller-solo-horario" onchange="toggleConfig('taller_sonido_solo_horario', String(this.checked))">
+        </div>
+      </div>
+    </div>
     <div class="sub-content" id="cfg-temporada-content" style="display:none">
       <div class="config-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">

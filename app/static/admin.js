@@ -3645,6 +3645,7 @@ async function loadConfig() {
   loadTurnos();
   loadFunerariasAdmin();
   loadModoTemporada();
+  loadConfigTaller();
   try {
     const r = await fetch(API + '/configuracion/', {credentials:'include'});
     const data = await r.json();
@@ -3804,3 +3805,48 @@ async function updateBadge() {
 }
 updateBadge();
 setInterval(updateBadge, 30000);
+
+// ══════ CONFIG TALLER (notificaciones sonoras) ══════
+async function loadConfigTaller() {
+  try {
+    const r = await fetch(API + '/configuracion/', {credentials:'include'});
+    const data = await r.json();
+    const cfg = {};
+    data.forEach(c => cfg[c.clave] = c.valor);
+    const vol = parseInt(cfg.taller_sonido_volumen ?? '50', 10);
+    const slider = document.getElementById('taller-vol-slider');
+    const num = document.getElementById('taller-vol-num');
+    if (slider) slider.value = isNaN(vol) ? 50 : vol;
+    if (num) num.textContent = (isNaN(vol) ? 50 : vol) + '%';
+    const horario = (cfg.taller_sonido_solo_horario ?? 'true') === 'true';
+    const cb = document.getElementById('taller-solo-horario');
+    if (cb) cb.checked = horario;
+  } catch(e) { console.error('loadConfigTaller', e); }
+}
+
+async function guardarTallerVolumen() {
+  const slider = document.getElementById('taller-vol-slider');
+  const v = slider ? parseInt(slider.value, 10) : 50;
+  await toggleConfig('taller_sonido_volumen', String(v));
+}
+
+function testTallerSonido() {
+  // Reproduce el mismo ding que usa el taller, con el volumen del slider en vivo.
+  const slider = document.getElementById('taller-vol-slider');
+  const vol = slider ? Math.max(0, Math.min(100, parseInt(slider.value, 10) || 0)) : 50;
+  if (vol === 0) { showToast('Volumen en 0% — sin sonido'); return; }
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    const peak = 0.3 * (vol / 100);
+    gain.gain.setValueAtTime(peak, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) { alert('Tu navegador bloqueó el audio. Intenta de nuevo.'); }
+}
