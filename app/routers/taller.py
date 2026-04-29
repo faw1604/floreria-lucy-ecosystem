@@ -562,10 +562,12 @@ async def aceptar_con_cambios(
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
                 tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                cuerpo = _formatear_cambio_para_whatsapp(nota).replace("💬", "✏️")
+                primer_nombre = cliente.nombre.split()[0] if cliente.nombre else "amig@"
                 msg = (
-                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"Hola {primer_nombre} 🌸\n\n"
                     f"Nuestro florista hizo una modificación a tu pedido {pedido.numero}:\n\n"
-                    f"✏️ \"{nota}\"\n\n"
+                    f"{cuerpo}\n\n"
                     f"Revisa los detalles aquí:\n{tracking_url}"
                 )
                 from app.routers.catalogo import _enviar_whatsapp
@@ -606,10 +608,13 @@ async def sugerir_cambio(
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
                 tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
+                # Formatear bonito si la nota es JSON estructurado (cambio con opciones)
+                cuerpo = _formatear_cambio_para_whatsapp(nota)
+                primer_nombre = cliente.nombre.split()[0] if cliente.nombre else "amig@"
                 msg = (
-                    f"Hola {cliente.nombre.split()[0]} 🌸\n\n"
+                    f"Hola {primer_nombre} 🌸\n\n"
                     f"Nuestro florista tiene una sugerencia para tu pedido {pedido.numero}:\n\n"
-                    f"💬 \"{nota}\"\n\n"
+                    f"{cuerpo}\n\n"
                     f"Revisa y responde aquí:\n{tracking_url}"
                 )
                 from app.routers.catalogo import _enviar_whatsapp
@@ -619,6 +624,56 @@ async def sugerir_cambio(
             logging.getLogger("floreria").error(f"WhatsApp cambio sugerido: {e}")
 
     return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
+
+
+def _formatear_cambio_para_whatsapp(nota: str) -> str:
+    """Formatea la nota_florista (puede ser JSON estructurado o texto plano)
+    en un mensaje legible para WhatsApp.
+
+    JSON esperado:
+      {"item_original": "...", "opciones": [{"nombre", "codigo", "precio", ...}], "nota": "..."}
+
+    Si no parsea como JSON, devuelve el texto crudo entre comillas.
+    """
+    import json as _json
+    if not nota:
+        return ""
+    s = nota.strip()
+    if not (s.startswith("{") or s.startswith("[")):
+        return f'💬 "{s}"'
+    try:
+        data = _json.loads(s)
+    except Exception:
+        return f'💬 "{s}"'
+    if not isinstance(data, dict):
+        return f'💬 "{s}"'
+
+    partes = []
+    item_original = data.get("item_original")
+    if item_original:
+        partes.append(f"❌ No disponible: *{item_original}*")
+    opciones = data.get("opciones") or []
+    if opciones:
+        partes.append("")
+        partes.append("✨ Te proponemos cualquiera de estas opciones:")
+        for op in opciones:
+            nombre = op.get("nombre") or "Producto"
+            codigo = op.get("codigo") or ""
+            precio_centavos = op.get("precio") or 0
+            precio_pesos = precio_centavos / 100 if isinstance(precio_centavos, (int, float)) else 0
+            linea = f"  • {nombre}"
+            if codigo:
+                linea += f" ({codigo})"
+            if precio_pesos > 0:
+                linea += f" — ${precio_pesos:,.0f}"
+            partes.append(linea)
+    nota_libre = (data.get("nota") or "").strip()
+    if nota_libre:
+        partes.append("")
+        partes.append(f"💬 Nota del florista: {nota_libre}")
+    if not partes:
+        return f'💬 "{s}"'
+    return "\n".join(partes)
 
 
 @router.post("/pedidos/{pedido_id}/no-aceptar")

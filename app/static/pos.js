@@ -2236,8 +2236,15 @@ async function loadPendientes(params) {
       throw new Error(err.detail || `Error ${r.status}`);
     }
     const data = await r.json();
-    pendAllData = data.pendientes || [];
-    contadorPendientes = pendAllData.length;
+    // Cuando se filtra por cancelados, el backend pone los cancelados en `finalizados`
+    // (porque su lógica los separa). Concatenamos ambos para que se vean en la tabla
+    // de Pendientes con su badge de cancelado.
+    if (canceladosOn) {
+      pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
+    } else {
+      pendAllData = data.pendientes || [];
+    }
+    contadorPendientes = (data.pendientes || []).length;
     renderBadge();
     renderPendTable(pendAllData);
   } catch(e) {
