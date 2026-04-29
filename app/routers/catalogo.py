@@ -297,6 +297,7 @@ async def capacidad_turnos(fecha: str, db: AsyncSession = Depends(get_db)):
 
     cap_t1 = int(cfg.get("temporada_cap_turno1", "0") or "0")
     cap_t2 = int(cfg.get("temporada_cap_turno2", "0") or "0")
+    cap_recoger = int(cfg.get("temporada_cap_recoger", "0") or "0")
 
     # Contar pedidos a domicilio agendados para esa fecha por turno.
     # Solo excluimos cancelados/rechazados (decisión 4B): incluye esperando_validacion
@@ -314,6 +315,16 @@ async def capacidad_turnos(fecha: str, db: AsyncSession = Depends(get_db)):
     ag_t1 = counts.get("manana", 0) + counts.get("mañana", 0)
     ag_t2 = counts.get("tarde", 0)
 
+    # Contar pedidos para recoger en tienda esa fecha (cualquier hora del día).
+    res_rec = await db.execute(
+        txt("SELECT COUNT(*) FROM pedidos "
+            "WHERE fecha_entrega = :f "
+            "AND estado NOT IN ('Cancelado','rechazado') "
+            "AND metodo_entrega = 'recoger'"),
+        {"f": fecha_d}
+    )
+    ag_recoger = res_rec.scalar() or 0
+
     def _info(cap, ag):
         if cap <= 0:
             return None  # Sin cap configurado
@@ -329,6 +340,7 @@ async def capacidad_turnos(fecha: str, db: AsyncSession = Depends(get_db)):
         "fecha": fecha,
         "turno1": _info(cap_t1, ag_t1),
         "turno2": _info(cap_t2, ag_t2),
+        "recoger": _info(cap_recoger, ag_recoger),
     }
 
 
@@ -780,34 +792,48 @@ async def _crear_pedido_web_inner(request, db):
         except Exception:
             pass
 
-    # --- Validación servidor: capacidad por turno (anti race condition con frontend) ---
-    # Solo aplica para fecha fuerte exacta + entrega a domicilio + cap activo.
+    # --- Validación servidor: capacidad por turno/recoger (anti race condition con frontend) ---
+    # Aplica para fecha fuerte exacta + cap activo. Distingue domicilio (turnos) vs recoger.
     if (cfg.get("temporada_cap_activo", "false") == "true"
-            and cfg.get("temporada_fecha_fuerte")
-            and horario in ("turno1", "turno2")
-            and tipo in ("envio", "domicilio", "funeral_envio")):
+            and cfg.get("temporada_fecha_fuerte")):
         try:
             ff = date_type.fromisoformat(cfg["temporada_fecha_fuerte"])
             if fecha_entrega == ff:
-                cap_key = "temporada_cap_turno1" if horario == "turno1" else "temporada_cap_turno2"
-                cap = int(cfg.get(cap_key, "0") or "0")
-                if cap > 0:
-                    from sqlalchemy import text as _txt
-                    # Mismo criterio que /capacidad-turnos: todos los no cancelados
-                    horarios_match = ("manana", "mañana") if horario == "turno1" else ("tarde",)
-                    res = await db.execute(_txt(
-                        "SELECT COUNT(*) FROM pedidos WHERE fecha_entrega = :f "
-                        "AND estado NOT IN ('Cancelado','rechazado') "
-                        "AND metodo_entrega IN ('envio','funeral_envio','domicilio') "
-                        "AND horario_entrega = ANY(:hs)"
-                    ), {"f": fecha_entrega, "hs": list(horarios_match)})
-                    agendados = res.scalar() or 0
-                    if agendados >= cap:
-                        nombre_t = "Turno 1 (mañana)" if horario == "turno1" else "Turno 2 (tarde)"
-                        raise HTTPException(
-                            status_code=409,
-                            detail=f"{nombre_t} está lleno para esa fecha. Por favor elige otro turno."
-                        )
+                from sqlalchemy import text as _txt
+                # Caso 1: domicilio en turno 1/2
+                if horario in ("turno1", "turno2") and tipo in ("envio", "domicilio", "funeral_envio"):
+                    cap_key = "temporada_cap_turno1" if horario == "turno1" else "temporada_cap_turno2"
+                    cap = int(cfg.get(cap_key, "0") or "0")
+                    if cap > 0:
+                        horarios_match = ("manana", "mañana") if horario == "turno1" else ("tarde",)
+                        res = await db.execute(_txt(
+                            "SELECT COUNT(*) FROM pedidos WHERE fecha_entrega = :f "
+                            "AND estado NOT IN ('Cancelado','rechazado') "
+                            "AND metodo_entrega IN ('envio','funeral_envio','domicilio') "
+                            "AND horario_entrega = ANY(:hs)"
+                        ), {"f": fecha_entrega, "hs": list(horarios_match)})
+                        agendados = res.scalar() or 0
+                        if agendados >= cap:
+                            nombre_t = "Turno 1 (mañana)" if horario == "turno1" else "Turno 2 (tarde)"
+                            raise HTTPException(
+                                status_code=409,
+                                detail=f"{nombre_t} está lleno para esa fecha. Por favor elige otro turno."
+                            )
+                # Caso 2: recoger en tienda (cualquier hora del día)
+                elif tipo == "recoger":
+                    cap_rec = int(cfg.get("temporada_cap_recoger", "0") or "0")
+                    if cap_rec > 0:
+                        res = await db.execute(_txt(
+                            "SELECT COUNT(*) FROM pedidos WHERE fecha_entrega = :f "
+                            "AND estado NOT IN ('Cancelado','rechazado') "
+                            "AND metodo_entrega = 'recoger'"
+                        ), {"f": fecha_entrega})
+                        agendados = res.scalar() or 0
+                        if agendados >= cap_rec:
+                            raise HTTPException(
+                                status_code=409,
+                                detail="Ya no aceptamos más pedidos para recoger en tienda esa fecha. Por favor elige otra fecha o entrega a domicilio."
+                            )
         except HTTPException:
             raise
         except Exception:

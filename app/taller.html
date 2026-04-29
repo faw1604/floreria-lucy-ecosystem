@@ -864,9 +864,18 @@ function renderCardProduccion(p) {
   const timerProd = tiempoDesde(p.produccion_at);
   const esPendientePago = p.estado === 'Pendiente pago' || p.estado === 'pendiente_pago';
 
+  // Pedido para recoger en fecha fuerte de temporada → apartar del stock pre-armado
+  const esApartar = !!(temporadaFechaFuerte
+    && p.fecha_entrega === temporadaFechaFuerte
+    && (p.metodo_entrega === 'recoger' || p.tipo_especial === 'Recoger'));
+
   let pagoBanner = '';
   if (esPendientePago) {
     pagoBanner = '<div style="background:#f59e0b;color:#fff;font-size:12px;font-weight:700;padding:8px 12px;margin:0 0 4px;text-align:center;border-radius:8px">⚠️ NO REALIZAR — FALTA PAGO</div>';
+  }
+  let apartarBanner = '';
+  if (esApartar) {
+    apartarBanner = '<div style="background:#fff7ed;color:#9a3412;border:2px solid #f97316;font-size:12px;font-weight:700;padding:8px 12px;margin:0 0 6px;text-align:center;border-radius:8px;letter-spacing:.3px">📌 APARTAR DEL STOCK<br><span style="font-size:10px;font-weight:500">Pieza ya armada — solo etiquetar</span></div>';
   }
 
   const collapsed = temporadaActiva;
@@ -885,6 +894,7 @@ function renderCardProduccion(p) {
     ${collapsed ? `<div style="font-size:12px;color:#555;padding:0 12px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${itemsResumen}</div>` : ''}
     <div class="kds-body" ${collapsed ? 'style="display:none"' : ''}>
       ${pagoBanner}
+      ${apartarBanner}
       <div class="kds-badges">${badges}</div>
       <div class="kds-cliente">${p.cliente_nombre || p.receptor_nombre || 'Sin nombre'}</div>
       <div class="kds-items">${itemsDetalle(p.items)}</div>
@@ -1914,6 +1924,7 @@ function abrirDescartar(id) {
 
 // ─── TEMPORADA ───
 let temporadaActiva = false;
+let temporadaFechaFuerte = null;  // YYYY-MM-DD para detectar pedidos "apartar del stock"
 let tempStockProductoId = null;
 
 async function checkTemporada() {
@@ -1923,6 +1934,7 @@ async function checkTemporada() {
     const data = await r.json();
     if (data.temporada_activa) {
       temporadaActiva = true;
+      temporadaFechaFuerte = data.fecha_fuerte || null;
       document.getElementById('tab-temporada').style.display = '';
       document.getElementById('temporada-title').textContent = '🌸 ' + (data.categoria || 'Temporada');
       renderTemporada(data);

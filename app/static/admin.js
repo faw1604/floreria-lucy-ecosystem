@@ -1220,6 +1220,8 @@ async function loadModoTemporada() {
     if (capT1) capT1.value = cfg.temporada_cap_turno1 || '';
     const capT2 = document.getElementById('temp-cap-t2');
     if (capT2) capT2.value = cfg.temporada_cap_turno2 || '';
+    const capRec = document.getElementById('temp-cap-recoger');
+    if (capRec) capRec.value = cfg.temporada_cap_recoger || '';
 
     await cargarCategoriasTemporada(cfg.temporada_categoria || '');
   } catch(e) { console.error('loadModoTemporada error:', e); }

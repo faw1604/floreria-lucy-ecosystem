@@ -491,16 +491,21 @@
               </div>
               <input type="checkbox" id="temp-cap-activo" onchange="toggleConfig('temporada_cap_activo', String(this.checked))">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
               <div class="config-field">
                 <label>Turno 1 — Mañana (9-14h)</label>
                 <input type="number" id="temp-cap-t1" min="0" placeholder="Ej: 30" onchange="toggleConfig('temporada_cap_turno1', String(this.value||0))">
-                <div style="font-size:10px;color:var(--texto2);margin-top:2px">0 = sin límite</div>
+                <div style="font-size:10px;color:var(--texto2);margin-top:2px">0 = sin límite · Domicilio</div>
               </div>
               <div class="config-field">
                 <label>Turno 2 — Tarde (14-18h)</label>
                 <input type="number" id="temp-cap-t2" min="0" placeholder="Ej: 25" onchange="toggleConfig('temporada_cap_turno2', String(this.value||0))">
-                <div style="font-size:10px;color:var(--texto2);margin-top:2px">0 = sin límite</div>
+                <div style="font-size:10px;color:var(--texto2);margin-top:2px">0 = sin límite · Domicilio</div>
+              </div>
+              <div class="config-field">
+                <label>Recoger en tienda</label>
+                <input type="number" id="temp-cap-recoger" min="0" placeholder="Ej: 30" onchange="toggleConfig('temporada_cap_recoger', String(this.value||0))">
+                <div style="font-size:10px;color:var(--texto2);margin-top:2px">0 = sin límite · Total del día</div>
               </div>
             </div>
           </div>

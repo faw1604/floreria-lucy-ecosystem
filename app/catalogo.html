@@ -2737,6 +2737,29 @@ async function onFechaChange() {
       if (waDiv) { waDiv.style.display = ''; waDiv.innerHTML = WA_MSG_HTML; }
       return;
     }
+    // Capacidad recoger en fecha fuerte exacta
+    if (esFechaFuerteExacta(fecha)) {
+      try {
+        const rCap = await fetch(`${API}/catalogo/capacidad-turnos?fecha=${encodeURIComponent(fecha)}`);
+        if (rCap.ok) {
+          const dCap = await rCap.json();
+          if (dCap.activo && dCap.recoger && dCap.recoger.lleno) {
+            recogerSel.innerHTML = '<option value="">🚫 Lleno — elige otra fecha</option>';
+            if (waDiv) {
+              waDiv.style.display = '';
+              waDiv.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:14px;border-radius:10px;margin:10px 0;text-align:center;font-size:14px">🚫 Por alta demanda, ya no aceptamos más pedidos para recoger en tienda esa fecha. Por favor elige otra fecha o entrega a domicilio.</div>';
+            }
+            return;
+          } else if (dCap.activo && dCap.recoger && dCap.recoger.ultimos_cupos) {
+            if (waDiv) {
+              const restantes = dCap.recoger.cap - dCap.recoger.agendados;
+              waDiv.style.display = '';
+              waDiv.innerHTML = `<div style="background:#fff3cd;color:#856404;padding:10px 14px;border-radius:10px;margin:10px 0;text-align:center;font-size:13px">⚠️ Últimos ${restantes} cupos disponibles para recoger en tienda esa fecha</div>`;
+            }
+          }
+        }
+      } catch(e) {}
+    }
     const opts = buildRecogerOpts(fecha);
     let minHour = 0;
     const especialFF = getHorarioEspecialFecha(fecha);

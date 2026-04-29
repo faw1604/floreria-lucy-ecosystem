@@ -136,6 +136,23 @@ function getChihuahuaNowPOS() {
   return new Date(new Date().toLocaleString('en-US', {timeZone:'America/Chihuahua'}));
 }
 
+// Aviso de capacidad recoger en POS (solo informativo — no bloquea porque
+// Fer puede ingresar pedidos manualmente a clientes que ya estaban apartados).
+async function aplicarCapacidadRecogerPOS(fecha) {
+  try {
+    if (!esFechaFuertePOS(fecha)) return;
+    const r = await fetch(`/catalogo/capacidad-turnos?fecha=${encodeURIComponent(fecha)}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.activo || !data.recoger) return;
+    if (data.recoger.lleno) {
+      alert('⚠️ El cap de RECOGER en tienda para esa fecha ya está lleno (' +
+            data.recoger.agendados + '/' + data.recoger.cap + '). ' +
+            'Puedes seguir ingresando este pedido si es necesario, pero recuerda que el stock asignado se está agotando.');
+    }
+  } catch(e) {}
+}
+
 // Bloqueo dinámico de turnos por capacidad (solo domicilio en fecha fuerte exacta).
 async function aplicarCapacidadTurnosPOS(fecha) {
   try {
@@ -205,6 +222,8 @@ function onPOSFechaChange() {
     });
     // Aplicar bloqueo dinámico por capacidad (asíncrono — no bloquea el resto de la lógica)
     aplicarCapacidadTurnosPOS(fecha);
+    // También verificar capacidad recoger si aplica (mensaje informativo en POS).
+    aplicarCapacidadRecogerPOS(fecha);
   } else {
     // Restore normal buttons if they were replaced
     if (!horBtns.querySelector('[onclick*="manana"]')) {
