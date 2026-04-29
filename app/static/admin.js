@@ -2521,10 +2521,22 @@ async function confirmarPagoRec(nombre, categoria) {
     es_recurrente: true,
   };
   if (!body.monto) return alert('Monto es obligatorio');
-  await fetch(API+'/api/admin/egresos', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
-  showToast('Pago registrado ✓');
-  loadEgresos();
-  abrirGastosRecurrentes();
+  if (!body.metodo_pago) return alert('Selecciona un método de pago');
+  if (!body.fecha) return alert('Fecha de pago es obligatoria');
+  try {
+    const r = await fetch(API+'/api/admin/egresos', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(body)});
+    if (!r.ok) {
+      let msg = 'Error al registrar el pago';
+      try { const e = await r.json(); if (e.detail) msg = e.detail; } catch(_) {}
+      alert(`${msg} (HTTP ${r.status})`);
+      return;
+    }
+    showToast('Pago registrado ✓');
+    loadEgresos();
+    abrirGastosRecurrentes();
+  } catch(e) {
+    alert('Error de conexión: ' + (e.message || 'desconocido'));
+  }
 }
 
 async function crearGastoRec() {
