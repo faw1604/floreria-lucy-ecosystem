@@ -33,6 +33,7 @@ function navTo(sec) {
     facturacion: loadFacturacion,
     usuarios: loadUsuarios,
     config: loadConfig,
+    'temporada-dash': loadDashFechaFuerte,
   };
   if (loaders[sec]) loaders[sec]();
   // Claudia chat polling
@@ -3838,6 +3839,165 @@ async function guardarTallerVolumen() {
   const slider = document.getElementById('taller-vol-slider');
   const v = slider ? parseInt(slider.value, 10) : 50;
   await toggleConfig('taller_sonido_volumen', String(v));
+}
+
+// ══════ DASHBOARD FECHA FUERTE ══════
+// Mostrar/ocultar el item del sidebar según si la temporada está activa.
+async function _checkTemporadaSidebar() {
+  try {
+    const r = await fetch(API + '/configuracion/', {credentials:'include'});
+    if (!r.ok) return;
+    const data = await r.json();
+    const cfg = {};
+    data.forEach(c => cfg[c.clave] = c.valor);
+    const activa = cfg.temporada_modo === 'alta' && !!cfg.temporada_fecha_fuerte;
+    const sb = document.getElementById('sb-temporada-dash');
+    if (sb) sb.style.display = activa ? '' : 'none';
+  } catch(e) {}
+}
+_checkTemporadaSidebar();
+setInterval(_checkTemporadaSidebar, 5 * 60 * 1000);
+
+function _ffBar(pct, color) {
+  const w = Math.max(0, Math.min(100, pct));
+  return `<div style="background:#e5e7eb;border-radius:6px;height:8px;overflow:hidden;margin-top:4px"><div style="background:${color};height:100%;width:${w}%;transition:width .3s"></div></div>`;
+}
+
+function _ffTurnoCard(label, info, icono) {
+  if (!info) return '';
+  const cap = info.cap || 0;
+  const total = info.agendados || 0;
+  const conf = info.confiables || 0;
+  const riesgo = info.en_riesgo || 0;
+  let bar = '';
+  let pctTxt = '';
+  let bg = '#fff';
+  let border = 'var(--borde)';
+  if (cap > 0) {
+    const pct = info.pct_total;
+    pctTxt = `${total}/${cap} (${pct}%)`;
+    let barColor = '#22c55e';
+    if (pct >= 100) { barColor = '#dc2626'; bg = '#fef2f2'; border = '#fecaca'; }
+    else if (pct >= 90) { barColor = '#f97316'; bg = '#fff7ed'; border = '#fed7aa'; }
+    else if (pct >= 70) { barColor = '#eab308'; }
+    bar = _ffBar(pct, barColor);
+  } else {
+    pctTxt = `${total} pedidos · sin cap`;
+  }
+  return `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:14px 16px;flex:1;min-width:200px">
+    <div style="font-size:12px;color:var(--texto2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${icono} ${label}</div>
+    <div style="font-size:22px;font-weight:700;margin-bottom:2px">${pctTxt}</div>
+    ${bar}
+    <div style="font-size:11px;color:var(--texto2);margin-top:8px">
+      <span style="color:#166534;font-weight:600">✓ ${conf} confiables</span>
+      ${riesgo > 0 ? `<span style="color:#c2410c;margin-left:10px">⚠️ ${riesgo} en riesgo</span>` : ''}
+    </div>
+  </div>`;
+}
+
+async function loadDashFechaFuerte() {
+  const body = document.getElementById('dash-ff-body');
+  if (!body) return;
+  body.innerHTML = '<div style="text-align:center;color:var(--texto2);padding:40px">Cargando…</div>';
+  try {
+    const r = await fetch(API + '/api/admin/dashboard-fecha-fuerte', {credentials:'include'});
+    if (!r.ok) {
+      body.innerHTML = '<div style="text-align:center;color:#dc2626;padding:40px">Error al cargar</div>';
+      return;
+    }
+    const data = await r.json();
+    if (!data.activa) {
+      body.innerHTML = '<div style="text-align:center;color:var(--texto2);padding:60px 20px"><div style="font-size:48px;margin-bottom:12px">🌸</div><div style="font-size:16px;font-weight:600;margin-bottom:4px">Temporada no activa</div><div style="font-size:13px">Activa la temporada en Config → Temporada para usar este dashboard.</div></div>';
+      return;
+    }
+
+    let html = '';
+
+    // Resumen total
+    const t = data.totales || {};
+    html += `<div style="background:linear-gradient(135deg,#193a2c,#2d5a3d);color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px">
+        <div>
+          <div style="font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Resumen Temporada · Fecha fuerte ${data.fecha_fuerte}</div>
+          <div style="font-size:28px;font-weight:700;margin-top:2px">${t.pedidos || 0} pedidos en total</div>
+        </div>
+        <div style="display:flex;gap:18px;font-size:13px">
+          <div><strong style="color:#86efac;font-size:18px">${t.confiables || 0}</strong><br><span style="opacity:.8">Confiables</span></div>
+          <div><strong style="color:#fde68a;font-size:18px">${t.en_riesgo || 0}</strong><br><span style="opacity:.8">En riesgo</span></div>
+          ${t.cambios_pendientes > 0 ? `<div><strong style="color:#fca5a5;font-size:18px">${t.cambios_pendientes}</strong><br><span style="opacity:.8">Cambios pendientes</span></div>` : ''}
+        </div>
+      </div>
+    </div>`;
+
+    // Por día
+    (data.dias || []).forEach(d => {
+      const fechaFmt = new Date(d.fecha + 'T12:00:00').toLocaleDateString('es-MX', {weekday:'long',day:'numeric',month:'long'});
+      const titulo = d.fecha_fuerte
+        ? `🔥 ${fechaFmt} · DÍA FUERTE`
+        : `📅 ${fechaFmt} · día restricción`;
+      const headerBg = d.fecha_fuerte ? '#fff7ed' : '#f9fafb';
+      const headerColor = d.fecha_fuerte ? '#9a3412' : 'var(--texto)';
+      html += `<div style="background:${headerBg};border:1px solid ${d.fecha_fuerte ? '#fed7aa' : 'var(--borde)'};border-radius:12px;padding:14px 18px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          <div style="font-weight:700;font-size:15px;color:${headerColor}">${titulo}</div>
+          <div style="font-size:13px;color:var(--texto2)">
+            <strong style="color:var(--texto)">${d.total}</strong> total ·
+            🚛 ${d.domicilio} domicilio ·
+            🏪 ${d.recoger} recoger
+            ${d.en_riesgo > 0 ? ` · <span style="color:#c2410c">⚠️ ${d.en_riesgo} en riesgo</span>` : ''}
+          </div>
+        </div>`;
+      if (d.fecha_fuerte) {
+        html += `<div style="display:flex;gap:12px;flex-wrap:wrap">
+          ${_ffTurnoCard('Turno 1 (mañana)', d.turno1, '🌅')}
+          ${_ffTurnoCard('Turno 2 (tarde)', d.turno2, '☀️')}
+          ${_ffTurnoCard('Recoger en tienda', d.recoger_info, '🏪')}
+        </div>`;
+      }
+      html += '</div>';
+    });
+
+    // Acción: ver pedidos en riesgo
+    if ((t.en_riesgo || 0) > 0) {
+      html += `<div style="margin-top:18px;text-align:center">
+        <button class="btn-primary" onclick="abrirPedidosRiesgoFF()" style="padding:10px 20px">⚠️ Ver ${t.en_riesgo} pedidos en riesgo (esperando validación o pendientes pago)</button>
+      </div>`;
+    }
+
+    body.innerHTML = html;
+  } catch(e) {
+    body.innerHTML = `<div style="text-align:center;color:#dc2626;padding:40px">Error: ${e.message || e}</div>`;
+  }
+}
+
+async function abrirPedidosRiesgoFF() {
+  try {
+    const r = await fetch(API + '/api/admin/dashboard-fecha-fuerte/pedidos-riesgo', {credentials:'include'});
+    if (!r.ok) { alert('Error al cargar'); return; }
+    const data = await r.json();
+    const pedidos = data.pedidos || [];
+    let html = `<h4 style="margin:0 0 12px">⚠️ Pedidos en riesgo (${pedidos.length})</h4>
+      <div style="font-size:12px;color:var(--texto2);margin-bottom:14px">Estos pedidos están agendados para la temporada pero NO han confirmado pago. Si no se confirman, podrían liberar cupo.</div>`;
+    if (!pedidos.length) {
+      html += '<div style="text-align:center;color:var(--texto2);padding:20px">Sin pedidos en riesgo ✓</div>';
+    } else {
+      html += '<div style="max-height:60vh;overflow-y:auto"><table class="data-table" style="width:100%;font-size:13px"><thead><tr><th>Folio</th><th>Cliente</th><th>Fecha</th><th>Tipo</th><th>Estado</th><th>Total</th></tr></thead><tbody>';
+      pedidos.forEach(p => {
+        const tel = p.cliente_telefono ? `<a href="https://wa.me/${(p.cliente_telefono||'').replace(/\\D/g,'').replace(/^52?1?/,'521')}" target="_blank" style="color:#25d366;text-decoration:none">📞</a>` : '';
+        html += `<tr>
+          <td><strong>${esc(p.numero||'')}</strong></td>
+          <td>${esc(p.cliente_nombre||'—')} ${tel}</td>
+          <td>${p.fecha_entrega || '—'}<br><span style="font-size:11px;color:var(--texto2)">${p.horario_entrega||''}</span></td>
+          <td>${p.metodo_entrega||''}</td>
+          <td><span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e">${p.estado}</span></td>
+          <td>$${(p.total||0)/100}</td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+    }
+    document.getElementById('modal-egreso-body').innerHTML = html;
+    document.getElementById('modal-egreso').classList.add('active');
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 function testTallerSonido() {

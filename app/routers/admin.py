@@ -1645,6 +1645,202 @@ async def est_clientes(desde: str, hasta: str, panel_session: str | None = Cooki
     por_compras = [{"nombre":r[0],"pedidos":r[1],"total":r[2],"ticket_medio":round(r[2]/r[1]) if r[1] else 0,"ultima":str(r[3]) if r[3] else None} for r in r2.fetchall()]
     return {"por_valor":por_valor,"por_compras":por_compras}
 
+@router.get("/dashboard-fecha-fuerte")
+async def dashboard_fecha_fuerte(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dashboard de planificación para fecha fuerte de temporada y días de
+    restricción. Devuelve para cada día:
+    - Conteo total y desglose por método (domicilio/recoger).
+    - Para fecha fuerte exacta: capacidad por turno con desglose de pago.
+    - Pedidos en riesgo (esperando_validacion + pendiente_pago).
+
+    EXCLUYE cancelados/rechazados de TODOS los conteos.
+    """
+    _auth(panel_session)
+    from sqlalchemy import text as txt
+    from app.models.configuracion import ConfiguracionNegocio
+
+    cfg_r = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in cfg_r.scalars().all()}
+    if cfg.get("temporada_modo") != "alta" or not cfg.get("temporada_fecha_fuerte"):
+        return {"activa": False}
+
+    try:
+        fecha_fuerte = date.fromisoformat(cfg["temporada_fecha_fuerte"])
+    except ValueError:
+        return {"activa": False}
+
+    dias_restr = int(cfg.get("temporada_dias_restriccion", "2") or "2")
+    cap_activo = cfg.get("temporada_cap_activo", "false") == "true"
+    cap_t1 = int(cfg.get("temporada_cap_turno1", "0") or "0")
+    cap_t2 = int(cfg.get("temporada_cap_turno2", "0") or "0")
+    cap_recoger = int(cfg.get("temporada_cap_recoger", "0") or "0")
+
+    # Generar lista de fechas: dias_restr-1 días previos + fecha fuerte
+    # Ej. si fecha_fuerte=10-may y dias_restr=2: [9-may, 10-may]
+    fechas = []
+    for i in range(dias_restr - 1, -1, -1):
+        fechas.append(fecha_fuerte - timedelta(days=i))
+
+    # Una sola query agregada para todos los días (eficiente)
+    fechas_iso = [f.isoformat() for f in fechas]
+    res = await db.execute(txt(
+        "SELECT fecha_entrega, metodo_entrega, horario_entrega, estado, COUNT(*) "
+        "FROM pedidos "
+        "WHERE fecha_entrega = ANY(:fechas) "
+        "AND estado NOT IN ('Cancelado','rechazado') "
+        "GROUP BY fecha_entrega, metodo_entrega, horario_entrega, estado"
+    ), {"fechas": [f for f in fechas]})
+    rows = res.fetchall()
+
+    # Estados confiables vs en riesgo
+    ESTADOS_RIESGO = {"esperando_validacion", "pendiente_pago", "Pendiente pago", "comprobante_recibido"}
+    METODOS_DOMICILIO = {"envio", "domicilio", "funeral_envio"}
+    METODOS_RECOGER = {"recoger"}
+
+    dias_data = []
+    for f in fechas:
+        es_fuerte = (f == fecha_fuerte)
+        # Inicializar buckets
+        total = 0
+        domicilio_total = 0
+        recoger_total = 0
+        en_riesgo = 0
+        # Desglose por turno (solo si fuerte)
+        t1_total = 0; t1_riesgo = 0
+        t2_total = 0; t2_riesgo = 0
+        rec_total = 0; rec_riesgo = 0
+
+        for row in rows:
+            r_fecha, r_metodo, r_horario, r_estado, r_count = row
+            if r_fecha != f:
+                continue
+            cnt = int(r_count or 0)
+            total += cnt
+            es_riesgo = r_estado in ESTADOS_RIESGO
+            if es_riesgo:
+                en_riesgo += cnt
+            if r_metodo in METODOS_DOMICILIO:
+                domicilio_total += cnt
+                if es_fuerte:
+                    if r_horario in ("manana", "mañana", "turno1"):
+                        t1_total += cnt
+                        if es_riesgo: t1_riesgo += cnt
+                    elif r_horario in ("tarde", "turno2"):
+                        t2_total += cnt
+                        if es_riesgo: t2_riesgo += cnt
+            elif r_metodo in METODOS_RECOGER:
+                recoger_total += cnt
+                if es_fuerte:
+                    rec_total += cnt
+                    if es_riesgo: rec_riesgo += cnt
+
+        dia_info = {
+            "fecha": f.isoformat(),
+            "fecha_fuerte": es_fuerte,
+            "total": total,
+            "domicilio": domicilio_total,
+            "recoger": recoger_total,
+            "en_riesgo": en_riesgo,
+            "confiables": total - en_riesgo,
+        }
+        if es_fuerte:
+            def _turno_info(cap, total_t, riesgo_t):
+                confiables = total_t - riesgo_t
+                if cap > 0:
+                    return {
+                        "cap": cap, "agendados": total_t,
+                        "confiables": confiables, "en_riesgo": riesgo_t,
+                        "lleno": total_t >= cap,
+                        "pct_total": round(total_t / cap * 100) if cap > 0 else 0,
+                        "pct_confiable": round(confiables / cap * 100) if cap > 0 else 0,
+                    }
+                return {
+                    "cap": 0, "agendados": total_t,
+                    "confiables": confiables, "en_riesgo": riesgo_t,
+                    "lleno": False, "pct_total": 0, "pct_confiable": 0,
+                }
+            dia_info["turno1"] = _turno_info(cap_t1, t1_total, t1_riesgo)
+            dia_info["turno2"] = _turno_info(cap_t2, t2_total, t2_riesgo)
+            dia_info["recoger_info"] = _turno_info(cap_recoger, rec_total, rec_riesgo)
+        dias_data.append(dia_info)
+
+    # Totales agregados de toda la temporada
+    total_global = sum(d["total"] for d in dias_data)
+    riesgo_global = sum(d["en_riesgo"] for d in dias_data)
+
+    # Cambios sugeridos pendientes de respuesta del cliente
+    cambios_r = await db.execute(txt(
+        "SELECT COUNT(*) FROM pedidos "
+        "WHERE fecha_entrega = ANY(:fechas) "
+        "AND estado NOT IN ('Cancelado','rechazado') "
+        "AND estado_florista = 'cambio_sugerido'"
+    ), {"fechas": fechas})
+    cambios_pendientes = int(cambios_r.scalar() or 0)
+
+    return {
+        "activa": True,
+        "fecha_fuerte": fecha_fuerte.isoformat(),
+        "dias_restriccion": dias_restr,
+        "cap_activo": cap_activo,
+        "totales": {
+            "pedidos": total_global,
+            "confiables": total_global - riesgo_global,
+            "en_riesgo": riesgo_global,
+            "cambios_pendientes": cambios_pendientes,
+        },
+        "dias": dias_data,
+    }
+
+
+@router.get("/dashboard-fecha-fuerte/pedidos-riesgo")
+async def dashboard_pedidos_riesgo(
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lista detallada de pedidos en estado de riesgo (esperando_validacion +
+    pendiente_pago) para fecha fuerte y días de restricción. Útil para que
+    Fer haga seguimiento manual antes de que se cancelen."""
+    _auth(panel_session)
+    from sqlalchemy import text as txt
+    from app.models.configuracion import ConfiguracionNegocio
+
+    cfg_r = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in cfg_r.scalars().all()}
+    if cfg.get("temporada_modo") != "alta" or not cfg.get("temporada_fecha_fuerte"):
+        return {"activa": False, "pedidos": []}
+    try:
+        fecha_fuerte = date.fromisoformat(cfg["temporada_fecha_fuerte"])
+    except ValueError:
+        return {"activa": False, "pedidos": []}
+    dias_restr = int(cfg.get("temporada_dias_restriccion", "2") or "2")
+    fechas = [fecha_fuerte - timedelta(days=i) for i in range(dias_restr - 1, -1, -1)]
+
+    res = await db.execute(txt(
+        "SELECT p.id, p.numero, p.fecha_entrega, p.horario_entrega, p.metodo_entrega, "
+        "       p.estado, p.estado_florista, p.total, p.fecha_pedido, "
+        "       c.nombre, c.telefono "
+        "FROM pedidos p LEFT JOIN clientes c ON c.id = p.customer_id "
+        "WHERE p.fecha_entrega = ANY(:fechas) "
+        "AND p.estado IN ('esperando_validacion','pendiente_pago','Pendiente pago','comprobante_recibido') "
+        "ORDER BY p.fecha_entrega, p.fecha_pedido DESC"
+    ), {"fechas": fechas})
+    rows = res.fetchall()
+    pedidos = [
+        {
+            "id": r[0], "numero": r[1], "fecha_entrega": r[2].isoformat() if r[2] else None,
+            "horario_entrega": r[3], "metodo_entrega": r[4], "estado": r[5],
+            "estado_florista": r[6], "total": r[7],
+            "fecha_pedido": r[8].isoformat() if r[8] else None,
+            "cliente_nombre": r[9], "cliente_telefono": r[10],
+        }
+        for r in rows
+    ]
+    return {"activa": True, "pedidos": pedidos, "total": len(pedidos)}
+
+
 @router.get("/estadisticas/canales")
 async def est_canales(desde: str, hasta: str, panel_session: str | None = Cookie(default=None), db: AsyncSession = Depends(get_db)):
     _auth(panel_session)

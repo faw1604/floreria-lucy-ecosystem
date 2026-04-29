@@ -25,6 +25,7 @@
     <div class="sb-item" onclick="navTo('web')" id="sb-web"><span class="sb-ico">🌐</span><span class="sb-label">Página Web</span></div>
     <div class="sb-item" onclick="navTo('finanzas')" id="sb-finanzas"><span class="sb-ico">📊</span><span class="sb-label">Finanzas</span></div>
     <div class="sb-item" onclick="navTo('estadisticas')" id="sb-estadisticas"><span class="sb-ico">📈</span><span class="sb-label">Estadísticas</span></div>
+    <div class="sb-item" onclick="navTo('temporada-dash')" id="sb-temporada-dash" style="display:none"><span class="sb-ico">🌸</span><span class="sb-label">Fecha Fuerte</span></div>
     <div class="sb-item" onclick="navTo('facturacion')" id="sb-facturacion"><span class="sb-ico">🧾<span class="badge" id="badge-fact" style="display:none">0</span></span><span class="sb-label">Facturación</span></div>
     <div class="sb-item" onclick="navTo('usuarios')" id="sb-usuarios"><span class="sb-ico">🔑</span><span class="sb-label">Usuarios</span></div>
     <div class="sb-item" onclick="navTo('config')" id="sb-config"><span class="sb-ico">⚙️</span><span class="sb-label">Config</span></div>
@@ -318,6 +319,19 @@
       <div style="position:relative;height:300px"><canvas id="est-main-chart"></canvas></div>
       <div class="table-wrap" style="margin-top:16px"><table class="data-table"><thead id="est-table-head"></thead><tbody id="est-table-body"></tbody></table></div>
     </div>
+  </div>
+</div>
+
+<!-- ════════ FECHA FUERTE (DASHBOARD TEMPORADA) ════════ -->
+<div class="section" id="sec-temporada-dash">
+  <div class="sec-header">
+    <h2>🌸 Dashboard Fecha Fuerte</h2>
+    <div class="sec-actions">
+      <button class="btn-sm" onclick="loadDashFechaFuerte()">🔄 Refrescar</button>
+    </div>
+  </div>
+  <div class="sec-body" id="dash-ff-body">
+    <div style="text-align:center;color:var(--texto2);padding:40px">Cargando…</div>
   </div>
 </div>
 
