@@ -2672,7 +2672,91 @@ function esFechaFuerteExacta(fechaStr) {
   return fechaStr === catConfig.temporada_fecha_fuerte;
 }
 
+// Genera mensaje HTML contextual cuando un cupo está lleno en fecha fuerte.
+// Sugiere alternativas según qué esté disponible. Incluye CTAs a WhatsApp
+// y Google Maps para que el cliente pueda visitar la tienda.
+//
+// caso: 'turno1' | 'turno2' | 'recoger' | 'todos_turnos' | 'todo'
+// info: objeto con datos auxiliares (ej. recoger_disponible: {cap, restantes})
+function buildSugerenciaTienda(caso, info) {
+  const horarioFuerte = (catConfig.temporada_horario_apertura && catConfig.temporada_horario_cierre)
+    ? `${catConfig.temporada_horario_apertura} - ${catConfig.temporada_horario_cierre}`
+    : null;
+  const fechaFuerte = catConfig.temporada_fecha_fuerte || '';
+  const direccion = 'C. Sabino 610, Las Granjas, Chihuahua';
+  const mapsUrl = 'https://maps.google.com/?q=C.+Sabino+610,+Las+Granjas,+Chihuahua';
+
+  // Mensaje WhatsApp pre-llenado según el caso
+  let waMsg = '';
+  if (caso === 'turno1' || caso === 'turno2') {
+    const turno = caso === 'turno1' ? 'Turno 1 (mañana)' : 'Turno 2 (tarde)';
+    waMsg = `Hola, vi en su sitio que ya no hay cupo en ${turno} a domicilio para el ${fechaFuerte}. ¿Tienen disponibilidad si paso a tienda?`;
+  } else if (caso === 'todos_turnos') {
+    waMsg = `Hola, vi en su sitio que ya no hay cupo a domicilio para el ${fechaFuerte}. ¿Tienen disponibilidad si paso a tienda?`;
+  } else if (caso === 'recoger') {
+    waMsg = `Hola, vi en su sitio que ya no aceptan pedidos agendados para recoger el ${fechaFuerte}. ¿Tienen disponibilidad si paso directo a comprar?`;
+  } else if (caso === 'todo') {
+    waMsg = `Hola, vi en su sitio que ya no hay cupos agendados para el ${fechaFuerte}. ¿Tienen disponibilidad si paso directo a tienda?`;
+  }
+  const waUrl = `https://wa.me/5216143349392?text=${encodeURIComponent(waMsg)}`;
+
+  // Título y bullets según caso
+  let titulo = '';
+  let bullets = [];
+  if (caso === 'turno1') {
+    titulo = '🚫 Turno 1 (mañana) está lleno';
+    bullets = [
+      '✓ Aún hay cupo en <strong>Turno 2 (tarde)</strong> — selecciónalo arriba',
+      '✓ O pasa directo a nuestra tienda y compra lo disponible',
+    ];
+  } else if (caso === 'turno2') {
+    titulo = '🚫 Turno 2 (tarde) está lleno';
+    bullets = [
+      '✓ Aún hay cupo en <strong>Turno 1 (mañana)</strong> — selecciónalo arriba',
+      '✓ O pasa directo a nuestra tienda y compra lo disponible',
+    ];
+  } else if (caso === 'todos_turnos') {
+    titulo = '🚫 Sin cupos para entrega a domicilio el ' + fechaFuerte;
+    if (info && info.recoger_disponible && info.recoger_disponible.restantes > 0) {
+      bullets.push(`✓ Aún puedes <strong>recoger en tienda</strong> (${info.recoger_disponible.restantes} cupos disponibles) — cambia la opción arriba`);
+    }
+    bullets.push('✓ O pasa directo a comprar a nuestra tienda');
+  } else if (caso === 'recoger') {
+    titulo = '🚫 No aceptamos más pedidos agendados para recoger';
+    bullets = [
+      '✓ Pero puedes <strong>pasar directo a comprar</strong> lo disponible',
+      '✓ Recomendado: contáctanos por WhatsApp para verificar disponibilidad antes de venir',
+    ];
+  } else if (caso === 'todo') {
+    titulo = '🚫 Sin cupos agendados para el ' + fechaFuerte;
+    bullets = ['💐 Pero estaremos abiertos. ¡Ven temprano para mejor selección!'];
+  }
+
+  let html = `<div style="background:#fef2f2;color:#991b1b;padding:14px 16px;border-radius:12px;margin:10px 0;font-size:14px;line-height:1.6;border:1px solid #fecaca">
+    <div style="font-weight:700;margin-bottom:8px">${titulo}</div>`;
+  if (bullets.length) {
+    html += '<ul style="margin:8px 0;padding-left:20px;color:#7f1d1d">';
+    bullets.forEach(b => { html += `<li style="margin:4px 0">${b}</li>`; });
+    html += '</ul>';
+  }
+  if (horarioFuerte) {
+    html += `<div style="background:#fff;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:13px;color:#374151">
+      🕐 <strong>Horario fecha fuerte:</strong> ${horarioFuerte}<br>
+      📍 ${direccion}
+    </div>`;
+  } else {
+    html += `<div style="background:#fff;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:13px;color:#374151">📍 ${direccion}</div>`;
+  }
+  html += `<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+    <a href="${waUrl}" target="_blank" rel="noopener" style="flex:1;min-width:140px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;background:#25d366;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">📞 WhatsApp</a>
+    <a href="${mapsUrl}" target="_blank" rel="noopener" style="flex:1;min-width:140px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;background:#fff;color:#193a2c;border:2px solid #193a2c;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px">📍 Cómo llegar</a>
+  </div>
+</div>`;
+  return html;
+}
+
 // Aplica bloqueo dinámico por capacidad a Turno 1 / Turno 2 (solo domicilio en fecha fuerte exacta).
+// Si ambos turnos están llenos, muestra sugerencia para pasar a tienda / recoger.
 async function aplicarCapacidadTurnos(fecha) {
   try {
     const r = await fetch(`${API}/catalogo/capacidad-turnos?fecha=${encodeURIComponent(fecha)}`);
@@ -2680,10 +2764,13 @@ async function aplicarCapacidadTurnos(fecha) {
     const data = await r.json();
     if (!data.activo) return;
     const map = { turno1: data.turno1, turno2: data.turno2 };
+    let llenos = 0;
+    let totalCapsConfigurados = 0;
     document.querySelectorAll('#of-horario-grid .order-horario-btn').forEach(btn => {
       const k = btn.dataset.h;
       const info = map[k];
       if (!info) return;
+      totalCapsConfigurados++;
       // Limpiar marcas previas
       btn.disabled = false;
       btn.style.opacity = '';
@@ -2692,6 +2779,7 @@ async function aplicarCapacidadTurnos(fecha) {
       // Quitar etiquetas previas (ej. "Lleno")
       btn.textContent = (k === 'turno1') ? 'Turno 1 (8:00 a 15:00)' : 'Turno 2 (15:00 a 21:00)';
       if (info.lleno) {
+        llenos++;
         btn.disabled = true;
         btn.style.opacity = '0.4';
         btn.style.cursor = 'not-allowed';
@@ -2707,7 +2795,40 @@ async function aplicarCapacidadTurnos(fecha) {
         btn.textContent += ` · ⚠️ Últimos cupos`;
       }
     });
+
+    // Mensaje contextual según cuántos turnos están llenos
+    const sugDiv = _getOrCreateSugerencia();
+    if (totalCapsConfigurados === 0 || llenos === 0) {
+      // Nada lleno → quitar mensaje si existía
+      if (sugDiv) sugDiv.innerHTML = '';
+    } else if (llenos === totalCapsConfigurados) {
+      // Todos los turnos configurados están llenos
+      const recoger_disponible = (data.recoger && !data.recoger.lleno)
+        ? { restantes: data.recoger.cap - data.recoger.agendados }
+        : null;
+      // Si recoger también está lleno o no aplica, caso "todo".
+      const todoLleno = !recoger_disponible && data.recoger && data.recoger.lleno;
+      sugDiv.innerHTML = buildSugerenciaTienda(
+        todoLleno ? 'todo' : 'todos_turnos',
+        { recoger_disponible }
+      );
+    } else {
+      // Solo uno de los dos llenos
+      const turnoLleno = map.turno1 && map.turno1.lleno ? 'turno1' : 'turno2';
+      sugDiv.innerHTML = buildSugerenciaTienda(turnoLleno, null);
+    }
   } catch(e) { /* fallar silente — frontend no bloquea por error de red */ }
+}
+
+function _getOrCreateSugerencia() {
+  let div = document.getElementById('of-sugerencia-tienda');
+  if (!div) {
+    div = document.createElement('div');
+    div.id = 'of-sugerencia-tienda';
+    const grid = document.getElementById('of-horario-grid');
+    if (grid && grid.parentElement) grid.parentElement.appendChild(div);
+  }
+  return div;
 }
 
 function onVelacionChange() {
@@ -2747,7 +2868,7 @@ async function onFechaChange() {
             recogerSel.innerHTML = '<option value="">🚫 Lleno — elige otra fecha</option>';
             if (waDiv) {
               waDiv.style.display = '';
-              waDiv.innerHTML = '<div style="background:#fee2e2;color:#991b1b;padding:14px;border-radius:10px;margin:10px 0;text-align:center;font-size:14px">🚫 Por alta demanda, ya no aceptamos más pedidos para recoger en tienda esa fecha. Por favor elige otra fecha o entrega a domicilio.</div>';
+              waDiv.innerHTML = buildSugerenciaTienda('recoger', null);
             }
             return;
           } else if (dCap.activo && dCap.recoger && dCap.recoger.ultimos_cupos) {
@@ -2850,6 +2971,9 @@ async function onFechaChange() {
   // --- FECHA FUERTE: turnos de temporada ---
   // Clean up block message if switching away from exact fecha fuerte
   if (fechaFuerteBlockEl) fechaFuerteBlockEl.remove();
+  // Clean sugerencia tienda al cambiar de fecha
+  const _sug = document.getElementById('of-sugerencia-tienda');
+  if (_sug) _sug.innerHTML = '';
   if (esFechaFuerte(fecha) && horarioGrid) {
     horarioGrid.innerHTML =
       '<button type="button" class="order-horario-btn" data-h="turno1" onclick="selectHorario(\'turno1\')">Turno 1 (8:00 a 15:00)</button>' +
