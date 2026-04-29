@@ -562,7 +562,7 @@ async def aceptar_con_cambios(
             cliente = cliente_result.scalar_one_or_none()
             if cliente and cliente.telefono:
                 tracking_url = f"https://www.florerialucy.com/catalogo/seguimiento.html?token={pedido.tracking_token}"
-                cuerpo = _formatear_cambio_para_whatsapp(nota).replace("💬", "✏️")
+                cuerpo = _formatear_cambio_para_whatsapp(nota, icono_texto="✏️")
                 primer_nombre = cliente.nombre.split()[0] if cliente.nombre else "amig@"
                 msg = (
                     f"Hola {primer_nombre} 🌸\n\n"
@@ -626,27 +626,28 @@ async def sugerir_cambio(
     return {"ok": True, "id": pedido.id, "estado_florista": pedido.estado_florista}
 
 
-def _formatear_cambio_para_whatsapp(nota: str) -> str:
+def _formatear_cambio_para_whatsapp(nota: str, icono_texto: str = "💬") -> str:
     """Formatea la nota_florista (puede ser JSON estructurado o texto plano)
     en un mensaje legible para WhatsApp.
 
-    JSON esperado:
+    JSON esperado (sugerir-cambio):
       {"item_original": "...", "opciones": [{"nombre", "codigo", "precio", ...}], "nota": "..."}
 
-    Si no parsea como JSON, devuelve el texto crudo entre comillas.
+    Si no parsea como JSON (modificar es texto libre), devuelve el texto crudo
+    con el icono indicado. icono_texto = '💬' para sugerir-cambio, '✏️' para modificar.
     """
     import json as _json
     if not nota:
         return ""
     s = nota.strip()
     if not (s.startswith("{") or s.startswith("[")):
-        return f'💬 "{s}"'
+        return f'{icono_texto} "{s}"'
     try:
         data = _json.loads(s)
     except Exception:
-        return f'💬 "{s}"'
+        return f'{icono_texto} "{s}"'
     if not isinstance(data, dict):
-        return f'💬 "{s}"'
+        return f'{icono_texto} "{s}"'
 
     partes = []
     item_original = data.get("item_original")
@@ -670,9 +671,9 @@ def _formatear_cambio_para_whatsapp(nota: str) -> str:
     nota_libre = (data.get("nota") or "").strip()
     if nota_libre:
         partes.append("")
-        partes.append(f"💬 Nota del florista: {nota_libre}")
+        partes.append(f"{icono_texto} Nota del florista: {nota_libre}")
     if not partes:
-        return f'💬 "{s}"'
+        return f'{icono_texto} "{s}"'
     return "\n".join(partes)
 
 

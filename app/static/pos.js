@@ -2325,7 +2325,9 @@ function toggleFilterPanel(target) {
   const panel = document.getElementById('filter-panel');
   panel.classList.toggle('open');
   document.getElementById('filter-overlay').classList.toggle('open');
-  // Pendientes: ocultar filtros que no aplican (periodo, metodo pago, tipo, cancelados)
+  // Pendientes: ocultar filtros que no aplican (periodo, metodo pago, tipo).
+  // El toggle 'Solo cancelados' SI debe estar visible en Pendientes para
+  // poder revisar los pedidos cancelados sin tener que ir a Transacciones.
   const isPend = filterPanelTarget === 'pend';
   const sections = panel.querySelectorAll('.fp-section');
   if (sections[0]) sections[0].style.display = isPend ? 'none' : '';  // Periodo
@@ -2334,7 +2336,7 @@ function toggleFilterPanel(target) {
   // sections[3] = Canal — siempre visible
   if (sections[4]) sections[4].style.display = isPend ? 'none' : '';  // Tipo
   const cancelToggle = document.getElementById('fp-toggle-cancelados');
-  if (cancelToggle) cancelToggle.style.display = isPend ? 'none' : '';
+  if (cancelToggle) cancelToggle.style.display = '';  // siempre visible
 }
 
 function fpSelectPeriodo(el, val) {
