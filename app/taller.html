@@ -1710,6 +1710,10 @@ async function loadProductosReserva() {
   } catch(e) {}
 }
 
+function _precioEfectivoReserva(p) {
+  return (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
+}
+
 function buscarProductoReserva() {
   const q = document.getElementById('res-buscar').value.toLowerCase().trim();
   if (q.length < 2) { document.getElementById('res-results').innerHTML = ''; return; }
@@ -1718,19 +1722,25 @@ function buscarProductoReserva() {
   ).slice(0, 10);
   document.getElementById('res-results').innerHTML = matches.map(p => {
     const sel = reservaProductoSel && reservaProductoSel.id === p.id;
-    return `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center;${sel?'background:#dcfce7':''}" onclick="selProductoReserva(${p.id},'${esc(p.nombre)}',${p.precio},'${esc(p.codigo||'')}')">
+    const precioEf = _precioEfectivoReserva(p);
+    const enOferta = precioEf < p.precio;
+    const precioHtml = enOferta
+      ? `<span style="text-decoration:line-through;color:#999;margin-right:4px">$${(p.precio||0)/100}</span><span style="color:#dc2626;font-weight:600">$${precioEf/100}</span>`
+      : `$${(p.precio||0)/100}`;
+    return `<div style="padding:10px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center;${sel?'background:#dcfce7':''}" onclick="selProductoReserva(${p.id},'${esc(p.nombre)}',${precioEf},'${esc(p.codigo||'')}',${enOferta?1:0})">
       <div style="display:flex;align-items:center;gap:8px">
         ${p.imagen_url ? `<img src="${p.imagen_url}" style="width:36px;height:36px;border-radius:6px;object-fit:cover">` : ''}
         <span>${p.nombre}</span>
       </div>
-      <span style="color:var(--texto2)">${p.codigo||''} — $${(p.precio||0)/100}</span>
+      <span style="color:var(--texto2)">${p.codigo||''} — ${precioHtml}</span>
     </div>`;
   }).join('') || '<div style="padding:10px 12px;color:var(--texto2)">Sin resultados</div>';
 }
 
-function selProductoReserva(id, nombre, precio, codigo) {
+function selProductoReserva(id, nombre, precio, codigo, enOferta) {
   reservaProductoSel = {id, nombre, precio, codigo};
-  document.getElementById('res-selected').innerHTML = `✅ ${nombre} — $${precio/100}`;
+  const ofertaTag = enOferta ? ' <span style="background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:4px;font-size:11px;font-weight:600">OFERTA</span>' : '';
+  document.getElementById('res-selected').innerHTML = `✅ ${nombre} — $${precio/100}${ofertaTag}`;
   buscarProductoReserva();
 }
 
