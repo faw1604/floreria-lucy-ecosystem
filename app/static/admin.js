@@ -6,6 +6,14 @@ const API = '';
 const WHATSAPP = '5216143349392';
 let _clChatInterval = null;
 
+// Fecha "hoy" en zona horaria America/Chihuahua (YYYY-MM-DD).
+// Evita el bug de toISOString() que usa UTC y puede adelantar/retrasar el día.
+function hoyLocalISO() {
+  const d = new Date();
+  // 'en-CA' devuelve formato YYYY-MM-DD nativamente
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+}
+
 // ══════ NAVIGATION ══════
 function navTo(sec) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -2201,7 +2209,7 @@ function renderFinanzasFiltered() {
 
 async function abrirModalOtroIngreso() {
   await loadMetodosPago();
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyLocalISO();
   document.getElementById('modal-egreso-body').innerHTML = `
     <h4 style="margin-bottom:12px">Registrar otro ingreso</h4>
     <div class="field"><label>Fecha *</label><input type="date" id="oi-fecha" value="${hoy}"></div>
@@ -2309,7 +2317,7 @@ async function abrirModalEgreso(eg) {
   await loadCategoriasGasto();
   await loadProveedores();
   await loadCuentasFinList();
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyLocalISO();
   document.getElementById('modal-egreso-body').innerHTML = `
     <div class="field"><label>Fecha *</label><input type="date" id="eg-fecha" value="${eg?.fecha||hoy}"></div>
     <div class="field"><label>Concepto *</label><input id="eg-concepto" value="${esc(eg?.concepto||'')}"></div>
@@ -2447,12 +2455,15 @@ async function abrirGastosRecurrentes() {
   try {
     const r = await fetch(API+'/api/admin/gastos-recurrentes', {credentials:'include'});
     const data = await r.json();
-    // Check paid status por frecuencia (rodante desde hoy)
-    // Hasta = hoy + 1 día por si zona horaria deja la fecha del egreso adelantada.
-    const hoyD = new Date(); hoyD.setHours(0,0,0,0);
+    // Check paid status por frecuencia (rodante desde hoy, zona Chihuahua).
+    // Hasta = hoy + 1 día como margen por si algún egreso quedó con fecha adelantada.
+    const hoyStr = hoyLocalISO();
+    const hoyD = new Date(hoyStr + 'T00:00:00');
     const mananaD = new Date(hoyD.getTime() + 24*3600*1000);
-    const hastaRec = mananaD.toISOString().split('T')[0];
-    const desdeRec = new Date(hoyD.getTime() - 35*24*3600*1000).toISOString().split('T')[0];
+    const desdeD = new Date(hoyD.getTime() - 35*24*3600*1000);
+    const fmtISO = d => d.toLocaleDateString('en-CA');
+    const hastaRec = fmtISO(mananaD);
+    const desdeRec = fmtISO(desdeD);
     const er = await fetch(API+'/api/admin/egresos?desde='+desdeRec+'&hasta='+hastaRec, {credentials:'include'});
     const egs = await er.json();
     // Mapa concepto -> fecha del pago recurrente más reciente
@@ -2503,7 +2514,7 @@ async function pagarRecurrente(id, nombre, monto, categoria, proveedor, metodoPa
     <h4>Pagar: ${esc(nombre)}</h4>
     <div class="field"><label>Monto real (pesos)</label><input type="number" id="pr-monto" value="${(monto/100).toFixed(2)}" step="0.01"></div>
     <div class="field"><label>Método de pago *</label><select id="pr-mp"><option value="">Selecciona...</option>${mpOptions(metodoPago)}</select></div>
-    <div class="field"><label>Fecha de pago</label><input type="date" id="pr-fecha" value="${new Date().toISOString().split('T')[0]}"></div>
+    <div class="field"><label>Fecha de pago</label><input type="date" id="pr-fecha" value="${hoyLocalISO()}"></div>
     <div class="field"><label>Notas</label><input id="pr-notas"></div>
     <input type="hidden" id="pr-proveedor" value="${esc(proveedor||'')}">
     <button class="btn-primary" onclick="confirmarPagoRec('${esc(nombre)}','${esc(categoria)}')" style="width:100%;margin-top:8px">Confirmar pago</button>
@@ -2791,7 +2802,7 @@ async function guardarConfigCuenta(id) {
 
 async function abrirModalMovimiento() {
   await loadCuentasFinList();
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoy = hoyLocalISO();
   document.getElementById('modal-egreso-body').innerHTML = `
     <h4>Registrar movimiento</h4>
     <div class="field"><label>Cuenta *</label><select id="mv-cuenta"><option value="">Selecciona...</option>${cuentasOptions()}</select></div>
