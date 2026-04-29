@@ -1213,6 +1213,14 @@ async function loadModoTemporada() {
     document.getElementById('temp-horario-apertura').value = cfg.temporada_horario_apertura || '';
     document.getElementById('temp-horario-cierre').value = cfg.temporada_horario_cierre || '';
 
+    // Capacidad por turno
+    const capActivo = document.getElementById('temp-cap-activo');
+    if (capActivo) capActivo.checked = (cfg.temporada_cap_activo || 'false') === 'true';
+    const capT1 = document.getElementById('temp-cap-t1');
+    if (capT1) capT1.value = cfg.temporada_cap_turno1 || '';
+    const capT2 = document.getElementById('temp-cap-t2');
+    if (capT2) capT2.value = cfg.temporada_cap_turno2 || '';
+
     await cargarCategoriasTemporada(cfg.temporada_categoria || '');
   } catch(e) { console.error('loadModoTemporada error:', e); }
 }

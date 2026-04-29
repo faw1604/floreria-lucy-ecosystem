@@ -136,6 +136,42 @@ function getChihuahuaNowPOS() {
   return new Date(new Date().toLocaleString('en-US', {timeZone:'America/Chihuahua'}));
 }
 
+// Bloqueo dinámico de turnos por capacidad (solo domicilio en fecha fuerte exacta).
+async function aplicarCapacidadTurnosPOS(fecha) {
+  try {
+    const r = await fetch(`/catalogo/capacidad-turnos?fecha=${encodeURIComponent(fecha)}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.activo) return;
+    const map = { turno1: data.turno1, turno2: data.turno2 };
+    document.querySelectorAll('#fr-horario .hor-btns .hor-btn').forEach(btn => {
+      const m = btn.getAttribute('onclick').match(/'([^']+)'\)/);
+      if (!m) return;
+      const k = m[1];
+      const info = map[k];
+      if (!info) return;
+      // Limpiar marcas previas
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      btn.style.pointerEvents = '';
+      btn.title = '';
+      // Restaurar texto base según turno
+      btn.textContent = (k === 'turno1') ? 'Turno 1 (8-3pm)' : 'Turno 2 (3-9pm)';
+      if (info.lleno) {
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.style.pointerEvents = 'none';
+        btn.title = 'Turno lleno';
+        btn.textContent += ' · 🚫 Lleno';
+        if (selHorario === k) { selHorario = null; btn.classList.remove('active'); }
+      } else if (info.ultimos_cupos) {
+        btn.title = `Solo ${info.cap - info.agendados} cupos disponibles`;
+        btn.textContent += ` · ⚠️ Últimos`;
+      }
+    });
+  } catch(e) {}
+}
+
 function onPOSFechaChange() {
   const fechaEl = document.getElementById('f-fecha');
   if (!fechaEl) return;
@@ -167,6 +203,8 @@ function onPOSFechaChange() {
       const val = b.getAttribute('onclick').match(/'([^']+)'\)/)[1];
       if (selHorario === val) b.classList.add('active');
     });
+    // Aplicar bloqueo dinámico por capacidad (asíncrono — no bloquea el resto de la lógica)
+    aplicarCapacidadTurnosPOS(fecha);
   } else {
     // Restore normal buttons if they were replaced
     if (!horBtns.querySelector('[onclick*="manana"]')) {

@@ -475,6 +475,35 @@
           <div class="banner-warning" style="font-size:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;border-left:3px solid var(--dorado);margin-top:8px">
             <strong>Nota:</strong> En el día fuerte (y días de restricción) el catálogo solo ofrece la categoría de temporada + regalos + funeral. La tarifa de envío se cobra según el polígono del mapa siempre.
           </div>
+
+          <!-- Capacidad por turno (solo día fuerte, solo domicilio) -->
+          <div style="margin-top:18px;padding:14px;border:1px solid var(--borde);border-radius:10px">
+            <h4 style="margin:0 0 8px;font-size:14px">🚦 Capacidad por turno (solo día fuerte, entrega a domicilio)</h4>
+            <div style="font-size:12px;color:var(--texto2);margin-bottom:12px;line-height:1.5">
+              Bloquea automáticamente el turno cuando se llene la cantidad máxima de pedidos a domicilio.
+              Aplica SOLO el día exacto de la fecha fuerte (10-may). Cuenta TODOS los pedidos no cancelados
+              (incluso esperando_validacion) para reservar el cupo aunque aún no hayan pagado.
+            </div>
+            <div class="toggle-row" style="margin-bottom:12px">
+              <div>
+                <label style="font-weight:600">Activar bloqueo por capacidad</label>
+                <div style="font-size:11px;color:var(--texto2)">Si está OFF, no se aplica límite (caps abajo se ignoran)</div>
+              </div>
+              <input type="checkbox" id="temp-cap-activo" onchange="toggleConfig('temporada_cap_activo', String(this.checked))">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="config-field">
+                <label>Turno 1 — Mañana (9-14h)</label>
+                <input type="number" id="temp-cap-t1" min="0" placeholder="Ej: 30" onchange="toggleConfig('temporada_cap_turno1', String(this.value||0))">
+                <div style="font-size:10px;color:var(--texto2);margin-top:2px">0 = sin límite</div>
+              </div>
+              <div class="config-field">
+                <label>Turno 2 — Tarde (14-18h)</label>
+                <input type="number" id="temp-cap-t2" min="0" placeholder="Ej: 25" onchange="toggleConfig('temporada_cap_turno2', String(this.value||0))">
+                <div style="font-size:10px;color:var(--texto2);margin-top:2px">0 = sin límite</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

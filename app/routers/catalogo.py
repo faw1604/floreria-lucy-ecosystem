@@ -264,6 +264,74 @@ async def turnos_activos_publico(db: AsyncSession = Depends(get_db)):
     }
 
 
+@router.get("/capacidad-turnos")
+async def capacidad_turnos(fecha: str, db: AsyncSession = Depends(get_db)):
+    """Devuelve capacidad y agendados de Turno 1 (mañana) y Turno 2 (tarde)
+    para una fecha dada. Solo aplica a entrega a DOMICILIO en la fecha fuerte
+    de temporada alta. Si la fecha no es la fecha fuerte o el cap está
+    desactivado, devuelve cap=null (frontend lo ignora).
+
+    'Agendados' cuenta TODOS los pedidos no cancelados (incluye
+    esperando_validacion y pendiente_pago) para reservar el slot incluso si
+    aún no han pagado — evita prometer el mismo turno a 2 clientes.
+    """
+    from sqlalchemy import text as txt
+    try:
+        fecha_d = date_type.fromisoformat(fecha)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="fecha inválida (YYYY-MM-DD)")
+
+    r = await db.execute(select(ConfiguracionNegocio))
+    cfg = {c.clave: c.valor for c in r.scalars().all()}
+
+    cap_activo = (cfg.get("temporada_cap_activo", "false") == "true")
+    fecha_fuerte_str = cfg.get("temporada_fecha_fuerte", "")
+    if not cap_activo or not fecha_fuerte_str:
+        return {"activo": False, "turno1": None, "turno2": None}
+    try:
+        fecha_fuerte = date_type.fromisoformat(fecha_fuerte_str)
+    except ValueError:
+        return {"activo": False, "turno1": None, "turno2": None}
+    if fecha_d != fecha_fuerte:
+        return {"activo": False, "turno1": None, "turno2": None}
+
+    cap_t1 = int(cfg.get("temporada_cap_turno1", "0") or "0")
+    cap_t2 = int(cfg.get("temporada_cap_turno2", "0") or "0")
+
+    # Contar pedidos a domicilio agendados para esa fecha por turno.
+    # Solo excluimos cancelados/rechazados (decisión 4B): incluye esperando_validacion
+    # y pendiente_pago para reservar el slot aunque aún no haya pagado.
+    res = await db.execute(
+        txt("SELECT horario_entrega, COUNT(*) FROM pedidos "
+            "WHERE fecha_entrega = :f "
+            "AND estado NOT IN ('Cancelado','rechazado') "
+            "AND metodo_entrega IN ('envio','funeral_envio','domicilio') "
+            "GROUP BY horario_entrega"),
+        {"f": fecha_d}
+    )
+    counts = {row[0]: row[1] for row in res.fetchall()}
+    # Mapeo de horario_entrega → turno: 'manana'/'mañana' = T1, 'tarde' = T2
+    ag_t1 = counts.get("manana", 0) + counts.get("mañana", 0)
+    ag_t2 = counts.get("tarde", 0)
+
+    def _info(cap, ag):
+        if cap <= 0:
+            return None  # Sin cap configurado
+        return {
+            "cap": cap,
+            "agendados": ag,
+            "lleno": ag >= cap,
+            "ultimos_cupos": ag >= int(cap * 0.9) and ag < cap,
+        }
+
+    return {
+        "activo": True,
+        "fecha": fecha,
+        "turno1": _info(cap_t1, ag_t1),
+        "turno2": _info(cap_t2, ag_t2),
+    }
+
+
 @router.get("/catalogos-fiscales")
 async def catalogos_fiscales_publico(db: AsyncSession = Depends(get_db)):
     """Catálogos de régimen fiscal y uso CFDI para formulario web."""
@@ -710,6 +778,40 @@ async def _crear_pedido_web_inner(request, db):
             if 0 <= diff < dias_restr:
                 es_fecha_fuerte = True
         except Exception:
+            pass
+
+    # --- Validación servidor: capacidad por turno (anti race condition con frontend) ---
+    # Solo aplica para fecha fuerte exacta + entrega a domicilio + cap activo.
+    if (cfg.get("temporada_cap_activo", "false") == "true"
+            and cfg.get("temporada_fecha_fuerte")
+            and horario in ("turno1", "turno2")
+            and tipo in ("envio", "domicilio", "funeral_envio")):
+        try:
+            ff = date_type.fromisoformat(cfg["temporada_fecha_fuerte"])
+            if fecha_entrega == ff:
+                cap_key = "temporada_cap_turno1" if horario == "turno1" else "temporada_cap_turno2"
+                cap = int(cfg.get(cap_key, "0") or "0")
+                if cap > 0:
+                    from sqlalchemy import text as _txt
+                    # Mismo criterio que /capacidad-turnos: todos los no cancelados
+                    horarios_match = ("manana", "mañana") if horario == "turno1" else ("tarde",)
+                    res = await db.execute(_txt(
+                        "SELECT COUNT(*) FROM pedidos WHERE fecha_entrega = :f "
+                        "AND estado NOT IN ('Cancelado','rechazado') "
+                        "AND metodo_entrega IN ('envio','funeral_envio','domicilio') "
+                        "AND horario_entrega = ANY(:hs)"
+                    ), {"f": fecha_entrega, "hs": list(horarios_match)})
+                    agendados = res.scalar() or 0
+                    if agendados >= cap:
+                        nombre_t = "Turno 1 (mañana)" if horario == "turno1" else "Turno 2 (tarde)"
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"{nombre_t} está lleno para esa fecha. Por favor elige otro turno."
+                        )
+        except HTTPException:
+            raise
+        except Exception:
+            # No bloquear creación de pedido por error de validación de cap
             pass
 
     # --- Restricción de categorías en fecha fuerte ---

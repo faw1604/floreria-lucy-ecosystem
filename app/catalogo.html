@@ -2672,6 +2672,44 @@ function esFechaFuerteExacta(fechaStr) {
   return fechaStr === catConfig.temporada_fecha_fuerte;
 }
 
+// Aplica bloqueo dinámico por capacidad a Turno 1 / Turno 2 (solo domicilio en fecha fuerte exacta).
+async function aplicarCapacidadTurnos(fecha) {
+  try {
+    const r = await fetch(`${API}/catalogo/capacidad-turnos?fecha=${encodeURIComponent(fecha)}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data.activo) return;
+    const map = { turno1: data.turno1, turno2: data.turno2 };
+    document.querySelectorAll('#of-horario-grid .order-horario-btn').forEach(btn => {
+      const k = btn.dataset.h;
+      const info = map[k];
+      if (!info) return;
+      // Limpiar marcas previas
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      btn.title = '';
+      // Quitar etiquetas previas (ej. "Lleno")
+      btn.textContent = (k === 'turno1') ? 'Turno 1 (8:00 a 15:00)' : 'Turno 2 (15:00 a 21:00)';
+      if (info.lleno) {
+        btn.disabled = true;
+        btn.style.opacity = '0.4';
+        btn.style.cursor = 'not-allowed';
+        btn.title = 'Turno lleno — elige otro horario';
+        btn.textContent += ' · 🚫 Lleno';
+        // Si el cliente lo tenía seleccionado, deseleccionar
+        if (pedidoWeb.horario_entrega === k) {
+          pedidoWeb.horario_entrega = null;
+          btn.classList.remove('selected');
+        }
+      } else if (info.ultimos_cupos) {
+        btn.title = `Solo ${info.cap - info.agendados} cupos disponibles`;
+        btn.textContent += ` · ⚠️ Últimos cupos`;
+      }
+    });
+  } catch(e) { /* fallar silente — frontend no bloquea por error de red */ }
+}
+
 function onVelacionChange() {
   const inicia = document.getElementById('of-vel-inicia')?.value || '';
   const termina = document.getElementById('of-vel-termina')?.value || '';
@@ -2813,6 +2851,8 @@ async function onFechaChange() {
     horarioGrid.querySelectorAll('.order-horario-btn').forEach(b => {
       b.classList.toggle('selected', pedidoWeb.horario_entrega === b.dataset.h);
     });
+    // Aplicar bloqueo dinámico por capacidad (solo domicilio, día exacto)
+    aplicarCapacidadTurnos(fecha);
     return;
   }
   // --- Normal mode: restore 3 horario buttons if switching from fecha fuerte ---
