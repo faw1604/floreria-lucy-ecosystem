@@ -111,8 +111,11 @@ app/
 - Hora específica: +$80 | Link de pago: +4% comisión
 
 ### Zonas envío
-- Morada: $99 | Azul: $159 | Verde: $199
-- Temporada alta: todas a $99
+- **Sistema unificado**: 16 zonas con polígonos en `scripts/zonas_unificadas.geojson`
+- **Tarifas base**: rango $79-$199 (Zona Central $79; primer anillo $99; segundo $139-$149; tercero $159-$199)
+- **Overrides editables** en tabla `zonas_envio_override` desde Admin → Zonas (cambia tarifa, activa/inactiva sin tocar código)
+- **Lógica**: `app/services/zonas_envio.py` — Point-in-polygon con shapely; cache 5 min de overrides
+- ⚠️ **NO existen zonas "Morada/Azul/Verde"** — eso fue el sistema viejo, removido. Si te encuentras esa info en otro doc, está obsoleta.
 
 ### Horarios
 - Tienda: Lun-Vie 9-19h | Sáb 10-18h | Dom 11-15h

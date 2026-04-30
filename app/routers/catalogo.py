@@ -113,7 +113,8 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
                     "@type": "OfferShippingDetails",
                     "shippingRate": {
                         "@type": "MonetaryAmount",
-                        "value": "99.00",
+                        "minValue": "79.00",
+                        "maxValue": "199.00",
                         "currency": "MXN"
                     },
                     "shippingDestination": {
