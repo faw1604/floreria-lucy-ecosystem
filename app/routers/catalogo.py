@@ -73,6 +73,24 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
         sin_stock = bool(prod.stock_activo and prod.stock <= 0)
         availability = "https://schema.org/OutOfStock" if sin_stock else "https://schema.org/InStock"
 
+        # Seller enriquecido (reusable en Product.offers)
+        seller_completo = {
+            "@type": "Florist",
+            "name": "Florería Lucy",
+            "url": "https://www.florerialucy.com/",
+            "telephone": "+52-614-414-3787",
+            "priceRange": "$$",
+            "image": "https://res.cloudinary.com/ddku2wmpk/image/upload/v1775163240/floreria-lucy/logo.png",
+            "address": {
+                "@type": "PostalAddress",
+                "streetAddress": "C. Sabino 610, Las Granjas",
+                "addressLocality": "Chihuahua",
+                "addressRegion": "Chihuahua",
+                "postalCode": "31100",
+                "addressCountry": "MX"
+            }
+        }
+
         # JSON-LD Product
         product_jsonld = {
             "@context": "https://schema.org",
@@ -81,6 +99,7 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
             "description": descripcion,
             "image": imagen,
             "category": prod.categoria,
+            "sku": f"FL-{prod.id}",
             "brand": {"@type": "Brand", "name": "Florería Lucy"},
             "offers": {
                 "@type": "Offer",
@@ -88,7 +107,41 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
                 "priceCurrency": "MXN",
                 "price": precio_mxn,
                 "availability": availability,
-                "seller": {"@type": "Florist", "name": "Florería Lucy"}
+                "itemCondition": "https://schema.org/NewCondition",
+                "seller": seller_completo,
+                "shippingDetails": {
+                    "@type": "OfferShippingDetails",
+                    "shippingRate": {
+                        "@type": "MonetaryAmount",
+                        "value": "99.00",
+                        "currency": "MXN"
+                    },
+                    "shippingDestination": {
+                        "@type": "DefinedRegion",
+                        "addressCountry": "MX",
+                        "addressRegion": "Chihuahua"
+                    },
+                    "deliveryTime": {
+                        "@type": "ShippingDeliveryTime",
+                        "handlingTime": {
+                            "@type": "QuantitativeValue",
+                            "minValue": 0,
+                            "maxValue": 1,
+                            "unitCode": "DAY"
+                        },
+                        "transitTime": {
+                            "@type": "QuantitativeValue",
+                            "minValue": 0,
+                            "maxValue": 1,
+                            "unitCode": "DAY"
+                        }
+                    }
+                },
+                "hasMerchantReturnPolicy": {
+                    "@type": "MerchantReturnPolicy",
+                    "applicableCountry": "MX",
+                    "returnPolicyCategory": "https://schema.org/MerchantReturnNotPermitted"
+                }
             }
         }
 
