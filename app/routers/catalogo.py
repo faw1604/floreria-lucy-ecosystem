@@ -66,8 +66,14 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
         descripcion = " ".join(descripcion_raw.split())[:160]
         precio_centavos = prod.precio_descuento if (prod.precio_descuento and prod.precio_descuento < prod.precio) else prod.precio
         precio_mxn = f"{precio_centavos / 100:.2f}"
-        imagen = prod.imagen_url or "https://res.cloudinary.com/ddku2wmpk/image/upload/v1774476982/floreria-lucy/hero.jpg"
+        imagen_raw = prod.imagen_url or "https://res.cloudinary.com/ddku2wmpk/image/upload/v1774476982/floreria-lucy/hero.jpg"
+        # Forzar f_auto,q_auto + 1200px para previews sociales (og:image)
+        if "/upload/" in imagen_raw and "?" not in imagen_raw and "f_auto" not in imagen_raw:
+            imagen = imagen_raw.replace("/upload/", "/upload/f_auto,q_auto,w_1200/", 1)
+        else:
+            imagen = imagen_raw
         url_canonica = f"https://www.florerialucy.com/catalogo/producto.html?id={id}"
+        alt_enriquecido = f"{nombre} - {prod.categoria or 'Arreglo floral'} Floreria Lucy Chihuahua"
 
         # Disponibilidad: si stock_activo y stock<=0 => OutOfStock
         sin_stock = bool(prod.stock_activo and prod.stock <= 0)
@@ -151,6 +157,7 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
         desc_esc = _html.escape(descripcion, quote=True)
         cat_esc = _html.escape(prod.categoria or "", quote=True)
         imagen_esc = _html.escape(imagen, quote=True)
+        alt_esc = _html.escape(alt_enriquecido, quote=True)
 
         seo_block = f"""<title>{nombre_esc} — Florería Lucy</title>
 <meta name="description" content="{desc_esc}">
@@ -169,7 +176,7 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
 <meta property="og:url" content="{url_canonica}">
 <meta property="og:locale" content="es_MX">
 <meta property="og:image" content="{imagen_esc}">
-<meta property="og:image:alt" content="{nombre_esc}">
+<meta property="og:image:alt" content="{alt_esc}">
 <meta property="product:price:amount" content="{precio_mxn}">
 <meta property="product:price:currency" content="MXN">
 <meta property="product:category" content="{cat_esc}">

@@ -1010,14 +1010,15 @@ function removeFromCart(index) {
 // ====== GALERÍA DE FOTOS ======
 function renderCardImages(p) {
   const extras = p.imagenes_extra || [];
+  const altText = altProd(p);
   if (!extras.length) {
-    return `<img src="${p.imagen_url}" alt="${p.nombre}" loading="lazy" onload="autoFitImg(this)">`;
+    return `<img src="${cldUrl(p.imagen_url, 600)}" alt="${altText}" loading="lazy" onload="autoFitImg(this)">`;
   }
   const allImgs = [p.imagen_url, ...extras];
   const dots = allImgs.map((_, i) => `<div class="gallery-dot${i===0?' active':''}"></div>`).join('');
   return `<div class="gallery-wrap" onclick="event.stopPropagation()">
     <div class="gallery-scroll" onscroll="updateDots(this)">
-      ${allImgs.map(url => `<img src="${url}" alt="${p.nombre}" loading="lazy" onload="autoFitImg(this)">`).join('')}
+      ${allImgs.map(url => `<img src="${cldUrl(url, 600)}" alt="${altText}" loading="lazy" onload="autoFitImg(this)">`).join('')}
     </div>
     <div class="gallery-dots">${dots}</div>
   </div>`;
@@ -1026,14 +1027,15 @@ function renderCardImages(p) {
 function renderDynImages(p, agotado) {
   const extras = p.imagenes_extra || [];
   const style = agotado ? ' style="filter:grayscale(.5)"' : '';
+  const altText = altProd(p);
   if (!extras.length) {
-    return `<img src="${p.imagen_url}" alt="${p.nombre}" draggable="false"${style} onload="autoFitImg(this)">`;
+    return `<img src="${cldUrl(p.imagen_url, 800)}" alt="${altText}" draggable="false"${style} onload="autoFitImg(this)">`;
   }
   const allImgs = [p.imagen_url, ...extras];
   const dots = allImgs.map((_, i) => `<div class="gallery-dot${i===0?' active':''}"></div>`).join('');
   return `<div class="gallery-wrap" onclick="event.stopPropagation()">
     <div class="gallery-scroll" onscroll="updateDots(this)">
-      ${allImgs.map(url => `<img src="${url}" alt="${p.nombre}" draggable="false"${style} onload="autoFitImg(this)">`).join('')}
+      ${allImgs.map(url => `<img src="${cldUrl(url, 800)}" alt="${altText}" draggable="false"${style} onload="autoFitImg(this)">`).join('')}
     </div>
     <div class="gallery-dots">${dots}</div>
   </div>`;
@@ -1043,6 +1045,18 @@ function autoFitImg(img) {
   if (img.naturalHeight > img.naturalWidth) {
     img.classList.add('img-tall');
   }
+}
+
+// SEO/perf: forzar f_auto,q_auto + width en URLs Cloudinary que no las traen
+function cldUrl(url, w) {
+  if (!url) return url;
+  if (url.includes('?')) return url;
+  if (!url.includes('/upload/')) return url;
+  if (/\/upload\/[^/]*f_auto/.test(url)) return url;
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${w}/`);
+}
+function altProd(p) {
+  return `${p.nombre || 'Arreglo floral'} - ${p.categoria || ''} Floreria Lucy Chihuahua`.replace(/\s+/g,' ').trim();
 }
 
 function updateDots(scrollEl) {
@@ -1496,7 +1510,7 @@ function renderCart() {
     const qty = p.qty || 1;
     return `
     <div class="cart-item" id="cart-item-${idx}" data-idx="${idx}">
-      <img src="${p.imagen_url}" alt="${p.nombre}">
+      <img src="${cldUrl(p.imagen_url, 160)}" alt="${p.nombre}" loading="lazy">
       <div class="cart-item-info">
         <div class="cart-item-name">${p.nombre}${p.variante_nombre ? `<span style="display:block;font-size:11px;color:var(--texto2);font-weight:400">${p.variante_nombre}</span>` : ''}</div>
         <div class="cart-item-price">${renderPrice(p, 'cart-item-price')}</div>
@@ -1528,7 +1542,7 @@ function renderCart() {
             <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
               ${suggestions.map(p => `
                 <div style="flex-shrink:0;width:120px;background:var(--blanco);border:1px solid var(--borde);border-radius:12px;overflow:hidden;cursor:pointer" onclick="addCrossSell(${p.id})">
-                  <img src="${p.imagen_url}" style="width:100%;height:90px;object-fit:cover" loading="lazy">
+                  <img src="${cldUrl(p.imagen_url, 240)}" alt="${p.nombre}" style="width:100%;height:90px;object-fit:cover" loading="lazy">
                   <div style="padding:8px">
                     <div style="font-size:11px;font-weight:500;color:var(--texto);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
                     <div style="font-size:13px;font-weight:600;color:var(--verde)">$${(p.precio/100).toLocaleString()}</div>
@@ -2393,7 +2407,7 @@ function renderOrderStep1() {
     const qty = p.qty || 1;
     sub += precio * qty;
     return `<div class="order-summary-item">
-      <img src="${p.imagen_url}" alt="${p.nombre}">
+      <img src="${cldUrl(p.imagen_url, 160)}" alt="${p.nombre}" loading="lazy">
       <div class="order-summary-info">
         <div class="order-summary-name">${p.nombre}${qty > 1 ? ` <span style="color:var(--texto2)">x${qty}</span>` : ''}</div>
         <div class="order-summary-price">$${((precio * qty)/100).toLocaleString()}</div>

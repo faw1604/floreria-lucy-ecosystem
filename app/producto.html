@@ -257,20 +257,29 @@ function volverCatalogo() {
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+function cldUrl(url, w) {
+  if (!url) return url;
+  if (url.includes('?')) return url;
+  if (!url.includes('/upload/')) return url;
+  if (/\/upload\/[^/]*f_auto/.test(url)) return url;
+  return url.replace('/upload/', `/upload/f_auto,q_auto,w_${w}/`);
+}
+function altProd(p) { return `${p.nombre || 'Arreglo floral'} - ${p.categoria || ''} Floreria Lucy Chihuahua`.replace(/\s+/g,' ').trim(); }
 
 function autoFitImg(img) { if (img.naturalHeight > img.naturalWidth) img.classList.add('img-tall'); }
 
 function renderProdGallery(p) {
   if (!p.imagen_url) return '';
   const extras = p.imagenes_extra || [];
+  const altText = esc(altProd(p));
   if (!extras.length) {
-    return `<img class="prod-img" src="${p.imagen_url}" alt="${esc(p.nombre)}" onload="autoFitImg(this)">`;
+    return `<img class="prod-img" src="${cldUrl(p.imagen_url, 800)}" alt="${altText}" fetchpriority="high" onload="autoFitImg(this)">`;
   }
   const allImgs = [p.imagen_url, ...extras];
   const dots = allImgs.map((_, i) => `<div class="prod-gallery-dot${i===0?' active':''}"></div>`).join('');
   return `<div class="prod-gallery">
     <div class="prod-gallery-scroll" onscroll="updateProdDots(this)">
-      ${allImgs.map(url => `<img src="${url}" alt="${esc(p.nombre)}" onload="autoFitImg(this)">`).join('')}
+      ${allImgs.map((url, i) => `<img src="${cldUrl(url, 800)}" alt="${altText}"${i===0 ? ' fetchpriority="high"' : ' loading="lazy"'} onload="autoFitImg(this)">`).join('')}
     </div>
     <div class="prod-gallery-dots">${dots}</div>
   </div>`;
