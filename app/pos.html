@@ -207,7 +207,10 @@ window._qzWs = null;
       <label class="ios-switch"><input type="checkbox" id="fp-cancelados" onchange="onToggleCancelados()"><span class="slider"></span></label>
     </div>
   </div>
-  <div class="fp-footer"><button onclick="aplicarFiltrosPanel()">Filtrar</button></div>
+  <div class="fp-footer" style="display:flex;gap:8px">
+    <button onclick="limpiarFiltrosPanel()" style="background:#fff;color:var(--verde);border:2px solid var(--verde);flex:1">🧹 Limpiar</button>
+    <button onclick="aplicarFiltrosPanel()" style="flex:1">Filtrar</button>
+  </div>
 </div>
 
 <!-- ════════════ SECTION: TRANSACCIONES ════════════ -->

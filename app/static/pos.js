@@ -2220,6 +2220,9 @@ function canalLabel(canal) {
 }
 
 async function loadPendientes(params) {
+  // Si no pasan params, usar los del filtro activo guardado (evita perder filtros
+  // cuando un polling o una accion llaman loadPendientes() sin args).
+  if (params === undefined) params = _activePendParams;
   const tbody = document.getElementById('pend-tbody');
   const empty = document.getElementById('pend-empty');
   if (!tbody.innerHTML || tbody.innerHTML.includes('Sin pedidos') || tbody.innerHTML.includes('Error')) {
@@ -2319,6 +2322,9 @@ function filtrarTablaPend() {
 
 // Filter panel — shared between pendientes and transacciones
 let filterPanelTarget = 'pend'; // 'pend' or 'trans'
+// Filtros activos (persisten entre re-cargas automáticas del polling)
+let _activePendParams = '';   // params extra de filtro panel para Pendientes
+let _activeTransParams = '';  // params extra de filtro panel para Transacciones
 
 function toggleFilterPanel(target) {
   if (target) filterPanelTarget = target;
@@ -2355,8 +2361,17 @@ function onToggleCancelados() {
     if (on) cb.checked = false;
     cb.closest('.fp-check').style.opacity = on ? '.4' : '1';
   });
-  _lastPendHash = '';
-  loadPendientes(on ? 'estado=cancelado' : '');
+  // Guardar el filtro activo según el target del panel
+  const params = on ? 'estado=cancelado' : '';
+  if (filterPanelTarget === 'trans') {
+    _activeTransParams = params;
+    _lastTransHash = '';
+    loadTransacciones(params);
+  } else {
+    _activePendParams = params;
+    _lastPendHash = '';
+    loadPendientes(params);
+  }
 }
 
 function getFilterParams() {
@@ -2385,8 +2400,47 @@ function getFilterParams() {
 function aplicarFiltrosPanel() {
   const params = getFilterParams();
   toggleFilterPanel();
-  if (filterPanelTarget === 'trans') { _lastTransHash = ''; loadTransacciones(params); }
-  else { _lastPendHash = ''; loadPendientes(params); }
+  if (filterPanelTarget === 'trans') {
+    _activeTransParams = params;
+    _lastTransHash = '';
+    loadTransacciones(params);
+  } else {
+    _activePendParams = params;
+    _lastPendHash = '';
+    loadPendientes(params);
+  }
+}
+
+function limpiarFiltrosPanel() {
+  // Limpia todos los checks y toggles del panel y recarga sin filtros.
+  document.querySelectorAll('#filter-panel input[type="checkbox"]').forEach(cb => {
+    cb.checked = false;
+    cb.disabled = false;
+    const wrap = cb.closest('.fp-check');
+    if (wrap) wrap.style.opacity = '1';
+  });
+  document.querySelectorAll('#filter-panel input[type="date"]').forEach(d => d.value = '');
+  // Reset chip de período (deja el primero activo)
+  const chips = document.querySelectorAll('#fp-periodo .fp-chip');
+  if (chips.length) {
+    chips.forEach(c => c.classList.remove('active'));
+    chips[0].classList.add('active');
+    if (filterPanelTarget === 'trans') transFilterPeriodo = chips[0].dataset.val || 'hoy';
+    else pendFilterPeriodo = chips[0].dataset.val || 'hoy';
+  }
+  const rangoDates = document.getElementById('fp-rango-dates');
+  if (rangoDates) rangoDates.style.display = 'none';
+  // Aplicar y cerrar panel
+  toggleFilterPanel();
+  if (filterPanelTarget === 'trans') {
+    _activeTransParams = '';
+    _lastTransHash = '';
+    loadTransacciones('');
+  } else {
+    _activePendParams = '';
+    _lastPendHash = '';
+    loadPendientes('');
+  }
 }
 
 // Cancelar pedido
@@ -2750,6 +2804,9 @@ async function loadResumenVentas() {
 }
 
 async function loadTransacciones(params) {
+  // Si no pasan params, usar los del filtro activo guardado (evita perder filtros
+  // cuando un polling o una accion llaman loadTransacciones() sin args).
+  if (params === undefined) params = _activeTransParams;
   const tbody = document.getElementById('trans-tbody');
   const empty = document.getElementById('trans-empty');
   // Solo mostrar "Cargando" si la tabla está vacía (primera carga)
@@ -3530,21 +3587,20 @@ function renderBadge() {
 
 async function updateBadgePend() {
   try {
+    // Badge global: cuenta pedidos pendiente_pago independiente del filtro activo
     const r = await fetch('/pos/pedidos-hoy?periodo=todos&estado=pendiente_pago');
     const data = await r.json();
     contadorPendientes = (data.pendientes || []).length;
     renderBadge();
-    // Auto-refresh if pendientes section is active
+    // Auto-refresh secciones activas RESPETANDO el filtro que el usuario aplicó.
     if (document.getElementById('sec-pendientes').classList.contains('active')) {
-      pendAllData = data.pendientes || [];
-      const q = document.getElementById('pend-search')?.value?.trim();
-      if (q) filtrarTablaPend(); else renderPendTable(pendAllData);
+      // Usar loadPendientes con los params guardados (no escribir sobre pendAllData
+      // con el resultado del fetch del badge, que no tiene el filtro activo).
+      loadPendientes(_activePendParams);
     }
-    // Auto-refresh transacciones if active
     if (document.getElementById('sec-transacciones').classList.contains('active')) {
-      loadTransacciones();
+      loadTransacciones(_activeTransParams);
     }
-    // Auto-refresh entregas if active
     if (document.getElementById('sec-entregas')?.classList.contains('active')) {
       loadEntregasContent();
     }
