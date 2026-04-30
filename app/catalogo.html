@@ -2665,7 +2665,7 @@ function renderStep3Fields() {
     </div>`;
   } else if (tipo === 'funeral') {
     html += `
-    <div class="order-field"><label>Funeraria</label>
+    <div class="order-field"><label>Funeraria <span class="required">*</span></label>
       <input type="text" id="of-funeraria" value="${pedidoWeb.funeraria_nombre||''}" placeholder="Buscar funeraria..." oninput="filterFunerarias()" onfocus="showFunerariaDropdown()">
       <div id="of-funeraria-dropdown" style="display:none;max-height:180px;overflow-y:auto;border:1px solid var(--borde);border-radius:8px;margin-top:4px;background:var(--blanco)"></div>
       <div id="of-funeraria-results" style="font-size:12px;color:var(--texto2)"></div>
@@ -3245,6 +3245,8 @@ function onFuneralDirInput() {
   clearTimeout(_funeralDirDebounce);
   const inp = document.getElementById('of-funeral-direccion');
   pedidoWeb.funeral_direccion = inp.value;
+  // Edicion manual invalida la verificacion previa
+  pedidoWeb.funeral_dir_verified = false;
   const q = (inp.value || '').trim();
   const box = document.getElementById('of-funeral-dir-suggestions');
   if (q.length < 3) { if (box) box.style.display = 'none'; return; }
@@ -3268,6 +3270,7 @@ async function fetchFuneralDirSuggestions(q) {
 async function selectFuneralDirSuggestion(placeId, description) {
   document.getElementById('of-funeral-direccion').value = description;
   pedidoWeb.funeral_direccion = description;
+  pedidoWeb.funeral_dir_verified = true;
   document.getElementById('of-funeral-dir-suggestions').style.display = 'none';
   // Geocodificar para auto-seleccionar zona
   try {
@@ -3397,6 +3400,13 @@ function filterFunerarias() {
   const input = document.getElementById('of-funeraria');
   if (!dd || !allFunerarias) return;
   const q = (input?.value || '').toLowerCase().trim();
+  // Si el texto no coincide con la funeraria seleccionada, invalidar la seleccion
+  // (el usuario edito manualmente despues de elegir una)
+  if (pedidoWeb.funeraria_id && pedidoWeb.funeraria_nombre &&
+      q !== pedidoWeb.funeraria_nombre.toLowerCase()) {
+    pedidoWeb.funeraria_id = null;
+    pedidoWeb.funeraria_nombre = null;
+  }
   const filtered = q.length > 0
     ? allFunerarias.filter(f => f.nombre.toLowerCase().includes(q))
     : allFunerarias;
@@ -3426,6 +3436,10 @@ function selectFuneraria(id, nombre, direccion) {
   pedidoWeb.funeraria_nombre = nombre;
   pedidoWeb.funeral_domicilio_costo = 0;
   pedidoWeb.funeral_domicilio_zona = null;
+  // Limpiar flags de domicilio particular al elegir funeraria
+  pedidoWeb.funeral_direccion = null;
+  pedidoWeb.funeral_dir_verified = false;
+  pedidoWeb.funeral_referencias = null;
   document.getElementById('of-funeraria').value = nombre;
   document.getElementById('of-funeraria-dropdown').style.display = 'none';
   document.getElementById('of-funeraria-results').innerHTML = `<span style="color:var(--verde)">✓ ${nombre}${direccion ? ' — '+direccion : ''}</span>`;
@@ -3645,8 +3659,25 @@ function validateStep3() {
   }
   if (tipo === 'funeral') {
     if (!pedidoWeb.nombre_fallecido) { alert('Nombre del fallecido es obligatorio'); return false; }
+    // Debe seleccionar funeraria O domicilio particular (no se puede dejar en blanco)
+    if (!pedidoWeb.funeraria_id && !pedidoWeb.funeral_domicilio) {
+      alert('Selecciona la funeraria de la lista o elige "Domicilio particular".\n\nEscribe el nombre de la funeraria y haz click en una opción del menú.');
+      try {
+        const fInput = document.getElementById('of-funeraria');
+        if (fInput) { fInput.focus(); fInput.scrollIntoView({behavior:'smooth',block:'center'}); }
+      } catch(e) {}
+      return false;
+    }
     if (pedidoWeb.funeral_domicilio) {
       if (!pedidoWeb.funeral_direccion) { alert('Dirección de entrega es obligatoria para funeral en domicilio'); return false; }
+      if (!pedidoWeb.funeral_dir_verified) {
+        alert('Por favor selecciona la dirección de la lista de sugerencias para confirmar la zona de envío.\n\nEscribe la calle y número, espera las opciones y haz click en una.\n\nSi tu dirección no aparece, contáctanos por WhatsApp.');
+        try {
+          const dInput = document.getElementById('of-funeral-direccion');
+          if (dInput) { dInput.focus(); dInput.scrollIntoView({behavior:'smooth',block:'center'}); }
+        } catch(e) {}
+        return false;
+      }
       if (!pedidoWeb.funeral_domicilio_zona) { alert('Selecciona la zona de envío'); return false; }
     }
   }
