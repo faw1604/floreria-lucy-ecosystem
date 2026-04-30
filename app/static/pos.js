@@ -2244,12 +2244,21 @@ async function loadPendientes(params) {
     // de Pendientes con su badge de cancelado.
     if (canceladosOn) {
       pendAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
+      // Ordenar descendente por fecha_pedido (más reciente primero)
+      pendAllData.sort((a, b) => {
+        const fa = a.fecha_pedido || '';
+        const fb = b.fecha_pedido || '';
+        return fb.localeCompare(fa);
+      });
     } else {
       pendAllData = data.pendientes || [];
     }
     contadorPendientes = (data.pendientes || []).length;
     renderBadge();
-    renderPendTable(pendAllData);
+    // Si el usuario está buscando, respetar el filtro del buscador
+    const q = document.getElementById('pend-search')?.value?.trim();
+    if (q) filtrarTablaPend();
+    else renderPendTable(pendAllData);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="9" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
   }
@@ -2834,7 +2843,16 @@ async function loadTransacciones(params) {
     }
     const data = await r.json();
     transAllData = [...(data.pendientes || []), ...(data.finalizados || [])];
-    renderTransTable(transAllData);
+    // Ordenar descendente por fecha de pago (lo que el usuario ve como "ordenado por más reciente")
+    transAllData.sort((a, b) => {
+      const fa = a.pago_confirmado_at || a.fecha_pedido || '';
+      const fb = b.pago_confirmado_at || b.fecha_pedido || '';
+      return fb.localeCompare(fa);
+    });
+    // Si hay buscador activo, respetarlo
+    const q = document.getElementById('trans-search')?.value?.trim();
+    if (q && typeof filtrarTablaTrans === 'function') filtrarTablaTrans();
+    else renderTransTable(transAllData);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="10" style="color:var(--rojo);padding:16px">Error al cargar: ${e.message || 'sin conexion'}</td></tr>`;
   }
