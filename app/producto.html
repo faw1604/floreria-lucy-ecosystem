@@ -10,7 +10,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Inter',sans-serif;background:var(--crema);color:var(--texto);min-height:100vh}
 .header{background:var(--verde-oscuro);color:#fff;padding:14px 20px;text-align:center}
-.header h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:600}
+.header h1,.header .header-logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:600;margin:0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .header a{color:#fff;text-decoration:none}
 .container{max-width:480px;margin:0 auto;padding:16px}
 .prod-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:16px;background:var(--borde)}
@@ -42,7 +43,7 @@ body{font-family:'Inter',sans-serif;background:var(--crema);color:var(--texto);m
 </style>
 </head>
 <body>
-<div class="header"><a href="/catalogo/"><h1>Florería Lucy</h1></a></div>
+<div class="header"><a href="/catalogo/"><span class="header-logo">Florería Lucy</span></a></div>
 <div class="container" id="main">
   <div class="loading"><div class="spinner"></div><p>Cargando producto...</p></div>
 </div>
@@ -80,7 +81,7 @@ function render(p) {
     ${renderProdGallery(p)}
     ${p.sin_stock ? '<div class="agotado-tag">Agotado</div>' : ''}
     ${p.destacado ? '<div style="display:inline-block;background:var(--dorado);color:var(--verde-oscuro);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:8px">★ Destacado</div>' : ''}
-    <div class="prod-name">${esc(p.nombre)}</div>
+    <h1 class="prod-name" style="margin:16px 0 4px">${esc(p.nombre)}</h1>
     <div class="prod-cat">${esc(p.categoria)}</div>
     <div class="prod-price" id="prod-price-display">$${(precio/100).toLocaleString()}${hasDiscount ? `<span class="prod-price-old">$${(p.precio/100).toLocaleString()}</span>` : ''}</div>
     ${p.dimensiones ? `<div class="prod-dims">📐 ${p.dimensiones}</div>` : ''}

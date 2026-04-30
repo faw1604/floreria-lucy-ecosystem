@@ -62,6 +62,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--crema);color:var(--texto);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 img{-webkit-user-drag:none;user-drag:none}
 .search-bar input,.order-field input,.order-field textarea,.order-field select{-webkit-user-select:text;user-select:text}
 
@@ -96,7 +97,7 @@ img{-webkit-user-drag:none;user-drag:none}
 .landing::before{content:'';position:absolute;inset:0;background:rgba(25,58,44,.5);z-index:0}
 .landing>*{position:relative;z-index:1}
 .landing-bg{display:none}
-.landing h1{font-family:'Playfair Display',serif;font-size:38px;color:var(--blanco);font-weight:700;margin-bottom:4px;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.2)}
+.landing h1,.landing h2#hero-titulo{font-family:'Playfair Display',serif;font-size:38px;color:var(--blanco);font-weight:700;margin-bottom:4px;letter-spacing:-.02em;text-shadow:0 2px 12px rgba(0,0,0,.2)}
 .landing .sub{font-family:'Playfair Display',serif;font-size:16px;color:rgba(255,255,255,.85);margin-bottom:48px;font-weight:400;font-style:italic}
 .landing-btns{display:flex;flex-direction:column;gap:14px;width:100%;max-width:300px}
 .landing-btn{padding:16px 24px;border-radius:12px;font-family:'Inter',sans-serif;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;letter-spacing:-.01em}
@@ -468,7 +469,8 @@ img{-webkit-user-drag:none;user-drag:none}
     </svg>
   </div>
   <div class="landing-deco"></div>
-  <h1 id="hero-titulo">Floreria Lucy</h1>
+  <h1 class="sr-only">Catalogo de arreglos florales y ramos a domicilio en Chihuahua | Floreria Lucy</h1>
+  <h2 id="hero-titulo">Floreria Lucy</h2>
   <div class="sub" id="hero-subtitulo">La expresión del amor</div>
   <div class="landing-btns" id="hero-btns">
     <button class="landing-btn primary" onclick="startMode('dynamic')">Explorar arreglos</button>

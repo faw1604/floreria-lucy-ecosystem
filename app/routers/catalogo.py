@@ -210,6 +210,16 @@ async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db
 
         # Reemplazar el title genérico con el bloque SEO completo
         html_con_seo = raw.replace("<title>Florería Lucy</title>", seo_block, 1)
+
+        # Inyectar H1 sr-only con nombre real del producto (Google bot lo ve)
+        # JS sobreescribira #main al cargar, eliminando este H1; pero entonces
+        # el JS render genera <h1 class="prod-name"> que toma el rol de H1.
+        h1_seo = f'<h1 class="sr-only">{nombre_esc}</h1>'
+        html_con_seo = html_con_seo.replace(
+            '<div class="container" id="main">',
+            f'<div class="container" id="main">{h1_seo}',
+            1
+        )
         return HTMLResponse(html_con_seo)
 
     except Exception as e:
