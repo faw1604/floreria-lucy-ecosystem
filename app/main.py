@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -151,3 +151,87 @@ async def landing():
     except FileNotFoundError:
         from fastapi.responses import RedirectResponse
         return RedirectResponse(url="/catalogo/")
+
+
+# ─── SEO: robots.txt y sitemap.xml ─────────────────────────────────
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    """Guía de crawling para bots de búsqueda."""
+    contenido = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Allow: /catalogo/\n"
+        "Allow: /catalogo/producto.html\n"
+        "Allow: /historia\n"
+        "Allow: /contacto\n"
+        "Allow: /facturacion\n"
+        "Allow: /legal\n"
+        "\n"
+        "Disallow: /panel/\n"
+        "Disallow: /api/\n"
+        "Disallow: /pos/\n"
+        "Disallow: /repartidor/\n"
+        "Disallow: /inventario/\n"
+        "Disallow: /configuracion/\n"
+        "Disallow: /auth/\n"
+        "Disallow: /login\n"
+        "Disallow: /catalogo/seguimiento.html\n"
+        "\n"
+        "Sitemap: https://www.florerialucy.com/sitemap.xml\n"
+    )
+    return PlainTextResponse(contenido, media_type="text/plain; charset=utf-8")
+
+
+@app.get("/sitemap.xml")
+async def sitemap_xml():
+    """Sitemap dinámico con páginas estáticas + productos visibles."""
+    from sqlalchemy import select
+    from app.database import async_session
+    from app.models.productos import Producto
+    from datetime import datetime as _dt
+    from xml.sax.saxutils import escape as _xml_esc
+
+    base = "https://www.florerialucy.com"
+    hoy = _dt.now().strftime("%Y-%m-%d")
+
+    paginas = [
+        (f"{base}/", "1.0", "daily"),
+        (f"{base}/catalogo/", "0.9", "daily"),
+        (f"{base}/historia", "0.6", "monthly"),
+        (f"{base}/contacto", "0.7", "monthly"),
+        (f"{base}/facturacion", "0.4", "yearly"),
+        (f"{base}/legal", "0.3", "yearly"),
+    ]
+
+    productos_urls = []
+    try:
+        async with async_session() as db:
+            res = await db.execute(
+                select(Producto.id, Producto.imagen_url)
+                .where(Producto.activo == True)
+                .where(Producto.visible_catalogo == True)
+            )
+            for pid, _img in res.all():
+                productos_urls.append((f"{base}/catalogo/producto.html?id={pid}", "0.7", "weekly"))
+    except Exception as e:
+        logger.error(f"[SITEMAP] Error cargando productos: {e}")
+
+    todas = paginas + productos_urls
+
+    items_xml = "\n".join(
+        f"  <url>\n"
+        f"    <loc>{_xml_esc(loc)}</loc>\n"
+        f"    <lastmod>{hoy}</lastmod>\n"
+        f"    <changefreq>{cf}</changefreq>\n"
+        f"    <priority>{prio}</priority>\n"
+        f"  </url>"
+        for loc, prio, cf in todas
+    )
+
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{items_xml}\n"
+        '</urlset>\n'
+    )
+    return Response(content=xml, media_type="application/xml")

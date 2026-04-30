@@ -36,10 +36,125 @@ async def seguimiento_page():
     return HTMLResponse(html_path.read_text(encoding="utf-8"))
 
 @router.get("/producto.html")
-async def producto_page():
+async def producto_page(id: int | None = None, db: AsyncSession = Depends(get_db)):
+    """
+    Sirve producto.html con SEO meta inyectado server-side cuando hay ?id=X.
+    Esto permite que Google bot vea title/description/og/JSON-LD del producto
+    real, en lugar del HTML genérico que carga todo via JS.
+    El cliente (browser) sigue funcionando igual: el JS sobreescribe lo que
+    necesite tras el fetch a /catalogo/producto/{id}.
+    """
     from pathlib import Path
+    import html as _html
+    import json as _json
     html_path = Path(__file__).parent.parent / "producto.html"
-    return HTMLResponse(html_path.read_text(encoding="utf-8"))
+    raw = html_path.read_text(encoding="utf-8")
+
+    # Si no hay id, servir HTML original (la JS mostrará error "Producto no especificado")
+    if not id:
+        return HTMLResponse(raw)
+
+    try:
+        prod = (await db.execute(select(Producto).where(Producto.id == id))).scalar_one_or_none()
+        # Solo inyectar SEO si producto existe y es visible al público
+        if not prod or not prod.activo or not prod.visible_catalogo:
+            return HTMLResponse(raw)
+
+        nombre = prod.nombre or "Producto"
+        descripcion_raw = (prod.descripcion or f"{nombre} — Floreria Lucy, arreglos florales en Chihuahua").strip()
+        # Limpiar saltos de linea y limitar a 160 chars para meta description
+        descripcion = " ".join(descripcion_raw.split())[:160]
+        precio_centavos = prod.precio_descuento if (prod.precio_descuento and prod.precio_descuento < prod.precio) else prod.precio
+        precio_mxn = f"{precio_centavos / 100:.2f}"
+        imagen = prod.imagen_url or "https://res.cloudinary.com/ddku2wmpk/image/upload/v1774476982/floreria-lucy/hero.jpg"
+        url_canonica = f"https://www.florerialucy.com/catalogo/producto.html?id={id}"
+
+        # Disponibilidad: si stock_activo y stock<=0 => OutOfStock
+        sin_stock = bool(prod.stock_activo and prod.stock <= 0)
+        availability = "https://schema.org/OutOfStock" if sin_stock else "https://schema.org/InStock"
+
+        # JSON-LD Product
+        product_jsonld = {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": nombre,
+            "description": descripcion,
+            "image": imagen,
+            "category": prod.categoria,
+            "brand": {"@type": "Brand", "name": "Florería Lucy"},
+            "offers": {
+                "@type": "Offer",
+                "url": url_canonica,
+                "priceCurrency": "MXN",
+                "price": precio_mxn,
+                "availability": availability,
+                "seller": {"@type": "Florist", "name": "Florería Lucy"}
+            }
+        }
+
+        # Escapar valores para meta tags
+        nombre_esc = _html.escape(nombre, quote=True)
+        desc_esc = _html.escape(descripcion, quote=True)
+        cat_esc = _html.escape(prod.categoria or "", quote=True)
+        imagen_esc = _html.escape(imagen, quote=True)
+
+        seo_block = f"""<title>{nombre_esc} — Florería Lucy</title>
+<meta name="description" content="{desc_esc}">
+
+<!-- SEO -->
+<link rel="canonical" href="{url_canonica}">
+<meta name="robots" content="index, follow">
+<meta name="geo.region" content="MX-CHH">
+<meta name="geo.placename" content="Chihuahua">
+
+<!-- Open Graph (product) -->
+<meta property="og:type" content="product">
+<meta property="og:site_name" content="Floreria Lucy">
+<meta property="og:title" content="{nombre_esc} — Florería Lucy">
+<meta property="og:description" content="{desc_esc}">
+<meta property="og:url" content="{url_canonica}">
+<meta property="og:locale" content="es_MX">
+<meta property="og:image" content="{imagen_esc}">
+<meta property="og:image:alt" content="{nombre_esc}">
+<meta property="product:price:amount" content="{precio_mxn}">
+<meta property="product:price:currency" content="MXN">
+<meta property="product:category" content="{cat_esc}">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{nombre_esc} — Florería Lucy">
+<meta name="twitter:description" content="{desc_esc}">
+<meta name="twitter:image" content="{imagen_esc}">
+
+<!-- Schema.org: Product -->
+<script type="application/ld+json">
+{_json.dumps(product_jsonld, ensure_ascii=False)}
+</script>
+
+<!-- Schema.org: BreadcrumbList -->
+<script type="application/ld+json">
+{_json.dumps({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://www.florerialucy.com/"},
+        {"@type": "ListItem", "position": 2, "name": "Catálogo", "item": "https://www.florerialucy.com/catalogo/"},
+        {"@type": "ListItem", "position": 3, "name": nombre, "item": url_canonica}
+    ]
+}, ensure_ascii=False)}
+</script>
+
+<link rel="icon" type="image/png" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_32,h_32,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">
+<link rel="apple-touch-icon" href="https://res.cloudinary.com/ddku2wmpk/image/upload/w_180,h_180,c_fit,q_auto/v1775163240/floreria-lucy/logo.png">"""
+
+        # Reemplazar el title genérico con el bloque SEO completo
+        html_con_seo = raw.replace("<title>Florería Lucy</title>", seo_block, 1)
+        return HTMLResponse(html_con_seo)
+
+    except Exception as e:
+        logger.error(f"[SEO producto SSR] Error inyectando meta para id={id}: {e}")
+        # Fallback: HTML original. El cliente sigue funcionando vía JS.
+        return HTMLResponse(raw)
 
 @router.get("/historia")
 async def historia_redirect():
