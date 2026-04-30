@@ -760,6 +760,36 @@ async def _serializar_pedido_pos(p, db):
     }
 
 
+@router.get("/debug-pedido/{folio}")
+async def pos_debug_pedido(
+    folio: str,
+    panel_session: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Debug temporal: devuelve estado raw de un pedido por folio.
+    Quitar después del 10-may o cuando se resuelvan los bugs."""
+    if not verificar_sesion(panel_session):
+        raise HTTPException(status_code=401, detail="No autenticado")
+    result = await db.execute(select(Pedido).where(Pedido.numero == folio))
+    p = result.scalar_one_or_none()
+    if not p:
+        return {"encontrado": False, "folio": folio}
+    return {
+        "encontrado": True,
+        "id": p.id, "folio": p.numero,
+        "estado": repr(p.estado),  # repr para ver si tiene espacios o caracteres raros
+        "estado_florista": repr(p.estado_florista),
+        "canal": repr(p.canal),
+        "fecha_pedido": str(p.fecha_pedido) if p.fecha_pedido else None,
+        "fecha_entrega": str(p.fecha_entrega) if p.fecha_entrega else None,
+        "metodo_entrega": p.metodo_entrega,
+        "tipo_especial": p.tipo_especial,
+        "pago_confirmado": p.pago_confirmado,
+        "cancelado_razon": p.cancelado_razon,
+        "total": p.total,
+    }
+
+
 @router.get("/pedidos-hoy")
 async def pos_pedidos_hoy(
     periodo: str = "hoy",
