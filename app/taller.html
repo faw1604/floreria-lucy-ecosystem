@@ -575,9 +575,8 @@ function _dingPulso() {
   if (_tallerCfg.volumen <= 0) return;
   // No sonar si está fuera de horario tienda (si la config lo exige)
   if (_tallerCfg.soloHorario && !_enHorarioTienda()) return;
-  // No sonar si pestaña no es Nuevos
-  const tabNuevos = document.getElementById('tab-nuevos');
-  if (!tabNuevos || !tabNuevos.classList.contains('active')) return;
+  // Suena independientemente de la pestaña activa: el proposito es que el
+  // florista escuche aunque NO este mirando la pestaña Nuevos.
   _notifSound(_tallerCfg.volumen);
 }
 
@@ -597,12 +596,16 @@ function silenciarLoopNuevos() {
   _notifSilencedAt = _lastNuevosCount;
 }
 
-// Auto-silenciar cuando el usuario hace click dentro del cuerpo de Nuevos
+// Auto-silenciar SOLO cuando el florista hace click en un boton de accion
+// dentro de una tarjeta de Nuevos (Aceptar, Modificar, Cambio, No aceptar).
+// Antes silenciaba con cualquier click en el body — eso silenciaba por accidente
+// con scroll/clicks no relacionados.
 document.addEventListener('click', (e) => {
   const body = document.getElementById('nuevos-body');
-  if (body && body.contains(e.target)) {
-    silenciarLoopNuevos();
-  }
+  if (!body || !body.contains(e.target)) return;
+  // Buscar boton de accion en el ancestor mas cercano
+  const btn = e.target.closest('.act-btn');
+  if (btn) silenciarLoopNuevos();
 });
 
 async function loadBadges() {
