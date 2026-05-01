@@ -457,6 +457,9 @@ img{-webkit-user-drag:none;user-drag:none}
 .combo-banner-cta{background:var(--dorado);color:var(--verde);padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0}
 @media(max-width:480px){.combo-banner-content{flex-direction:column;text-align:center;gap:12px}}
 </style>
+<!-- Google Ads tracking -->
+<script>window.FL_GADS_ID='AW-XXXXXXXXX';window.FL_GADS_LABEL='XXXXXXXX';</script>
+<script src="/static/gtag.js" async></script>
 </head>
 <body>
 
@@ -3972,6 +3975,21 @@ async function submitOrder() {
     });
     const data = await r.json();
     if (r.ok && data.ok) {
+      // Google Ads conversion tracking (compra confirmada)
+      try {
+        let totalPesos = 0;
+        cart.forEach(p => {
+          const precio = (p.precio_descuento && p.precio_descuento < p.precio) ? p.precio_descuento : p.precio;
+          totalPesos += (precio * (p.qty || 1)) / 100;
+        });
+        if (pedidoWeb.tipo === 'domicilio' && pedidoWeb.geo_data?.tarifa_envio) totalPesos += pedidoWeb.geo_data.tarifa_envio / 100;
+        if (pedidoWeb.tipo === 'funeral' && pedidoWeb.funeral_domicilio && pedidoWeb.funeral_domicilio_costo) totalPesos += pedidoWeb.funeral_domicilio_costo / 100;
+        if (pedidoWeb.tipo === 'funeral' && !pedidoWeb.funeral_domicilio && pedidoWeb.funeraria_nombre && allFunerarias) {
+          const f = allFunerarias.find(x => x.nombre === pedidoWeb.funeraria_nombre);
+          if (f && f.costo_envio) totalPesos += f.costo_envio / 100;
+        }
+        if (window.flTrackPurchase) window.flTrackPurchase(data.folio, Math.round(totalPesos * 100) / 100);
+      } catch(e) { /* no romper UX por tracking */ }
       cart = [];
       saveCart();
       // Save tracking token for return visits
