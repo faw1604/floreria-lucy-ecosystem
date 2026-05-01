@@ -3474,29 +3474,34 @@ function selectFunerariaDomicilio() {
       '<div class="order-field">' +
         '<label>Zona de envío <span class="required">*</span></label>' +
         '<select id="of-funeral-zona" onchange="updateFuneralDomicilioCost(this.value)" style="width:100%;padding:10px;border:1px solid var(--borde);border-radius:8px;font-family:Inter,sans-serif;font-size:14px">' +
-          '<option value="">Selecciona la zona</option>' +
-          '<option value="Zona Central" data-tarifa="7900">Zona Central — $79</option>' +
-          '<option value="NORESTE 1" data-tarifa="9900">NORESTE 1 — $99</option>' +
-          '<option value="NOROESTE 1" data-tarifa="9900">NOROESTE 1 — $99</option>' +
-          '<option value="PONIENTE 1" data-tarifa="9900">PONIENTE 1 — $99</option>' +
-          '<option value="SUR 1" data-tarifa="9900">SUR 1 — $99</option>' +
-          '<option value="NORESTE 2" data-tarifa="13900">NORESTE 2 — $139</option>' +
-          '<option value="NOROESTE 2" data-tarifa="13900">NOROESTE 2 — $139</option>' +
-          '<option value="PONIENTE 2" data-tarifa="13900">PONIENTE 2 — $139</option>' +
-          '<option value="SUR 2" data-tarifa="13900">SUR 2 — $139</option>' +
-          '<option value="ORIENTE 1" data-tarifa="14900">ORIENTE 1 — $149</option>' +
-          '<option value="PONIENTE 3" data-tarifa="15900">PONIENTE 3 — $159</option>' +
-          '<option value="SUR 3" data-tarifa="15900">SUR 3 — $159</option>' +
-          '<option value="SURESTE 1" data-tarifa="18900">SURESTE 1 — $189</option>' +
-          '<option value="NORTE" data-tarifa="19900">NORTE — $199</option>' +
-          '<option value="ORIENTE 2" data-tarifa="19900">ORIENTE 2 — $199</option>' +
-          '<option value="SURESTE 2" data-tarifa="19900">SURESTE 2 — $199</option>' +
+          '<option value="">Cargando zonas...</option>' +
         '</select>' +
       '</div>';
     const funerariaField = document.getElementById('of-funeraria').closest('.order-field');
     funerariaField.parentNode.insertBefore(addrDiv, funerariaField.nextSibling);
   }
   addrDiv.style.display = '';
+  // Poblar el dropdown con las zonas reales de la BD (respeta overrides admin)
+  loadFuneralZonas();
+}
+
+async function loadFuneralZonas() {
+  const sel = document.getElementById('of-funeral-zona');
+  if (!sel) return;
+  try {
+    const r = await fetch(`${API}/catalogo/zonas-envio`);
+    const zonas = await r.json();
+    if (!Array.isArray(zonas) || !zonas.length) throw new Error('sin zonas');
+    let html = '<option value="">Selecciona la zona</option>';
+    zonas.forEach(z => {
+      const tarifaPesos = z.tarifa_pesos || Math.round((z.tarifa_centavos||0)/100);
+      const tarifaCent = z.tarifa_centavos || (tarifaPesos*100);
+      html += `<option value="${z.nombre}" data-tarifa="${tarifaCent}">${z.nombre} — $${tarifaPesos}</option>`;
+    });
+    sel.innerHTML = html;
+  } catch(e) {
+    sel.innerHTML = '<option value="">Error al cargar zonas — recarga la página</option>';
+  }
 }
 
 function updateFuneralDomicilioCost(zona) {
