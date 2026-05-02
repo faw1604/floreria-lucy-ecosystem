@@ -219,6 +219,12 @@ img{-webkit-user-drag:none;user-drag:none}
 .filter-tab{flex:1;padding:12px 8px;border:none;background:none;font-size:13px;font-weight:600;color:var(--verde);cursor:pointer;font-family:'Inter',sans-serif;text-align:center;transition:all .15s;letter-spacing:.3px}
 .filter-tab:not(.active):hover{background:rgba(212,168,67,.1)}
 .filter-tab.active{background:var(--verde);color:var(--blanco);box-shadow:inset 0 -3px 0 var(--dorado)}
+/* Tab destacada (Temporada/10 de Mayo) - highlight con gradient dorado y pulso */
+.filter-tab.featured{background:linear-gradient(135deg,#d4a843 0%,#e8c96a 100%);color:#193a2c;font-weight:700;position:relative;overflow:visible}
+.filter-tab.featured::before{content:'';position:absolute;top:-2px;left:-2px;right:-2px;bottom:-2px;border-radius:10px;background:linear-gradient(135deg,#d4a843,#e8c96a,#d4a843);z-index:-1;animation:featuredPulse 2.5s ease-in-out infinite}
+.filter-tab.featured:not(.active):hover{background:linear-gradient(135deg,#e8c96a 0%,#f0d77a 100%)}
+.filter-tab.featured.active{background:linear-gradient(135deg,#193a2c 0%,#2d5a3d 100%);color:#d4a843;box-shadow:inset 0 -3px 0 #e8c96a}
+@keyframes featuredPulse{0%,100%{opacity:.6}50%{opacity:1}}
 .filter-pills{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .filter-pills::-webkit-scrollbar{display:none}
 .filter-pills:hover{cursor:grab}
@@ -1845,15 +1851,17 @@ function buildFechasRestriccionLabel(fechaFuerte, dias) {
 function renderSectionTabs() {
   // Solo mostrar 'Temporada' si admin activó modo alta con categoría definida
   const temporadaActiva = !!(catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria);
-  const tabs = ['general', 'funeral', 'regalos'];
-  if (temporadaActiva) tabs.push('temporada');
+  // Si temporada esta activa, ponerla PRIMERO (destacada) en lugar de al final
+  const tabs = temporadaActiva ? ['temporada', 'general', 'funeral', 'regalos'] : ['general', 'funeral', 'regalos'];
   const tempLabel = temporadaActiva ? catConfig.temporada_categoria : 'Temporada';
   const labels = {'general': 'General', 'funeral': 'Funeral', 'regalos': 'Regalos', 'temporada': tempLabel};
   // Si el usuario estaba en 'temporada' y se desactivó, regresarlo a 'general'
   if (sectionFilter === 'temporada' && !temporadaActiva) sectionFilter = 'general';
-  document.getElementById('section-tabs').innerHTML = tabs.map(t =>
-    `<button class="filter-tab ${sectionFilter === t ? 'active' : ''}" onclick="setSection('${t}')">${labels[t]}</button>`
-  ).join('');
+  document.getElementById('section-tabs').innerHTML = tabs.map(t => {
+    const featuredClass = (t === 'temporada') ? ' featured' : '';
+    const activeClass = (sectionFilter === t) ? ' active' : '';
+    return `<button class="filter-tab${featuredClass}${activeClass}" onclick="setSection('${t}')">${labels[t]}</button>`;
+  }).join('');
 }
 
 function renderCatPills() {
