@@ -1789,19 +1789,29 @@ async function initClassic() {
     return;
   }
   startPlaceholderRotation();
+  // Esperar config antes del primer render para decidir si auto-selecciona Temporada
+  if (typeof catConfigReady !== 'undefined') await catConfigReady;
+  // Auto-select section from URL param ?seccion= o legacy ?cat=temporada
+  // tienen prioridad sobre auto-seleccion de temporada
+  if (window._autoSelectSection) {
+    const s = window._autoSelectSection;
+    window._autoSelectSection = false;
+    if (['general','funeral','regalos','temporada'].includes(s)) sectionFilter = s;
+  } else if (window._autoSelectTemporada) {
+    window._autoSelectTemporada = false;
+    sectionFilter = 'temporada';
+  } else {
+    // Si modo Temporada Alta esta activo y no hay seccion forzada,
+    // entrar directo a la pestaña destacada (10 de mayo / fecha fuerte).
+    // Esto evita confusion visual: la pestaña featured aparecia destacada
+    // pero "General" estaba seleccionada al mismo tiempo.
+    const temporadaActiva = !!(catConfig && catConfig.temporada_modo === 'alta' && catConfig.temporada_categoria);
+    if (temporadaActiva) sectionFilter = 'temporada';
+  }
   renderSectionTabs();
   renderCatPills();
   renderFlowerPills();
   renderClassicGrid();
-  // Auto-select section from URL param ?seccion= or legacy ?cat=temporada
-  if (window._autoSelectSection) {
-    const s = window._autoSelectSection;
-    window._autoSelectSection = false;
-    if (['general','funeral','regalos','temporada'].includes(s)) setSection(s);
-  } else if (window._autoSelectTemporada) {
-    window._autoSelectTemporada = false;
-    setSection('temporada');
-  }
   // Banner temporada alta (once per session) — wait for config if not loaded yet
   if (typeof catConfigReady !== 'undefined') await catConfigReady;
   if (catConfig && catConfig.temporada_modo === 'alta' && !sessionStorage.getItem('lucy_classic_banner_shown')) {
